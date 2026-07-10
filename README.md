@@ -34,9 +34,9 @@ Problem Statement
 
 ## Status
 
-**Epic 0–2:** workspace + `specs/` + **schema registry** (`schemas/`, `aira schema …`).
+**Epic 0–3:** workspace + schemas + **C0 Object Store** (`aira-object` / `aira-core`).
 
-Runtime Object/Event/Artifact/CSU logic is **not** implemented yet (Issue Set #22+).
+Artifact/Event/Policy/CSU runtime is **not** complete yet (Issue Set #27+).
 
 ## Build
 

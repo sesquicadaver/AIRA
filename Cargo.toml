@@ -40,3 +40,5 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 jsonschema = "0.28"
 walkdir = "2"
+rusqlite = { version = "0.32", features = ["bundled"] }
+hex = "0.4"

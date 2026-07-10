@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 — 2026-07-10
+
+### Added
+
+- C0 core types: `AiraRef`, `ContentHash`, `Signature`, opaque `Handle`
+- `ObjectDescriptor` with schema validation and forbidden-type rejection
+- Immutable `MemoryObjectStore` + `SqliteObjectStore`
+
 ## 0.1.1 — 2026-07-10
 
 ### Added

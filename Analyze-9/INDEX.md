@@ -19,4 +19,7 @@
 | 21 CLI schema | done |
 
 ## Next
-Epic 3 C0 Core Runtime (#22+)
+Analyze-10 done → [../Analyze-10/](../Analyze-10/)
+
+Next: Epic 4 (#27+)
+| Analyze-10 | C0 Core Epic 3 (done → [../Analyze-10/](../Analyze-10/)) |

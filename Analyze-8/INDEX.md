@@ -29,3 +29,4 @@ Analyze-9 done → [../Analyze-9/](../Analyze-9/) (Issue #8–#21)
 
 Next: Epic 3 C0 Core (#22+)
 | Analyze-9 | Schema registry Epic 2 (done → [../Analyze-9/](../Analyze-9/)) |
+| Analyze-10 | C0 Core Epic 3 (done → [../Analyze-10/](../Analyze-10/)) |

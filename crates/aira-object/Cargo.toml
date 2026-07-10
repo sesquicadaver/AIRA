@@ -5,6 +5,15 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "AIRA core object model skeleton"
+description = "AIRA core object model: refs, handles, object descriptors"
 
 [dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+regex = "1"
+
+[dev-dependencies]
+aira-schema = { path = "../aira-schema" }
