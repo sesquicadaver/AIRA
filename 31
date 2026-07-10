@@ -1,0 +1,276 @@
+# Документ 31. Self-Optimization Architecture
+
+**Проєкт:** AIRA
+**Документ:** Self-Optimization Architecture
+**Версія:** 0.1 Draft
+
+## 1. Призначення
+
+Self-Optimization Layer відповідає за поступове покращення:
+
+```text
+discovery
+routing
+placement
+model caching
+KV mobility
+verification
+reward/contribution
+energy usage
+anti-centralization
+```
+
+без зміни базового протоколу.
+
+## 2. Головний принцип
+
+```text
+Protocol is stable.
+Metadata evolves.
+Algorithms evolve.
+Policies evolve.
+```
+
+Протокол визначає формат даних. Оптимізація використовує ці дані.
+
+## 3. Джерела даних
+
+```text
+Node Fingerprints
+Resource Profiles
+Execution Events
+Telemetry
+Benchmark Results
+Route Outcomes
+Verification Results
+Cache Heatmaps
+Failure Reports
+Settlement Events
+```
+
+## 4. Багатошаровий fingerprint ноди
+
+```text
+NodeFingerprint
+ ├── HardwareFingerprint
+ ├── SoftwareFingerprint
+ ├── RuntimeFingerprint
+ ├── NetworkFingerprint
+ ├── ModelCacheFingerprint
+ ├── ExecutionHistoryFingerprint
+ ├── TrustFingerprint
+ └── BehaviorFingerprint
+```
+
+Це дозволяє розрізняти навіть однакові апаратно вузли.
+
+## 5. Resource Digital Twin
+
+Кожен ресурс має цифрового двійника:
+
+```text
+ResourceDigitalTwin
+ ├── static_capabilities
+ ├── dynamic_state
+ ├── historical_performance
+ ├── thermal_profile
+ ├── network_profile
+ ├── cache_profile
+ ├── reliability_profile
+ ├── trust_profile
+ └── predicted_state
+```
+
+Оптимізатори працюють не з “GPU”, а з цифровим двійником ресурсу.
+
+## 6. Event Fabric
+
+Канонічне джерело істини — події.
+
+```text
+NodeJoined
+CapabilityUpdated
+BenchmarkPassed
+ModelCached
+CapsuleScheduled
+CapsuleStarted
+CapsuleCompleted
+RouteFailed
+KVRelocated
+VerificationPassed
+ContributionSettled
+PenaltyApplied
+```
+
+Стан системи — матеріалізована проєкція подій.
+
+## 7. Feedback Loop
+
+```text
+Plan
+ ↓
+Execute
+ ↓
+Measure
+ ↓
+Compare expected vs actual
+ ↓
+Update profiles
+ ↓
+Adjust future planning
+```
+
+Ключова метрика:
+
+```text
+prediction_error = actual - expected
+```
+
+Саме вона навчає систему.
+
+## 8. Optimization Hints
+
+Вузол може публікувати hints:
+
+```text
+good_for: decode_7b_int4
+bad_for: long_context_prefill
+preferred_hours: 01:00-07:00
+thermal_risk: high
+hot_models: qwen_14b_int4, llama_8b_int4
+```
+
+Hints не є доказом. Вони отримують вагу лише після підтвердження історією виконань.
+
+## 9. Локальна самооптимізація CAS
+
+Кожний CAS оптимізує себе локально.
+
+```text
+Personal CAS
+ ↓
+Home CAS
+ ↓
+Organization CAS
+ ↓
+Regional CAS
+ ↓
+Global CAS
+```
+
+Уверх передаються агрегати, не повна телеметрія.
+
+```text
+capacity_summary
+route_quality_summary
+model_availability_summary
+failure_rate_summary
+trust_summary
+```
+
+## 10. Набір оптимізаторів
+
+Не один універсальний оптимізатор.
+
+```text
+Discovery Optimizer
+Routing Optimizer
+Execution Placement Optimizer
+Model Cache Optimizer
+KV Mobility Optimizer
+Contribution Optimizer
+Energy Optimizer
+Anti-Centralization Optimizer
+Verification Optimizer
+```
+
+Кожен має власні входи, метрики й межі відповідальності.
+
+## 11. Reference-рівень
+
+У першій реалізації достатньо:
+
+```text
+event log
+node fingerprint
+capability profile
+benchmark history
+execution outcome history
+route quality table
+model cache heatmap
+simple heuristic optimizer
+```
+
+Без ML у критичному шляху.
+
+## 12. Research-рівень
+
+Опціонально:
+
+```text
+predictive scheduler
+GNN-based graph optimizer
+federated learning over CAS
+execution genome
+learned cache placement
+adaptive contribution model
+```
+
+Research не змінює протокол і не порушує Core Invariants.
+
+## 13. Anti-gaming
+
+Самооптимізація повинна бути стійкою до маніпуляцій.
+
+```text
+self-reported data weight = low
+verified execution data weight = high
+cross-validated data weight = highest
+```
+
+Профіль вузла не формується з його заяв. Він формується з верифікованої поведінки.
+
+## 14. Архітектурне правило
+
+```text
+No optimizer may directly mutate protocol state.
+```
+
+Оптимізатор може запропонувати:
+
+```text
+route
+placement
+cache replication
+policy hint
+contribution adjustment
+```
+
+Але Core перевіряє:
+
+```text
+policy
+trust
+wallet
+capability
+execution contract
+invariants
+```
+
+## 15. Висновок
+
+Самооптимізація AIRA має бути побудована як **еволюція метаданих і евристик поверх стабільного протоколу**.
+
+Це дає:
+
+```text
+стабільність протоколу
+адаптацію до реальної поведінки вузлів
+захист від фальшивих заяв
+поступове покращення routing
+ефективніше кешування моделей
+менше марнування топових ресурсів
+кращу демократизацію мережі
+```
+
+Наступним логічним документом є **Node Fingerprint & Resource Digital Twin Specification**.

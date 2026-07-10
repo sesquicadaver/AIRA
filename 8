@@ -1,0 +1,514 @@
+# Документ 8. AI Compute Fabric Specification
+
+**Проєкт:** P2P AI Compute Network
+
+**Документ:** AI Compute Fabric
+
+**Версія:** 0.1 Draft
+
+---
+
+# 1. Призначення
+
+AI Compute Fabric (ACF) — це логічний шар абстракції між фізичним обладнанням і сервісами штучного інтелекту.
+
+Основний принцип:
+
+> **У мережі не існує комп'ютерів. Існують лише ресурси та сервіси.**
+
+Scheduler ніколи не працює з поняттями:
+
+* ПК;
+* сервер;
+* ноутбук;
+* датацентр.
+
+Він працює тільки з ресурсами Fabric.
+
+---
+
+# 2. Основні принципи
+
+Fabric повинен:
+
+* приховувати фізичне обладнання;
+* агрегувати ресурси;
+* забезпечувати прозоре масштабування;
+* підтримувати будь-які AI workload;
+* бути незалежним від виробників обладнання.
+
+---
+
+# 3. Compute Resource Model
+
+Будь-який ресурс описується однаково.
+
+```text
+Resource
+ ├── ID
+ ├── Type
+ ├── Capability
+ ├── Capacity
+ ├── Availability
+ ├── Trust
+ ├── Owner
+ └── Cost
+```
+
+---
+
+# 4. Resource Types
+
+### Compute
+
+* CPU Core
+* GPU Compute Unit
+* Tensor Core
+* NPU Engine
+* FPGA Region
+* DSP
+
+---
+
+### Memory
+
+* RAM Region
+* VRAM Region
+* Shared Memory
+* Cache Region
+
+---
+
+### Storage
+
+* SSD
+* NVMe
+* Object Storage
+* Model Cache
+
+---
+
+### Network
+
+* TCP
+* RDMA
+* NVLink
+* PCIe
+* InfiniBand
+
+---
+
+### Services
+
+* LLM Backend
+* Vision Backend
+* Embedding Backend
+* OCR Backend
+* Audio Backend
+
+---
+
+# 5. Resource Identity
+
+Кожний ресурс має незмінний ResourceID.
+
+Навіть після перезапуску вузла його логічна ідентичність повинна зберігатися.
+
+---
+
+# 6. Capability Model
+
+Приклад:
+
+```text
+GPU
+
+Capability:
+FP16
+BF16
+INT8
+FP8
+
+Memory:
+48 GB
+
+Bandwidth:
+900 GB/s
+
+Current Load:
+42%
+```
+
+---
+
+# 7. Execution Domains
+
+Fabric вводить поняття доменів.
+
+Приклади:
+
+```text
+Single GPU
+
+Multi GPU
+
+Single Machine
+
+Rack
+
+Cluster
+
+Organization
+
+Global Network
+```
+
+Усі вони використовують однаковий протокол.
+
+---
+
+# 8. Service Domains
+
+Окремо від Compute.
+
+Наприклад:
+
+```text
+LLM
+
+Vision
+
+Speech
+
+Embedding
+
+Fine-Tuning
+
+Diffusion
+
+Reasoning
+```
+
+---
+
+# 9. Resource Composition
+
+Fabric дозволяє створювати логічні ресурси.
+
+Наприклад:
+
+```text
+GPU A
+
++
+
+GPU B
+
+↓
+
+Virtual GPU Group
+```
+
+або
+
+```text
+RAM
+
++
+
+VRAM
+
+↓
+
+Unified Memory Region
+```
+
+---
+
+# 10. Fabric Graph
+
+Уся мережа описується графом.
+
+Вершина:
+
+Resource
+
+Ребро:
+
+Link
+
+Вага:
+
+* latency;
+* bandwidth;
+* reliability.
+
+---
+
+# 11. Virtual Resources
+
+Scheduler бачить:
+
+```text
+Virtual GPU
+
+Virtual Cluster
+
+Virtual Pipeline
+
+Virtual KV Cache
+
+Virtual Storage
+```
+
+Він не знає фізичної топології.
+
+---
+
+# 12. Resource Leasing
+
+Будь-який ресурс може бути:
+
+```text
+Available
+
+Reserved
+
+Executing
+
+Migrating
+
+Offline
+```
+
+---
+
+# 13. Resource Affinity
+
+Fabric підтримує:
+
+* NUMA affinity;
+* GPU affinity;
+* Model affinity;
+* Cache affinity;
+* Network affinity.
+
+---
+
+# 14. Dynamic Aggregation
+
+Якщо два GPU знаходяться поруч:
+
+Fabric може автоматично створити:
+
+```text
+Virtual Accelerator
+```
+
+---
+
+# 15. Memory Fabric
+
+Пам'ять стає окремим ресурсом.
+
+Наприклад:
+
+```text
+VRAM A
+
++
+
+VRAM B
+
+↓
+
+Distributed KV Cache
+```
+
+---
+
+# 16. Model Fabric
+
+Модель більше не є файлом.
+
+Вона стає графом.
+
+```text
+Model
+
+↓
+
+Layers
+
+↓
+
+Shards
+
+↓
+
+Replicas
+```
+
+---
+
+# 17. KV Fabric
+
+KV Cache стає окремим сервісом.
+
+Scheduler працює з ним незалежно від моделей.
+
+---
+
+# 18. Execution Fabric
+
+Pipeline будується з ресурсів.
+
+Не з вузлів.
+
+---
+
+# 19. Service Fabric
+
+Кожний AI Service є окремим мікросервісом.
+
+Наприклад:
+
+```text
+Tokenizer
+
+↓
+
+Embedding
+
+↓
+
+Retriever
+
+↓
+
+LLM
+
+↓
+
+Reranker
+
+↓
+
+Output
+```
+
+---
+
+# 20. Multi-Tenant
+
+Fabric підтримує:
+
+* приватні домени;
+* корпоративні домени;
+* глобальні домени.
+
+---
+
+# 21. Elastic Scaling
+
+Ресурси можуть:
+
+* додаватися;
+* вилучатися;
+* мігрувати.
+
+Без зупинки сервісу.
+
+---
+
+# 22. Self-Healing
+
+При втраті ресурсу:
+
+Fabric:
+
+* перебудовує граф;
+* переміщує сервіси;
+* оновлює Scheduler.
+
+---
+
+# 23. Hardware Independence
+
+Fabric не містить спеціальної логіки для:
+
+* NVIDIA;
+* AMD;
+* Intel;
+* Apple;
+* Qualcomm;
+* Hailo;
+* TPU.
+
+Усі виробники представлені однаково.
+
+---
+
+# 24. Compute Marketplace
+
+У Fabric немає поняття "здати комп'ютер в оренду".
+
+Є лише:
+
+> **Опублікувати набір ресурсів у глобальний Fabric.**
+
+Саме ресурси, а не пристрої, стають предметом планування.
+
+---
+
+# 25. Архітектурне доповнення: AI Operating System
+
+На цьому етапі стає зрозуміло, що проєкт виходить далеко за межі "P2P LLM".
+
+Фактично формується концепція **AI Operating System (AIOS)**.
+
+У цій моделі:
+
+* AI Compute Fabric виконує роль ядра;
+* Scheduler — роль планувальника процесів;
+* Model Registry — роль файлової системи для моделей;
+* KV Fabric — роль керування пам'яттю;
+* Blockchain — роль довіреного журналу та системи обліку;
+* AI Services — роль користувацького простору.
+
+Такий підхід дає важливу перевагу: будь-який новий AI-сервіс інтегрується як "процес" поверх існуючої інфраструктури, а не потребує створення окремої розподіленої системи.
+
+## Архітектурне доповнення: Федеративна модель
+
+Я також пропоную закласти підтримку **ієрархічної федерації**.
+
+Замість однієї глобальної мережі система має підтримувати декілька рівнів:
+
+```text
+Personal Fabric
+        │
+        ▼
+Home Fabric
+        │
+        ▼
+Organization Fabric
+        │
+        ▼
+Regional Fabric
+        │
+        ▼
+Global Fabric
+```
+
+Принцип роботи:
+
+* локальні задачі спочатку виконуються у найменшому доступному домені;
+* лише за нестачі ресурсів вони ескалюються на вищий рівень;
+* репутація, Neurocoin і протоколи залишаються сумісними між усіма рівнями.
+
+Це забезпечує:
+
+* мінімізацію мережевого трафіку;
+* кращий захист приватності;
+* можливість автономної роботи локальних сегментів;
+* природне масштабування від одного ПК до глобальної федерації без зміни архітектури.

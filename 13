@@ -1,0 +1,387 @@
+# Документ 13. Contextual Graph Projection Specification
+
+**Проєкт:** P2P AI Compute Network
+**Документ:** Contextual Graph Projection
+**Версія:** 0.1 Draft
+
+---
+
+# 1. Призначення
+
+Contextual Graph Projection — підсистема Graph Kernel, яка перетворює універсальний граф ресурсів у граф, релевантний конкретній задачі.
+
+Система не використовує фіксованих ваг ребер або вузлів.
+
+```text
+edge_weight = f(edge, execution_context)
+vertex_relevance = f(resource, execution_context)
+```
+
+---
+
+# 2. Основний принцип
+
+Універсальний граф описує лише потенційні можливості.
+
+Реальний граф виконання будується окремо для кожного Execution Context.
+
+```text
+Universal Resource Graph
+        +
+Execution Context
+        ↓
+Projected Compute Graph
+```
+
+---
+
+# 3. Universal Resource Graph
+
+Містить:
+
+```text
+ResourceVertex
+TransportEdge
+FederationEdge
+TrustEdge
+MemoryEdge
+ModelShardEdge
+KVEdge
+```
+
+Але не містить фінальних ваг.
+
+---
+
+# 4. Execution Context
+
+Execution Context містить:
+
+```text
+capsule_type
+model_hash
+tokenizer_hash
+backend
+quantization
+tensor_size
+kv_size
+privacy_class
+trust_minimum
+latency_target
+deadline
+wallet_policy
+federation_policy
+verification_policy
+```
+
+---
+
+# 5. Resource Relevance
+
+Кожний ресурс отримує контекстну релевантність.
+
+```text
+relevance(resource, context) -> [0.0, 1.0]
+```
+
+Приклад:
+
+```text
+GPU 24 GB VRAM:
+  relevance для 7B INT4 decode     = висока
+  relevance для 70B FP16 full load = нульова
+  relevance для embedding CPU job  = низька
+```
+
+---
+
+# 6. Edge Cost
+
+Кожне ребро має функцію вартості.
+
+```text
+cost(edge, context) -> EdgeCost
+```
+
+EdgeCost складається з:
+
+```text
+latency
+bandwidth_cost
+jitter
+packet_loss
+congestion
+trust_penalty
+privacy_penalty
+federation_penalty
+failure_risk
+```
+
+---
+
+# 7. Заборонена модель
+
+Заборонено:
+
+```text
+edge.weight = constant
+resource.score = constant
+```
+
+Дозволено лише:
+
+```text
+edge.cost(context)
+resource.relevance(context)
+```
+
+---
+
+# 8. Projected Compute Graph
+
+Projected Compute Graph містить лише:
+
+* релевантні ресурси;
+* допустимі маршрути;
+* контекстні ваги;
+* актуальні telemetry snapshot;
+* TTL.
+
+---
+
+# 9. Projection Pipeline
+
+```text
+Execution Capsule
+  ↓
+Context Builder
+  ↓
+Candidate Filter
+  ↓
+Vertex Relevance Evaluation
+  ↓
+Edge Cost Evaluation
+  ↓
+Projected Graph Builder
+  ↓
+Plan Optimizer
+```
+
+---
+
+# 10. Candidate Filter
+
+Відкидає ресурси, що порушують жорсткі обмеження:
+
+```text
+model_hash mismatch
+backend mismatch
+insufficient_vram
+trust below minimum
+privacy violation
+wallet restriction
+federation deny
+```
+
+---
+
+# 11. Vertex Relevance Model
+
+Модель оцінює:
+
+```text
+hardware_fit
+model_locality
+kv_locality
+backend_fit
+trust_fit
+load_fit
+energy_fit
+```
+
+---
+
+# 12. Edge Cost Model
+
+Модель оцінює:
+
+```text
+transfer_time = payload_size / effective_bandwidth
+latency_penalty
+jitter_penalty
+congestion_penalty
+gateway_penalty
+trust_penalty
+failure_penalty
+```
+
+---
+
+# 13. Directionality
+
+Ребра можуть бути асиметричними.
+
+```text
+cost(A → B) != cost(B → A)
+```
+
+Це обов’язково для:
+
+* NAT;
+* relay;
+* federation gateway;
+* asymmetric bandwidth;
+* mobile networks.
+
+---
+
+# 14. Temporal Validity
+
+Кожна проєкція має TTL.
+
+```text
+ProjectedGraph.ttl
+EdgeCost.ttl
+TelemetrySnapshot.ttl
+```
+
+Після TTL план має бути перевірений або перебудований.
+
+---
+
+# 15. Telemetry Snapshot
+
+Проєкція завжди прив’язана до конкретного стану мережі.
+
+```text
+snapshot_id
+timestamp
+resource_load
+network_state
+trust_state
+availability_state
+```
+
+---
+
+# 16. Projection Cache
+
+Кешуються не плани як такі, а класи проєкцій.
+
+```text
+context_class_hash
+resource_class_hash
+policy_hash
+telemetry_bucket
+projected_graph_hash
+ttl
+```
+
+---
+
+# 17. Incremental Projection
+
+При зміні одного ресурсу не перебудовується весь граф.
+
+Оновлюються лише:
+
+```text
+affected vertices
+incident edges
+dependent routes
+affected capsules
+```
+
+---
+
+# 18. Multi-layer Projection
+
+Для складних Job будується кілька проєкцій:
+
+```text
+Prefill Projection
+Decode Projection
+KV Projection
+Verification Projection
+Streaming Projection
+```
+
+Один Job не має одного універсального графа.
+
+---
+
+# 19. Projection Validation
+
+Перед запуском перевіряється:
+
+```text
+hard constraints
+policy compliance
+wallet reservation
+resource availability
+route validity
+trust validity
+```
+
+---
+
+# 20. Runtime Reprojection
+
+Під час виконання допускається reprojection, якщо:
+
+```text
+latency spike
+node lost
+trust degraded
+resource overloaded
+kv unavailable
+route broken
+```
+
+Reprojection не повинна змінювати семантику Execution Contract.
+
+---
+
+# 21. Взаємодія з Graph Kernel
+
+Graph Kernel не оптимізує Universal Resource Graph напряму.
+
+Він завжди працює лише з:
+
+```text
+Projected Compute Graph
+```
+
+---
+
+# 22. Взаємодія з Scheduler
+
+Scheduler отримує вже контекстний граф.
+
+Він не має самостійно призначати фіксовані ваги.
+
+---
+
+# 23. Взаємодія з Address Book
+
+Address Book використовується як швидкий кеш кандидатів.
+
+Однак кожен кандидат проходить Contextual Projection перед використанням.
+
+---
+
+# 24. Висновок
+
+Contextual Graph Projection є обов’язковим шаром між Discovery і Scheduling.
+
+Без нього система буде вибирати формально доступні, але фактично нерелевантні ресурси.
+
+---
+
+# 25. Архітектурне правило
+
+```text
+Жодне рішення про розміщення, маршрутизацію або виконання не може прийматися на основі глобальних фіксованих ваг.
+
+Усі оцінки мають бути контекстними, часовими, асиметричними та прив’язаними до конкретного Execution Context.
+```

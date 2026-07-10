@@ -1,0 +1,465 @@
+# Документ 10. Discovery & Overlay Network Protocol
+
+**Проєкт:** P2P AI Compute Network
+
+**Документ:** Discovery & Overlay Network Protocol
+
+**Версія:** 0.1 Draft
+
+---
+
+# 1. Призначення
+
+Discovery Protocol відповідає за:
+
+* пошук ресурсів;
+* побудову P2P Overlay;
+* підтримку зв'язності мережі;
+* маршрутизацію;
+* оновлення інформації про доступні ресурси.
+
+Його задача — зробити мережу самовідновлюваною без центрального каталогу.
+
+---
+
+# 2. Основний принцип
+
+Фундаментальне правило:
+
+> **У мережі шукаються не вузли, а ресурси.**
+
+Node Discovery використовується лише як службовий механізм.
+
+Основною операцією є:
+
+```text
+Find(Resource Requirements)
+```
+
+а не
+
+```text
+Find(Node)
+```
+
+---
+
+# 3. Discovery Stack
+
+```text
+Application
+      │
+      ▼
+Resource Discovery
+      │
+      ▼
+Overlay Routing
+      │
+      ▼
+Peer Discovery
+      │
+      ▼
+Transport
+```
+
+---
+
+# 4. Bootstrap
+
+Кожний клієнт містить:
+
+* bootstrap peers;
+* bootstrap federation;
+* локальні bootstrap.
+
+Bootstrap використовується лише для першого входу.
+
+---
+
+# 5. Bootstrap Protocol
+
+```text
+Client
+
+↓
+
+Bootstrap
+
+↓
+
+Known Peers
+
+↓
+
+DHT Join
+```
+
+Після цього bootstrap більше не потрібний.
+
+---
+
+# 6. Distributed Hash Table
+
+DHT використовується для:
+
+* Resource Index;
+* Model Index;
+* Federation Directory;
+* Capability Lookup.
+
+Не використовується для зберігання моделей.
+
+---
+
+# 7. Resource Index
+
+Кожний ресурс публікує:
+
+```text
+ResourceID
+
+Capability Hash
+
+Location Hint
+
+Trust
+
+Federation
+
+Availability
+```
+
+Не публікуються:
+
+* prompt;
+* моделі;
+* KV Cache.
+
+---
+
+# 8. Capability Hash
+
+Для швидкого пошуку.
+
+Наприклад:
+
+```text
+GPU
+
+VRAM
+
+INT4
+
+Tensor
+
+Latency
+
+Backend
+```
+
+Хешуються в один CapabilityID.
+
+---
+
+# 9. Resource Query
+
+Запит має вигляд:
+
+```text
+Need
+
+↓
+
+Capability
+
+↓
+
+Constraints
+
+↓
+
+Trust
+
+↓
+
+Deadline
+```
+
+Відповіддю є список ResourceID.
+
+---
+
+# 10. Overlay Network
+
+Overlay не залежить від фізичної мережі.
+
+Він будується поверх:
+
+* Internet;
+* VPN;
+* LAN;
+* Cloud.
+
+---
+
+# 11. Overlay Graph
+
+Вершини:
+
+```text
+Resource Domains
+```
+
+Ребра:
+
+```text
+Virtual Links
+```
+
+Не фізичні.
+
+---
+
+# 12. Peer Table
+
+Кожний вузол підтримує:
+
+```text
+Near Peers
+
+Far Peers
+
+Federation Peers
+
+Gateway Peers
+
+Bootstrap Peers
+```
+
+---
+
+# 13. Local Discovery
+
+Підтримуються:
+
+* mDNS;
+* DNS-SD;
+* Broadcast;
+* Manual Join.
+
+Домашній кластер не потребує bootstrap.
+
+---
+
+# 14. Federation Discovery
+
+Всередині федерації:
+
+пошук виконується локально.
+
+Лише при нестачі ресурсів:
+
+відбувається вихід у глобальний Overlay.
+
+---
+
+# 15. Gateway Discovery
+
+Gateway публікує:
+
+```text
+Federation
+
+Capabilities
+
+Policy
+
+Load
+```
+
+Він не публікує внутрішню структуру федерації.
+
+---
+
+# 16. Routing
+
+Overlay використовує:
+
+```text
+Capability Routing
+
+↓
+
+Resource Routing
+
+↓
+
+Node Routing
+```
+
+Node Routing є останнім кроком.
+
+---
+
+# 17. Multi-Hop Discovery
+
+Якщо ресурс не знайдено:
+
+запит автоматично розширюється.
+
+```text
+Local
+
+↓
+
+Federation
+
+↓
+
+Regional
+
+↓
+
+Global
+```
+
+---
+
+# 18. Health Monitoring
+
+Discovery підтримує:
+
+* heartbeat;
+* passive monitoring;
+* latency measurement;
+* capability refresh.
+
+---
+
+# 19. Dynamic Updates
+
+При зміні:
+
+* GPU;
+* моделей;
+* навантаження;
+
+вузол автоматично оновлює Resource Index.
+
+---
+
+# 20. Resource Migration
+
+Якщо ресурс змінює адресу:
+
+оновлюється лише маршрут.
+
+ResourceID не змінюється.
+
+---
+
+# 21. NAT Traversal
+
+Підтримуються:
+
+* STUN;
+* TURN;
+* ICE;
+* Relay Gateway.
+
+P2P є пріоритетним.
+
+---
+
+# 22. Security
+
+Discovery підтримує:
+
+* mutual authentication;
+* signed announcements;
+* replay protection;
+* anti-spoofing.
+
+---
+
+# 23. Privacy
+
+Не передаються:
+
+* prompt;
+* історія;
+* особисті дані.
+
+Передаються лише capability.
+
+---
+
+# 24. Архітектурне доповнення: Semantic Resource Discovery
+
+На цьому етапі можна зробити ще один крок уперед.
+
+Замість пошуку за фіксованими параметрами ("48 GB VRAM", "INT4") варто підтримати **семантичні запити до ресурсів**.
+
+Наприклад:
+
+```text
+Need:
+Large-context LLM
+Latency < 100 ms
+High Trust
+European Federation Preferred
+```
+
+Такий запит перетворюється планувальником у формальний набір вимог до Capability та політик.
+
+У майбутньому це дозволить інтегрувати AI-асистентів, які самі формують оптимальні запити до мережі без знання її внутрішньої структури.
+
+---
+
+# 25. Стратегічне доповнення: Resource DNS
+
+Найперспективнішою ідеєю, на мою думку, є створення **Resource DNS**.
+
+Аналогічно до того, як DNS перетворює доменне ім'я на IP-адресу, Resource DNS повинен перетворювати **логічний опис необхідного ресурсу** на конкретний Execution Plan.
+
+Схема:
+
+```text
+Application Request
+        │
+        ▼
+Resource DNS
+        │
+        ▼
+Execution Plan
+        │
+        ▼
+Overlay Routing
+        │
+        ▼
+Execution Fabric
+```
+
+Приклад:
+
+```text
+"Запустити Llama-70B"
+
+↓
+
+Resource DNS
+
+↓
+
+Prefill Cluster
+Pipeline
+KV Service
+Decode Cluster
+Verification
+```
+
+Тобто клієнт взагалі не знає, **де** знаходяться ресурси і **скільки** вузлів буде використано. Він формулює лише вимоги, а мережа сама будує оптимальний план виконання.
+
+## Пропозиція щодо наступного документа
+
+Після цього логічно перейти до **Execution Engine Specification** — детального опису виконання одного Job: від прийняття запиту, побудови графа, розподілу шарів і KV-cache до потокової генерації токенів, перевірки результатів і завершення роботи. Саме цей документ зв'яже всі попередні специфікації в єдиний цикл виконання.

@@ -1,0 +1,471 @@
+# Документ 15. Compute Routing Protocol (CRP) Specification
+
+**Проєкт:** P2P AI Compute Network
+**Документ:** Compute Routing Protocol (CRP)
+**Версія:** 0.1 Draft
+
+---
+
+# 1. Призначення
+
+CRP є протоколом маршрутизації обчислювальних можливостей.
+
+Його задача — не знайти IP-адресу.
+
+Його задача — знайти **найкращий спосіб виконання Execution Capsule**.
+
+---
+
+# 2. Основна концепція
+
+Класичний Інтернет працює так:
+
+```text
+Destination IP
+
+↓
+
+BGP
+
+↓
+
+Route
+
+↓
+
+Packet
+```
+
+CRP працює так:
+
+```text
+Execution Capsule
+
+↓
+
+Capability Query
+
+↓
+
+Execution Route
+
+↓
+
+Execution Capsule
+```
+
+---
+
+# 3. Базова одиниця
+
+Не Packet.
+
+Не Session.
+
+Не Connection.
+
+А
+
+```text
+Execution Capsule
+```
+
+Саме Capsule є об'єктом маршрутизації.
+
+---
+
+# 4. Compute Autonomous System (CAS)
+
+Аналог AS.
+
+Наприклад:
+
+```text
+Personal CAS
+
+Home CAS
+
+Company CAS
+
+University CAS
+
+Cloud CAS
+
+Regional CAS
+
+Global CAS
+```
+
+---
+
+# 5. CAS Gateway
+
+Gateway рекламує:
+
+* Capability;
+* Policy;
+* Trust;
+* Federation;
+* Load Summary.
+
+Він не рекламує внутрішню топологію.
+
+---
+
+# 6. Capability Advertisement
+
+CAS періодично експортує:
+
+```text
+Capability Prefix
+
+↓
+
+Trust
+
+↓
+
+Available Capacity
+
+↓
+
+Policy
+
+↓
+
+TTL
+```
+
+---
+
+# 7. Capability Prefix
+
+Приклад:
+
+```text
+LLM
+
+70B
+
+INT4
+
+Context 64K
+
+Europe
+
+Trust 0.99
+
+Streaming
+```
+
+Це аналог мережевого префікса.
+
+---
+
+# 8. Aggregation
+
+Подібно до CIDR.
+
+Не потрібно рекламувати:
+
+10000 GPU.
+
+Можна рекламувати:
+
+```text
+Europe
+
+↓
+
+LLM
+
+↓
+
+800 TFLOPS
+
+↓
+
+12 PB RAM
+
+↓
+
+20 PB Storage
+```
+
+---
+
+# 9. Route Table
+
+CRP підтримує:
+
+```text
+Capability
+
+↓
+
+Possible Routes
+
+↓
+
+Preference
+
+↓
+
+Policy
+
+↓
+
+Confidence
+```
+
+---
+
+# 10. Routing Metrics
+
+Замість Hop Count:
+
+використовуються:
+
+* latency;
+* throughput;
+* Neurocoin;
+* Trust;
+* Energy;
+* Availability;
+* Failure Probability;
+* Privacy.
+
+---
+
+# 11. Policy Routing
+
+CAS може заборонити:
+
+* моделі;
+* користувачів;
+* федерації;
+* типи Job.
+
+---
+
+# 12. Import Policy
+
+Кожний CAS вирішує:
+
+що приймати.
+
+---
+
+# 13. Export Policy
+
+Кожний CAS вирішує:
+
+що рекламувати.
+
+---
+
+# 14. Route Selection
+
+Маршрут визначається
+
+не одним числом,
+
+а багатовимірною функцією.
+
+---
+
+# 15. Route Cache
+
+Кешуються:
+
+* Capability Route;
+* Confidence;
+* TTL.
+
+---
+
+# 16. Route Aging
+
+Неактуальні маршрути
+
+автоматично видаляються.
+
+---
+
+# 17. Failure Detection
+
+При втраті Gateway:
+
+маршрут автоматично
+
+перебудовується.
+
+---
+
+# 18. Route Reflection
+
+Великі CAS
+
+можуть використовувати
+
+Route Reflector.
+
+Повний mesh
+
+не потрібний.
+
+---
+
+# 19. Federation Hierarchy
+
+```text
+Home
+
+↓
+
+Organization
+
+↓
+
+Region
+
+↓
+
+Global
+```
+
+---
+
+# 20. Overlay Independence
+
+CRP
+
+не залежить від:
+
+* TCP;
+* QUIC;
+* VPN;
+* TOR;
+* Mesh.
+
+---
+
+# 21. Compute Relay
+
+Аналог TOR Relay.
+
+Relay може:
+
+* маршрутизувати Capsule;
+* маршрутизувати KV;
+* маршрутизувати Activation.
+
+Не виконуючи inference.
+
+---
+
+# 22. Архітектурне доповнення: Multi-Plane Routing
+
+На цьому етапі стає очевидно, що однієї таблиці маршрутів недостатньо.
+
+Фактично існує кілька незалежних площин маршрутизації:
+
+```text
+Execution Plane
+Model Plane
+KV Plane
+Trust Plane
+Storage Plane
+Control Plane
+```
+
+Для одного Job можуть використовуватися різні маршрути в різних площинах.
+
+Наприклад:
+
+* модель завантажується з одного CAS;
+* KV-cache знаходиться в іншому;
+* Execution виконується в третьому;
+* Verification — у четвертому.
+
+---
+
+# 23. Plane Separation
+
+Це означає,
+
+що CRP повинен підтримувати
+
+не одну Routing Table,
+
+а набір таблиць.
+
+Наприклад:
+
+```text
+Execution RT
+
+KV RT
+
+Model RT
+
+Storage RT
+
+Trust RT
+```
+
+---
+
+# 24. Route Composition
+
+Після цього
+
+Graph Kernel (або HIE)
+
+не шукає маршрут.
+
+Він будує
+
+композицію маршрутів.
+
+```text
+Execution Route
+
++
+
+KV Route
+
++
+
+Model Route
+
++
+
+Verification Route
+
+↓
+
+Composite Execution Route
+```
+
+---
+
+# 25. Найважливіша архітектурна ідея: AI Internet
+
+На цьому етапі вже можна сформулювати головну концепцію проєкту.
+
+Пропонується не просто P2P-мережа обчислень, а **AI Internet** — мережа, у якій маршрутизуються не пакети даних, а можливості виконання.
+
+У такій моделі:
+
+* **BGP** перетворюється на **CRP** (маршрутизація можливостей);
+* **DNS** — на **Resource DNS** (пошук логічних ресурсів);
+* **IP** — на **Execution Capsule** (атомарна одиниця виконання);
+* **AS** — на **Compute Autonomous System (CAS)**;
+* **мережевий стек** — на стек розподілених AI-обчислень.
+
+---
+
+## Архітектурне зауваження
+
+Я пропоную наступним документом описати **AI Internet Architecture**, де всі вже створені специфікації (Fabric, HIE, CRP, Federation, Blockchain, Neurocoin, Execution Engine, Discovery) будуть об'єднані в єдину референтну модель. Це стане "архітектурною конституцією" проєкту і визначить місце кожного компонента в загальній системі.

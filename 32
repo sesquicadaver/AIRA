@@ -1,0 +1,549 @@
+Я думаю, ми підійшли до документа, який стане одним із ключових для всієї системи.
+
+Причому після всіх попередніх обговорень я б **суттєво змінив класичне розуміння fingerprint**.
+
+У більшості систем fingerprint — це статичний відбиток.
+
+У AIRA це має бути **живий цифровий паспорт**.
+
+---
+
+# Документ 32. Node Fingerprint & Digital Twin Specification
+
+**Проєкт:** AIRA
+
+**Документ:** Node Fingerprint & Digital Twin
+
+**Версія:** 0.1 Draft
+
+---
+
+# 1. Призначення
+
+Кожний Execution Host має цифрового двійника.
+
+Він використовується:
+
+* Discovery;
+* Routing;
+* HIE;
+* AME;
+* CRP;
+* Contribution;
+* Knowledge Layer.
+
+Планувальники працюють **лише з Digital Twin**, а не напряму з вузлом.
+
+---
+
+# 2. Основна аксіома
+
+Fingerprint —
+
+це
+
+не hash.
+
+Fingerprint —
+
+це
+
+динамічний профіль.
+
+---
+
+# 3. Node Fingerprint
+
+Він складається
+
+не з одного
+
+відбитка.
+
+А
+
+з
+
+декількох
+
+незалежних
+
+шарів.
+
+```text id="udjhyy"
+Identity Layer
+
+Hardware Layer
+
+Software Layer
+
+Capability Layer
+
+Behavior Layer
+
+Knowledge Layer
+
+Economy Layer
+
+Federation Layer
+```
+
+---
+
+# 4. Identity Layer
+
+Практично
+
+ніколи
+
+не змінюється.
+
+```text id="i6smgm"
+NodeID
+
+PublicKey
+
+Owner
+
+Generation
+```
+
+---
+
+# 5. Hardware Layer
+
+```text id="44b2vk"
+CPU
+
+GPU
+
+RAM
+
+VRAM
+
+Network
+
+Storage
+```
+
+---
+
+# 6. Software Layer
+
+```text id="sqchc4"
+OS
+
+Driver
+
+Backend
+
+Runtime
+
+Libraries
+```
+
+---
+
+# 7. Capability Layer
+
+Не
+
+RTX4090.
+
+А
+
+```text id="o5y9ko"
+FP16
+
+BF16
+
+INT8
+
+Tensor
+
+Streaming
+
+KV
+
+Verification
+
+Compression
+```
+
+---
+
+# 8. Runtime Layer
+
+Поточний
+
+стан
+
+```text id="4r2kv8"
+GPU Load
+
+CPU Load
+
+RAM
+
+Temperature
+
+Power
+
+Latency
+```
+
+---
+
+# 9. Asset Layer
+
+```text id="rnqg7y"
+Models
+
+LoRA
+
+KV
+
+Embeddings
+
+Genome
+
+Cache
+```
+
+---
+
+# 10. Behavior Layer
+
+Це
+
+найцікавіше.
+
+Наприклад
+
+```text id="g2zks0"
+часто
+
+перегрівається
+
+```
+
+або
+
+```text id="z3rry7"
+після
+
+20:00
+
+стає
+
+перевантаженим
+```
+
+---
+
+# 11. Reliability Layer
+
+```text id="em8gdl"
+Failure Rate
+
+Restart Rate
+
+Recovery Time
+
+Uptime
+```
+
+---
+
+# 12. Trust Layer
+
+```text id="kvwx9i"
+Verification
+
+Fraud
+
+Reputation
+
+Contribution
+```
+
+---
+
+# 13. Economy Layer
+
+```text id="wvjlwm"
+Contribution
+
+Reservations
+
+NC
+
+Usage
+
+Opportunity Cost
+```
+
+---
+
+# 14. Knowledge Layer
+
+Накопичений
+
+досвід
+
+вузла.
+
+---
+
+# 15. Federation Layer
+
+```text id="ek88qk"
+CAS
+
+Policies
+
+Export
+
+Import
+
+Gateway
+```
+
+---
+
+# 16. Context Layer
+
+Ось тут,
+
+мені здається,
+
+найважливіше.
+
+Fingerprint
+
+не може
+
+бути
+
+одним.
+
+---
+
+# 17. Contextual Fingerprint
+
+Для різних
+
+Intent
+
+він
+
+різний.
+
+Наприклад
+
+```text id="2j5vmp"
+Decode
+
+↓
+
+Fingerprint A
+```
+
+і
+
+```text id="ynsfx2"
+Prefill
+
+↓
+
+Fingerprint B
+```
+
+---
+
+# 18. Dynamic Fingerprint
+
+Він
+
+постійно
+
+еволюціонує.
+
+---
+
+# 19. Fingerprint Version
+
+Кожна
+
+зміна
+
+створює
+
+нову
+
+версію.
+
+---
+
+# 20. Fingerprint History
+
+Історія
+
+не видаляється.
+
+Вона
+
+використовується
+
+Knowledge Layer.
+
+---
+
+# 21. Digital Twin
+
+Тепер
+
+Fingerprint —
+
+лише
+
+частина
+
+Digital Twin.
+
+---
+
+# 22. Digital Twin
+
+містить
+
+```text id="qkrjri"
+Fingerprint
+
+State
+
+Knowledge
+
+Prediction
+
+Policies
+
+Assets
+
+Behavior
+```
+
+---
+
+# 23. Найважливіше відкриття
+
+Тут
+
+я зрозумів
+
+одну
+
+річ.
+
+Digital Twin
+
+теж
+
+не є
+
+остаточною
+
+абстракцією.
+
+---
+
+# 24. Насправді
+
+він
+
+є
+
+лише
+
+локальною
+
+проєкцією
+
+мережі.
+
+Тобто
+
+Digital Twin
+
+—
+
+це
+
+не опис
+
+Node.
+
+Це
+
+опис
+
+Node
+
+у
+
+контексті
+
+всієї
+
+мережі.
+
+---
+
+# 25. Найважливіший висновок
+
+Я думаю,
+
+саме зараз
+
+ми знайшли
+
+ще один
+
+фундаментальний
+
+закон.
+
+> **У AIRA не існує ізольованих вузлів.**
+
+Будь-яка нода визначається не лише своїми внутрішніми властивостями, а й своїм місцем у глобальній системі.
+
+Тому Digital Twin має містити не тільки локальні характеристики, а й **мережевий контекст**:
+
+* які моделі найближчі;
+* які KV-регіони доступні;
+* які федерації досяжні;
+* які маршрути переважають;
+* які активи найчастіше взаємодіють із цим вузлом.
+
+---
+
+## Найважливіша думка, яка з'явилася під час цього документа
+
+Я більше не думаю, що Digital Twin повинен бути прив'язаний до Node.
+
+На мою думку, правильніше говорити про:
+
+> **Execution Twin**
+
+Execution Twin описує не вузол, а **можливість виконання конкретного класу Capsule на конкретному вузлі в конкретному контексті**.
+
+Це означає, що один фізичний вузол може мати десятки або сотні Execution Twin одночасно:
+
+* один для Decode;
+* один для Prefill;
+* один для Embedding;
+* один для OCR;
+* один для Verification;
+* один для різних моделей.
+
+Саме Execution Twin, а не Node, має стати основною одиницею планування в HIE. Це, на мою думку, ще більше наблизить AIRA до моделі "маршрутизації інтелектуальних можливостей", а не "маршрутизації комп'ютерів".

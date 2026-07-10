@@ -1,0 +1,463 @@
+# Документ 7. Protocol Stack Specification
+
+**Проєкт:** P2P LLM Compute Network
+
+**Документ:** Protocol Stack
+
+**Версія:** 0.1 Draft
+
+---
+
+# 1. Призначення
+
+Protocol Stack визначає всі рівні взаємодії компонентів мережі.
+
+Кожний рівень має:
+
+* чітку відповідальність;
+* стандартизований API;
+* незалежну реалізацію;
+* незалежне версіонування.
+
+Жоден рівень не повинен знати внутрішню реалізацію іншого.
+
+---
+
+# 2. Архітектура
+
+```text
+┌────────────────────────────────────────────┐
+│ Layer 8  Application API                   │
+├────────────────────────────────────────────┤
+│ Layer 7  AI Services                       │
+├────────────────────────────────────────────┤
+│ Layer 6  Distributed Execution             │
+├────────────────────────────────────────────┤
+│ Layer 5  Resource Orchestration            │
+├────────────────────────────────────────────┤
+│ Layer 4  Network Services                  │
+├────────────────────────────────────────────┤
+│ Layer 3  Trust & Blockchain                │
+├────────────────────────────────────────────┤
+│ Layer 2  Transport                          │
+├────────────────────────────────────────────┤
+│ Layer 1  Physical Nodes                    │
+└────────────────────────────────────────────┘
+```
+
+---
+
+# 3. Layer 1 — Physical Nodes
+
+Представляє фізичні ресурси.
+
+Типи:
+
+* CPU;
+* GPU;
+* NPU;
+* FPGA;
+* ASIC;
+* RAM;
+* VRAM;
+* SSD;
+* Network.
+
+Не містить логіки протоколу.
+
+---
+
+# 4. Layer 2 — Transport
+
+Відповідає лише за доставку.
+
+Функції:
+
+* TLS;
+* multiplexing;
+* compression;
+* fragmentation;
+* retransmission;
+* congestion control;
+* stream management.
+
+Не знає нічого про LLM.
+
+---
+
+# 5. Layer 3 — Trust & Blockchain
+
+Функції:
+
+* Wallet;
+* Neurocoin;
+* Reputation;
+* Node Registry;
+* Identity;
+* Governance;
+* Audit.
+
+Не містить Job.
+
+---
+
+# 6. Layer 4 — Network Services
+
+Сервісні функції:
+
+* Discovery;
+* Heartbeat;
+* Capability Exchange;
+* Telemetry;
+* Health Monitoring;
+* Benchmark Reporting.
+
+---
+
+# 7. Layer 5 — Resource Orchestration
+
+Функції:
+
+* Scheduler;
+* Resource Graph;
+* Placement;
+* Reservation;
+* Routing;
+* Locality Optimization;
+* Execution Planning.
+
+Працює лише з ресурсами.
+
+---
+
+# 8. Layer 6 — Distributed Execution
+
+Найважливіший рівень.
+
+Відповідає за:
+
+* Pipeline;
+* Tensor Split;
+* Prefill;
+* Decode;
+* KV Cache;
+* Activation Routing;
+* Checkpoint;
+* Recovery.
+
+Саме тут знаходиться Execution Fabric.
+
+---
+
+# 9. Layer 7 — AI Services
+
+Сервіси високого рівня.
+
+Наприклад:
+
+* LLM;
+* Vision;
+* Embedding;
+* Speech;
+* OCR;
+* Reranking;
+* Agents;
+* Fine-Tuning;
+* LoRA.
+
+Нові сервіси не потребують зміни нижніх рівнів.
+
+---
+
+# 10. Layer 8 — Application API
+
+Публічний API.
+
+Підтримує:
+
+* REST;
+* gRPC;
+* MCP;
+* SDK;
+* CLI.
+
+Будь-який клієнт працює лише з Layer 8.
+
+---
+
+# 11. Cross-Layer Rules
+
+Заборонено:
+
+Layer 8 → Layer 2
+
+Layer 7 → Layer 3
+
+Layer 5 → Layer 1
+
+Усі виклики лише через сусідній рівень.
+
+---
+
+# 12. Execution Path
+
+Типовий Job:
+
+```text
+Application
+
+↓
+
+AI Service
+
+↓
+
+Execution Fabric
+
+↓
+
+Scheduler
+
+↓
+
+Transport
+
+↓
+
+Node
+```
+
+---
+
+# 13. Trust Path
+
+Будь-який Reward:
+
+```text
+Execution
+
+↓
+
+Verification
+
+↓
+
+Settlement
+
+↓
+
+Blockchain
+```
+
+---
+
+# 14. Data Path
+
+Prompt:
+
+```text
+Client
+
+↓
+
+Execution Layer
+
+↓
+
+Worker
+
+↓
+
+Streaming
+```
+
+Blockchain не бере участі.
+
+---
+
+# 15. Control Path
+
+Heartbeat:
+
+```text
+Node
+
+↓
+
+Network Services
+
+↓
+
+Scheduler
+```
+
+---
+
+# 16. Model Path
+
+```text
+Registry
+
+↓
+
+Node Cache
+
+↓
+
+Execution
+```
+
+---
+
+# 17. KV Path
+
+```text
+Prefill
+
+↓
+
+KV Manager
+
+↓
+
+Decode
+```
+
+---
+
+# 18. Streaming Path
+
+```text
+Decode
+
+↓
+
+Token Stream
+
+↓
+
+Client
+```
+
+---
+
+# 19. Security Boundaries
+
+Layer 2
+
+відповідає за:
+
+* шифрування;
+* TLS.
+
+Layer 3
+
+відповідає за:
+
+* довіру;
+* підпис.
+
+Layer 6
+
+відповідає за:
+
+* ізоляцію виконання.
+
+---
+
+# 20. Independent Evolution
+
+Кожний Layer має:
+
+* власний version;
+* власний API;
+* власні capability flags.
+
+---
+
+# 21. Capability Negotiation
+
+При з'єднанні:
+
+Node повідомляє:
+
+```text
+Protocol Version
+
+Execution Version
+
+Transport Version
+
+AI Services
+
+Extensions
+```
+
+---
+
+# 22. Optional Layers
+
+Можуть бути:
+
+* Quantum;
+* TPU;
+* FPGA;
+* Custom Accelerator.
+
+Без зміни протоколу.
+
+---
+
+# 23. Архітектурне доповнення: Layer 0 — Compute Fabric
+
+Я пропоную додати ще один, фундаментальний рівень **нижче фізичних вузлів**.
+
+Зараз Layer 1 описує комп'ютери. Але для планувальника комп'ютер — це вже занадто велика сутність.
+
+Тому варто ввести **Layer 0 — Compute Fabric**.
+
+Він описує не пристрої, а **атомарні обчислювальні ресурси**:
+
+```text
+GPU SM/CU
+Tensor Core
+CPU Core
+NPU Engine
+FPGA Region
+VRAM Segment
+RAM Segment
+PCIe Link
+NVLink
+Storage Block
+```
+
+Тоді вузол стає лише контейнером для набору ресурсів.
+
+Це відкриває можливість у майбутньому:
+
+* агрегувати кілька GPU одного ПК як єдиний ресурс;
+* динамічно виділяти лише частину GPU або VRAM;
+* використовувати технології на кшталт MIG без зміни верхніх рівнів;
+* інтегрувати нові типи прискорювачів без перегляду архітектури.
+
+---
+
+# 24. Стратегічне доповнення: Service Mesh для AI
+
+Ще одна рекомендація — не обмежуватися лише LLM.
+
+Протокол доцільно одразу проєктувати як **універсальну AI Compute Platform**.
+
+LLM буде лише одним із сервісів.
+
+У майбутньому через той самий Protocol Stack можуть працювати:
+
+* генерація зображень;
+* відеогенерація;
+* ASR/TTS;
+* рекомендаційні системи;
+* наукові AI-обчислення;
+* агентні системи;
+* розподілене навчання (як окремий клас задач).
+
+Таким чином, мережа стане не "P2P для LLM", а універсальним протоколом розподілених AI-обчислень, де LLM — лише перша реалізація. Це суттєво підвищить довгострокову цінність архітектури та зменшить потребу в несумісних розширеннях у майбутньому.

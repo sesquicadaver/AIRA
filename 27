@@ -1,0 +1,176 @@
+Так. Це треба зафіксувати як уточнення позиціонування AIRA.
+
+# Документ 27. AIRA as Brain-Sharing Hypervisor
+
+**Версія:** 0.1 Draft
+
+## 1. Уточнене призначення
+
+AIRA — це не просто мережа GPU/CPU і не marketplace ресурсів.
+
+AIRA — це **гіпервізор-оркестратор розподіленого інтелекту**, який дозволяє виконувати AI-задачі на релевантних обчислювальних потужностях і моделях без необхідності локально зберігати весь модельний зоопарк.
+
+Основна функція:
+
+```text
+Intent
+  ↓
+Relevant Models
+  ↓
+Relevant Compute
+  ↓
+Execution Composition
+  ↓
+Result
+```
+
+## 2. Brain-Sharing
+
+Brain-sharing означає:
+
+```text
+користувач не володіє всіма моделями;
+користувач не тримає всі ваги локально;
+користувач не підбирає вручну backend;
+користувач не шукає GPU;
+AIRA сама знаходить релевантний інтелектуальний ресурс.
+```
+
+Тобто мережа надає не “залізо”, а **доступ до розподіленої інтелектуальної здатності**.
+
+## 3. Нерівнозначність hard-node
+
+Усі hard-node за замовчуванням нерівнозначні.
+
+Навіть однакове залізо може різнитися за:
+
+```text
+моделями в кеші;
+backend;
+квантизаціями;
+KV-cache;
+LoRA;
+репутацією;
+затримкою;
+політиками;
+історією успішного виконання;
+локальними спеціалізованими сервісами.
+```
+
+Тому планування за класом GPU є хибним. Потрібне планування за **релевантністю вузла до конкретного Intent**.
+
+## 4. AIRA як AI Hypervisor
+
+AIRA виконує роль надрівня над моделями, backend-ами та апаратними ресурсами.
+
+```text
+Models
+Backends
+KV-cache
+LoRA
+Embeddings
+GPU/CPU/NPU
+Federations
+Policies
+Trust
+        ↑
+        │
+      AIRA
+        │
+        ↓
+Execution Intent
+```
+
+AIRA не замінює LLM. Вона керує їх композицією, маршрутизацією та матеріалізацією.
+
+## 5. Super-FPGA аналогія
+
+FPGA має конфігуровану логіку.
+
+AIRA має конфігуровану **execution logic**.
+
+```text
+FPGA:
+logic blocks + routing fabric + bitstream
+
+AIRA:
+models + compute fabric + CRP/HIE + execution intent
+```
+
+Умовний “bitstream” AIRA — це Execution Plan / Execution Genome.
+
+## 6. Ensemble-first модель
+
+AIRA повинна стимулювати не лише великі монолітні LLM, а й ансамблі легших моделей.
+
+Наприклад:
+
+```text
+small coding model
++ math model
++ retrieval model
++ verifier model
++ domain LoRA
++ planner model
+= cooperative AI system
+```
+
+Це може бути ефективніше, ніж запуск однієї великої універсальної моделі.
+
+## 7. Model Routing
+
+AIRA повинна вирішувати не лише:
+
+```text
+на якому GPU виконати задачу
+```
+
+а й:
+
+```text
+яка модель або ансамбль моделей найкраще відповідає задачі
+```
+
+Це вводить окремий шар:
+
+```text
+Model Relevance Router
+```
+
+## 8. Cooperative Model Execution
+
+Задача може бути розкладена не тільки по ресурсах, а й по моделях:
+
+```text
+Intent
+ ├── planner model
+ ├── retrieval model
+ ├── coding model
+ ├── reasoning model
+ ├── verifier model
+ └── summarizer model
+```
+
+Кожна модель виконується там, де вона найбільш релевантна.
+
+## 9. Новий ключовий інваріант
+
+```text
+AIRA routes intelligence, not hardware.
+```
+
+Апаратні ресурси — лише фізичний субстрат. Основний об’єкт маршрутизації — інтелектуальна здатність, потрібна для виконання Intent.
+
+## 10. Практичний висновок
+
+AIRA має позиціонуватися як:
+
+```text
+Distributed AI Hypervisor
++
+Brain-Sharing Network
++
+Intent-based Model/Compute Orchestrator
+```
+
+Це сильніше й точніше, ніж “P2P GPU network”.

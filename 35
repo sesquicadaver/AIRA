@@ -1,0 +1,454 @@
+Я думаю, після PHM ми підійшли до ще одного фундаментального шару.
+
+До цього моменту ми оцінювали **окремі вузли**.
+
+Але AIRA виконує задачу не на одному вузлі, а на **тимчасово створеній композиції вузлів**.
+
+Саме ця композиція є справжнім "обчислювальним процесором".
+
+---
+
+# Документ 35. Dynamic Execution Constellation (DEC)
+
+**Проєкт:** AIRA
+
+**Документ:** Dynamic Execution Constellation
+
+**Версія:** 0.1 Draft
+
+---
+
+# 1. Основна аксіома
+
+Execution виконується
+
+не вузлом.
+
+Execution виконується
+
+**тимчасовою композицією вузлів.**
+
+---
+
+# 2. Constellation
+
+Вводиться нова сутність
+
+```text id="qw9w2j"
+Execution Constellation
+```
+
+Вона існує лише протягом життя конкретного Execution.
+
+---
+
+# 3. Склад
+
+Constellation може містити
+
+```text id="g2f0rm"
+Execution Hosts
+
+Model Assets
+
+KV Assets
+
+Verification Hosts
+
+Relay Hosts
+
+Storage Hosts
+```
+
+---
+
+# 4. Життєвий цикл
+
+```text id="o2q2cw"
+Create
+
+↓
+
+Expand
+
+↓
+
+Reconfigure
+
+↓
+
+Shrink
+
+↓
+
+Destroy
+```
+
+---
+
+# 5. Constellation ≠ Cluster
+
+Кластер — статичний.
+
+Constellation — динамічна.
+
+Дві однакові задачі можуть отримати різні Constellation.
+
+---
+
+# 6. Тимчасові ролі
+
+Один і той самий вузол може одночасно бути:
+
+```text id="xg5fcn"
+Decode Host
+
+Verification Host
+
+KV Host
+
+Relay Host
+```
+
+для різних Execution.
+
+---
+
+# 7. Topology
+
+Constellation має власну топологію.
+
+Не обов'язково збігається з фізичною.
+
+---
+
+# 8. Internal Routing
+
+Всередині Constellation
+
+працює окремий routing.
+
+Не обов'язково той самий,
+
+що між CAS.
+
+---
+
+# 9. Collective Health
+
+PHM повинен оцінювати
+
+не лише вузли,
+
+а
+
+здоров'я всієї Constellation.
+
+Наприклад:
+
+```text id="gdr6pr"
+Probability of Successful Completion
+```
+
+---
+
+# 10. Weakest Link
+
+Найважливіша властивість.
+
+Надійність Constellation
+
+визначається
+
+не середньою,
+
+а
+
+критичними залежностями.
+
+Наприклад:
+
+```text id="dxjlwm"
+Prefill
+
+↓
+
+Decode
+
+↓
+
+Verification
+```
+
+Якщо Verification має високий ризик,
+
+вся Constellation отримує нижчу оцінку.
+
+---
+
+# 11. Adaptive Constellation
+
+Під час виконання
+
+Constellation може:
+
+```text id="ugjlwm"
+замінити вузол
+
+додати вузол
+
+видалити вузол
+
+перенести Asset
+
+перебудувати маршрут
+```
+
+без зупинки Execution.
+
+---
+
+# 12. Collective Fingerprint
+
+Окрім Fingerprint окремих вузлів
+
+створюється
+
+Fingerprint усієї Constellation.
+
+```text id="jlwmn5"
+Latency Profile
+
+Execution Profile
+
+Risk Profile
+
+Topology Profile
+
+Asset Distribution
+
+Health Profile
+```
+
+---
+
+# 13. Collective Twin
+
+Execution отримує
+
+не один Digital Twin,
+
+а
+
+Digital Twin усієї Constellation.
+
+---
+
+# 14. Constellation History
+
+Усі успішні Constellation
+
+зберігаються
+
+в Knowledge Layer.
+
+Не як список вузлів,
+
+а як шаблон.
+
+---
+
+# 15. Constellation Templates
+
+Наприклад
+
+```text id="jlwmn6"
+Large Decode Template
+
+Vision Template
+
+Long Context Template
+
+Reasoning Template
+```
+
+Це дозволяє швидко формувати нові композиції.
+
+---
+
+# 16. Compatibility Matrix
+
+Критично важливою стає
+
+не сумісність вузла із задачею,
+
+а сумісність вузлів між собою.
+
+Матриця повинна містити:
+
+```text id="jlwmn7"
+backend compatibility
+
+driver compatibility
+
+model compatibility
+
+KV compatibility
+
+runtime compatibility
+```
+
+---
+
+# 17. Constellation Score
+
+Оцінюється
+
+не окремий вузол,
+
+а вся композиція.
+
+Наприклад
+
+```text id="jlwmn8"
+Performance
+
+Reliability
+
+Elasticity
+
+Energy
+
+Contribution
+
+Recovery
+```
+
+---
+
+# 18. Self-Optimization
+
+Knowledge Layer накопичує
+
+інформацію
+
+не про вузли,
+
+а про
+
+успішні Constellation.
+
+Це значно цінніше.
+
+---
+
+# 19. Collective Contribution
+
+Contribution також потрібно рахувати
+
+для всієї Constellation,
+
+а вже потім
+
+розподіляти між її учасниками
+
+відповідно до їхнього маргінального внеску.
+
+---
+
+# 20. Архітектурне відкриття
+
+До цього моменту ми припускали,
+
+що Execution Plan
+
+є результатом роботи HIE.
+
+Я думаю,
+
+це лише половина істини.
+
+Насправді HIE повинен створювати
+
+не Plan,
+
+а
+
+**Execution Organization**.
+
+План — це лише її проєкція.
+
+---
+
+# 21. Організація замість плану
+
+Execution Organization описує:
+
+* ролі;
+* залежності;
+* взаємодію;
+* резервування;
+* можливості перебудови;
+* правила деградації.
+
+План виконання є лише одним із можливих способів реалізації цієї організації.
+
+---
+
+# 22. Organizational Resilience
+
+Constellation повинна оцінюватися
+
+за здатністю
+
+переживати втрату вузлів,
+
+а не лише
+
+за продуктивністю.
+
+---
+
+# 23. Emergent Properties
+
+Деякі властивості
+
+існують лише
+
+на рівні Constellation.
+
+Наприклад:
+
+* загальна стійкість;
+* ефективність пайплайна;
+* швидкість відновлення;
+* збалансованість ролей.
+
+Їх не можна отримати
+
+простим додаванням характеристик вузлів.
+
+---
+
+# 24. Архітектурна інтеграція
+
+Constellation стає головною робочою одиницею HIE.
+
+Тоді:
+
+* PHM оцінює вузли і Constellation;
+* CRP маршрутизує між Constellation;
+* AME переміщує Asset між Constellation;
+* Knowledge Layer накопичує досвід побудови Constellation.
+
+---
+
+# 25. Найважливіший висновок
+
+На мою думку, ми зробили ще один крок від класичних розподілених систем.
+
+У більшості платформ планувальник розподіляє задачі між вузлами.
+
+У AIRA HIE **синтезує тимчасову обчислювальну організацію**, яка існує рівно стільки, скільки потрібно для реалізації конкретного Intent.
+
+Саме ця організація, а не окремий вузол чи кластер, стає справжнім виконавцем. Це відкриває можливість оптимізувати не лише ресурси, а й саму структуру взаємодії між ними, що є значно потужнішою моделлю для глобальної федеративної мережі.

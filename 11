@@ -1,0 +1,482 @@
+# Документ 11. Execution Engine Specification
+
+**Проєкт:** P2P AI Compute Network
+
+**Документ:** Execution Engine
+
+**Версія:** 0.1 Draft
+
+---
+
+# 1. Призначення
+
+Execution Engine є ядром системи.
+
+Його задача — виконати будь-який AI Job незалежно від:
+
+* кількості вузлів;
+* топології мережі;
+* типу обладнання;
+* використовуваного backend.
+
+Execution Engine працює поверх AI Compute Fabric і не взаємодіє безпосередньо з фізичними пристроями.
+
+---
+
+# 2. Основні принципи
+
+Execution Engine повинен забезпечувати:
+
+* детермінованість;
+* відновлюваність;
+* масштабованість;
+* потокове виконання;
+* мінімальну затримку;
+* автоматичне відновлення після відмов.
+
+---
+
+# 3. Execution Lifecycle
+
+Кожний Job проходить однаковий життєвий цикл.
+
+```text id="6nlz8s"
+Submit
+
+↓
+
+Analyze
+
+↓
+
+Plan
+
+↓
+
+Reserve
+
+↓
+
+Prepare
+
+↓
+
+Execute
+
+↓
+
+Verify
+
+↓
+
+Settle
+
+↓
+
+Archive
+```
+
+---
+
+# 4. Job Analyzer
+
+Перший етап.
+
+Визначає:
+
+* тип AI;
+* необхідну модель;
+* контекст;
+* приблизний обсяг роботи;
+* політики безпеки;
+* вимоги до приватності.
+
+---
+
+# 5. Execution Graph Builder
+
+Будує DAG.
+
+Наприклад:
+
+```text id="tq0a6y"
+Tokenizer
+
+↓
+
+Embedding
+
+↓
+
+Prefill
+
+↓
+
+Layer Groups
+
+↓
+
+Decode
+
+↓
+
+Post Processing
+
+↓
+
+Streaming
+```
+
+Граф є незмінним після старту Job.
+
+---
+
+# 6. Execution Contract
+
+Кожний вузол отримує лише власну частину контракту.
+
+Контракт містить:
+
+```text id="0mwsmx"
+JobID
+
+Stage
+
+Resources
+
+Inputs
+
+Outputs
+
+Policy
+
+Verification
+```
+
+---
+
+# 7. Resource Binding
+
+Після побудови DAG:
+
+кожна вершина прив'язується до ResourceID.
+
+Не до Node.
+
+---
+
+# 8. Pipeline Execution
+
+Приклад:
+
+```text id="v73kci"
+Tokenizer
+
+↓
+
+GPU A
+
+↓
+
+GPU B
+
+↓
+
+GPU C
+
+↓
+
+Decoder
+```
+
+Кожний Resource виконує лише свою частину.
+
+---
+
+# 9. Prefill
+
+Prefill розглядається як окремий сервіс.
+
+Результат:
+
+KV Cache.
+
+---
+
+# 10. Decode
+
+Decode може працювати:
+
+* локально;
+* на іншому вузлі;
+* у кластері.
+
+---
+
+# 11. KV Manager
+
+Execution Engine працює лише через KV Service.
+
+Він не знає:
+
+де фізично знаходиться KV.
+
+---
+
+# 12. Activation Routing
+
+Передаються лише activation tensors.
+
+Не передаються:
+
+* модель;
+* tokenizer;
+* LoRA.
+
+---
+
+# 13. Streaming Engine
+
+Streaming працює незалежно від Decode.
+
+Підтримуються:
+
+* token streaming;
+* chunk streaming;
+* batch streaming.
+
+---
+
+# 14. Checkpoint Manager
+
+Checkpoint створюється:
+
+* після Prefill;
+* після великих Layer Group;
+* перед Decode.
+
+---
+
+# 15. Recovery
+
+Якщо Resource зникає:
+
+```text id="zjr3bd"
+Checkpoint
+
+↓
+
+Scheduler
+
+↓
+
+Replacement
+
+↓
+
+Resume
+```
+
+---
+
+# 16. Verification Hooks
+
+Після кожної великої стадії:
+
+Execution Engine викликає:
+
+Verification Layer.
+
+---
+
+# 17. Failure Domains
+
+Виділяються окремі домени:
+
+* Resource;
+* Node;
+* Cluster;
+* Federation.
+
+Відмова одного домену не повинна зупиняти всю систему.
+
+---
+
+# 18. Execution Policies
+
+Job може вимагати:
+
+```text id="r5nq3r"
+Local Only
+
+Trusted Only
+
+Federation Only
+
+Global
+
+High Privacy
+
+Low Latency
+```
+
+Execution Engine не має права їх порушувати.
+
+---
+
+# 19. Service Isolation
+
+Tokenizer,
+
+Embedding,
+
+LLM,
+
+Reranker,
+
+Vision,
+
+працюють як незалежні сервіси.
+
+---
+
+# 20. Backend Independence
+
+Execution Engine не знає:
+
+* llama.cpp;
+* TensorRT;
+* vLLM.
+
+Він працює лише через Backend Adapter.
+
+---
+
+# 21. Backend Adapter Interface
+
+Кожний backend реалізує однаковий набір операцій:
+
+```text id="0vaxem"
+LoadModel
+UnloadModel
+CreateContext
+ExecuteStage
+ReadKV
+WriteKV
+Abort
+Checkpoint
+Health
+```
+
+---
+
+# 22. Performance Model
+
+Execution Engine постійно вимірює:
+
+* TPS;
+* latency;
+* GPU utilization;
+* memory bandwidth;
+* queue time.
+
+---
+
+# 23. Execution Journal
+
+Кожний Job має журнал.
+
+Він містить лише службову інформацію:
+
+* стадії;
+* ресурси;
+* checkpoint;
+* verification.
+
+Prompt не журналюється.
+
+---
+
+# 24. Архітектурне доповнення: Execution Capsules
+
+Пропоную додати нову фундаментальну сутність — **Execution Capsule**.
+
+Capsule — це самодостатній контейнер виконання, який включає:
+
+```text id="yq8r3b"
+Execution Contract
+Execution Graph
+Input References
+KV References
+Policies
+Verification Rules
+Checkpoint State
+```
+
+Capsule не містить самих моделей чи великих даних, а лише посилання та керуючу інформацію. Вона може бути:
+
+* призупинена;
+* перенесена;
+* відновлена;
+* реплікована (за потреби).
+
+Це спрощує міграцію виконання між вузлами.
+
+---
+
+# 25. Стратегічне доповнення: AI Process Model
+
+Найважливіше концептуальне розширення — розглядати Job як **процес операційної системи**.
+
+Тоді з'являються знайомі поняття:
+
+* створення процесу;
+* планування;
+* контекст виконання;
+* пам'ять;
+* IPC між сервісами;
+* пріоритет;
+* призупинення;
+* відновлення;
+* завершення.
+
+На цій основі можна сформувати **AI Process Model**, де:
+
+* Execution Capsule відповідає процесу;
+* KV Cache — адресному простору;
+* Execution Graph — програмі;
+* Scheduler — планувальнику процесів;
+* AI Compute Fabric — ядру операційної системи.
+
+---
+
+## Принципове архітектурне доповнення
+
+Я пропоную ще одну зміну, яка, на мою думку, буде визначальною.
+
+Слід **відмовитися від поняття "Job" як неподільної одиниці**.
+
+Натомість базовою сутністю має стати **Execution Capsule**, а Job — лише контейнер, що складається з множини Capsule.
+
+Наприклад:
+
+```text
+Job
+ ├── Capsule 1 (Tokenizer)
+ ├── Capsule 2 (Embedding)
+ ├── Capsule 3 (Prefill)
+ ├── Capsule 4 (Layers 0–15)
+ ├── Capsule 5 (Layers 16–31)
+ ├── Capsule 6 (Decode)
+ └── Capsule 7 (Post-processing)
+```
+
+Тоді Scheduler працює не із Job, а з Capsule. Це дає можливість:
+
+* незалежно масштабувати окремі стадії;
+* повторно використовувати вже виконані Capsule;
+* кешувати проміжні результати;
+* мігрувати лише проблемну частину виконання;
+* реалізувати дедуплікацію однакових стадій між різними Job.
+
+Саме така модель, на мою думку, найкраще відповідає довгостроковій меті створення універсальної розподіленої AI-обчислювальної платформи, а не лише системи виконання окремих LLM-запитів.

@@ -1,0 +1,494 @@
+# Документ 6. Scheduler & Resource Management Specification
+
+**Проєкт:** P2P LLM Compute Network
+
+**Документ:** Scheduler & Resource Management
+
+**Версія:** 0.1 Draft
+
+---
+
+# 1. Призначення
+
+Scheduler є центральним логічним компонентом мережі.
+
+Його задача — не просто знайти "вільний GPU", а побудувати **оптимальний Execution Plan** з урахуванням:
+
+* продуктивності;
+* вартості в Neurocoin;
+* затримки;
+* репутації;
+* приватності;
+* надійності;
+* топології мережі.
+
+Scheduler **ніколи не виконує inference**.
+
+---
+
+# 2. Архітектурна роль
+
+```text
+Client
+    │
+    ▼
+Job Analyzer
+    │
+    ▼
+Scheduler
+    │
+    ├── Resource Manager
+    ├── Placement Engine
+    ├── Cost Estimator
+    ├── Trust Manager
+    ├── Network Optimizer
+    ├── Failure Manager
+    └── Execution Planner
+```
+
+---
+
+# 3. Scheduler є stateless
+
+Найважливіше правило.
+
+Scheduler не зберігає:
+
+* Job;
+* Prompt;
+* KV Cache;
+* Models.
+
+Він працює лише з метаданими.
+
+Це дозволяє:
+
+* горизонтально масштабувати Scheduler;
+* запускати десятки Scheduler одночасно;
+* автоматично балансувати їх.
+
+---
+
+# 4. Job Analyzer
+
+Перший етап.
+
+Визначає:
+
+```
+Prompt Size
+
+Estimated Tokens
+
+Context Length
+
+Expected Decode Length
+
+Required VRAM
+
+Expected Runtime
+
+Pipeline Feasibility
+```
+
+---
+
+# 5. Resource Manager
+
+Підтримує єдину модель ресурсів.
+
+```
+CPU
+
+GPU
+
+NPU
+
+FPGA
+
+RAM
+
+VRAM
+
+Storage
+
+Bandwidth
+
+Latency
+```
+
+Scheduler працює лише з цими ресурсами.
+
+---
+
+# 6. Resource Units
+
+Замість "RTX4090" система використовує абстракції.
+
+Наприклад:
+
+```
+Compute Units
+
+Memory Units
+
+Storage Units
+
+Network Units
+```
+
+Це дозволяє підтримувати будь-яке обладнання.
+
+---
+
+# 7. Capability Graph
+
+Уся мережа описується графом.
+
+Вершина:
+
+```
+Node
+```
+
+Ребро:
+
+```
+Network Link
+```
+
+Вага ребра:
+
+* latency
+* bandwidth
+* reliability
+
+---
+
+# 8. Placement Engine
+
+Вирішує:
+
+```
+Single Node?
+
+Pipeline?
+
+Prefill Cluster?
+
+Tensor Cluster?
+
+Hybrid?
+```
+
+---
+
+# 9. Cost Estimator
+
+До запуску Job визначає:
+
+```
+Estimated Neurocoin
+
+Expected Runtime
+
+Expected TPS
+
+Expected Queue Time
+```
+
+---
+
+# 10. Trust Manager
+
+Для кожного вузла:
+
+```
+Trust Score
+
+Reputation
+
+Reliability
+
+Penalty
+
+Verification History
+```
+
+---
+
+# 11. Locality Optimizer
+
+Максимально використовує:
+
+* локальні shard;
+* локальний KV Cache;
+* локальні моделі.
+
+Передача по мережі мінімізується.
+
+---
+
+# 12. Pipeline Optimizer
+
+Будує Pipeline так, щоб:
+
+* мінімізувати hops;
+* мінімізувати latency;
+* мінімізувати передачу activation.
+
+---
+
+# 13. Network Optimizer
+
+Враховує:
+
+```
+RTT
+
+Packet Loss
+
+Jitter
+
+Bandwidth
+
+Congestion
+```
+
+---
+
+# 14. Adaptive Scheduling
+
+Scheduler перебудовує Pipeline якщо:
+
+* вузол перевантажений;
+* вузол перегрівся;
+* змінилася мережа;
+* з'явився швидший маршрут.
+
+---
+
+# 15. Reservation
+
+Перед стартом:
+
+резервуються:
+
+```
+GPU
+
+VRAM
+
+RAM
+
+Bandwidth
+
+Neurocoin
+```
+
+---
+
+# 16. Queue Management
+
+Черга будується за:
+
+```
+Priority
+
+Neurocoin
+
+Reputation
+
+Job Size
+
+Deadline
+```
+
+---
+
+# 17. Deadline Awareness
+
+Scheduler підтримує:
+
+```
+Interactive
+
+Realtime
+
+Batch
+
+Background
+```
+
+---
+
+# 18. Multi-Objective Optimization
+
+Оптимізуються одночасно:
+
+* швидкість;
+* Neurocoin;
+* надійність;
+* енергоспоживання;
+* використання мережі.
+
+---
+
+# 19. Failure Manager
+
+При аварії:
+
+```
+Checkpoint
+
+↓
+
+Replacement
+
+↓
+
+KV Migration
+
+↓
+
+Resume
+```
+
+---
+
+# 20. Cluster Awareness
+
+Локальний кластер розглядається як один логічний вузол.
+
+Всередині він може мати:
+
+```
+8 GPU
+
+64 CPU
+
+512 GB RAM
+```
+
+Для Scheduler це один Execution Domain.
+
+---
+
+# 21. Privacy Classes
+
+Scheduler враховує:
+
+```
+Public
+
+Trusted
+
+Private
+
+Local Only
+```
+
+---
+
+# 22. Affinity Rules
+
+Наприклад:
+
+```
+Model вже є на Node A
+
+↓
+
+Node A має пріоритет
+```
+
+---
+
+# 23. Anti Starvation
+
+Жоден Job не може чекати нескінченно.
+
+Scheduler поступово підвищує його пріоритет.
+
+---
+
+# 24. Scheduler Federation
+
+У глобальній мережі існує не один Scheduler.
+
+Наприклад:
+
+```
+Europe
+
+North America
+
+Asia
+
+Local Cluster
+```
+
+Вони синхронізують лише службові метадані.
+
+---
+
+# 25. Архітектурне доповнення: Global Compute Market
+
+Тут пропоную змінити саму концепцію Scheduler.
+
+Замість класичного планувальника варто реалізувати **Global Compute Market (GCM)**.
+
+Ідея полягає в тому, що кожен вузол не просто повідомляє "я вільний", а **безперервно публікує свою поточну пропускну здатність**.
+
+Наприклад:
+
+```
+Node A
+
+GPU:
+220 token/s
+
+Latency:
+24 ms
+
+VRAM:
+38 GB free
+
+Available:
+70%
+
+Expected Release:
+8 s
+```
+
+Scheduler більше не "роздає задачі".
+
+Він лише **зіставляє попит і пропозицію**.
+
+Тоді система автоматично отримує:
+
+* глобальний ринок обчислювальних ресурсів;
+* миттєву адаптацію до навантаження;
+* відсутність центрального диспетчера;
+* можливість незалежної реалізації різних Scheduler, що працюють за одним протоколом.
+
+Це також відкриває перспективу **локальних кооперативів**: група користувачів або організація може створити власний сегмент мережі, який працює за тими самими правилами, але використовує внутрішні ресурси з пріоритетом. Усі такі сегменти залишаються сумісними на рівні протоколу та можуть обмінюватися обчислювальними ресурсами через єдину федеративну інфраструктуру.
+
+---
+
+## Архітектурне питання, яке варто вирішити до початку ТЗ
+
+Зараз документація виходить на рівень повноцінного протоколу. Перед деталізацією модулів доцільно окремим документом формально визначити **Protocol Stack (рівні протоколу)** — аналогічно до моделі OSI.
+
+Це дозволить жорстко розділити:
+
+* транспорт;
+* сервісні повідомлення;
+* планування;
+* блокчейн;
+* виконання;
+* потокову передачу токенів;
+* керування моделями;
+* керування KV-cache.
+
+Такий документ стане фундаментом для всіх наступних специфікацій і значно спростить подальшу розробку.

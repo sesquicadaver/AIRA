@@ -1,0 +1,125 @@
+Так. Це фіналізує базову архітектурну рамку.
+
+# Документ 42. AIRA Microkernel Architecture
+
+**Версія:** 0.1 Draft
+
+## 1. Принцип
+
+AIRA Core — мікроядро.
+
+Усе інше — модульні драйвери.
+
+```text
+AIRA Microkernel
+ ├── Intent/Capsule ABI
+ ├── Capability ABI
+ ├── Event Fabric ABI
+ ├── Policy Gate
+ ├── Execution State Machine
+ └── Driver Runtime
+```
+
+## 2. У ядрі залишаються тільки
+
+```text
+Execution Capsule
+Capability Registry ABI
+Policy Gate
+Event Fabric
+Execution State Machine
+Driver Manager
+Security/Sandbox Boundary
+```
+
+## 3. Драйверами є
+
+```text
+Discovery Driver
+CRP Driver
+LLM Backend Driver
+Model Registry Driver
+KV Driver
+Wallet/Settlement Driver
+Verification Driver
+PHM Driver
+Knowledge Driver
+HIE Optimizer Driver
+Federation Driver
+Address Book Driver
+Asset Mobility Driver
+```
+
+## 4. Головне правило
+
+Драйвер не має права змінювати інваріанти ядра.
+
+Він може лише:
+
+```text
+register capability
+consume events
+emit events
+propose plan
+execute capsule
+verify result
+publish metadata
+```
+
+## 5. Kernel не планує
+
+Kernel лише перевіряє:
+
+```text
+policy
+capability
+contract
+state transition
+signature
+resource reservation
+```
+
+Планування виконується драйверами.
+
+## 6. Driver ABI
+
+Кожен драйвер повинен мати стандартний ABI:
+
+```text
+init()
+register_capabilities()
+handle_event(event)
+propose(intent_or_capsule)
+execute(capsule)
+verify(result)
+health()
+shutdown()
+```
+
+Не всі методи обов’язкові для всіх драйверів.
+
+## 7. Безпека
+
+Кожен драйвер працює в sandbox.
+
+Доступ лише через ABI.
+
+Прямий доступ до kernel state заборонений.
+
+## 8. Перевага
+
+Така модель дозволяє:
+
+```text
+запустити MVP без HIE;
+замінити CRP без переписування ядра;
+додати новий LLM backend як драйвер;
+додати PHM без зміни Execution Engine;
+відключити Research Track без втрати працездатності.
+```
+
+## 9. Архітектурний висновок
+
+AIRA має бути не монолітною AI-платформою, а **мікроядерною операційною системою для розподілених обчислювальних можливостей**.
+
+Це найпрактичніша форма для реалізації всієї попередньої концепції.

@@ -1,0 +1,525 @@
+# Документ 12. Graph Kernel Specification
+
+**Проєкт:** P2P AI Compute Network
+**Документ:** Graph Kernel
+**Версія:** 0.1 Draft
+
+---
+
+# 1. Призначення
+
+Graph Kernel — ядро оптимізації та планування системи.
+
+Його задача — перетворити опис задачі на оптимальний план виконання у графі доступних ресурсів.
+
+```text
+AI Job
+  ↓
+Execution Graph
+  ↓
+Compute Graph
+  ↓
+Execution Mapping
+  ↓
+Runtime Plan
+```
+
+Graph Kernel не виконує inference. Він лише будує, оптимізує та підтримує граф виконання.
+
+---
+
+# 2. Основний принцип
+
+Уся система представляється як набір графів:
+
+```text
+Resource Graph
+Execution Graph
+Model Graph
+KV Graph
+Trust Graph
+Federation Graph
+Network Graph
+Policy Graph
+```
+
+Graph Kernel об'єднує їх у робочий граф:
+
+```text
+Unified Compute Graph
+```
+
+---
+
+# 3. Типи графів
+
+## 3.1 Resource Graph
+
+Описує доступні ресурси:
+
+```text
+GPU
+CPU
+RAM
+VRAM
+Storage
+Network Link
+Backend Service
+```
+
+## 3.2 Execution Graph
+
+Описує задачу:
+
+```text
+Tokenizer
+Prefill
+Layer Group
+Decode
+Postprocess
+Verify
+```
+
+## 3.3 Model Graph
+
+Описує модель:
+
+```text
+Model
+ ├── Tokenizer
+ ├── Embeddings
+ ├── Layers
+ ├── KV Policy
+ └── Output Head
+```
+
+## 3.4 KV Graph
+
+Описує розміщення KV-cache:
+
+```text
+KV Region
+Owner
+Size
+Compatibility
+Location
+TTL
+```
+
+## 3.5 Trust Graph
+
+Описує довіру:
+
+```text
+User
+Wallet
+Node
+Resource
+Federation
+Reputation
+Penalty
+```
+
+## 3.6 Network Graph
+
+Описує зв’язність:
+
+```text
+Endpoint
+Link
+Latency
+Bandwidth
+Jitter
+Loss
+```
+
+---
+
+# 4. Базова задача ядра
+
+Graph Kernel розв’язує задачу:
+
+```text
+map ExecutionGraph onto ComputeGraph
+```
+
+з обмеженнями:
+
+```text
+model_hash
+backend
+VRAM
+latency
+trust
+privacy
+neurocoin
+federation
+availability
+```
+
+---
+
+# 5. Чому це не TSP
+
+TSP оптимізує один маршрут між точками.
+
+Тут потрібно одночасно:
+
+* вибрати релевантні ресурси;
+* розмістити Capsule;
+* мінімізувати передачу activation;
+* врахувати KV-cache;
+* врахувати довіру;
+* врахувати Neurocoin;
+* врахувати відмовостійкість;
+* врахувати privacy policy.
+
+Тому задача ближча до:
+
+```text
+Constrained Graph Mapping + Multi-objective Scheduling
+```
+
+---
+
+# 6. Пайплайн Graph Kernel
+
+```text
+Input Normalization
+  ↓
+Candidate Discovery
+  ↓
+Graph Construction
+  ↓
+Graph Pruning
+  ↓
+Placement
+  ↓
+Route Optimization
+  ↓
+Plan Validation
+  ↓
+Runtime Monitoring
+  ↓
+Local Reoptimization
+```
+
+---
+
+# 7. Candidate Discovery
+
+Вхід:
+
+```text
+Execution Requirements
+```
+
+Вихід:
+
+```text
+Candidate Resource Set
+```
+
+На цьому етапі відкидаються ресурси, які точно не підходять.
+
+---
+
+# 8. Graph Construction
+
+Будується підграф з:
+
+* кандидатів;
+* мережевих ребер;
+* trust-рівнів;
+* доступних shard;
+* KV-location;
+* федеративних політик.
+
+---
+
+# 9. Graph Pruning
+
+Видаляються:
+
+* ресурси з недостатньою VRAM;
+* несумісні backend;
+* вузли з низьким trust;
+* перевантажені ресурси;
+* заборонені federation domain;
+* маршрути з надмірною latency.
+
+---
+
+# 10. Placement
+
+Кожна Execution Capsule прив’язується до ResourceID.
+
+```text
+CapsuleID → ResourceID
+```
+
+Не до NodeID.
+
+---
+
+# 11. Route Optimization
+
+Для кожного ребра Execution Graph вибирається маршрут у Compute Graph.
+
+Оптимізуються:
+
+```text
+latency
+bandwidth
+jitter
+trust
+cost
+failure risk
+```
+
+---
+
+# 12. Objective Function
+
+Базова функція:
+
+```text
+score =
+    latency_weight      * latency
+  + neurocoin_weight    * neurocoin_cost
+  + traffic_weight      * network_traffic
+  + risk_weight         * failure_risk
+  + energy_weight       * energy_cost
+  + privacy_weight      * privacy_penalty
+```
+
+Вибирається план з мінімальним score.
+
+---
+
+# 13. Жорсткі обмеження
+
+План недійсний, якщо порушено хоча б одне:
+
+```text
+required_model_hash
+required_tokenizer_hash
+minimum_vram
+required_backend
+privacy_class
+trust_minimum
+federation_policy
+wallet_balance
+```
+
+---
+
+# 14. М’які обмеження
+
+Оптимізуються, але не блокують план:
+
+```text
+lower_latency
+lower_cost
+higher_reputation
+model_locality
+kv_locality
+energy_efficiency
+```
+
+---
+
+# 15. Евристики
+
+Повний перебір заборонений.
+
+Використовуються:
+
+```text
+beam search
+A*
+multi-objective shortest path
+greedy placement
+local search
+simulated annealing
+genetic optimization
+cached mappings
+```
+
+Для realtime-запитів — тільки швидкі евристики.
+
+---
+
+# 16. Plan Cache
+
+Кешуються:
+
+```text
+ExecutionGraphHash
+ModelHash
+PolicyHash
+ResourceClassHash
+PlacementPlan
+```
+
+Перед повторним використанням перевіряються:
+
+* доступність ресурсів;
+* актуальність trust;
+* актуальність capability;
+* wallet balance.
+
+---
+
+# 17. Runtime Reoptimization
+
+При зміні стану графа:
+
+```text
+node lost
+latency spike
+gpu overloaded
+kv unavailable
+trust degraded
+```
+
+Graph Kernel перебудовує лише уражений підграф.
+
+---
+
+# 18. Failure Recovery
+
+```text
+Failure Event
+  ↓
+Affected Capsules
+  ↓
+Checkpoint Lookup
+  ↓
+Replacement Search
+  ↓
+Partial Remap
+  ↓
+Resume
+```
+
+Повне перепланування — крайній випадок.
+
+---
+
+# 19. Policy Integration
+
+Graph Kernel не вирішує, що дозволено.
+
+Він запитує Policy Engine.
+
+```text
+Candidate Plan
+  ↓
+Policy Check
+  ↓
+Valid / Invalid
+```
+
+---
+
+# 20. Trust Integration
+
+Trust Graph використовується для:
+
+* вибору виконавців;
+* зважування ризику;
+* відсікання ненадійних ресурсів;
+* визначення потреби у дублюванні виконання.
+
+---
+
+# 21. Address Book Integration
+
+Graph Kernel використовує Federated Address Book як швидкий кеш.
+
+Порядок:
+
+```text
+Local Address Book
+Federation Address Book
+Trusted Peer Books
+DHT
+Resource DNS
+```
+
+Address Book не є джерелом істини.
+
+---
+
+# 22. Blockchain Integration
+
+Blockchain використовується для:
+
+* wallet balance;
+* ownership;
+* reputation;
+* settlement;
+* slashing history.
+
+Graph Kernel не читає prompt і не записує inference payload у blockchain.
+
+---
+
+# 23. Output
+
+Graph Kernel повертає:
+
+```text
+ExecutionPlan
+ ├── CapsulePlacement
+ ├── ResourceReservations
+ ├── NetworkRoutes
+ ├── KVPlan
+ ├── VerificationPlan
+ ├── EstimatedCost
+ ├── EstimatedLatency
+ └── RecoveryPlan
+```
+
+---
+
+# 24. Архітектурне доповнення: Graph IR
+
+Потрібен власний проміжний формат:
+
+```text
+GIR — Graph Intermediate Representation
+```
+
+GIR має описувати:
+
+* ресурси;
+* задачі;
+* політики;
+* маршрути;
+* KV-cache;
+* trust;
+* обмеження;
+* objective function.
+
+Усі компоненти повинні працювати не з ad-hoc структурами, а з GIR.
+
+---
+
+# 25. Стратегічне доповнення
+
+Graph Kernel фактично стає ядром AI Operating System.
+
+Тоді:
+
+```text
+Execution Capsule = process
+KV Cache = memory
+Model Shard = executable code
+Resource Graph = hardware topology
+Scheduler = process scheduler
+Graph Kernel = kernel planner
+```
+
+Це дає системі універсальність: будь-який AI workload зводиться до графа, а не до спеціалізованого сценарію виконання.

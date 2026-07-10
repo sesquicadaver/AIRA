@@ -1,0 +1,523 @@
+# Документ 4. Blockchain Protocol Specification
+
+**Проєкт:** P2P LLM Compute Network
+
+**Документ:** Blockchain Protocol Specification
+
+**Версія:** 0.1 Draft
+
+---
+
+# 1. Призначення
+
+Блокчейн є службовою підсистемою мережі.
+
+Його задача:
+
+* забезпечення довіри;
+* незмінність історії;
+* підтвердження виконаних робіт;
+* облік Neurocoin;
+* облік репутації.
+
+Блокчейн **не бере участі у виконанні inference**.
+
+---
+
+# 2. Основні вимоги
+
+Протокол повинен забезпечувати:
+
+* високу швидкість;
+* низьку затримку;
+* масштабованість;
+* дешеві транзакції;
+* криптографічну перевірку;
+* детермінованість.
+
+---
+
+# 3. Архітектура
+
+```text
+Worker
+
+↓
+
+Verifier
+
+↓
+
+Settlement Layer
+
+↓
+
+Blockchain
+
+↓
+
+Global State
+```
+
+---
+
+# 4. Blockchain Layer
+
+Зберігає лише критично важливі дані.
+
+Не зберігаються:
+
+* prompt;
+* відповідь моделі;
+* KV Cache;
+* ваги моделей;
+* логи inference.
+
+---
+
+# 5. Глобальний стан
+
+Blockchain State:
+
+```text
+Users
+
+Wallets
+
+Nodes
+
+Balances
+
+Reputation
+
+Transactions
+
+Receipts
+
+Consensus
+
+Protocol Parameters
+```
+
+---
+
+# 6. User Identity
+
+Кожний користувач має:
+
+```text
+UserID
+
+Public Key
+
+Root Wallet
+
+Metadata Hash
+```
+
+Особисті дані не зберігаються.
+
+---
+
+# 7. Wallet State
+
+```text
+WalletID
+
+Owner
+
+Balance
+
+Reserved
+
+Pending
+
+Nonce
+
+Signature
+```
+
+---
+
+# 8. Node State
+
+Для кожного вузла:
+
+```text
+NodeID
+
+Owner
+
+Hardware Hash
+
+Benchmark
+
+Trust
+
+Status
+
+Capabilities
+```
+
+---
+
+# 9. Capability Registry
+
+Вузол декларує:
+
+* GPU;
+* CPU;
+* RAM;
+* VRAM;
+* Backend;
+* Quantization;
+* Models;
+* Shards.
+
+---
+
+# 10. Model Registry
+
+Blockchain містить лише:
+
+```text
+Model ID
+
+Hash
+
+Version
+
+Tokenizer
+
+Signature
+```
+
+Моделі знаходяться off-chain.
+
+---
+
+# 11. Shard Registry
+
+Для pipeline execution:
+
+```text
+Model
+
+↓
+
+Layer
+
+↓
+
+Shard
+
+↓
+
+Replica
+```
+
+Blockchain містить:
+
+* shard hash;
+* owner;
+* checksum;
+* replication.
+
+---
+
+# 12. Job Lifecycle
+
+```text
+Job Submitted
+
+↓
+
+Scheduled
+
+↓
+
+Reserved
+
+↓
+
+Executing
+
+↓
+
+Verified
+
+↓
+
+Settled
+
+↓
+
+Archived
+```
+
+---
+
+# 13. Transaction Types
+
+## Register User
+
+---
+
+## Register Wallet
+
+---
+
+## Register Node
+
+---
+
+## Update Capability
+
+---
+
+## Submit Receipt
+
+---
+
+## Mint
+
+---
+
+## Reserve
+
+---
+
+## Spend
+
+---
+
+## Release
+
+---
+
+## Slash
+
+---
+
+## Burn
+
+---
+
+## Reputation Update
+
+---
+
+# 14. Receipt
+
+Receipt підтверджує виконання Job.
+
+Містить:
+
+```text
+Job ID
+
+Node
+
+Execution Time
+
+Model Hash
+
+Contract Hash
+
+Signature
+
+Verification Hash
+```
+
+---
+
+# 15. Consensus
+
+Consensus підтверджує:
+
+* receipt;
+* verification;
+* reward.
+
+Лише після цього можлива зміна балансу.
+
+---
+
+# 16. Verification
+
+Verification включає:
+
+* replay detection;
+* signature verification;
+* benchmark validation;
+* execution validation;
+* anti-fraud checks.
+
+---
+
+# 17. Settlement
+
+Settlement:
+
+```text
+Reserve
+
+↓
+
+Verification
+
+↓
+
+Consensus
+
+↓
+
+Mint
+
+↓
+
+Transfer
+
+↓
+
+Finalize
+```
+
+---
+
+# 18. Reputation
+
+Blockchain містить:
+
+```text
+Lifetime Contribution
+
+Trust
+
+Reliability
+
+Availability
+
+Penalty History
+```
+
+---
+
+# 19. Governance
+
+Мережа повинна підтримувати зміну:
+
+* scoring;
+* reward;
+* protocol version;
+* transaction format;
+* consensus rules.
+
+Без hard fork.
+
+---
+
+# 20. Cryptography
+
+Усі об'єкти:
+
+* Job;
+* Receipt;
+* Wallet;
+* Node;
+* Transaction
+
+підписуються.
+
+---
+
+# 21. Replay Protection
+
+Кожна транзакція має:
+
+```text
+Nonce
+
+Timestamp
+
+Chain ID
+
+Wallet ID
+```
+
+---
+
+# 22. Anti Sybil
+
+Протокол повинен враховувати:
+
+* масове створення вузлів;
+* масове створення wallet;
+* фіктивні benchmark;
+* fake execution.
+
+---
+
+# 23. Архів
+
+Після завершення Job:
+
+Blockchain містить лише:
+
+* hash;
+* receipt;
+* accounting.
+
+Повні дані можуть бути видалені.
+
+---
+
+# 24. Принцип мінімального блокчейну
+
+У блокчейн записується лише те, що необхідно для:
+
+* перевірки цілісності;
+* аудиту;
+* відновлення балансу;
+* перевірки репутації.
+
+Усі великі об'єкти (моделі, KV-cache, журнали виконання, телеметрія) залишаються **off-chain**.
+
+---
+
+# 25. Архітектурне доповнення: дворівневий блокчейн
+
+Для цього проєкту я б рекомендував не класичний публічний блокчейн, а дворівневу модель.
+
+### L1 (Trust Ledger)
+
+Містить лише:
+
+* User;
+* Wallet;
+* Node;
+* Neurocoin;
+* REP;
+* Governance;
+* фінальний стан.
+
+### L2 (Execution Ledger)
+
+Містить:
+
+* Job Receipts;
+* Verification;
+* Capability Updates;
+* Benchmarks;
+* Service Events.
+
+L2 агрегує тисячі подій і періодично формує криптографічний доказ (Merkle Root або аналог), який записується в L1.
+
+Це забезпечує:
+
+* масштабованість;
+* низькі накладні витрати;
+* незмінність історії;
+* можливість аудиту без перевантаження основного реєстру.
+
+Такий підхід краще відповідає навантаженню, характерному для глобальної мережі розподіленого LLM inference, ніж запис кожної події безпосередньо в єдиний ланцюг.

@@ -1,0 +1,290 @@
+Так. І я думаю, це набагато важливіше, ніж просто "відсоток завершених задач".
+
+Насправді тут потрібно вводити **Behavioral Reliability Model**. Це один із небагатьох параметрів, який неможливо "намалювати" — він накопичується лише історією роботи.
+
+Я б повністю переробив розділ 10.
+
+---
+
+# Document 32A. Behavioral Reliability Profile
+
+## Призначення
+
+Behavior Profile описує **реальну поведінку вузла**, а не його характеристики.
+
+Він використовується:
+
+* HIE;
+* CRP;
+* Contribution Engine;
+* Trust Engine;
+* Prediction Engine.
+
+---
+
+## 1. Success Profile
+
+Не один відсоток.
+
+А кілька метрик.
+
+```text
+Completed Jobs
+
+Completed Capsules
+
+Completed Pipelines
+
+Completed Federation Jobs
+```
+
+---
+
+## 2. Completion Ratio
+
+Найважливіша метрика.
+
+```text
+Completed Jobs
+
+/
+
+Accepted Jobs
+```
+
+Але окремо:
+
+```text
+Completed Capsules
+
+/
+
+Accepted Capsules
+```
+
+Тому що вузол може регулярно "кидати" пайплайн на середині.
+
+---
+
+## 3. Completion Quality
+
+Наприклад
+
+```text
+Completed Successfully
+
+Completed With Recovery
+
+Completed With Delay
+
+Completed With Verification Retry
+
+Failed
+```
+
+Це набагато інформативніше, ніж одна цифра.
+
+---
+
+## 4. Abort Profile
+
+```text
+User Abort
+
+Node Abort
+
+Crash
+
+Power Loss
+
+Thermal Shutdown
+
+Network Loss
+```
+
+Причини потрібно накопичувати окремо.
+
+---
+
+## 5. Availability Stability
+
+Не лише
+
+Uptime.
+
+А
+
+```text
+Long Continuous Sessions
+
+Average Session Length
+
+Unexpected Disconnects
+
+Reconnect Time
+```
+
+---
+
+## 6. Performance Stability
+
+Наприклад
+
+не середній TPS.
+
+А
+
+його дисперсія.
+
+```text
+TPS Stability
+
+Latency Stability
+
+Jitter
+
+Thermal Drift
+```
+
+Бо для Pipeline стабільність важливіша за пікову швидкість.
+
+---
+
+## 7. Thermal Behaviour
+
+Наприклад
+
+```text
+Starts throttling after 20 min
+
+Never throttles
+
+Performance drops 15%
+```
+
+Це має знати HIE.
+
+---
+
+## 8. Resource Honesty
+
+Наскільки заявлені характеристики збігаються з фактичними.
+
+```text
+Advertised TPS
+
+↓
+
+Measured TPS
+```
+
+Це чудовий антифрод-механізм.
+
+---
+
+## 9. Prediction Accuracy
+
+Якщо вузол прогнозує:
+
+```text
+Job = 5 sec
+```
+
+а реально
+
+```text
+18 sec
+```
+
+це теж характеристика вузла.
+
+---
+
+## 10. Behavioral Reliability Score
+
+Я б не робив його одним числом.
+
+Нехай буде вектор.
+
+```text
+Reliability
+├── Completion
+├── Stability
+├── Honesty
+├── Predictability
+├── Recovery
+├── Thermal
+├── Network
+└── Verification
+```
+
+---
+
+# І ось тут народжується дуже сильна ідея
+
+Ми весь час говоримо про репутацію вузла.
+
+Але вузол може бути:
+
+* чудовим для Decode;
+* жахливим для Prefill;
+* чудовим для Verification;
+* поганим для Streaming.
+
+Тобто репутація теж повинна бути **контекстною**.
+
+Наприклад:
+
+```text
+Decode Reliability
+
+Prefill Reliability
+
+KV Reliability
+
+Streaming Reliability
+
+Verification Reliability
+
+Embedding Reliability
+```
+
+Тоді HIE не питає:
+
+> "Наскільки хороший цей вузол?"
+
+Він питає:
+
+> "Наскільки хороший цей вузол саме для цієї Execution Capsule?"
+
+---
+
+## І ще один параметр, якого поки немає
+
+Я б додав:
+
+```text
+Mean Time To Failure (MTTF)
+```
+
+і
+
+```text
+Mean Time Between Failures (MTBF)
+```
+
+але **не для обладнання**, а для **Execution Capsule**.
+
+Наприклад:
+
+```text
+Decode MTBF
+
+Prefill MTBF
+
+KV MTBF
+```
+
+Це дозволить HIE оцінювати **ризик незавершення конкретної стадії**, а не просто ризик відмови вузла загалом.
+
+На мою думку, саме такі поведінкові профілі стануть одним із найцінніших джерел даних для самооптимізації. Вони відображають реальну експлуатаційну якість вузла, яку неможливо отримати з технічних характеристик або синтетичних бенчмарків.

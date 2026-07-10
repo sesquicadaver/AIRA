@@ -1,0 +1,212 @@
+# Документ 43. AIRA Driver Model Specification
+
+**Версія:** 0.1 Draft
+
+## 1. Призначення
+
+Driver Model визначає, як зовнішні модулі підключаються до AIRA Microkernel без порушення інваріантів ядра.
+
+```text
+Microkernel = invariant core
+Driver      = replaceable capability provider
+```
+
+## 2. Типи драйверів
+
+```text
+Transport Driver
+Discovery Driver
+Routing Driver
+Execution Driver
+Model Driver
+KV Driver
+Asset Driver
+Policy Driver
+Verification Driver
+Wallet Driver
+PHM Driver
+Knowledge Driver
+Optimizer Driver
+Federation Driver
+```
+
+## 3. Driver Manifest
+
+Кожен драйвер має декларативний manifest:
+
+```yaml
+driver_id: aira.llm.llamacpp
+driver_type: execution
+abi_version: 1
+capabilities:
+  - llm.inference
+  - model.gguf
+  - quant.int4
+permissions:
+  - read_capsule
+  - emit_event
+  - access_model_cache
+sandbox:
+  network: restricted
+  filesystem: scoped
+  gpu: allowed
+```
+
+## 4. Driver Lifecycle
+
+```text
+Discovered
+  ↓
+Loaded
+  ↓
+Initialized
+  ↓
+Registered
+  ↓
+Active
+  ↓
+Suspended
+  ↓
+Unloaded
+```
+
+## 5. Kernel Responsibilities
+
+Kernel відповідає лише за:
+
+```text
+driver loading
+ABI validation
+permission check
+sandboxing
+event routing
+state transition validation
+policy enforcement
+```
+
+Kernel не знає внутрішньої логіки драйвера.
+
+## 6. Driver Responsibilities
+
+Драйвер відповідає за:
+
+```text
+оголошення capability
+обробку capsule/event
+виконання власної функції
+повернення результату
+публікацію telemetry
+повідомлення health/status
+```
+
+## 7. Заборонено драйверам
+
+```text
+змінювати kernel state напряму
+обходити Policy Gate
+самостійно settlement
+підміняти Execution Contract
+змінювати чужі Capability
+читати prompt без дозволу capsule policy
+```
+
+## 8. Capability Registration
+
+Драйвер реєструє не “що він є”, а “що він може надати”:
+
+```json
+{
+  "capability": "llm.decode",
+  "model_formats": ["gguf"],
+  "quantizations": ["int4", "int8"],
+  "max_context": 32768,
+  "streaming": true
+}
+```
+
+## 9. Event Interface
+
+Драйвери спілкуються через Event Fabric:
+
+```text
+CapabilityRegistered
+CapsuleAssigned
+CapsuleStarted
+CapsuleCompleted
+CapsuleFailed
+TelemetryUpdated
+HealthChanged
+DriverSuspended
+```
+
+Прямі виклики між драйверами заборонені або дозволені лише через kernel-mediated channel.
+
+## 10. Driver Trust Level
+
+Кожен драйвер має trust-рівень:
+
+```text
+Untrusted
+Sandboxed
+Verified
+Attested
+Core-approved
+```
+
+Вищий trust дає ширші права, але не скасовує Policy Gate.
+
+## 11. Hot Plug
+
+Драйвер може бути підключений або відключений без зупинки системи.
+
+Kernel повинен:
+
+```text
+відкликати capability
+завершити або мігрувати активні capsule
+закрити дескриптори
+зафіксувати події
+оновити registry
+```
+
+## 12. Driver Failure
+
+При збої драйвера:
+
+```text
+DriverFailed
+  ↓
+Capability revoked
+  ↓
+Affected capsules marked
+  ↓
+Recovery driver invoked
+  ↓
+PHM/Behavior profile updated
+```
+
+## 13. Versioning
+
+Driver ABI версіонується окремо від протоколу.
+
+```text
+Protocol version ≠ Driver ABI version ≠ Driver implementation version
+```
+
+## 14. Reference Driver Set
+
+Для MVP достатньо:
+
+```text
+local execution driver
+basic discovery driver
+basic routing driver
+model cache driver
+event log driver
+policy driver
+verification stub
+```
+
+## 15. Висновок
+
+Driver Model робить AIRA практично реалізованою: ядро лишається малим і стабільним, а вся складність переноситься в замінні модулі.

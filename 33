@@ -1,0 +1,508 @@
+Це дуже сильне уточнення. Насправді воно переводить fingerprint із рівня "паспорта" на рівень **діагностичної моделі**.
+
+Я б навіть сказав, що Behavior Layer потрібно розділити на дві абсолютно незалежні частини:
+
+```text id="9hs5ty"
+Behavior
+```
+
+і
+
+```text id="yz3hdf"
+Health
+```
+
+Бо це різні речі.
+
+---
+
+# Document 33. Resource Health Model
+
+## Основна аксіома
+
+> Ненадійний вузол не обов'язково є недобросовісним вузлом.
+
+Це дуже важливо.
+
+---
+
+# Fingerprint повинен містити
+
+не лише
+
+```text id="kjlwmx"
+Capability
+```
+
+а
+
+ще
+
+```text id="qv3zjy"
+Health
+```
+
+---
+
+# Health Profile
+
+```text id="vjlwmv"
+CPU Health
+
+GPU Health
+
+Memory Health
+
+Storage Health
+
+Network Health
+
+Power Health
+
+Cooling Health
+```
+
+---
+
+## GPU
+
+Наприклад
+
+```text id="exbikf"
+ECC errors
+
+Memory errors
+
+Thermal throttling
+
+Clock instability
+
+Power instability
+
+Driver resets
+```
+
+---
+
+## CPU
+
+```text id="kwm5lb"
+MCE
+
+Clock drift
+
+Thermal
+
+Voltage instability
+```
+
+---
+
+## RAM
+
+```text id="l84zsy"
+ECC
+
+Corrected errors
+
+Uncorrected errors
+
+Memory test history
+```
+
+---
+
+## Storage
+
+```text id="d1vh1g"
+SMART
+
+Read retries
+
+Write retries
+
+Remaining life
+```
+
+---
+
+## Network
+
+```text id="ssjpzu"
+CRC
+
+Packet loss
+
+Retransmits
+
+NIC resets
+```
+
+---
+
+# Але є ще цікавіше
+
+Health —
+
+це
+
+не лише
+
+апаратне.
+
+---
+
+# Software Health
+
+Наприклад
+
+```text id="khvufv"
+backend crashes
+
+kernel panic
+
+driver instability
+
+OOM
+
+segfault rate
+```
+
+---
+
+# Execution Health
+
+Ще окремий рівень
+
+```text id="qm7t7c"
+unexpected abort
+
+verification mismatch
+
+capsule restart
+
+checkpoint recovery
+```
+
+---
+
+# Далі
+
+можна
+
+обчислювати
+
+не
+
+MTBF
+
+обладнання.
+
+А
+
+```text id="wjsowj"
+Execution MTBF
+```
+
+---
+
+# Найцікавіше
+
+Fingerprint
+
+повинен
+
+містити
+
+не лише
+
+стан.
+
+А
+
+**тренд деградації.**
+
+Наприклад
+
+```text id="d8tpcv"
+GPU Health
+
+98%
+
+↓
+
+97%
+
+↓
+
+95%
+
+↓
+
+91%
+```
+
+HIE
+
+бачить
+
+що
+
+через
+
+тиждень
+
+цей GPU
+
+може
+
+стати
+
+ненадійним.
+
+---
+
+# Remaining Useful Life
+
+Тут
+
+можна
+
+ввести
+
+окремий
+
+показник
+
+```text id="qm05wo"
+RUL
+```
+
+Remaining Useful Life.
+
+Причому
+
+не
+
+для
+
+GPU.
+
+А
+
+для
+
+Execution.
+
+Наприклад
+
+```text id="yu6t6m"
+Expected Stable Execution Hours
+```
+
+---
+
+# І ще сильніше
+
+Я б зробив
+
+не один
+
+Health.
+
+А
+
+Health Matrix.
+
+Наприклад
+
+```text id="8e58ut"
+Decode Health
+
+Prefill Health
+
+Embedding Health
+
+Streaming Health
+
+KV Health
+
+Storage Health
+```
+
+---
+
+# І ось тут народжується дуже цікава ідея
+
+Можливо
+
+HIE
+
+повинен
+
+планувати
+
+не
+
+по
+
+Capability.
+
+І
+
+не
+
+по
+
+Trust.
+
+А
+
+по
+
+**Capability × Health.**
+
+Тобто
+
+```text id="sn7xpi"
+Effective Capability
+```
+
+---
+
+Наприклад
+
+4090
+
+може
+
+мати
+
+Capability
+
+100
+
+але
+
+Health
+
+0.6
+
+Отже
+
+реальна
+
+корисність
+
+60.
+
+---
+
+# Але тут я побачив ще одну річ
+
+Телеметрія
+
+не повинна
+
+йти
+
+лише
+
+від
+
+самої
+
+ноди.
+
+Потрібно
+
+щонайменше
+
+три
+
+джерела.
+
+```text id="ekmgmg"
+Self telemetry
+
+Neighbour observations
+
+Execution verification
+```
+
+---
+
+Тоді
+
+Health
+
+стає
+
+набагато
+
+важче
+
+підробити.
+
+---
+
+# І, мабуть, найцікавіше
+
+Я думаю,
+
+що Fingerprint
+
+вже
+
+неправильна
+
+назва.
+
+Бо
+
+це
+
+не
+
+відбиток.
+
+Це
+
+**Medical Record**
+
+або
+
+**Operational Passport**.
+
+Тобто
+
+вузол
+
+має
+
+історію
+
+життя.
+
+---
+
+## Найсильніше відкриття
+
+Я б запропонував ввести окремий компонент:
+
+> **Distributed Prognostics Engine (DPE)**
+
+Його задача — не лише визначати поточний стан вузла, а прогнозувати його майбутню експлуатаційну придатність.
+
+Він аналізує:
+
+* телеметрію;
+* історію збоїв;
+* тренди деградації;
+* результати виконання Capsule;
+* дані сусідніх вузлів;
+* результати верифікації.
+
+І формує не "Health Score", а **ризик використання цього вузла для конкретного класу Execution Capsule**.
+
+На мою думку, це значно сильніше за звичайний health monitoring, оскільки дозволяє HIE **не чекати відмови**, а уникати її ще на етапі побудови Execution Plan. Це переводить систему з реактивної моделі в предиктивну, що особливо важливо для довготривалих і багатовузлових виконань.

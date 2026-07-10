@@ -1,0 +1,490 @@
+# Документ 5. Network Protocol & Distributed Execution Specification
+
+**Проєкт:** P2P LLM Compute Network
+
+**Документ:** Network Protocol & Distributed Execution
+
+**Версія:** 0.1 Draft
+
+---
+
+# 1. Призначення
+
+Документ визначає:
+
+* мережевий протокол;
+* взаємодію вузлів;
+* алгоритми розподіленого inference;
+* відмовостійкість;
+* балансування навантаження;
+* правила передачі моделей і KV Cache.
+
+---
+
+# 2. Основні принципи
+
+Протокол повинен забезпечувати:
+
+* мінімальний overhead;
+* мінімальну latency;
+* максимальну детермінованість;
+* автоматичне масштабування;
+* відсутність центральної точки відмови.
+
+---
+
+# 3. Логічна модель
+
+```text
+                 Client
+
+                    │
+
+            Route Planner
+
+                    │
+
+          Distributed Scheduler
+
+                    │
+
+      ┌─────────────┼─────────────┐
+
+      ▼             ▼             ▼
+
+   Worker A      Worker B      Worker C
+
+      │             │             │
+
+      └────── Pipeline Graph ─────┘
+```
+
+---
+
+# 4. Node Discovery
+
+Кожний вузол після запуску:
+
+* отримує NodeID;
+* проходить автентифікацію;
+* виконує benchmark;
+* публікує Capability Profile;
+* стає доступним Scheduler.
+
+---
+
+# 5. Capability Advertisement
+
+Вузол періодично повідомляє:
+
+### Hardware
+
+* CPU
+* GPU
+* RAM
+* VRAM
+* SSD
+
+### Software
+
+* backend
+* версія
+* підтримувані моделі
+* shard-и
+
+### Runtime
+
+* latency
+* TPS
+* utilization
+* temperature
+* availability
+
+---
+
+# 6. Node State
+
+Кожний вузол має один із станів:
+
+```text
+Offline
+
+Joining
+
+Benchmarking
+
+Idle
+
+Reserved
+
+Executing
+
+Verifying
+
+Leaving
+
+Suspended
+```
+
+---
+
+# 7. Job Submission
+
+Job містить:
+
+```text
+JobID
+
+Execution Contract
+
+Prompt
+
+Model
+
+Requirements
+
+Privacy
+
+Priority
+```
+
+Prompt передається лише виконавцям.
+
+---
+
+# 8. Scheduler
+
+Scheduler визначає:
+
+* режим виконання;
+* кількість вузлів;
+* маршрут;
+* необхідний рівень довіри;
+* резервування ресурсів.
+
+---
+
+# 9. Execution Modes
+
+## Mode 1
+
+Single Worker
+
+```text
+Client
+
+↓
+
+Worker
+```
+
+---
+
+## Mode 2
+
+Request Parallelism
+
+```text
+Job A → Worker 1
+
+Job B → Worker 2
+
+Job C → Worker 3
+```
+
+---
+
+## Mode 3
+
+Pipeline Parallelism
+
+```text
+Prompt
+
+↓
+
+Layers 0-15
+
+↓
+
+Layers 16-31
+
+↓
+
+Layers 32-47
+
+↓
+
+Decode
+```
+
+---
+
+## Mode 4
+
+Disaggregated Prefill
+
+```text
+Prefill Cluster
+
+↓
+
+KV Cache
+
+↓
+
+Decode Cluster
+```
+
+---
+
+## Mode 5
+
+Trusted Tensor Cluster
+
+Лише для швидких локальних мереж.
+
+---
+
+# 10. Pipeline Graph
+
+Кожний Job описується DAG.
+
+```text
+Prefill
+
+↓
+
+Layer Group A
+
+↓
+
+Layer Group B
+
+↓
+
+Layer Group C
+
+↓
+
+Decode
+
+↓
+
+Output
+```
+
+---
+
+# 11. Execution Contract
+
+Contract визначає:
+
+* backend;
+* tokenizer;
+* model hash;
+* layer mapping;
+* quantization;
+* sampling;
+* KV Policy.
+
+Виконавець не має права його змінювати.
+
+---
+
+# 12. KV Cache
+
+KV Cache є окремим об'єктом.
+
+Підтримуються:
+
+* local cache;
+* shared cache;
+* migrated cache;
+* replicated cache.
+
+---
+
+# 13. Model Distribution
+
+Передача моделей не входить до Job.
+
+Передача виконується окремо.
+
+```text
+Registry
+
+↓
+
+Node Cache
+
+↓
+
+Verification
+
+↓
+
+Activation
+```
+
+---
+
+# 14. Model Replication
+
+Scheduler підтримує:
+
+* replication factor;
+* popularity;
+* locality.
+
+Популярні моделі автоматично реплікуються.
+
+---
+
+# 15. Layer Placement
+
+Pipeline будується за:
+
+* VRAM;
+* latency;
+* bandwidth;
+* reliability.
+
+Layer не повинен випадково мігрувати під час Job.
+
+---
+
+# 16. Dynamic Reconfiguration
+
+Якщо вузол втрачається:
+
+Scheduler:
+
+* знаходить replacement;
+* переносить KV;
+* перебудовує Pipeline.
+
+---
+
+# 17. Failure Recovery
+
+Підтримуються:
+
+* retry;
+* migration;
+* rollback;
+* checkpoint.
+
+---
+
+# 18. Checkpoint
+
+Checkpoint створюється:
+
+* після Prefill;
+* після великих Layer Group;
+* перед Decode.
+
+---
+
+# 19. Streaming
+
+Output може передаватися:
+
+* token-by-token;
+* batch;
+* full completion.
+
+---
+
+# 20. Network Optimization
+
+Передаються лише:
+
+* activation tensors;
+* KV Cache;
+* control messages.
+
+Не передаються повторно:
+
+* моделі;
+* tokenizer;
+* LoRA.
+
+---
+
+# 21. Adaptive Scheduler
+
+Scheduler враховує:
+
+* репутацію;
+* поточне навантаження;
+* температуру GPU;
+* історію відмов;
+* якість мережі;
+* прогнозований час завершення.
+
+---
+
+# 22. Security
+
+Усі канали:
+
+* TLS;
+* взаємна автентифікація;
+* шифрування payload;
+* підпис повідомлень.
+
+---
+
+# 23. Observability
+
+Кожний вузол експортує:
+
+* TPS;
+* latency;
+* GPU usage;
+* CPU usage;
+* VRAM;
+* queue length;
+* cache utilization.
+
+---
+
+# 24. Версіонування
+
+Network Protocol має підтримувати:
+
+* backward compatibility;
+* rolling upgrade;
+* feature negotiation;
+* capability flags.
+
+---
+
+# 25. Архітектурне доповнення: Execution Fabric
+
+На цьому етапі варто додати ще один логічний рівень — **Execution Fabric**, який стане головною інновацією проєкту.
+
+Execution Fabric абстрагує фізичні вузли. Для планувальника не існує понять "ПК користувача", "сервер" чи "кластер". Він працює лише з **уніфікованими ресурсами**:
+
+```text
+Execution Fabric
+    │
+    ├── Compute Units (CPU/GPU/NPU)
+    ├── Memory Units (RAM/VRAM)
+    ├── Storage Units
+    ├── Network Links
+    ├── Model Shards
+    ├── KV-cache Regions
+    └── Service Capabilities
+```
+
+Тоді задача розподіляється не між комп'ютерами, а між логічними ресурсами Fabric.
+
+Це дає кілька важливих переваг:
+
+* можливість безболісно додати нові типи прискорювачів (NPU, FPGA, ASIC);
+* прозору інтеграцію локальних кластерів як єдиного логічного вузла;
+* незалежність алгоритмів планування від конкретної апаратної конфігурації;
+* основу для майбутнього автоматичного глобального оптимізатора, який зможе переміщувати не лише задачі, а й шари моделей, KV-cache і навіть сервіси між різними сегментами мережі. Це перетворює систему з набору P2P-вузлів на повноцінну розподілену обчислювальну платформу.

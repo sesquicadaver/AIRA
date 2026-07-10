@@ -1,0 +1,125 @@
+Так. Це важлива економічно-архітектурна поправка.
+
+# Документ 28. Balanced Brain-Sharing Economy
+
+**Версія:** 0.1 Draft
+
+## 1. Ключовий принцип
+
+AIRA не повинна винагороджувати лише “найпотужніше залізо”.
+
+Вона повинна винагороджувати **релевантний внесок**.
+
+```text
+цінність вузла ≠ raw GPU power
+цінність вузла = relevance × usefulness × availability × trust
+```
+
+## 2. Обмеження накопичення NC
+
+Щоб окремі топові вузли не накопичували необмежений Neurocoin/NeuroRating:
+
+```text
+diminishing returns
+time decay
+per-node caps
+per-owner caps
+relevance-weighted reward
+task-diversity bonus
+underrepresented-capability bonus
+```
+
+Тобто RTX 4090 не повинна автоматично домінувати над мережею, якщо задача краще виконується легшою спеціалізованою моделлю на слабшому вузлі.
+
+## 3. Винагорода за релевантність
+
+Вузол отримує більше не за “потужність”, а за корисне закриття конкретного Intent.
+
+```text
+reward =
+  verified_usefulness
+  × relevance_score
+  × trust_score
+  × scarcity_factor
+  × availability_factor
+```
+
+## 4. Роль слабших вузлів
+
+Не всі задачі потребують топового GPU.
+
+Слабші вузли можуть ефективно виконувати:
+
+```text
+embedding
+reranking
+tokenization
+small specialist models
+LoRA inference
+verification
+classification
+summarization
+routing
+cache serving
+model shard hosting
+KV-cache storage
+```
+
+Це знижує вимоги до мережі й підвищує її масштабованість.
+
+## 5. Ensemble-first економіка
+
+Мережа має стимулювати ансамблі легких моделей:
+
+```text
+small specialist models
++
+domain adapters
++
+retrievers
++
+verifiers
++
+planners
+```
+
+Замість постійної гонитви за монолітними моделями максимального розміру.
+
+## 6. Anti-whale механіка
+
+Для великих власників ресурсів:
+
+```text
+nonlinear reward curve
+quota normalization
+ownership clustering detection
+reputation ≠ balance
+routing diversity requirement
+```
+
+Це не забороняє великі кластери, але не дозволяє їм монополізувати NC.
+
+## 7. Нова модель NC
+
+Краще розділити:
+
+```text
+NC — витратні compute credits
+NR — невідчужуваний neuro-rating / reputation
+```
+
+NC витрачається на чужі ресурси.
+
+NR впливає на довіру, пріоритет і routing, але не накопичується як “капітал” безмежно.
+
+## 8. Висновок
+
+AIRA має бути не “хмарою для топових GPU”, а **мережею релевантних інтелектуальних можливостей**.
+
+Це дозволяє:
+
+* використовувати масове середнє залізо;
+* зменшити вимоги до каналів;
+* уникнути централізації;
+* стимулювати легші спеціалізовані моделі;
+* перетворити мережу на brain-sharing fabric, а не GPU-олігархію.
