@@ -1,7 +1,8 @@
 # Карта корпусу AIRA (provenance)
 
-**Цикл:** Analyze-1 (rev 2 після review COMMENT)  
-**Правило:** originals не змінюються; статуси нижче — **аналітична** класифікація за SCD.
+**Цикл:** Analyze-1  
+**Правило:** originals не змінюються; статуси — **аналітична** класифікація за SCD.  
+**Межі:** лише матеріали цього репозиторію.
 
 ## 1. Канонічний Manifesto (`Manifesto etc/`)
 
@@ -19,7 +20,7 @@
 | Schema Pack | Supporting | Schemas |
 | MVP PRD / Roadmap / Bootstrap / Issue Set | Product / Engineering | Не Standard formula |
 
-## 2. Meditation_About (AIRA repo) — бакети SCD §11
+## 2. Meditation_About — бакети SCD §11
 
 **Evidence:** `Manifesto etc/AIRA Specification Control Document v0.1.md` §11.1–11.2.  
 **Constraint:** Analyze-1 **не** prune/delete ці файли (user immutability > SCD prune suggestion).
@@ -47,13 +48,7 @@
 | 12, 14, 18, 28, 29, 42, 44, 45, 47.1–47.3, 48, 53 | Не в §11.1/11.2 — окрема класифікація; **42** критичний для §11 Book 0 (microkernel) |
 | 32a, 37a, 62a | Суфіксні уточнення; 32A згаданий у §11.2 як 32A |
 
-## 3. Зовнішнє MIND Meditation_About (sTOR)
-
-Концептуальний предок Policy/Object/Verify/Promote/Freeze.  
-Не є файлами цього git-репо. Шлях: sibling `../MIND/Meditation_About/` (або `$MIND_ROOT/Meditation_About`).  
-Див. `matrices/stor-to-book0.md`.
-
-## 4. Ієрархія пріоритету (Evidence SCD §6)
+## 3. Ієрархія пріоритету (Evidence SCD §6)
 
 ```text
 Book 0–III
@@ -65,7 +60,7 @@ Book 0–III
 → Historical Drafts (Meditation_About)
 ```
 
-## 5. Analyze-1 у цій ієрархії
+## 4. Analyze-1 у цій ієрархії
 
 `Analyze-1/` = **аналітичний шар**, не canonical spec.  
 Не піднімає пріоритет над Book 0–III. Може пропонувати RFC-чернетки.

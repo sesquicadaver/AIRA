@@ -78,15 +78,15 @@ AIRA = мікроядерна федеративна система коорди
 
 ---
 
-## 8. Звʼязок з Meditation (Inference + матриці)
+## 8. Звʼязок з Meditation_About (Inference + матриця)
 
-| Шар | Внесок у Book 0 |
-|-----|-----------------|
-| MIND sTOR | A0/A2/A5/A7, Policy, Verify, Promote, microkernel, freeze→standard |
-| AIRA Meditation 42–62 | Microkernel, SST (§7), GOA/Problem primacy, Lightweight Doctrine |
-| AIRA Meditation 1–16 | Historical P2P LLM — superseded за SCD |
+| Шар у `Meditation_About/` | Внесок у Book 0 |
+|---------------------------|-----------------|
+| Docs 42–62 | Microkernel, SST (§7), GOA/Problem primacy, Lightweight Doctrine, freeze |
+| Docs 1–16 | Historical P2P LLM — superseded за SCD |
+| Docs 17–41 | Частково Research / merge-before-removal (SCD §11) |
 
-Деталі: `matrices/stor-to-book0.md`, `matrices/aira-meditation-to-book0.md`.
+Деталі: `matrices/meditation-to-book0.md`.
 
 ---
 
