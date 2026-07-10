@@ -7,6 +7,7 @@ mod lifecycle;
 mod manifest;
 mod registry;
 mod runtime;
+pub mod support;
 
 pub use error::CsuError;
 pub use lifecycle::CsuLifecycleState;

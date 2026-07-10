@@ -1,8 +1,126 @@
-//! AIRA basic evidence-basic CSU skeleton
+//! Evidence-basic CSU (Issue #45).
 //!
-//! Skeleton crate for AIRA MVP bootstrap (Issue Set Epic 0). No domain logic yet.
+//! Observes ResultPublished / CapsuleFailed / VerificationFailed → Evidence artifacts.
 
-/// Crate version string for smoke tests.
+use aira_artifact::ArtifactType;
+use aira_csu::support::{basic_manifest, json_bytes, make_artifact, make_event};
+use aira_csu::{Csu, CsuExecutionContext, CsuHandlerError, CsuManifest, CsuOutput, CsuType};
+use aira_event::{EventDescriptor, EventType};
+use serde_json::json;
+
+/// Evidence capture CSU.
+pub struct EvidenceBasicCsu {
+    manifest: CsuManifest,
+    seq: u64,
+}
+
+impl Default for EvidenceBasicCsu {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl EvidenceBasicCsu {
+    pub fn new() -> Self {
+        Self {
+            manifest: basic_manifest(
+                "aira:csu:evidence.basic",
+                "evidence-basic",
+                CsuType::Evidence,
+                &["ResultPublished", "CapsuleFailed", "VerificationFailed"],
+                &["FailureEvidenceCreated", "ArtifactPublished"],
+            ),
+            seq: 1,
+        }
+    }
+
+    fn next_id(&mut self, kind: &str) -> String {
+        let id = format!("aira:{kind}:evi{}", self.seq);
+        self.seq += 1;
+        id
+    }
+}
+
+impl Csu for EvidenceBasicCsu {
+    fn manifest(&self) -> &CsuManifest {
+        &self.manifest
+    }
+
+    fn on_event(
+        &mut self,
+        event: &EventDescriptor,
+        ctx: &mut CsuExecutionContext<'_>,
+    ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
+        let is_failure = matches!(
+            event.event_type,
+            EventType::CapsuleFailed | EventType::VerificationFailed
+        );
+        let is_result = event.event_type == EventType::ResultPublished;
+        if !is_failure && !is_result {
+            return Ok(vec![]);
+        }
+
+        let body = json!({
+            "evidence_kind": if is_failure { "failure" } else { "result" },
+            "source_event": event.event_id.as_str(),
+            "source_event_type": format!("{:?}", event.event_type),
+            "object_refs": event.object_refs.iter().map(|r| r.as_str().to_string()).collect::<Vec<_>>(),
+            "artifact_refs": event.artifact_refs.iter().map(|r| r.as_str().to_string()).collect::<Vec<_>>(),
+            "note": event.payload_ref.clone().unwrap_or_default(),
+            "assigns_final_truth": false
+        });
+        let payload = json_bytes(&body);
+        let aid = self.next_id("artifact");
+        let desc = make_artifact(
+            &aid,
+            ArtifactType::EvidenceArtifact,
+            &payload,
+            vec![event.event_id.clone()],
+        );
+        ctx.publish_artifact(desc.clone(), &payload)
+            .map_err(|e| CsuHandlerError {
+                message: e.to_string(),
+            })?;
+
+        let mut outs = vec![CsuOutput::Artifact {
+            descriptor: desc.clone(),
+            payload,
+        }];
+
+        if is_failure {
+            let fe = make_event(
+                &self.next_id("event"),
+                EventType::FailureEvidenceCreated,
+                event.object_refs.clone(),
+                vec![desc.artifact_id.clone()],
+                vec![event.event_id.clone()],
+                event.payload_ref.clone(),
+            );
+            ctx.append_event(fe.clone()).map_err(|e| CsuHandlerError {
+                message: e.to_string(),
+            })?;
+            outs.push(CsuOutput::Event(fe));
+        } else {
+            let pub_ev = make_event(
+                &self.next_id("event"),
+                EventType::ArtifactPublished,
+                event.object_refs.clone(),
+                vec![desc.artifact_id.clone()],
+                vec![event.event_id.clone()],
+                None,
+            );
+            ctx.append_event(pub_ev.clone())
+                .map_err(|e| CsuHandlerError {
+                    message: e.to_string(),
+                })?;
+            outs.push(CsuOutput::Event(pub_ev));
+        }
+
+        Ok(outs)
+    }
+}
+
+/// Crate version string.
 pub fn crate_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
@@ -10,9 +128,45 @@ pub fn crate_version() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aira_artifact::CasArtifactStore;
+    use aira_csu::support::make_event as mk;
+    use aira_event::MemoryEventLog;
+    use aira_object::AiraRef;
 
     #[test]
     fn version_is_semver_like() {
         assert!(!crate_version().is_empty());
+    }
+
+    #[test]
+    fn failure_creates_failure_evidence() {
+        let mut csu = EvidenceBasicCsu::new();
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let ev = mk(
+            "aira:event:fail1",
+            EventType::VerificationFailed,
+            vec![AiraRef::parse("aira:problem:01TESTPROBLEM").unwrap()],
+            vec![],
+            vec![],
+            Some("bad output".into()),
+        );
+        let outs = csu.on_event(&ev, &mut ctx).unwrap();
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Artifact { descriptor, .. }
+                if descriptor.artifact_type == ArtifactType::EvidenceArtifact
+        )));
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Event(e) if e.event_type == EventType::FailureEvidenceCreated
+        )));
     }
 }

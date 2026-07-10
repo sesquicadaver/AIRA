@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5 — 2026-07-10
+
+### Added
+
+- Basic CSU set: context / reduction / execution / verification / evidence / artifact
+- `aira_csu::support` helpers; context resolve + supersede APIs
+
 ## 0.1.4 — 2026-07-10
 
 ### Added

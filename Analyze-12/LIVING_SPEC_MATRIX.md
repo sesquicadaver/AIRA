@@ -8,4 +8,4 @@
 | LS12-004 | #38 | `Csu` / `CsuOutput` | trait tests via EchoCsu | mapped |
 | LS12-005 | #39 | `CsuRuntime::dispatch` | Active only; CSUFailed | mapped |
 | LS12-006 | #40 | `CsuExecutionContext` denies | isolation tests | mapped |
-| LS12-007 | Epic 6 | — | pending Analyze-13 | open |
+| LS12-007 | Epic 6 | Analyze-13 | done → [../Analyze-13/](../Analyze-13/) | mapped |

@@ -90,6 +90,37 @@ impl<'a> CsuExecutionContext<'a> {
         Ok(())
     }
 
+    /// Resolve an artifact by id (read-only).
+    pub fn resolve_artifact(
+        &self,
+        artifact_id: &AiraRef,
+    ) -> Result<(ArtifactDescriptor, Vec<u8>), CsuError> {
+        let store = self
+            .artifacts
+            .as_ref()
+            .ok_or_else(|| CsuError::Isolation("artifact store not bound".into()))?;
+        store
+            .resolve(artifact_id)
+            .map_err(|e| CsuError::Dispatch(e.to_string()))
+    }
+
+    /// Supersede an artifact (old retained; new published).
+    pub fn supersede_artifact(
+        &mut self,
+        previous: &AiraRef,
+        descriptor: ArtifactDescriptor,
+        payload: &[u8],
+    ) -> Result<(), CsuError> {
+        let store = self
+            .artifacts
+            .as_mut()
+            .ok_or_else(|| CsuError::Isolation("artifact store not bound".into()))?;
+        store
+            .supersede(previous, descriptor, payload)
+            .map_err(|e| CsuError::Dispatch(e.to_string()))?;
+        Ok(())
+    }
+
     /// Evaluate policy (no bypass).
     pub fn check_policy(&mut self, query: PolicyQuery) -> Result<PolicyDecision, CsuError> {
         let gate = self

@@ -34,9 +34,9 @@ Problem Statement
 
 ## Status
 
-**Epic 0–5:** workspace + schemas + C0 Object/Artifact/Event/Policy + **CSU Runtime** (`aira-csu`, `aira csu`).
+**Epic 0–6:** workspace + schemas + C0/C1 core + **Basic CSU set** (`csu/*-basic`).
 
-Basic domain CSU set is **not** complete yet (Issue Set #41+).
+Local operational flow is **not** complete yet (Issue Set #47+).
 
 ## Build
 

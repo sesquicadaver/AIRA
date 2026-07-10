@@ -88,26 +88,74 @@ dependencies = [
 [[package]]
 name = "aira-csu-artifact-basic"
 version = "0.1.0"
+dependencies = [
+ "aira-artifact",
+ "aira-csu",
+ "aira-event",
+ "aira-object",
+ "serde_json",
+ "tempfile",
+]
 
 [[package]]
 name = "aira-csu-context-basic"
 version = "0.1.0"
+dependencies = [
+ "aira-artifact",
+ "aira-csu",
+ "aira-event",
+ "aira-object",
+ "serde_json",
+ "tempfile",
+]
 
 [[package]]
 name = "aira-csu-evidence-basic"
 version = "0.1.0"
+dependencies = [
+ "aira-artifact",
+ "aira-csu",
+ "aira-event",
+ "aira-object",
+ "serde_json",
+ "tempfile",
+]
 
 [[package]]
 name = "aira-csu-execution-basic"
 version = "0.1.0"
+dependencies = [
+ "aira-artifact",
+ "aira-csu",
+ "aira-event",
+ "aira-object",
+ "serde_json",
+ "tempfile",
+]
 
 [[package]]
 name = "aira-csu-reduction-basic"
 version = "0.1.0"
+dependencies = [
+ "aira-artifact",
+ "aira-csu",
+ "aira-event",
+ "aira-object",
+ "serde_json",
+ "tempfile",
+]
 
 [[package]]
 name = "aira-csu-verification-basic"
 version = "0.1.0"
+dependencies = [
+ "aira-artifact",
+ "aira-csu",
+ "aira-event",
+ "aira-object",
+ "serde_json",
+ "tempfile",
+]
 
 [[package]]
 name = "aira-event"
