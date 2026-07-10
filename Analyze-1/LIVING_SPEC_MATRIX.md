@@ -12,7 +12,7 @@
 | LS-002 | `Meditation_About/1`…`62a` | Book 0 + SCD Historical | `matrices/meditation-to-book0.md` | CHECKLIST §matrices | mapped |
 | LS-003 | `Manifesto etc/AIRA Specification Control Document v0.1.md` | SCD | `provenance/corpus-map.md` | CHECKLIST §immutability | mapped |
 | LS-004 | Book 0 §7 + `Meditation_About/58` | Book 0 SST | `matrices/meditation-to-book0.md`, TF-001 | Provenance SST у репо | mapped |
-| LS-005 | Book I–V | Books I–V | — | Analyze-2+ | pending |
+| LS-005 | Book I–V | Books I–V | Analyze-2 (Book I); решта Analyze-3+ | Analyze-2 CHECKLIST | Book I done |
 | LS-006 | Conformance / Schema / MVP Issue Set | Ecosystem | provenance only | runtime N/A | deferred |
 
 ## Формула стандарту (Evidence з SCD §15)

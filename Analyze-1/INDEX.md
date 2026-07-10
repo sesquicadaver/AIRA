@@ -18,8 +18,8 @@
 | Книга | Аналіз у Analyze-1 |
 |-------|-------------------|
 | Book 0 | done |
-| Book I | pending → Analyze-2 |
-| Book II | pending |
+| Book I | done → [Analyze-2](../Analyze-2/) |
+| Book II | pending → Analyze-3 |
 | Book III | pending |
 | Book IV | pending |
 | Book V | pending |
