@@ -1,0 +1,10 @@
+[package]
+name = "aira-csu-evidence-basic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "AIRA basic evidence-basic CSU skeleton"
+
+[dependencies]

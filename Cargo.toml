@@ -1,0 +1,40 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/aira-core",
+    "crates/aira-object",
+    "crates/aira-event",
+    "crates/aira-artifact",
+    "crates/aira-policy",
+    "crates/aira-csu",
+    "crates/aira-schema",
+    "crates/aira-conformance",
+    "crates/aira-node",
+    "crates/aira-cli",
+    "csu/context-basic",
+    "csu/reduction-basic",
+    "csu/execution-basic",
+    "csu/verification-basic",
+    "csu/evidence-basic",
+    "csu/artifact-basic",
+]
+
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/sesquicadaver/AIRA"
+version = "0.1.0"
+rust-version = "1.75"
+
+[workspace.dependencies]
+anyhow = "1"
+thiserror = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v7", "serde"] }
+sha2 = "0.10"
+ed25519-dalek = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+clap = { version = "4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"

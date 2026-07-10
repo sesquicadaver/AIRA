@@ -24,3 +24,4 @@
 | Analyze-5 | Book IV (done → [../Analyze-5/](../Analyze-5/)) |
 | Analyze-6 | Book V (done → [../Analyze-6/](../Analyze-6/)) |
 | Analyze-7 | SCD / Conformance / MVP (done → [../Analyze-7/](../Analyze-7/)) |
+| Analyze-8 | Epic 0/1 bootstrap (done → [../Analyze-8/](../Analyze-8/)) |

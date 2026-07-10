@@ -1,0 +1,10 @@
+[package]
+name = "aira-csu-context-basic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "AIRA basic context-basic CSU skeleton"
+
+[dependencies]

@@ -27,4 +27,5 @@
 |------|-------|
 | Analyze-1…6 | Books 0–V |
 | **Analyze-7** | **SCD / Conformance / Schema / RFC / MVP** |
-| Analyze-8+ | Runtime bootstrap (Issue #1+) — optional |
+| **Analyze-8** | **Epic 0/1 bootstrap (done → [../Analyze-8/](../Analyze-8/))** |
+| Analyze-9+ | Schema / runtime (Issue #8+) |
