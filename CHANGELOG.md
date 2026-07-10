@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.4 — 2026-07-10
+
+### Added
+
+- CSU Manifest / Registry / lifecycle (`aira-csu`)
+- In-process `Csu` trait, event dispatch, isolation baseline
+- CLI: `aira csu list|register`
+
 ## 0.1.3 — 2026-07-10
 
 ### Added

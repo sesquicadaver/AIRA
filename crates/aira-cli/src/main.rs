@@ -1,4 +1,4 @@
-//! AIRA CLI — schema validation + bootstrap status.
+//! AIRA CLI — schema validation + CSU registry + bootstrap status.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -6,6 +6,7 @@ use std::process::ExitCode;
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 
+use aira_csu::{CsuLifecycleState, CsuManifest, CsuRegistry};
 use aira_schema::{find_repo_root, SchemaRegistry};
 
 #[derive(Parser, Debug)]
@@ -27,6 +28,11 @@ enum Commands {
     Schema {
         #[command(subcommand)]
         command: SchemaCommands,
+    },
+    /// Local CSU registry commands.
+    Csu {
+        #[command(subcommand)]
+        command: CsuCommands,
     },
 }
 
@@ -55,6 +61,28 @@ enum SchemaCommands {
     },
 }
 
+#[derive(Subcommand, Debug)]
+enum CsuCommands {
+    /// List registered CSU from the local registry file.
+    List {
+        /// Registry JSON path (default: .aira/csu-registry.json).
+        #[arg(long)]
+        registry: Option<PathBuf>,
+    },
+    /// Register a CSU manifest into the local registry.
+    Register {
+        /// Path to CSU manifest JSON.
+        #[arg(long)]
+        manifest: PathBuf,
+        /// Registry JSON path (default: .aira/csu-registry.json).
+        #[arg(long)]
+        registry: Option<PathBuf>,
+        /// Activate after register (Registered→Verified→Active).
+        #[arg(long)]
+        activate: bool,
+    },
+}
+
 fn main() -> ExitCode {
     match run() {
         Ok(code) => code,
@@ -70,13 +98,13 @@ fn run() -> Result<ExitCode> {
     match cli.command {
         Commands::Status => {
             println!("aira {}", env!("CARGO_PKG_VERSION"));
-            println!("status: C0 Artifact/Event/Policy ready (Epic 4)");
-            println!("runtime: not started (CSU Epic 5+)");
+            println!("status: C1 CSU Runtime ready (Epic 5)");
+            println!("runtime: local CSU registry available (`aira csu list`)");
             Ok(ExitCode::SUCCESS)
         }
         Commands::Schema { command } => match command {
             SchemaCommands::List { schemas_dir } => {
-                let reg = load_registry(schemas_dir)?;
+                let reg = load_schema_registry(schemas_dir)?;
                 for id in reg.list_ids() {
                     println!("{id}");
                 }
@@ -88,7 +116,7 @@ fn run() -> Result<ExitCode> {
                 fixtures,
                 schemas_dir,
             } => {
-                let reg = load_registry(schemas_dir)?;
+                let reg = load_schema_registry(schemas_dir)?;
                 if let Some(fixtures_root) = fixtures {
                     let root = if fixtures_root.as_os_str() == "fixtures"
                         || fixtures_root.ends_with("fixtures")
@@ -125,10 +153,73 @@ fn run() -> Result<ExitCode> {
                 }
             }
         },
+        Commands::Csu { command } => match command {
+            CsuCommands::List { registry } => {
+                let path = registry.unwrap_or_else(default_csu_registry_path);
+                if !path.exists() {
+                    println!("(empty) no registry at {}", path.display());
+                    return Ok(ExitCode::SUCCESS);
+                }
+                let reg = CsuRegistry::load(&path).map_err(|e| anyhow::anyhow!("{e}"))?;
+                for entry in reg.list() {
+                    println!(
+                        "{}\t{:?}\t{:?}\t{}",
+                        entry.manifest.csu_id,
+                        entry.state,
+                        entry.manifest.csu_type,
+                        entry.manifest.csu_name
+                    );
+                }
+                Ok(ExitCode::SUCCESS)
+            }
+            CsuCommands::Register {
+                manifest,
+                registry,
+                activate,
+            } => {
+                let path = registry.unwrap_or_else(default_csu_registry_path);
+                let mut reg = if path.exists() {
+                    CsuRegistry::load(&path).map_err(|e| anyhow::anyhow!("{e}"))?
+                } else {
+                    CsuRegistry::new()
+                };
+                let text = std::fs::read_to_string(&manifest)
+                    .with_context(|| format!("read {}", manifest.display()))?;
+                let m: CsuManifest = serde_json::from_str(&text)
+                    .with_context(|| format!("parse {}", manifest.display()))?;
+                // Schema validate when possible.
+                if let Ok(schema_reg) = load_schema_registry(None) {
+                    let v = serde_json::to_value(&m)?;
+                    schema_reg
+                        .validate("aira:schema:csu:manifest:0.1", &v)
+                        .map_err(|e| anyhow::anyhow!("manifest schema: {e}"))?;
+                }
+                let id = m.csu_id.clone();
+                reg.register(m, None)
+                    .map_err(|e| anyhow::anyhow!("register: {e}"))?;
+                if activate {
+                    reg.activate(&id, None)
+                        .map_err(|e| anyhow::anyhow!("activate: {e}"))?;
+                }
+                reg.save(&path)
+                    .map_err(|e| anyhow::anyhow!("save registry: {e}"))?;
+                let state = reg
+                    .get(&id)
+                    .map(|e| e.state)
+                    .unwrap_or(CsuLifecycleState::Registered);
+                println!("registered {} state={state:?}", id);
+                println!("registry {}", path.display());
+                Ok(ExitCode::SUCCESS)
+            }
+        },
     }
 }
 
-fn load_registry(schemas_dir: Option<PathBuf>) -> Result<SchemaRegistry> {
+fn default_csu_registry_path() -> PathBuf {
+    PathBuf::from(".aira/csu-registry.json")
+}
+
+fn load_schema_registry(schemas_dir: Option<PathBuf>) -> Result<SchemaRegistry> {
     let dir = if let Some(d) = schemas_dir {
         d
     } else {

@@ -43,9 +43,11 @@ dependencies = [
 name = "aira-cli"
 version = "0.1.0"
 dependencies = [
+ "aira-csu",
  "aira-schema",
  "anyhow",
  "clap",
+ "serde_json",
 ]
 
 [[package]]
@@ -71,6 +73,17 @@ dependencies = [
 [[package]]
 name = "aira-csu"
 version = "0.1.0"
+dependencies = [
+ "aira-artifact",
+ "aira-event",
+ "aira-object",
+ "aira-policy",
+ "aira-schema",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
 
 [[package]]
 name = "aira-csu-artifact-basic"

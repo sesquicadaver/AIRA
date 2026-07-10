@@ -34,9 +34,9 @@ Problem Statement
 
 ## Status
 
-**Epic 0–4:** workspace + schemas + C0 Object Store + **Artifact / Event / Policy** (`aira-artifact`, `aira-event`, `aira-policy`, `InvariantChecker`).
+**Epic 0–5:** workspace + schemas + C0 Object/Artifact/Event/Policy + **CSU Runtime** (`aira-csu`, `aira csu`).
 
-CSU runtime is **not** complete yet (Issue Set #35+).
+Basic domain CSU set is **not** complete yet (Issue Set #41+).
 
 ## Build
 

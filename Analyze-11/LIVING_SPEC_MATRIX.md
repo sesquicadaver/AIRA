@@ -10,4 +10,4 @@
 | LS11-006 | #32 | `subscribe` + idempotent append | single delivery on duplicate id | mapped |
 | LS11-007 | #33 | `PolicyGate` | ALLOW/DENY/REQUIRE + PolicyEvaluated | mapped |
 | LS11-008 | #34 | `InvariantChecker` | PolicyDenied → InvariantViolation event | mapped |
-| LS11-009 | Epic 5 | — | pending Analyze-12 | open |
+| LS11-009 | Epic 5 | Analyze-12 | done → [../Analyze-12/](../Analyze-12/) | mapped |
