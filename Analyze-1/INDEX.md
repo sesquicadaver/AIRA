@@ -23,4 +23,4 @@
 | Book III | done → [Analyze-4](../Analyze-4/) |
 | Book IV | done → [Analyze-5](../Analyze-5/) |
 | Book V | done → [Analyze-6](../Analyze-6/) |
-| SCD / Conformance / MVP | частково в provenance |
+| SCD / Conformance / MVP | done → [Analyze-7](../Analyze-7/) |

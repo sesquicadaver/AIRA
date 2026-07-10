@@ -9,4 +9,4 @@
 | LS6-005 | §10 L0–L4 vs Book I L0–L3 | Naming | TF6-002 | open |
 | LS6-006 | SCD: Book V not in Standard formula | Governance | provenance | mapped |
 | LS6-007 | §29 AIRA-RES-* catalog | Research-only IDs | digest §9 | mapped |
-| LS6-008 | §33 → MVP Roadmap | Engineering next | TF6-005 | pending Analyze-7+ |
+| LS6-008 | §33 → MVP Roadmap | Engineering next | [Analyze-7](../Analyze-7/) | mapped |

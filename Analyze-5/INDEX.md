@@ -20,3 +20,4 @@
 | Analyze-1…4 | Book 0–III (normative) |
 | **Analyze-5** | **Book IV (reference)** |
 | Analyze-6 | Book V (done → [../Analyze-6/](../Analyze-6/)) |
+| Analyze-7 | SCD / Conformance / MVP (done → [../Analyze-7/](../Analyze-7/)) |
