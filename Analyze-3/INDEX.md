@@ -20,4 +20,5 @@
 | Analyze-1 | Book 0 |
 | Analyze-2 | Book I |
 | **Analyze-3** | **Book II** |
-| Analyze-4 | Book III (pending) |
+| Analyze-4 | Book III (done → [../Analyze-4/](../Analyze-4/)) |
+| Analyze-5 | Book IV (pending) |
