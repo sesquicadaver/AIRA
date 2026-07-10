@@ -28,6 +28,16 @@ dependencies = [
 [[package]]
 name = "aira-artifact"
 version = "0.1.0"
+dependencies = [
+ "aira-object",
+ "aira-schema",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
+]
 
 [[package]]
 name = "aira-cli"
@@ -46,7 +56,10 @@ version = "0.1.0"
 name = "aira-core"
 version = "0.1.0"
 dependencies = [
+ "aira-artifact",
+ "aira-event",
  "aira-object",
+ "aira-policy",
  "anyhow",
  "rusqlite",
  "serde",
@@ -86,6 +99,13 @@ version = "0.1.0"
 [[package]]
 name = "aira-event"
 version = "0.1.0"
+dependencies = [
+ "aira-object",
+ "aira-schema",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "aira-node"
@@ -110,6 +130,14 @@ dependencies = [
 [[package]]
 name = "aira-policy"
 version = "0.1.0"
+dependencies = [
+ "aira-event",
+ "aira-object",
+ "aira-schema",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "aira-schema"

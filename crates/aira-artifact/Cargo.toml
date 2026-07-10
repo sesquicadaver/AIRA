@@ -5,6 +5,16 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "AIRA artifact store skeleton"
+description = "AIRA content-addressed artifact store"
 
 [dependencies]
+aira-object = { path = "../aira-object" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+aira-schema = { path = "../aira-schema" }

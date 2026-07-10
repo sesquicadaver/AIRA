@@ -1,0 +1,150 @@
+//! Append-only in-memory event log with local subscriptions.
+
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+
+use aira_object::AiraRef;
+use thiserror::Error;
+
+use crate::descriptor::{EventDescriptor, EventType};
+
+/// Event log errors.
+#[derive(Debug, Error)]
+pub enum EventError {
+    #[error("event immutable: {0}")]
+    Immutable(AiraRef),
+    #[error("event not found: {0}")]
+    NotFound(AiraRef),
+    #[error("event missing signature")]
+    MissingSignature,
+}
+
+/// Opaque subscription id.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SubscriptionId(u64);
+
+type Handler = Arc<dyn Fn(&EventDescriptor) + Send + Sync>;
+
+/// Dyn-compatible sink for appending events (Policy / InvariantChecker).
+pub trait EventSink {
+    fn append(&mut self, event: EventDescriptor) -> Result<(), EventError>;
+}
+
+/// Event log query API (object/artifact indexes).
+pub trait EventLog: EventSink {
+    fn mutate(&mut self, event_id: &AiraRef) -> Result<(), EventError>;
+    fn query_by_object_ref(&self, object_ref: &AiraRef) -> Vec<EventDescriptor>;
+    fn query_by_artifact_ref(&self, artifact_ref: &AiraRef) -> Vec<EventDescriptor>;
+}
+
+/// Local memory event log (no global total order required).
+pub struct MemoryEventLog {
+    events: Vec<EventDescriptor>,
+    seen_ids: HashSet<String>,
+    by_object: HashMap<String, Vec<usize>>,
+    by_artifact: HashMap<String, Vec<usize>>,
+    subscribers: HashMap<EventType, Vec<(SubscriptionId, Handler)>>,
+    next_sub: u64,
+}
+
+impl MemoryEventLog {
+    pub fn new() -> Self {
+        Self {
+            events: Vec::new(),
+            seen_ids: HashSet::new(),
+            by_object: HashMap::new(),
+            by_artifact: HashMap::new(),
+            subscribers: HashMap::new(),
+            next_sub: 1,
+        }
+    }
+
+    pub fn all(&self) -> &[EventDescriptor] {
+        &self.events
+    }
+
+    /// Subscribe by event type (local runtime only; not part of dyn EventLog).
+    pub fn subscribe<F>(&mut self, event_type: EventType, handler: F) -> SubscriptionId
+    where
+        F: Fn(&EventDescriptor) + Send + Sync + 'static,
+    {
+        let id = SubscriptionId(self.next_sub);
+        self.next_sub += 1;
+        self.subscribers
+            .entry(event_type)
+            .or_default()
+            .push((id, Arc::new(handler)));
+        id
+    }
+}
+
+impl Default for MemoryEventLog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl EventSink for MemoryEventLog {
+    fn append(&mut self, event: EventDescriptor) -> Result<(), EventError> {
+        if event.signature.signature_value.is_empty() {
+            return Err(EventError::MissingSignature);
+        }
+        let id = event.event_id.as_str().to_string();
+        if self.seen_ids.contains(&id) {
+            // Idempotent: duplicate delivery has no additional semantic effect.
+            return Ok(());
+        }
+
+        let idx = self.events.len();
+        for o in &event.object_refs {
+            self.by_object
+                .entry(o.as_str().to_string())
+                .or_default()
+                .push(idx);
+        }
+        for a in &event.artifact_refs {
+            self.by_artifact
+                .entry(a.as_str().to_string())
+                .or_default()
+                .push(idx);
+        }
+
+        if let Some(subs) = self.subscribers.get(&event.event_type) {
+            for (_, handler) in subs {
+                handler(&event);
+            }
+        }
+
+        self.seen_ids.insert(id);
+        self.events.push(event);
+        Ok(())
+    }
+}
+
+impl EventLog for MemoryEventLog {
+    fn mutate(&mut self, event_id: &AiraRef) -> Result<(), EventError> {
+        Err(EventError::Immutable(event_id.clone()))
+    }
+
+    fn query_by_object_ref(&self, object_ref: &AiraRef) -> Vec<EventDescriptor> {
+        self.by_object
+            .get(object_ref.as_str())
+            .map(|idxs| {
+                idxs.iter()
+                    .filter_map(|i| self.events.get(*i).cloned())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    fn query_by_artifact_ref(&self, artifact_ref: &AiraRef) -> Vec<EventDescriptor> {
+        self.by_artifact
+            .get(artifact_ref.as_str())
+            .map(|idxs| {
+                idxs.iter()
+                    .filter_map(|i| self.events.get(*i).cloned())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+}

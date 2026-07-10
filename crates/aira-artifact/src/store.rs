@@ -1,0 +1,188 @@
+//! Content-addressed artifact store with supersession metadata.
+
+use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use aira_object::{AiraRef, ContentHash};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+use crate::descriptor::ArtifactDescriptor;
+
+/// Artifact store errors.
+#[derive(Debug, Error)]
+pub enum ArtifactError {
+    #[error("hash mismatch: expected {expected}, got {actual}")]
+    HashMismatch { expected: String, actual: String },
+    #[error("artifact immutable: {0}")]
+    Immutable(AiraRef),
+    #[error("artifact not found: {0}")]
+    NotFound(AiraRef),
+    #[error("storage error: {0}")]
+    Storage(String),
+}
+
+/// Result of publishing an artifact.
+#[derive(Debug, Clone)]
+pub struct PublishResult {
+    pub descriptor: ArtifactDescriptor,
+    pub cas_path: PathBuf,
+}
+
+/// Supersession record (old unchanged; new artifact created).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SupersessionMeta {
+    pub previous: AiraRef,
+    pub current: AiraRef,
+}
+
+/// Artifact store API.
+pub trait ArtifactStore {
+    fn publish(
+        &mut self,
+        descriptor: ArtifactDescriptor,
+        payload: &[u8],
+    ) -> Result<PublishResult, ArtifactError>;
+
+    fn resolve(
+        &self,
+        artifact_id: &AiraRef,
+    ) -> Result<(ArtifactDescriptor, Vec<u8>), ArtifactError>;
+
+    fn replace_payload(
+        &mut self,
+        artifact_id: &AiraRef,
+        _payload: &[u8],
+    ) -> Result<(), ArtifactError> {
+        Err(ArtifactError::Immutable(artifact_id.clone()))
+    }
+
+    fn supersede(
+        &mut self,
+        previous: &AiraRef,
+        new_descriptor: ArtifactDescriptor,
+        payload: &[u8],
+    ) -> Result<SupersessionMeta, ArtifactError>;
+}
+
+/// Filesystem CAS artifact store.
+pub struct CasArtifactStore {
+    root: PathBuf,
+    /// artifact_id → descriptor
+    index: HashMap<String, ArtifactDescriptor>,
+    /// previous_id → current_id
+    supersessions: HashMap<String, String>,
+}
+
+impl CasArtifactStore {
+    pub fn open(root: impl AsRef<Path>) -> Result<Self, ArtifactError> {
+        let root = root.as_ref().to_path_buf();
+        fs::create_dir_all(root.join("sha256"))
+            .map_err(|e| ArtifactError::Storage(e.to_string()))?;
+        Ok(Self {
+            root,
+            index: HashMap::new(),
+            supersessions: HashMap::new(),
+        })
+    }
+
+    fn cas_path_for(root: &Path, hash: &ContentHash) -> Result<PathBuf, ArtifactError> {
+        let s = hash.as_str();
+        let hex = s
+            .strip_prefix("sha256:")
+            .ok_or_else(|| ArtifactError::Storage(format!("unsupported hash {s}")))?;
+        if hex.len() < 4 {
+            return Err(ArtifactError::Storage("hash too short".into()));
+        }
+        Ok(root
+            .join("sha256")
+            .join(&hex[0..2])
+            .join(&hex[2..4])
+            .join(format!("{hex}.bin")))
+    }
+}
+
+impl ArtifactStore for CasArtifactStore {
+    fn publish(
+        &mut self,
+        mut descriptor: ArtifactDescriptor,
+        payload: &[u8],
+    ) -> Result<PublishResult, ArtifactError> {
+        let actual = ContentHash::sha256_bytes(payload);
+        if actual != descriptor.content_hash {
+            return Err(ArtifactError::HashMismatch {
+                expected: descriptor.content_hash.as_str().to_string(),
+                actual: actual.as_str().to_string(),
+            });
+        }
+        let key = descriptor.artifact_id.as_str().to_string();
+        if self.index.contains_key(&key) {
+            return Err(ArtifactError::Immutable(descriptor.artifact_id));
+        }
+
+        let cas_path = Self::cas_path_for(&self.root, &descriptor.content_hash)?;
+        if let Some(parent) = cas_path.parent() {
+            fs::create_dir_all(parent).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+        }
+        if !cas_path.exists() {
+            fs::write(&cas_path, payload).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+        }
+        descriptor.content_ref = format!("cas://{}", descriptor.content_hash.as_str());
+
+        let meta_path = cas_path.with_extension("json");
+        // Only write descriptor sidecar if absent (same CAS content may be shared).
+        if !meta_path.exists() {
+            let json = serde_json::to_string_pretty(&descriptor)
+                .map_err(|e| ArtifactError::Storage(e.to_string()))?;
+            fs::write(&meta_path, json).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+        }
+
+        self.index.insert(key, descriptor.clone());
+        Ok(PublishResult {
+            descriptor,
+            cas_path,
+        })
+    }
+
+    fn resolve(
+        &self,
+        artifact_id: &AiraRef,
+    ) -> Result<(ArtifactDescriptor, Vec<u8>), ArtifactError> {
+        let desc = self
+            .index
+            .get(artifact_id.as_str())
+            .cloned()
+            .ok_or_else(|| ArtifactError::NotFound(artifact_id.clone()))?;
+        let path = Self::cas_path_for(&self.root, &desc.content_hash)?;
+        let bytes = fs::read(&path).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+        let actual = ContentHash::sha256_bytes(&bytes);
+        if actual != desc.content_hash {
+            return Err(ArtifactError::HashMismatch {
+                expected: desc.content_hash.as_str().to_string(),
+                actual: actual.as_str().to_string(),
+            });
+        }
+        Ok((desc, bytes))
+    }
+
+    fn supersede(
+        &mut self,
+        previous: &AiraRef,
+        new_descriptor: ArtifactDescriptor,
+        payload: &[u8],
+    ) -> Result<SupersessionMeta, ArtifactError> {
+        if !self.index.contains_key(previous.as_str()) {
+            return Err(ArtifactError::NotFound(previous.clone()));
+        }
+        let published = self.publish(new_descriptor, payload)?;
+        self.supersessions.insert(
+            previous.as_str().to_string(),
+            published.descriptor.artifact_id.as_str().to_string(),
+        );
+        Ok(SupersessionMeta {
+            previous: previous.clone(),
+            current: published.descriptor.artifact_id,
+        })
+    }
+}

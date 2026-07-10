@@ -70,8 +70,8 @@ fn run() -> Result<ExitCode> {
     match cli.command {
         Commands::Status => {
             println!("aira {}", env!("CARGO_PKG_VERSION"));
-            println!("status: C0 object store ready (Epic 3)");
-            println!("runtime: not started");
+            println!("status: C0 Artifact/Event/Policy ready (Epic 4)");
+            println!("runtime: not started (CSU Epic 5+)");
             Ok(ExitCode::SUCCESS)
         }
         Commands::Schema { command } => match command {

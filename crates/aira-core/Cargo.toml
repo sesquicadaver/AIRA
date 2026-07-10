@@ -9,6 +9,9 @@ description = "AIRA core runtime: object store, invariants"
 
 [dependencies]
 aira-object = { path = "../aira-object" }
+aira-artifact = { path = "../aira-artifact" }
+aira-event = { path = "../aira-event" }
+aira-policy = { path = "../aira-policy" }
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

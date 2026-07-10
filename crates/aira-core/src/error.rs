@@ -9,6 +9,12 @@ use aira_object::AiraRef;
 pub enum InvariantViolation {
     #[error("object immutability violated for {object_id}")]
     ObjectImmutability { object_id: AiraRef },
+    #[error("artifact immutability violated for {artifact_id}")]
+    ArtifactImmutability { artifact_id: AiraRef },
+    #[error("event signature missing for {event_id}")]
+    MissingEventSignature { event_id: AiraRef },
+    #[error("policy denied action for {subject}")]
+    PolicyDenied { subject: AiraRef },
 }
 
 /// Core runtime errors.

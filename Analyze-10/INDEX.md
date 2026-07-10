@@ -20,4 +20,6 @@
 | 26 | `SqliteObjectStore` |
 
 ## Next
-Epic 4 Artifact/Event/Policy (#27–#34)
+Analyze-11 done → [../Analyze-11/](../Analyze-11/)
+
+Next: Epic 5 CSU Runtime (#35+)

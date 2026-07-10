@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3 — 2026-07-10
+
+### Added
+
+- Content-addressed `CasArtifactStore` + `ArtifactDescriptor` (Epic 4)
+- Append-only `MemoryEventLog` with `EventSink` / subscriptions
+- `PolicyGate` ALLOW|DENY|REQUIRE + `PolicyEvaluated` events
+- `InvariantChecker` emitting `InvariantViolation` events
+
 ## 0.1.2 — 2026-07-10
 
 ### Added
