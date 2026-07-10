@@ -5,11 +5,13 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "AIRA CLI skeleton"
+description = "AIRA CLI"
 
 [[bin]]
 name = "aira"
 path = "src/main.rs"
 
 [dependencies]
+anyhow = { workspace = true }
 clap = { workspace = true }
+aira-schema = { path = "../aira-schema" }

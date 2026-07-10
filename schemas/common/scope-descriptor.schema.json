@@ -1,0 +1,25 @@
+{
+  "$id": "aira:schema:common:scope-descriptor:0.1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "scope_type"
+  ],
+  "properties": {
+    "scope_type": {
+      "type": "string",
+      "enum": [
+        "local",
+        "session",
+        "user",
+        "federation",
+        "domain",
+        "global",
+        "custom"
+      ]
+    },
+    "description": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "csu_id": "aira:csu:execution.basic",
+  "csu_name": "execution-basic",
+  "csu_type": "Execution",
+  "csu_version": "0.1.0",
+  "abi_version": "0.1",
+  "manifest_version": "0.1",
+  "identity_ref": "aira:identity:local-test",
+  "publisher_identity": "aira:identity:local-test",
+  "capabilities": [
+    {
+      "capability_id": "aira:capability:math.eval.safe",
+      "capability_type": "math.eval.safe",
+      "schema_version": "0.1",
+      "provider_csu": "aira:csu:execution.basic",
+      "input_artifact_types": [
+        "ExecutionArtifact"
+      ],
+      "output_artifact_types": [
+        "ExecutionArtifact"
+      ],
+      "constraints": {
+        "latency_max_ms": 100
+      },
+      "scope": {
+        "scope_type": "local",
+        "description": "fixture"
+      },
+      "policy_refs": [
+        "aira:policy:default"
+      ],
+      "signature": {
+        "algorithm": "ed25519",
+        "key_ref": "aira:identity:local-test",
+        "signature_value": "TESTSIG"
+      },
+      "confidence": 1.0
+    }
+  ],
+  "permissions": [],
+  "event_subscriptions": [
+    {
+      "event_type": "CapsuleCreated"
+    }
+  ],
+  "event_outputs": [
+    {
+      "event_type": "CapsuleCompleted"
+    }
+  ],
+  "artifact_inputs": [],
+  "artifact_outputs": [],
+  "policy_refs": [
+    "aira:policy:default"
+  ],
+  "sandbox": {
+    "filesystem": "none",
+    "network": "none",
+    "process": "in_process",
+    "device_access": "none",
+    "secret_access": "none"
+  },
+  "created_at": "2026-07-10T12:00:00Z"
+}

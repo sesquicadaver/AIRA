@@ -1,0 +1,127 @@
+{
+  "$id": "aira:schema:conformance:report:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "implementation",
+    "aira",
+    "results",
+    "failures",
+    "signature"
+  ],
+  "properties": {
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "aira": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "standard_version",
+        "profile"
+      ],
+      "properties": {
+        "standard_version": {
+          "type": "string"
+        },
+        "profile": {
+          "type": "string",
+          "enum": [
+            "C0",
+            "C1",
+            "C2",
+            "C3",
+            "C4",
+            "C5"
+          ]
+        }
+      }
+    },
+    "results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total",
+        "passed",
+        "failed",
+        "skipped",
+        "unsupported",
+        "invalid"
+      ],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "passed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skipped": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unsupported": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "test_id",
+          "reason",
+          "evidence_refs"
+        ],
+        "properties": {
+          "test_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "$ref": "aira:schema:common:ref:0.1"
+            }
+          }
+        }
+      }
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}

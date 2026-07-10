@@ -1,0 +1,209 @@
+{
+  "$id": "aira:schema:csu:manifest:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "csu_id",
+    "csu_name",
+    "csu_type",
+    "csu_version",
+    "abi_version",
+    "manifest_version",
+    "identity_ref",
+    "publisher_identity",
+    "capabilities",
+    "permissions",
+    "event_subscriptions",
+    "event_outputs",
+    "artifact_inputs",
+    "artifact_outputs",
+    "policy_refs",
+    "sandbox",
+    "signature",
+    "created_at"
+  ],
+  "properties": {
+    "csu_id": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "csu_name": {
+      "type": "string"
+    },
+    "csu_type": {
+      "type": "string",
+      "enum": [
+        "Context",
+        "Reduction",
+        "Evidence",
+        "Epistemic",
+        "Execution",
+        "Verification",
+        "Artifact",
+        "Discovery",
+        "Federation",
+        "Settlement",
+        "Optimization",
+        "PHM",
+        "Evolution",
+        "Research",
+        "HumanInteraction",
+        "Custom"
+      ]
+    },
+    "csu_version": {
+      "type": "string"
+    },
+    "abi_version": {
+      "type": "string"
+    },
+    "manifest_version": {
+      "type": "string"
+    },
+    "identity_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "publisher_identity": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:capability:descriptor:0.1"
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "event_subscriptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "event_outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "artifact_inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "artifact_outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "policy_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "resource_requirements": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filesystem",
+        "network",
+        "process",
+        "device_access",
+        "secret_access"
+      ],
+      "properties": {
+        "filesystem": {
+          "type": "string",
+          "enum": [
+            "none",
+            "read_only",
+            "scoped",
+            "full"
+          ]
+        },
+        "network": {
+          "type": "string",
+          "enum": [
+            "none",
+            "scoped",
+            "full"
+          ]
+        },
+        "process": {
+          "type": "string",
+          "enum": [
+            "in_process",
+            "subprocess",
+            "wasm",
+            "container",
+            "vm"
+          ]
+        },
+        "device_access": {
+          "type": "string",
+          "enum": [
+            "none",
+            "scoped",
+            "full"
+          ]
+        },
+        "secret_access": {
+          "type": "string",
+          "enum": [
+            "none",
+            "scoped",
+            "full"
+          ]
+        }
+      }
+    },
+    "lifecycle_hooks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "init": {
+          "type": "boolean"
+        },
+        "activate": {
+          "type": "boolean"
+        },
+        "suspend": {
+          "type": "boolean"
+        },
+        "resume": {
+          "type": "boolean"
+        },
+        "shutdown": {
+          "type": "boolean"
+        }
+      }
+    },
+    "provenance_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    },
+    "created_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    }
+  }
+}

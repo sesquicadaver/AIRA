@@ -1,0 +1,94 @@
+{
+  "valid": [
+    {
+      "schema": "aira:schema:common:ref:0.1",
+      "file": "fixtures/valid/common/ref.json"
+    },
+    {
+      "schema": "aira:schema:common:hash:0.1",
+      "file": "fixtures/valid/common/hash.json"
+    },
+    {
+      "schema": "aira:schema:common:timestamp:0.1",
+      "file": "fixtures/valid/common/timestamp.json"
+    },
+    {
+      "schema": "aira:schema:common:signature:0.1",
+      "file": "fixtures/valid/common/signature.json"
+    },
+    {
+      "schema": "aira:schema:common:scope-descriptor:0.1",
+      "file": "fixtures/valid/common/scope-descriptor.json"
+    },
+    {
+      "schema": "aira:schema:core:object-descriptor:0.1",
+      "file": "fixtures/valid/core/object-descriptor.json"
+    },
+    {
+      "schema": "aira:schema:core:problem-statement:0.1",
+      "file": "fixtures/valid/core/problem-statement.json"
+    },
+    {
+      "schema": "aira:schema:artifact:artifact-descriptor:0.1",
+      "file": "fixtures/valid/artifact/artifact-descriptor.json"
+    },
+    {
+      "schema": "aira:schema:event:event-descriptor:0.1",
+      "file": "fixtures/valid/event/event-descriptor.json"
+    },
+    {
+      "schema": "aira:schema:policy:query:0.1",
+      "file": "fixtures/valid/policy/query.json"
+    },
+    {
+      "schema": "aira:schema:policy:decision:0.1",
+      "file": "fixtures/valid/policy/decision.json"
+    },
+    {
+      "schema": "aira:schema:capability:descriptor:0.1",
+      "file": "fixtures/valid/capability/capability-descriptor.json"
+    },
+    {
+      "schema": "aira:schema:csu:manifest:0.1",
+      "file": "fixtures/valid/csu/manifest.json"
+    },
+    {
+      "schema": "aira:schema:execution:capsule:0.1",
+      "file": "fixtures/valid/execution/capsule.json"
+    },
+    {
+      "schema": "aira:schema:evidence:evidence-artifact:0.1",
+      "file": "fixtures/valid/evidence/evidence-artifact.json"
+    },
+    {
+      "schema": "aira:schema:result:verified-result-artifact:0.1",
+      "file": "fixtures/valid/result/verified-result-artifact.json"
+    },
+    {
+      "schema": "aira:schema:conformance:report:0.1",
+      "file": "fixtures/valid/conformance/report.json"
+    }
+  ],
+  "invalid": [
+    {
+      "schema": "aira:schema:common:ref:0.1",
+      "file": "fixtures/invalid/common/ref.json"
+    },
+    {
+      "schema": "aira:schema:common:hash:0.1",
+      "file": "fixtures/invalid/common/hash.json"
+    },
+    {
+      "schema": "aira:schema:core:object-descriptor:0.1",
+      "file": "fixtures/invalid/core/object-descriptor-gpu.json"
+    },
+    {
+      "schema": "aira:schema:csu:manifest:0.1",
+      "file": "fixtures/invalid/csu/manifest-unsigned.json"
+    },
+    {
+      "schema": "aira:schema:result:verified-result-artifact:0.1",
+      "file": "fixtures/invalid/result/verified-result-missing-evidence.json"
+    }
+  ]
+}

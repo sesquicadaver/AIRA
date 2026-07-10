@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1 — 2026-07-10
+
+### Added
+
+- Canonical terminology guardrail (`docs/canonical-terminology.md`)
+- Schema Pack JSON schemas under `schemas/` (C0/C1 + conformance)
+- `aira-schema` registry with fixture validation
+- CLI: `aira schema list|validate`
+
 ## 0.1.0 — 2026-07-10
 
 ### Added

@@ -1,0 +1,37 @@
+{
+  "$id": "aira:schema:policy:decision:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "decision",
+    "requirements",
+    "reason_refs",
+    "signature"
+  ],
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": [
+        "ALLOW",
+        "DENY",
+        "REQUIRE"
+      ]
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "reason_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}

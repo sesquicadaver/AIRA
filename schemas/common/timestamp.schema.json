@@ -1,0 +1,5 @@
+{
+  "$id": "aira:schema:common:timestamp:0.1",
+  "type": "string",
+  "format": "date-time"
+}

@@ -1,0 +1,20 @@
+{
+  "event_id": "aira:event:01E1",
+  "event_type": "ProblemSubmitted",
+  "schema_version": "0.1",
+  "producer_identity": "aira:identity:local-test",
+  "causal_refs": [],
+  "object_refs": [
+    "aira:problem:01TESTPROBLEM"
+  ],
+  "artifact_refs": [],
+  "policy_refs": [],
+  "payload_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "payload_ref": null,
+  "created_at": "2026-07-10T12:00:00Z",
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}

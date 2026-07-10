@@ -1,0 +1,97 @@
+{
+  "$id": "aira:schema:event:event-descriptor:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "producer_identity",
+    "causal_refs",
+    "object_refs",
+    "artifact_refs",
+    "policy_refs",
+    "payload_hash",
+    "created_at",
+    "signature"
+  ],
+  "properties": {
+    "event_id": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "ProblemSubmitted",
+        "ContextResolved",
+        "ReductionCompleted",
+        "CapsuleCreated",
+        "CapsuleBound",
+        "CapsuleCompleted",
+        "CapsuleFailed",
+        "VerificationCompleted",
+        "VerificationFailed",
+        "ResultPublished",
+        "ArtifactPublished",
+        "ArtifactResolved",
+        "ArtifactInvalid",
+        "ArtifactSuperseded",
+        "CapabilityRegistered",
+        "PolicyEvaluated",
+        "CSURegistered",
+        "CSUSuspended",
+        "CSUFailed",
+        "InvariantViolation",
+        "FailureEvidenceCreated",
+        "ResearchArtifactCreated",
+        "ArtifactPromotionCandidate",
+        "CustomEvent"
+      ]
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "producer_identity": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "causal_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "object_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "artifact_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "policy_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "payload_hash": {
+      "$ref": "aira:schema:common:hash:0.1"
+    },
+    "payload_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}

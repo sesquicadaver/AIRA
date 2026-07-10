@@ -1,0 +1,66 @@
+{
+  "$id": "aira:schema:artifact:context-artifact:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "context_id",
+    "problem_statement_ref",
+    "context_type",
+    "resolved_factors",
+    "unresolved_factors",
+    "confidence",
+    "scope",
+    "evidence_refs",
+    "provenance_refs"
+  ],
+  "properties": {
+    "context_id": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "problem_statement_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "context_type": {
+      "type": "string",
+      "enum": [
+        "session",
+        "user",
+        "domain",
+        "federation",
+        "global",
+        "execution",
+        "custom"
+      ]
+    },
+    "resolved_factors": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "unresolved_factors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "scope": {
+      "$ref": "aira:schema:common:scope-descriptor:0.1"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "provenance_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    }
+  }
+}

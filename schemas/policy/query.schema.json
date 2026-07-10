@@ -1,0 +1,54 @@
+{
+  "$id": "aira:schema:policy:query:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "subject",
+    "action",
+    "object_refs",
+    "context_refs",
+    "evidence_refs",
+    "requested_at"
+  ],
+  "properties": {
+    "subject": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "csu_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "action": {
+      "type": "string"
+    },
+    "object_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "artifact_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "context_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "requested_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    }
+  }
+}

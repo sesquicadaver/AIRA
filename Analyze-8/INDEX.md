@@ -25,4 +25,7 @@
 
 ## Next
 
-Issue #8 terminology guardrail → Epic 2 Schema Registry (#9+)
+Analyze-9 done → [../Analyze-9/](../Analyze-9/) (Issue #8–#21)
+
+Next: Epic 3 C0 Core (#22+)
+| Analyze-9 | Schema registry Epic 2 (done → [../Analyze-9/](../Analyze-9/)) |

@@ -1,0 +1,25 @@
+{
+  "implementation": {
+    "name": "aira-node",
+    "version": "0.1.0",
+    "commit": null
+  },
+  "aira": {
+    "standard_version": "0.1",
+    "profile": "C0"
+  },
+  "results": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "unsupported": 0,
+    "invalid": 0
+  },
+  "failures": [],
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}

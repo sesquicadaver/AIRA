@@ -1,0 +1,12 @@
+{
+  "decision": "ALLOW",
+  "requirements": [],
+  "reason_refs": [
+    "aira:policy:default"
+  ],
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}

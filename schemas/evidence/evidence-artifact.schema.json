@@ -1,0 +1,68 @@
+{
+  "$id": "aira:schema:evidence:evidence-artifact:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidence_id",
+    "evidence_type",
+    "claim_refs",
+    "source_refs",
+    "observation",
+    "context_refs",
+    "provenance_refs",
+    "created_at",
+    "signature"
+  ],
+  "properties": {
+    "evidence_id": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "evidence_type": {
+      "type": "string",
+      "enum": [
+        "Observation",
+        "ExecutionEvidence",
+        "VerificationEvidence",
+        "FailureEvidence",
+        "TelemetryEvidence",
+        "HumanReviewEvidence",
+        "ExternalEvidence",
+        "CounterEvidence"
+      ]
+    },
+    "claim_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "context_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "provenance_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "created_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}

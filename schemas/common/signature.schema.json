@@ -1,0 +1,21 @@
+{
+  "$id": "aira:schema:common:signature:0.1",
+  "type": "object",
+  "required": [
+    "algorithm",
+    "key_ref",
+    "signature_value"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "algorithm": {
+      "type": "string"
+    },
+    "key_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "signature_value": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "$id": "aira:schema:core:problem-statement:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "problem_id",
+    "statement",
+    "submitted_by",
+    "created_at",
+    "input_artifact_refs",
+    "constraints",
+    "policy_refs"
+  ],
+  "properties": {
+    "problem_id": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 1
+    },
+    "submitted_by": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "created_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "input_artifact_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "max_cost": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max_latency_ms": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "privacy_class": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "required_confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "policy_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    }
+  }
+}

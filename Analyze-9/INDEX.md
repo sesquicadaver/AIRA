@@ -1,0 +1,22 @@
+# INDEX — Analyze-9
+
+| Артефакт | Статус |
+|----------|--------|
+| [README.md](README.md) | done |
+| [RULES.md](RULES.md) | done |
+| [LIVING_SPEC_MATRIX.md](LIVING_SPEC_MATRIX.md) | done |
+| [provenance/schema-scope.md](provenance/schema-scope.md) | done |
+| [todo/TODO_FIXME.md](todo/TODO_FIXME.md) | done |
+| [verification/CHECKLIST.md](verification/CHECKLIST.md) | done |
+
+## Issues
+
+| # | Статус |
+|---|--------|
+| 8 terminology | done → `docs/canonical-terminology.md` |
+| 9–19 schemas | done → `schemas/**` |
+| 20 aira-schema | done |
+| 21 CLI schema | done |
+
+## Next
+Epic 3 C0 Core Runtime (#22+)

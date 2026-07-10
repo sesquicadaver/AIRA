@@ -1,0 +1,65 @@
+{
+  "$id": "aira:schema:core:object-descriptor:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "object_id",
+    "object_type",
+    "schema_version",
+    "created_at",
+    "producer_identity",
+    "policy_refs",
+    "provenance_refs",
+    "content_hash",
+    "signature"
+  ],
+  "properties": {
+    "object_id": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "object_type": {
+      "type": "string",
+      "enum": [
+        "ProblemStatement",
+        "Context",
+        "Evidence",
+        "EpistemicStatus",
+        "ExecutionIntent",
+        "ExecutionCapsule",
+        "Capability",
+        "Artifact",
+        "Event",
+        "Policy",
+        "CSU",
+        "VerifiedResultArtifact"
+      ]
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "created_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "producer_identity": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "policy_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "provenance_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "content_hash": {
+      "$ref": "aira:schema:common:hash:0.1"
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "capability_id": "aira:capability:math.eval.safe",
+  "capability_type": "math.eval.safe",
+  "schema_version": "0.1",
+  "provider_csu": "aira:csu:execution.basic",
+  "input_artifact_types": [
+    "ExecutionArtifact"
+  ],
+  "output_artifact_types": [
+    "ExecutionArtifact"
+  ],
+  "constraints": {
+    "latency_max_ms": 100
+  },
+  "scope": {
+    "scope_type": "local",
+    "description": "fixture"
+  },
+  "policy_refs": [
+    "aira:policy:default"
+  ],
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  },
+  "confidence": 1.0
+}

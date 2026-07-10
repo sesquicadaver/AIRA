@@ -1,0 +1,12 @@
+{
+  "subject": "aira:csu:ctx.basic",
+  "csu_ref": "aira:csu:ctx.basic",
+  "action": "read_artifact",
+  "object_refs": [],
+  "artifact_refs": [
+    "aira:artifact:sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  ],
+  "context_refs": [],
+  "evidence_refs": [],
+  "requested_at": "2026-07-10T12:00:00Z"
+}

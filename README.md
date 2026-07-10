@@ -34,23 +34,22 @@ Problem Statement
 
 ## Status
 
-**Epic 0 / Epic 1 snapshot:** Cargo workspace + toolchain + CI + `specs/` copies.
+**Epic 0–2:** workspace + `specs/` + **schema registry** (`schemas/`, `aira schema …`).
 
 Runtime Object/Event/Artifact/CSU logic is **not** implemented yet (Issue Set #22+).
 
 ## Build
 
 ```bash
-cargo metadata
 cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
+cargo run -p aira-cli -- schema validate --fixtures fixtures
 ```
-
-CLI skeleton:
 
 ```bash
 cargo run -p aira-cli -- status
+cargo run -p aira-cli -- schema list
 ```
 
 ## License

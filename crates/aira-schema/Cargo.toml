@@ -5,6 +5,14 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "AIRA schema validation skeleton"
+description = "AIRA schema registry and JSON Schema validation"
 
 [dependencies]
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+jsonschema = { workspace = true }
+walkdir = { workspace = true }
+
+[dev-dependencies]

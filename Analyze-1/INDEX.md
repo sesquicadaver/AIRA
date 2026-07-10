@@ -26,3 +26,4 @@
 | SCD / Conformance / MVP | done → [Analyze-7](../Analyze-7/) |
 
 | Analyze-8 | Epic 0/1 bootstrap (done → [../Analyze-8/](../Analyze-8/)) |
+| Analyze-9 | Schema registry Epic 2 (done → [../Analyze-9/](../Analyze-9/)) |

@@ -1,0 +1,58 @@
+{
+  "$id": "aira:schema:execution:capsule:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "capsule_id",
+    "problem_statement_ref",
+    "context_ref",
+    "required_capabilities",
+    "input_artifact_refs",
+    "constraints",
+    "policy_refs",
+    "provenance_refs",
+    "signature"
+  ],
+  "properties": {
+    "capsule_id": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "problem_statement_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "context_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "required_capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:capability:descriptor:0.1"
+      }
+    },
+    "input_artifact_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "policy_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "provenance_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}
