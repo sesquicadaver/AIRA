@@ -1,23 +1,23 @@
-# INDEX — Analyze-2
+# INDEX — Analyze-3
 
 | Артефакт | Тип | Статус |
 |----------|-----|--------|
 | [README.md](README.md) | meta | done |
 | [RULES.md](RULES.md) | meta | done |
 | [LIVING_SPEC_MATRIX.md](LIVING_SPEC_MATRIX.md) | living-spec | done |
-| [book-analyses/book-i-core-abi.md](book-analyses/book-i-core-abi.md) | analysis | done |
-| [matrices/meditation-to-book-i.md](matrices/meditation-to-book-i.md) | matrix | done |
-| [provenance/book-i-scope.md](provenance/book-i-scope.md) | provenance | done |
+| [book-analyses/book-ii-protocols.md](book-analyses/book-ii-protocols.md) | analysis | done |
+| [matrices/meditation-to-book-ii.md](matrices/meditation-to-book-ii.md) | matrix | done |
+| [provenance/book-ii-scope.md](provenance/book-ii-scope.md) | provenance | done |
 | [todo/TODO_FIXME.md](todo/TODO_FIXME.md) | backlog | done |
 | [verification/CHECKLIST.md](verification/CHECKLIST.md) | verify | done |
 | [verification/deny-originals.sh](verification/deny-originals.sh) | verify | done |
 | [verification/deny-foreign-workspace.sh](verification/deny-foreign-workspace.sh) | verify | done |
 
-## Ланцюг аналізів
+## Ланцюг
 
 | Цикл | Книга |
 |------|-------|
 | Analyze-1 | Book 0 |
-| **Analyze-2** | **Book I** |
-| Analyze-3 | Book II (done → [../Analyze-3/](../Analyze-3/)) |
+| Analyze-2 | Book I |
+| **Analyze-3** | **Book II** |
 | Analyze-4 | Book III (pending) |

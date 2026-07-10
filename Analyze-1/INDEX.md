@@ -19,8 +19,8 @@
 |-------|-------------------|
 | Book 0 | done |
 | Book I | done → [Analyze-2](../Analyze-2/) |
-| Book II | pending → Analyze-3 |
-| Book III | pending |
+| Book II | done → [Analyze-3](../Analyze-3/) |
+| Book III | pending → Analyze-4 |
 | Book IV | pending |
 | Book V | pending |
 | SCD / Conformance / MVP | частково в provenance |
