@@ -22,4 +22,4 @@
 | Analyze-3 | Book II |
 | **Analyze-4** | **Book III** |
 | Analyze-5 | Book IV (done → [../Analyze-5/](../Analyze-5/)) |
-| Analyze-6 | Book V (pending) |
+| Analyze-6 | Book V (done → [../Analyze-6/](../Analyze-6/)) |
