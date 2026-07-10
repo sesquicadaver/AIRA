@@ -1,13 +1,13 @@
-# INDEX — Analyze-4
+# INDEX — Analyze-5
 
 | Артефакт | Тип | Статус |
 |----------|-----|--------|
 | [README.md](README.md) | meta | done |
 | [RULES.md](RULES.md) | meta | done |
 | [LIVING_SPEC_MATRIX.md](LIVING_SPEC_MATRIX.md) | living-spec | done |
-| [book-analyses/book-iii-csu-contracts.md](book-analyses/book-iii-csu-contracts.md) | analysis | done |
-| [matrices/meditation-to-book-iii.md](matrices/meditation-to-book-iii.md) | matrix | done |
-| [provenance/book-iii-scope.md](provenance/book-iii-scope.md) | provenance | done |
+| [book-analyses/book-iv-reference.md](book-analyses/book-iv-reference.md) | analysis | done |
+| [matrices/meditation-to-book-iv.md](matrices/meditation-to-book-iv.md) | matrix | done |
+| [provenance/book-iv-scope.md](provenance/book-iv-scope.md) | provenance | done |
 | [todo/TODO_FIXME.md](todo/TODO_FIXME.md) | backlog | done |
 | [verification/CHECKLIST.md](verification/CHECKLIST.md) | verify | done |
 | [verification/deny-originals.sh](verification/deny-originals.sh) | verify | done |
@@ -17,9 +17,6 @@
 
 | Цикл | Книга |
 |------|-------|
-| Analyze-1 | Book 0 |
-| Analyze-2 | Book I |
-| Analyze-3 | Book II |
-| **Analyze-4** | **Book III** |
-| Analyze-5 | Book IV (done → [../Analyze-5/](../Analyze-5/)) |
+| Analyze-1…4 | Book 0–III (normative) |
+| **Analyze-5** | **Book IV (reference)** |
 | Analyze-6 | Book V (pending) |
