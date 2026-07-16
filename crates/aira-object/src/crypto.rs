@@ -1,6 +1,6 @@
 //! Ed25519 helpers + process keyring (Alpha.2 / Analyze-21).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 use std::sync::{OnceLock, RwLock};
@@ -270,6 +270,38 @@ pub fn register_trust_store(root: impl AsRef<Path>) -> Result<usize, CryptoError
     Ok(store.entries.len())
 }
 
+/// Prune process verifying keys absent from `trust.json`, then re-register trust entries.
+///
+/// - Never unloads [`LOCAL_TEST_KEY_REF`].
+/// - Identities that still have signing material keep a verifying key derived from signing
+///   (node identity remains usable even if momentarily missing from the trust file).
+/// - Peer verifying-only keys removed from the file stop verifying in-process immediately.
+pub fn sync_trust_verifiers(root: impl AsRef<Path>) -> Result<usize, CryptoError> {
+    let store = TrustStore::load(&root)?;
+    let trusted: HashSet<String> = store
+        .entries
+        .iter()
+        .map(|e| e.identity_id.clone())
+        .collect();
+
+    {
+        let mut guard = process_keyring().write().unwrap_or_else(|e| e.into_inner());
+        let ids: Vec<String> = guard.verifying.keys().cloned().collect();
+        for id in ids {
+            if id == LOCAL_TEST_KEY_REF || trusted.contains(&id) {
+                continue;
+            }
+            if let Some(sk) = guard.signing.get(&id).cloned() {
+                guard.verifying.insert(id, sk.verifying_key());
+                continue;
+            }
+            guard.verifying.remove(&id);
+        }
+    }
+
+    register_trust_store(root)
+}
+
 /// Ensure local-test (+ node identity if present) are in trust.json and registered.
 pub fn ensure_trust_defaults(root: impl AsRef<Path>) -> Result<TrustStore, CryptoError> {
     let root = root.as_ref();
@@ -283,7 +315,7 @@ pub fn ensure_trust_defaults(root: impl AsRef<Path>) -> Result<TrustStore, Crypt
         store.upsert(&desc.identity_id, desc.public_key.key_hex.trim())?;
     }
     store.save(root)?;
-    let _ = register_trust_store(root)?;
+    let _ = sync_trust_verifiers(root)?;
     Ok(store)
 }
 
@@ -525,8 +557,12 @@ mod tests {
 
         store.remove(peer_id);
         store.save(root).unwrap();
-        // Re-register after remove: peer gone from file; process ring still has old key
-        // until we only use file-backed ring for this assertion via TrustStore::to_keyring.
+        sync_trust_verifiers(root).unwrap();
+        assert_eq!(
+            verify_ed25519(&sig, msg),
+            Err(CryptoError::UnknownKey(peer_id.into()))
+        );
+        verify_ed25519(&local_test_signature(msg), msg).unwrap();
         let ring = TrustStore::load(root).unwrap().to_keyring().unwrap();
         assert!(ring.verifying_key(peer_id).is_none());
         assert!(ring.verifying_key(LOCAL_TEST_KEY_REF).is_some());

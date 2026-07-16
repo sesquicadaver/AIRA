@@ -42,6 +42,8 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust remove \
 
 `register_trust_store` merges entries into the process keyring so `verify_ed25519` / `aira identity verify` succeed for trusted peers without their signing keys on disk.
 
+**Unload / sync** (Analyze-24): `sync_trust_verifiers` prunes process verifying keys absent from `trust.json` (never unloads `local-test`; signing identities keep derived verifying keys). `identity trust remove` and `ensure_trust_defaults` call sync so revoke takes effect in-process immediately.
+
 ## Canonical signed messages
 
 | Object | Message bytes |
@@ -57,4 +59,4 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Key rotation / revocation lists; TLS; per-CSU publisher identity overrides; process-keyring unload on trust remove.
+Key rotation / revocation lists; TLS; per-CSU publisher identity overrides.

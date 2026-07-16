@@ -389,6 +389,8 @@ fn run() -> Result<ExitCode> {
                     }
                     if store.remove(&key_ref) {
                         store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
+                        aira_object::sync_trust_verifiers(&root)
+                            .map_err(|e| anyhow::anyhow!("{e}"))?;
                         println!("removed {key_ref}");
                     } else {
                         println!("not found {key_ref}");
