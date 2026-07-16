@@ -84,6 +84,8 @@ enum IdentityCommands {
         #[arg(long, default_value = "local")]
         name: String,
     },
+    /// Rotate node signing secret (same identity_id, new key material).
+    Rotate,
     /// Sign a message with the node identity key.
     Sign {
         /// Message bytes as UTF-8 text.
@@ -330,6 +332,19 @@ fn run() -> Result<ExitCode> {
                 println!("created {identity_id}");
                 println!("public_key {public_hex}");
                 println!("identity {}", paths.identity_json().display());
+                Ok(ExitCode::SUCCESS)
+            }
+            IdentityCommands::Rotate => {
+                ensure_init(&root)?;
+                let mut rng = OsRng;
+                let signing = SigningKey::generate(&mut rng);
+                let (id, new_pub, old_pub) =
+                    aira_object::rotate_node_signing_secret(&root, signing)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                println!("rotated {}", id.as_str());
+                println!("old_public_key {old_pub}");
+                println!("public_key {new_pub}");
+                println!("identity {}", NodePaths::new(&root).identity_json().display());
                 Ok(ExitCode::SUCCESS)
             }
             IdentityCommands::Sign { text } => {

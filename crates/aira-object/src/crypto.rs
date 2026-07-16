@@ -591,6 +591,118 @@ pub fn register_node_identity(root: impl AsRef<Path>) -> Result<Option<AiraRef>,
     Ok(Some(id))
 }
 
+/// Rotate the node signing secret under fixed paths, keeping the same `identity_id`.
+///
+/// Rewrites `identity/local.ed25519` and updates `identity/local.identity.json` public key +
+/// descriptor signature. Trust store gets an upsert (no CRL). Immediate cutover: the previous
+/// verifying key for this id is replaced in the process keyring.
+///
+/// If trust upsert fails after the files were rewritten, previous secret + JSON are restored
+/// so disk and trust stay consistent.
+///
+/// Returns `(identity_id, new_public_key_hex, old_public_key_hex)`.
+pub fn rotate_node_signing_secret(
+    root: impl AsRef<Path>,
+    new_signing: SigningKey,
+) -> Result<(AiraRef, String, String), CryptoError> {
+    let root = root.as_ref();
+    let json_path = root.join("identity").join("local.identity.json");
+    let key_path = root.join("identity").join("local.ed25519");
+    if !json_path.exists() {
+        return Err(CryptoError::Io(format!(
+            "missing {} — run `aira identity create` first",
+            json_path.display()
+        )));
+    }
+    // Fail closed if current material is inconsistent before overwrite.
+    let (id, old_ring) = Keyring::load_node_identity(root)?;
+    let old_json = fs::read_to_string(&json_path).map_err(|e| CryptoError::Io(e.to_string()))?;
+    let old_secret = if key_path.exists() {
+        Some(fs::read_to_string(&key_path).map_err(|e| CryptoError::Io(e.to_string()))?)
+    } else {
+        None
+    };
+    let mut desc: serde_json::Value =
+        serde_json::from_str(&old_json).map_err(|e| CryptoError::Io(e.to_string()))?;
+    let old_pub = desc
+        .get("public_key")
+        .and_then(|p| p.get("key_hex"))
+        .and_then(|v| v.as_str())
+        .ok_or(CryptoError::InvalidKey)?
+        .trim()
+        .to_string();
+
+    let new_pub = hex::encode(new_signing.verifying_key().to_bytes());
+    let secret_hex = hex::encode(new_signing.to_bytes());
+    if let Some(parent) = key_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| CryptoError::Io(e.to_string()))?;
+    }
+
+    let restore_previous = || -> Result<(), CryptoError> {
+        if let Some(secret) = &old_secret {
+            fs::write(&key_path, secret).map_err(|e| CryptoError::Io(e.to_string()))?;
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let _ = fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600));
+            }
+        }
+        fs::write(&json_path, &old_json).map_err(|e| CryptoError::Io(e.to_string()))?;
+        register_keyring(&old_ring);
+        set_primary_signer(id.clone());
+        Ok(())
+    };
+
+    fs::write(&key_path, format!("{secret_hex}\n")).map_err(|e| CryptoError::Io(e.to_string()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600));
+    }
+
+    let identity_id = id.as_str().to_string();
+    let sig = sign_with_key(id.clone(), &new_signing, identity_id.as_bytes());
+    if let Some(obj) = desc.as_object_mut() {
+        obj.insert(
+            "public_key".into(),
+            serde_json::json!({
+                "algorithm": "ed25519",
+                "key_hex": new_pub
+            }),
+        );
+        obj.insert(
+            "signature".into(),
+            serde_json::to_value(&sig).map_err(|e| CryptoError::Io(e.to_string()))?,
+        );
+        obj.insert("key_path".into(), serde_json::json!("identity/local.ed25519"));
+        obj.insert(
+            "rotated_at".into(),
+            serde_json::json!(utc_now_rfc3339()?),
+        );
+    } else {
+        return Err(CryptoError::InvalidKey);
+    }
+    let out = serde_json::to_string_pretty(&desc).map_err(|e| CryptoError::Io(e.to_string()))?;
+    if let Err(e) = fs::write(&json_path, format!("{out}\n")) {
+        let _ = restore_previous();
+        return Err(CryptoError::Io(e.to_string()));
+    }
+
+    match ensure_trust_defaults(root) {
+        Ok(_) => {}
+        Err(e) => {
+            let _ = restore_previous();
+            return Err(e);
+        }
+    }
+
+    let mut ring = Keyring::with_local_test();
+    ring.insert_signing(id.clone(), new_signing);
+    register_keyring(&ring);
+    set_primary_signer(id.clone());
+    Ok((id, new_pub, old_pub))
+}
+
 /// Snapshot of the process keyring (for CLI sign).
 pub fn process_keyring_snapshot() -> Keyring {
     process_keyring()
@@ -1032,5 +1144,130 @@ mod tests {
         assert!(store
             .rotate(old_id, new_id, &new_pub, None, Some("not-a-timestamp"))
             .is_err());
+    }
+
+    #[test]
+    fn node_signing_secret_rotate_cutover() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let old_sk = SigningKey::from_bytes(&[31u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[33u8; 32]);
+        let id = "aira:identity:node-rotate";
+        let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
+        fs::write(
+            root.join("identity/local.ed25519"),
+            format!("{}\n", hex::encode(old_sk.to_bytes())),
+        )
+        .unwrap();
+        fs::write(
+            root.join("identity/local.identity.json"),
+            serde_json::json!({
+                "identity_id": id,
+                "identity_type": "local",
+                "display_name": "node-rotate",
+                "public_key": { "algorithm": "ed25519", "key_hex": old_pub },
+                "created_at": "2026-07-16T00:00:00Z",
+                "key_path": "identity/local.ed25519"
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let msg = b"node-rotate-message";
+        let old_sig = sign_with_key(AiraRef::parse(id).unwrap(), &old_sk, msg);
+        let (loaded, ring) = Keyring::load_node_identity(root).unwrap();
+        assert_eq!(loaded.as_str(), id);
+        ring.verify(&old_sig, msg).unwrap();
+
+        let (rotated_id, new_pub, reported_old) =
+            rotate_node_signing_secret(root, new_sk.clone()).unwrap();
+        assert_eq!(rotated_id.as_str(), id);
+        assert_eq!(reported_old, old_pub);
+        assert_eq!(
+            new_pub,
+            hex::encode(new_sk.verifying_key().to_bytes())
+        );
+        assert_eq!(primary_signer().as_str(), id);
+
+        // Process keyring cutover (same key_ref, new verifying material).
+        assert!(verify_ed25519(&old_sig, msg).is_err());
+        let new_active = active_signature(msg);
+        assert_eq!(new_active.key_ref.as_str(), id);
+        verify_ed25519(&new_active, msg).unwrap();
+
+        let (reloaded, new_ring) = Keyring::load_node_identity(root).unwrap();
+        assert_eq!(reloaded.as_str(), id);
+        let new_sig = new_ring.sign(&reloaded, msg).unwrap();
+        new_ring.verify(&new_sig, msg).unwrap();
+        assert!(new_ring.verify(&old_sig, msg).is_err());
+
+        let store = TrustStore::load(root).unwrap();
+        let entry = store
+            .entries
+            .iter()
+            .find(|e| e.identity_id == id)
+            .expect("node trust entry");
+        assert_eq!(entry.public_key_hex, new_pub);
+        assert!(!store.is_revoked(id));
+
+        let desc_raw =
+            fs::read_to_string(root.join("identity/local.identity.json")).unwrap();
+        let desc: serde_json::Value = serde_json::from_str(&desc_raw).unwrap();
+        assert_eq!(desc["identity_id"], id);
+        assert_eq!(desc["display_name"], "node-rotate");
+        assert!(desc.get("rotated_at").is_some());
+
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn node_rotate_rolls_back_when_node_revoked() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let old_sk = SigningKey::from_bytes(&[37u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[39u8; 32]);
+        let id = "aira:identity:node-rollback";
+        let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
+        let old_secret = format!("{}\n", hex::encode(old_sk.to_bytes()));
+        fs::write(root.join("identity/local.ed25519"), &old_secret).unwrap();
+        let old_json = serde_json::json!({
+            "identity_id": id,
+            "identity_type": "local",
+            "display_name": "node-rollback",
+            "public_key": { "algorithm": "ed25519", "key_hex": old_pub },
+            "created_at": "2026-07-16T00:00:00Z",
+            "key_path": "identity/local.ed25519"
+        })
+        .to_string();
+        fs::write(root.join("identity/local.identity.json"), &old_json).unwrap();
+        let mut store = TrustStore::default();
+        store.ensure_local_test().unwrap();
+        store.upsert(id, &old_pub).unwrap();
+        store.revoke(id, Some("block rotate")).unwrap();
+        store.save(root).unwrap();
+
+        let err = rotate_node_signing_secret(root, new_sk).unwrap_err();
+        assert_eq!(err, CryptoError::RevokedKey(id.into()));
+        assert_eq!(
+            fs::read_to_string(root.join("identity/local.ed25519")).unwrap(),
+            old_secret
+        );
+        let restored: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(root.join("identity/local.identity.json")).unwrap())
+                .unwrap();
+        assert_eq!(restored["public_key"]["key_hex"], old_pub);
+        assert!(restored.get("rotated_at").is_none());
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn node_rotate_requires_existing_identity() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let err = rotate_node_signing_secret(root, SigningKey::from_bytes(&[35u8; 32])).unwrap_err();
+        assert!(matches!(err, CryptoError::Io(_)));
     }
 }

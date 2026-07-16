@@ -81,6 +81,19 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust rotate \
   --until 2026-07-17T00:00:00Z
 ```
 
+## Node signing-secret rotate (Analyze-30)
+
+Rewrites `.aira/identity/local.ed25519` and updates `local.identity.json` **without** changing `identity_id`. Trust store upserts the new pubkey for the same id (no CRL). Immediate cutover: signatures made with the previous secret fail under the same `key_ref`.
+
+This is **not** peer `identity trust rotate` (which replaces one trusted id with another).
+
+```bash
+cargo run -p aira-cli -- --root "$ROOT" identity rotate
+# rotated aira:identity:local
+# old_public_key …
+# public_key …
+```
+
 ## Canonical signed messages
 
 | Object | Message bytes |
@@ -90,10 +103,10 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust rotate \
 | CSU manifest | `csu_id.as_str()` |
 | Problem object | `content_hash.as_str()` |
 | Protocol envelope | `payload_hash.as_str()` **or** domain message |
-| Identity descriptor (create) | `identity_id` bytes |
+| Identity descriptor (create / rotate) | `identity_id` bytes |
 
 Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Node signing-secret rotate; TLS; multi-tenant per-CSU keyring; CRL audit log.
+Dual-key grace for the same node `key_ref`; durable old-secret backup; TLS; multi-tenant per-CSU keyring; CRL audit log.
