@@ -102,6 +102,29 @@ enum IdentityCommands {
         #[arg(long)]
         key_ref: Option<String>,
     },
+    /// Manage trusted verifying public keys.
+    Trust {
+        #[command(subcommand)]
+        command: TrustCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum TrustCommands {
+    /// List trusted identity public keys.
+    List,
+    /// Add or update a trusted verifying key.
+    Add {
+        #[arg(long)]
+        key_ref: String,
+        #[arg(long)]
+        pubkey_hex: String,
+    },
+    /// Remove a trusted identity.
+    Remove {
+        #[arg(long)]
+        key_ref: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -275,6 +298,7 @@ fn run() -> Result<ExitCode> {
                 ring.insert_signing(id_ref.clone(), signing);
                 aira_object::register_keyring(&ring);
                 aira_object::set_primary_signer(id_ref);
+                let _ = aira_object::ensure_trust_defaults(&root);
                 println!("created {identity_id}");
                 println!("public_key {public_hex}");
                 println!("identity {}", paths.identity_json().display());
@@ -326,6 +350,52 @@ fn run() -> Result<ExitCode> {
                     }
                 }
             }
+            IdentityCommands::Trust { command } => match command {
+                TrustCommands::List => {
+                    ensure_init(&root)?;
+                    let store = aira_object::ensure_trust_defaults(&root)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    if store.entries.is_empty() {
+                        println!("(empty)");
+                    } else {
+                        for e in &store.entries {
+                            println!("{}\t{}\t{}", e.identity_id, e.algorithm, e.public_key_hex);
+                        }
+                    }
+                    println!("trust {}", NodePaths::new(&root).trust_json().display());
+                    Ok(ExitCode::SUCCESS)
+                }
+                TrustCommands::Add {
+                    key_ref,
+                    pubkey_hex,
+                } => {
+                    ensure_init(&root)?;
+                    let mut store = aira_object::TrustStore::load(&root)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    store
+                        .upsert(&key_ref, &pubkey_hex)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
+                    aira_object::register_trust_store(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
+                    println!("trusted {key_ref}");
+                    Ok(ExitCode::SUCCESS)
+                }
+                TrustCommands::Remove { key_ref } => {
+                    ensure_init(&root)?;
+                    let mut store = aira_object::TrustStore::load(&root)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    if key_ref == aira_object::LOCAL_TEST_KEY_REF {
+                        bail!("refusing to remove local-test from trust store");
+                    }
+                    if store.remove(&key_ref) {
+                        store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
+                        println!("removed {key_ref}");
+                    } else {
+                        println!("not found {key_ref}");
+                    }
+                    Ok(ExitCode::SUCCESS)
+                }
+            },
         },
         Commands::Schema { command } => match command {
             SchemaCommands::List { schemas_dir } => {

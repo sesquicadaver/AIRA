@@ -110,6 +110,9 @@ impl NodePaths {
     pub fn identity_key(&self) -> PathBuf {
         self.identity_dir().join("local.ed25519")
     }
+    pub fn trust_json(&self) -> PathBuf {
+        self.identity_dir().join("trust.json")
+    }
     pub fn db_dir(&self) -> PathBuf {
         self.root.join("db")
     }
@@ -232,8 +235,9 @@ impl LocalSession {
             )));
         }
         let config = load_config(&paths.root)?;
-        // Register node identity + set primary signer BEFORE plane construction.
+        // Register node identity + trust store BEFORE plane construction.
         let _ = aira_object::register_node_identity(&paths.root);
+        let _ = aira_object::ensure_trust_defaults(&paths.root);
         let nonce = peek_run_nonce(&paths)?;
         let plane = OperationalPlane::open_with_ready_nonce(paths.artifacts(), vec![], nonce)?;
         Ok(Self {
@@ -253,8 +257,9 @@ impl LocalSession {
 
     /// Submit problem, drain pipeline, persist events + problem index.
     pub fn submit_problem(&mut self, text: &str) -> Result<SubmitOutcome, FlowError> {
-        // Ensure primary signer reflects node identity for rebuilt plane.
+        // Ensure primary signer + trust store reflect node identity for rebuilt plane.
         let _ = aira_object::register_node_identity(&self.paths.root);
+        let _ = aira_object::ensure_trust_defaults(&self.paths.root);
         // Allocate a fresh nonce and rebuild plane so ids never collide with prior runs.
         let nonce = alloc_run_nonce(&self.paths)?;
         self.plane =

@@ -5,7 +5,7 @@
 ```text
 .aira/
   config.json
-  identity/          # aira identity create
+  identity/          # aira identity create + trust.json
   db/aira.sqlite
   artifacts/         # CAS + index.json
   csu/registry.json
@@ -21,6 +21,7 @@ cargo build -p aira-cli -p aira-node
 ROOT=/tmp/aira-node
 cargo run -p aira-cli -- --root "$ROOT" init
 cargo run -p aira-cli -- --root "$ROOT" identity create --name local
+cargo run -p aira-cli -- --root "$ROOT" identity trust list
 cargo run -p aira-cli -- --root "$ROOT" status
 ```
 

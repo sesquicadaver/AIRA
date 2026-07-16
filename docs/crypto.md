@@ -1,4 +1,4 @@
-# Cryptographic signatures (Alpha.2 + Identity Keyring + Plane signing)
+# Cryptographic signatures (Alpha.2 + Identity Keyring + Plane signing + Trust Store)
 
 ## Local-test identity
 
@@ -7,7 +7,7 @@ Deterministic Ed25519 key for `aira:identity:local-test`:
 - Seed (32 bytes, fixtures/tests only): `aira-mvp-local-test-ed25519-key!`
 - Public key hex: `2754a265e1dd9eff273fb58b3162e474f7285d5a53d20ab0893e8523afbe7480`
 
-API: `aira_object::{local_test_signature, verify_ed25519, Keyring, active_signature, primary_signer}`.
+API: `aira_object::{local_test_signature, verify_ed25519, Keyring, active_signature, primary_signer, TrustStore}`.
 
 ## Process keyring + primary signer
 
@@ -19,12 +19,28 @@ On `LocalSession::open` / `submit_problem` / `aira identity create`:
 
 1. Load `.aira/identity/` into the keyring
 2. Set primary signer to the node `identity_id`
+3. Ensure `.aira/identity/trust.json` defaults (local-test + node pub) and register verifying keys
 
 ```bash
 cargo run -p aira-cli -- --root "$ROOT" identity create --name local
 cargo run -p aira-cli -- --root "$ROOT" problem submit --text "Calculate 2 + 2"
 # events/artifacts producer_identity + signature.key_ref == aira:identity:local
 ```
+
+## Trust store (Analyze-23)
+
+Path: `.aira/identity/trust.json` — verifying public keys only (never peer secrets).
+
+```bash
+cargo run -p aira-cli -- --root "$ROOT" identity trust list
+cargo run -p aira-cli -- --root "$ROOT" identity trust add \
+  --key-ref aira:identity:peer-alice --pubkey-hex <64-hex>
+cargo run -p aira-cli -- --root "$ROOT" identity trust remove \
+  --key-ref aira:identity:peer-alice
+# refuse remove of aira:identity:local-test
+```
+
+`register_trust_store` merges entries into the process keyring so `verify_ed25519` / `aira identity verify` succeed for trusted peers without their signing keys on disk.
 
 ## Canonical signed messages
 
@@ -41,4 +57,4 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Multi-key trust store / rotation; TLS; per-CSU publisher identity overrides.
+Key rotation / revocation lists; TLS; per-CSU publisher identity overrides; process-keyring unload on trust remove.

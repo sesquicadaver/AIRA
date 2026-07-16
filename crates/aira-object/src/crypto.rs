@@ -6,7 +6,7 @@ use std::path::Path;
 use std::sync::{OnceLock, RwLock};
 
 use ed25519_dalek::{Signature as DalekSignature, Signer, SigningKey, Verifier, VerifyingKey};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::types::{AiraRef, Signature};
@@ -167,6 +167,124 @@ fn parse_public_hex(s: &str) -> Result<VerifyingKey, CryptoError> {
     let bytes = hex::decode(s).map_err(|_| CryptoError::InvalidKey)?;
     let arr: [u8; 32] = bytes.try_into().map_err(|_| CryptoError::InvalidKey)?;
     VerifyingKey::from_bytes(&arr).map_err(|_| CryptoError::InvalidKey)
+}
+
+/// One trusted verifying identity (public key only).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TrustEntry {
+    pub identity_id: String,
+    #[serde(default = "default_ed25519")]
+    pub algorithm: String,
+    pub public_key_hex: String,
+}
+
+fn default_ed25519() -> String {
+    "ed25519".into()
+}
+
+/// Persistent trust store under `.aira/identity/trust.json`.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+pub struct TrustStore {
+    #[serde(default)]
+    pub entries: Vec<TrustEntry>,
+}
+
+impl TrustStore {
+    /// Path to trust.json under a node root.
+    pub fn path(root: impl AsRef<Path>) -> std::path::PathBuf {
+        root.as_ref().join("identity").join("trust.json")
+    }
+
+    /// Load trust store; missing file → empty store.
+    pub fn load(root: impl AsRef<Path>) -> Result<Self, CryptoError> {
+        let path = Self::path(&root);
+        if !path.exists() {
+            return Ok(Self::default());
+        }
+        let raw = fs::read_to_string(&path).map_err(|e| CryptoError::Io(e.to_string()))?;
+        serde_json::from_str(&raw).map_err(|e| CryptoError::Io(e.to_string()))
+    }
+
+    /// Persist trust store (creates identity dir as needed).
+    pub fn save(&self, root: impl AsRef<Path>) -> Result<(), CryptoError> {
+        let path = Self::path(&root);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| CryptoError::Io(e.to_string()))?;
+        }
+        let json = serde_json::to_string_pretty(self).map_err(|e| CryptoError::Io(e.to_string()))?;
+        fs::write(path, format!("{json}\n")).map_err(|e| CryptoError::Io(e.to_string()))
+    }
+
+    /// Insert or replace an entry by identity_id.
+    pub fn upsert(&mut self, identity_id: &str, public_key_hex: &str) -> Result<(), CryptoError> {
+        let _ = parse_public_hex(public_key_hex.trim())?;
+        let id = identity_id.trim();
+        AiraRef::parse(id).map_err(|_| CryptoError::InvalidKey)?;
+        if let Some(e) = self.entries.iter_mut().find(|e| e.identity_id == id) {
+            e.public_key_hex = public_key_hex.trim().to_string();
+            e.algorithm = "ed25519".into();
+        } else {
+            self.entries.push(TrustEntry {
+                identity_id: id.to_string(),
+                algorithm: "ed25519".into(),
+                public_key_hex: public_key_hex.trim().to_string(),
+            });
+        }
+        self.entries
+            .sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
+        Ok(())
+    }
+
+    /// Remove entry; returns whether it existed.
+    pub fn remove(&mut self, identity_id: &str) -> bool {
+        let before = self.entries.len();
+        self.entries.retain(|e| e.identity_id != identity_id);
+        self.entries.len() != before
+    }
+
+    /// Ensure local-test public key is trusted.
+    pub fn ensure_local_test(&mut self) -> Result<(), CryptoError> {
+        self.upsert(LOCAL_TEST_KEY_REF, &local_test_public_key_hex())
+    }
+
+    /// Build a verifying-only keyring from entries.
+    pub fn to_keyring(&self) -> Result<Keyring, CryptoError> {
+        let mut ring = Keyring::new();
+        for e in &self.entries {
+            if e.algorithm != "ed25519" {
+                return Err(CryptoError::UnsupportedAlgorithm(e.algorithm.clone()));
+            }
+            let id = AiraRef::parse(&e.identity_id).map_err(|_| CryptoError::InvalidKey)?;
+            let vk = parse_public_hex(e.public_key_hex.trim())?;
+            ring.insert_verifying(id, vk);
+        }
+        Ok(ring)
+    }
+}
+
+/// Load trust.json verifying keys into the process keyring.
+pub fn register_trust_store(root: impl AsRef<Path>) -> Result<usize, CryptoError> {
+    let store = TrustStore::load(&root)?;
+    let ring = store.to_keyring()?;
+    register_keyring(&ring);
+    Ok(store.entries.len())
+}
+
+/// Ensure local-test (+ node identity if present) are in trust.json and registered.
+pub fn ensure_trust_defaults(root: impl AsRef<Path>) -> Result<TrustStore, CryptoError> {
+    let root = root.as_ref();
+    let mut store = TrustStore::load(root)?;
+    store.ensure_local_test()?;
+    let id_path = root.join("identity").join("local.identity.json");
+    if id_path.exists() {
+        let raw = fs::read_to_string(&id_path).map_err(|e| CryptoError::Io(e.to_string()))?;
+        let desc: NodeIdentityFile =
+            serde_json::from_str(&raw).map_err(|e| CryptoError::Io(e.to_string()))?;
+        store.upsert(&desc.identity_id, desc.public_key.key_hex.trim())?;
+    }
+    store.save(root)?;
+    let _ = register_trust_store(root)?;
+    Ok(store)
 }
 
 fn process_keyring() -> &'static RwLock<Keyring> {
@@ -380,5 +498,37 @@ mod tests {
         verify_ed25519(&active, msg).unwrap();
         reset_primary_signer();
         assert_eq!(primary_signer().as_str(), LOCAL_TEST_KEY_REF);
+    }
+
+    #[test]
+    fn trust_store_peer_verify_without_signing_key() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let peer_sk = SigningKey::from_bytes(&[13u8; 32]);
+        let peer_id = "aira:identity:peer-alice";
+        let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
+
+        let mut store = TrustStore::default();
+        store.ensure_local_test().unwrap();
+        store.upsert(peer_id, &peer_pub).unwrap();
+        store.save(root).unwrap();
+
+        let loaded = TrustStore::load(root).unwrap();
+        assert_eq!(loaded.entries.len(), 2);
+        register_trust_store(root).unwrap();
+
+        let msg = b"peer-message";
+        let sig = sign_with_key(AiraRef::parse(peer_id).unwrap(), &peer_sk, msg);
+        // Process keyring has verifying key only — verify must succeed.
+        verify_ed25519(&sig, msg).unwrap();
+
+        store.remove(peer_id);
+        store.save(root).unwrap();
+        // Re-register after remove: peer gone from file; process ring still has old key
+        // until we only use file-backed ring for this assertion via TrustStore::to_keyring.
+        let ring = TrustStore::load(root).unwrap().to_keyring().unwrap();
+        assert!(ring.verifying_key(peer_id).is_none());
+        assert!(ring.verifying_key(LOCAL_TEST_KEY_REF).is_some());
     }
 }

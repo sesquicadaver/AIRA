@@ -9,11 +9,12 @@ mod handle;
 mod types;
 
 pub use crypto::{
-    active_identity, active_signature, is_cryptographic_signature, local_test_public_key_hex,
-    local_test_signature, local_test_signing_key, local_test_verifying_key, primary_signer,
-    process_keyring_snapshot, register_keyring, register_node_identity, reset_primary_signer,
-    set_primary_signer, sign_with_key, verify_ed25519, CryptoError, Keyring, LOCAL_TEST_DOMAIN_MSG,
-    LOCAL_TEST_KEY_REF,
+    active_identity, active_signature, ensure_trust_defaults, is_cryptographic_signature,
+    local_test_public_key_hex, local_test_signature, local_test_signing_key,
+    local_test_verifying_key, primary_signer, process_keyring_snapshot, register_keyring,
+    register_node_identity, register_trust_store, reset_primary_signer, set_primary_signer,
+    sign_with_key, verify_ed25519, CryptoError, Keyring, TrustEntry, TrustStore,
+    LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF,
 };
 pub use descriptor::{ObjectDescriptor, ObjectType};
 pub use handle::Handle;
