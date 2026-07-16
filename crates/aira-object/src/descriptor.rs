@@ -51,11 +51,9 @@ impl ObjectDescriptor {
                 "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
             .unwrap(),
-            signature: Signature {
-                algorithm: "ed25519".into(),
-                key_ref: AiraRef::parse("aira:identity:local-test").unwrap(),
-                signature_value: "TESTSIG".into(),
-            },
+            signature: crate::local_test_signature(
+                b"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            ),
         }
     }
 }

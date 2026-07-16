@@ -35,7 +35,7 @@ Problem Statement
 ## Status
 
 **Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha**.
-**Post-MVP:** Roadmap M11 Local HTTP API (`aira-node --http`, see `docs/local-node.md`).
+**Post-MVP:** Roadmap M11 Local HTTP API (`aira-node --http`); Alpha.2 Ed25519 (`docs/crypto.md`).
 
 See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md` and `scripts/prepare-alpha.sh`.
 

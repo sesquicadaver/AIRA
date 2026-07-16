@@ -2,18 +2,19 @@
 
 use aira_artifact::{ArtifactDescriptor, ArtifactType};
 use aira_event::{EventDescriptor, EventType};
-use aira_object::{AiraRef, ContentHash, Signature, Timestamp};
+use aira_object::{local_test_signature, AiraRef, ContentHash, Timestamp};
 use serde_json::{json, Value};
 
 use crate::manifest::{CsuManifest, CsuSandbox, CsuType, SUPPORTED_ABI_VERSION};
 
-/// Local test / MVP signature (structural only).
-pub fn local_signature() -> Signature {
-    Signature {
-        algorithm: "ed25519".into(),
-        key_ref: AiraRef::parse("aira:identity:local-test").expect("ref"),
-        signature_value: "TESTSIG".into(),
-    }
+/// Local test / MVP signature over a message (real Ed25519, Alpha.2).
+pub fn local_signature_over(message: &[u8]) -> aira_object::Signature {
+    local_test_signature(message)
+}
+
+/// Local test signature over the standard domain message.
+pub fn local_signature() -> aira_object::Signature {
+    local_test_signature(aira_object::LOCAL_TEST_DOMAIN_MSG)
 }
 
 /// Local producer identity.
@@ -63,7 +64,7 @@ pub fn basic_manifest(
         },
         lifecycle_hooks: None,
         provenance_refs: None,
-        signature: local_signature(),
+        signature: local_signature_over(csu_id.as_bytes()),
         created_at: mvp_timestamp(),
     }
 }
@@ -86,6 +87,7 @@ pub fn make_event(
     } else {
         ContentHash::sha256_bytes(payload.as_bytes())
     };
+    let sig = local_signature_over(hash.as_str().as_bytes());
     EventDescriptor {
         event_id: AiraRef::parse(event_id).expect("event_id"),
         event_type,
@@ -98,7 +100,7 @@ pub fn make_event(
         payload_hash: hash,
         payload_ref,
         created_at: mvp_timestamp(),
-        signature: local_signature(),
+        signature: sig,
     }
 }
 
@@ -110,6 +112,7 @@ pub fn make_artifact(
     provenance: Vec<AiraRef>,
 ) -> ArtifactDescriptor {
     let hash = ContentHash::sha256_bytes(payload);
+    let sig = local_signature_over(hash.as_str().as_bytes());
     ArtifactDescriptor {
         artifact_id: AiraRef::parse(artifact_id).expect("artifact_id"),
         artifact_type,
@@ -120,7 +123,7 @@ pub fn make_artifact(
         provenance_refs: provenance,
         dependency_refs: vec![],
         policy_refs: vec![AiraRef::parse("aira:policy:default").expect("policy")],
-        signature: local_signature(),
+        signature: sig,
         created_at: mvp_timestamp(),
     }
 }

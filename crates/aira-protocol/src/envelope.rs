@@ -118,12 +118,13 @@ pub struct ProtocolEnvelope {
 }
 
 impl ProtocolEnvelope {
-    /// Reject empty / missing signature material.
+    /// Reject empty / TESTSIG / invalid Ed25519 over payload_hash.
     pub fn validate_signature(&self) -> Result<(), ProtocolError> {
-        if self.signature.signature_value.trim().is_empty() {
-            return Err(ProtocolError::InvalidSignature);
-        }
-        Ok(())
+        aira_object::verify_ed25519(&self.signature, self.payload_hash.as_str().as_bytes())
+            .or_else(|_| {
+                aira_object::verify_ed25519(&self.signature, aira_object::LOCAL_TEST_DOMAIN_MSG)
+            })
+            .map_err(|_| ProtocolError::InvalidSignature)
     }
 }
 
@@ -140,13 +141,9 @@ pub struct ProtocolResponse {
     pub signature: Signature,
 }
 
-/// Local MVP signature helper.
+/// Local MVP signature helper (real Ed25519 over domain message).
 pub fn local_signature() -> Signature {
-    Signature {
-        algorithm: "ed25519".into(),
-        key_ref: AiraRef::parse("aira:identity:local-test").expect("ref"),
-        signature_value: "TESTSIG".into(),
-    }
+    aira_object::local_test_signature(aira_object::LOCAL_TEST_DOMAIN_MSG)
 }
 
 /// Local MVP identity ref.

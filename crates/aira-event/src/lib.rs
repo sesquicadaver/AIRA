@@ -18,10 +18,14 @@ pub fn crate_version() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aira_object::{AiraRef, ContentHash, Signature, Timestamp};
+    use aira_object::{AiraRef, ContentHash, Timestamp};
     use std::sync::{Arc, Mutex};
 
     fn sample_event(event_id: &str, event_type: EventType) -> EventDescriptor {
+        let payload_hash = ContentHash::parse(
+            "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        )
+        .unwrap();
         EventDescriptor {
             event_id: AiraRef::parse(event_id).unwrap(),
             event_type,
@@ -34,17 +38,10 @@ mod tests {
             )
             .unwrap()],
             policy_refs: vec![],
-            payload_hash: ContentHash::parse(
-                "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-            )
-            .unwrap(),
+            payload_hash: payload_hash.clone(),
             payload_ref: None,
             created_at: Timestamp::parse("2026-07-10T12:00:00Z").unwrap(),
-            signature: Signature {
-                algorithm: "ed25519".into(),
-                key_ref: AiraRef::parse("aira:identity:local-test").unwrap(),
-                signature_value: "TESTSIG".into(),
-            },
+            signature: aira_object::local_test_signature(payload_hash.as_str().as_bytes()),
         }
     }
 

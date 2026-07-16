@@ -239,6 +239,7 @@ name = "aira-object"
 version = "0.1.0"
 dependencies = [
  "aira-schema",
+ "ed25519-dalek",
  "hex",
  "regex",
  "serde",

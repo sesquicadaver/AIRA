@@ -28,42 +28,43 @@ mod tests {
     use serde_json::json;
     use std::path::PathBuf;
 
-    fn sig() -> Signature {
-        Signature {
-            algorithm: "ed25519".into(),
-            key_ref: AiraRef::parse("aira:identity:local-test").unwrap(),
-            signature_value: "TESTSIG".into(),
-        }
-    }
-
     fn producer() -> AiraRef {
         AiraRef::parse("aira:identity:local-test").unwrap()
     }
 
+    fn sig() -> Signature {
+        aira_object::local_test_signature(aira_object::LOCAL_TEST_DOMAIN_MSG)
+    }
+
     fn sample_manifest() -> CsuManifest {
-        let root = aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
-        let path = root.join("fixtures/valid/csu/manifest.json");
-        let text = std::fs::read_to_string(path).unwrap();
-        serde_json::from_str(&text).unwrap()
+        // Prefer programmatic signed manifest (Alpha.2 crypto) over static TESTSIG fixtures.
+        support::basic_manifest(
+            "aira:csu:execution.basic",
+            "execution-basic",
+            CsuType::Execution,
+            &["CapsuleCreated"],
+            &["CapsuleCompleted"],
+        )
     }
 
     fn sample_event(event_type: EventType) -> EventDescriptor {
+        let payload_hash = ContentHash::parse(
+            "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        )
+        .unwrap();
         EventDescriptor {
             event_id: AiraRef::parse("aira:event:01E1").unwrap(),
             event_type,
             schema_version: "0.1".into(),
-            producer_identity: producer(),
+            producer_identity: AiraRef::parse("aira:identity:local-test").unwrap(),
             causal_refs: vec![],
             object_refs: vec![],
             artifact_refs: vec![],
             policy_refs: vec![],
-            payload_hash: ContentHash::parse(
-                "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-            )
-            .unwrap(),
+            payload_hash: payload_hash.clone(),
             payload_ref: None,
             created_at: Timestamp::parse("2026-07-10T12:00:00Z").unwrap(),
-            signature: sig(),
+            signature: aira_object::local_test_signature(payload_hash.as_str().as_bytes()),
         }
     }
 
@@ -149,6 +150,7 @@ mod tests {
         let mut bad_abi = m;
         bad_abi.abi_version = "9.9".into();
         bad_abi.csu_id = AiraRef::parse("aira:csu:other.basic").unwrap();
+        bad_abi.signature = aira_object::local_test_signature(bad_abi.csu_id.as_str().as_bytes());
         assert!(matches!(
             reg.register(bad_abi, None),
             Err(CsuError::UnsupportedAbi(_))
@@ -210,6 +212,7 @@ mod tests {
         let mut rt2 = CsuRuntime::new(producer(), sig());
         let mut m2 = sample_manifest();
         m2.csu_id = AiraRef::parse("aira:csu:fail.basic").unwrap();
+        m2.signature = aira_object::local_test_signature(m2.csu_id.as_str().as_bytes());
         m2.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
         let id2 = m2.csu_id.clone();
         rt2.register_handler(Box::new(FailingCsu { manifest: m2 }), None)

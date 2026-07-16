@@ -19,15 +19,7 @@ pub fn crate_version() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aira_object::{AiraRef, ContentHash, Signature, Timestamp};
-
-    fn sample_sig() -> Signature {
-        Signature {
-            algorithm: "ed25519".into(),
-            key_ref: AiraRef::parse("aira:identity:local-test").unwrap(),
-            signature_value: "TESTSIG".into(),
-        }
-    }
+    use aira_object::{AiraRef, ContentHash, Timestamp};
 
     fn descriptor_for(payload: &[u8], artifact_id: &str) -> ArtifactDescriptor {
         let hash = ContentHash::sha256_bytes(payload);
@@ -41,7 +33,7 @@ mod tests {
             provenance_refs: vec![AiraRef::parse("aira:event:01E1").unwrap()],
             dependency_refs: vec![],
             policy_refs: vec![AiraRef::parse("aira:policy:default").unwrap()],
-            signature: sample_sig(),
+            signature: aira_object::local_test_signature(hash.as_str().as_bytes()),
             created_at: Timestamp::parse("2026-07-10T12:00:00Z").unwrap(),
         }
     }
@@ -85,12 +77,14 @@ mod tests {
         assert_eq!(loaded, desc);
         assert_eq!(bytes, payload);
 
-        // hash mismatch rejected
+        // hash mismatch rejected (signature binds the claimed content_hash)
+        let bad_hash = ContentHash::parse(
+            "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        )
+        .unwrap();
         let bad = ArtifactDescriptor {
-            content_hash: ContentHash::parse(
-                "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-            )
-            .unwrap(),
+            content_hash: bad_hash.clone(),
+            signature: aira_object::local_test_signature(bad_hash.as_str().as_bytes()),
             ..desc.clone()
         };
         let err = store.publish(bad, payload).unwrap_err();

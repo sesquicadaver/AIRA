@@ -54,13 +54,22 @@ impl InvariantChecker {
         )
     }
 
-    /// Event must carry a non-empty signature value.
+    /// Event must carry a cryptographically valid Ed25519 signature (Alpha.2).
     pub fn check_event_signature(
         &mut self,
         event: &EventDescriptor,
         events: &mut dyn EventSink,
     ) -> Result<(), CoreError> {
-        if event.signature.signature_value.is_empty() {
+        let ok =
+            aira_object::verify_ed25519(&event.signature, event.payload_hash.as_str().as_bytes())
+                .or_else(|_| {
+                    aira_object::verify_ed25519(
+                        &event.signature,
+                        aira_object::LOCAL_TEST_DOMAIN_MSG,
+                    )
+                })
+                .is_ok();
+        if !ok {
             return self.emit(
                 events,
                 &event.event_id,

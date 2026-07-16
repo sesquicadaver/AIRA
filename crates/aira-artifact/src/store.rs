@@ -21,6 +21,8 @@ pub enum ArtifactError {
     NotFound(AiraRef),
     #[error("unsigned artifact: {0}")]
     Unsigned(AiraRef),
+    #[error("invalid artifact signature: {0}")]
+    InvalidSignature(AiraRef),
     #[error("private artifact access denied: {0}")]
     AccessDenied(AiraRef),
     #[error("storage error: {0}")]
@@ -164,6 +166,16 @@ impl ArtifactStore for CasArtifactStore {
         if descriptor.signature.signature_value.trim().is_empty() {
             return Err(ArtifactError::Unsigned(descriptor.artifact_id));
         }
+        aira_object::verify_ed25519(
+            &descriptor.signature,
+            descriptor.content_hash.as_str().as_bytes(),
+        )
+        .map_err(|e| match e {
+            aira_object::CryptoError::MissingOrLegacy => {
+                ArtifactError::Unsigned(descriptor.artifact_id.clone())
+            }
+            _ => ArtifactError::InvalidSignature(descriptor.artifact_id.clone()),
+        })?;
         let actual = ContentHash::sha256_bytes(payload);
         if actual != descriptor.content_hash {
             return Err(ArtifactError::HashMismatch {

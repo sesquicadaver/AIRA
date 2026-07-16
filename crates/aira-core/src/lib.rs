@@ -27,11 +27,7 @@ mod tests {
     use aira_policy::{PolicyGate, PolicyQuery};
 
     fn sig() -> Signature {
-        Signature {
-            algorithm: "ed25519".into(),
-            key_ref: AiraRef::parse("aira:identity:local-test").unwrap(),
-            signature_value: "TESTSIG".into(),
-        }
+        aira_object::local_test_signature(aira_object::LOCAL_TEST_DOMAIN_MSG)
     }
 
     #[test]

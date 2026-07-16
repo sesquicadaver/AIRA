@@ -93,7 +93,7 @@ mod tests {
             "failures={:?}",
             suite.report.failures
         );
-        assert_eq!(suite.report.results.passed, 4);
+        assert_eq!(suite.report.results.passed, 6);
     }
 
     #[test]

@@ -18,6 +18,6 @@
   "signature": {
     "algorithm": "ed25519",
     "key_ref": "aira:identity:local-test",
-    "signature_value": "TESTSIG"
+    "signature_value": "b435751b72b65911f7992e6fb07ec8f8bca66db096f797f01ee2fb28b1bb8472c2fb3a6f7a3d5030205c8ded3703fc571705e910fa1f807b734f928d7157790c"
   }
 }

@@ -93,11 +93,19 @@ pub struct CsuManifest {
 }
 
 impl CsuManifest {
-    /// Structural validation for registry admission (signature presence + ABI).
+    /// Structural + cryptographic validation for registry admission.
     pub fn validate_for_registration(&self) -> Result<(), CsuError> {
         if self.signature.signature_value.trim().is_empty() {
             return Err(CsuError::UnsignedManifest(self.csu_id.clone()));
         }
+        aira_object::verify_ed25519(&self.signature, self.csu_id.as_str().as_bytes()).map_err(
+            |e| match e {
+                aira_object::CryptoError::MissingOrLegacy => {
+                    CsuError::UnsignedManifest(self.csu_id.clone())
+                }
+                other => CsuError::ManifestInvalid(format!("signature: {other}")),
+            },
+        )?;
         if self.abi_version != SUPPORTED_ABI_VERSION {
             return Err(CsuError::UnsupportedAbi(self.abi_version.clone()));
         }

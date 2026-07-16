@@ -21,7 +21,9 @@ pub fn run_security_baseline(
 ) -> Result<SuiteResult, ConformanceError> {
     let cases = vec![
         test_unsigned_csu_rejected(),
+        test_invalid_csu_signature_rejected(),
         test_unsigned_artifact_rejected(artifact_root.as_ref()),
+        test_invalid_artifact_signature_rejected(artifact_root.as_ref()),
         test_private_artifact_denied(artifact_root.as_ref()),
         test_secret_not_in_events(),
     ];
@@ -36,6 +38,38 @@ fn test_unsigned_csu_rejected() -> CaseResult {
     match reg.register(manifest, None) {
         Err(_) => pass(id),
         Ok(_) => fail(id, "unsigned CSU was accepted"),
+    }
+}
+
+fn test_invalid_csu_signature_rejected() -> CaseResult {
+    let id = "sec.invalid_csu_signature";
+    let mut manifest = ContextBasicCsu::new().manifest().clone();
+    manifest.signature.signature_value = "TESTSIG".into();
+    let mut reg = CsuRegistry::new();
+    match reg.register(manifest, None) {
+        Err(_) => pass(id),
+        Ok(_) => fail(id, "TESTSIG CSU was accepted"),
+    }
+}
+
+fn test_invalid_artifact_signature_rejected(artifact_root: &Path) -> CaseResult {
+    let id = "sec.invalid_artifact_signature";
+    let dir = artifact_root.join("sec-badsig");
+    let mut store = match CasArtifactStore::open(&dir) {
+        Ok(s) => s,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let payload = b"badsig";
+    let mut desc = make_artifact(
+        "aira:artifact:sec_badsig1",
+        ArtifactType::EvidenceArtifact,
+        payload,
+        vec![],
+    );
+    desc.signature.signature_value = "TESTSIG".into();
+    match store.publish(desc, payload) {
+        Err(ArtifactError::Unsigned(_)) | Err(ArtifactError::InvalidSignature(_)) => pass(id),
+        other => fail(id, format!("expected signature reject, got {other:?}")),
     }
 }
 

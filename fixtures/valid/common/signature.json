@@ -1,5 +1,5 @@
 {
   "algorithm": "ed25519",
   "key_ref": "aira:identity:local-test",
-  "signature_value": "TESTSIG"
+  "signature_value": "d4295b4daeeb41c8dcc7ab0823210104b257a68f38f79d26bdd66875265e0444345ca009c25e3e208c44409fe6acda433c53cca108a476c7ea4f17ac11884601"
 }

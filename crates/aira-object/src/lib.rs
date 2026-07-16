@@ -3,10 +3,16 @@
 //! Provides typed references, hashes, signatures, opaque handles, and
 //! `ObjectDescriptor` aligned with Schema Pack core schemas.
 
+mod crypto;
 mod descriptor;
 mod handle;
 mod types;
 
+pub use crypto::{
+    is_cryptographic_signature, local_test_public_key_hex, local_test_signature,
+    local_test_signing_key, local_test_verifying_key, sign_with_key, verify_ed25519, CryptoError,
+    LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF,
+};
 pub use descriptor::{ObjectDescriptor, ObjectType};
 pub use handle::Handle;
 pub use types::{AiraRef, ContentHash, Signature, Timestamp};
@@ -54,14 +60,11 @@ mod tests {
 
     #[test]
     fn signature_roundtrip() {
-        let sig = Signature {
-            algorithm: "ed25519".into(),
-            key_ref: AiraRef::parse("aira:identity:local-test").unwrap(),
-            signature_value: "TESTSIG".into(),
-        };
+        let sig = local_test_signature(b"roundtrip");
         let v = serde_json::to_value(&sig).unwrap();
         let back: Signature = serde_json::from_value(v).unwrap();
         assert_eq!(sig, back);
+        verify_ed25519(&sig, b"roundtrip").unwrap();
     }
 
     #[test]

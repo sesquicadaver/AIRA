@@ -32,7 +32,7 @@
       "signature": {
         "algorithm": "ed25519",
         "key_ref": "aira:identity:local-test",
-        "signature_value": "TESTSIG"
+        "signature_value": "edf24e16036b0cedc0d95a6269fbc891c6f6237cb4e157b72abcb983e053b5516a0ec574e2d082212eea24ae0cc5a7aa50e6ffa6a794804aacd15d3d447e4a01"
       },
       "confidence": 1.0
     }
@@ -63,7 +63,7 @@
   "signature": {
     "algorithm": "ed25519",
     "key_ref": "aira:identity:local-test",
-    "signature_value": "TESTSIG"
+    "signature_value": "fc2cdcd287e72eac3501187882a7595533ccd3b63f7ba3f16424b039defa00b2979e62374cac4e17501662088b6d8880209dc5f45b6396ba98c6239edceda30b"
   },
   "created_at": "2026-07-10T12:00:00Z"
 }

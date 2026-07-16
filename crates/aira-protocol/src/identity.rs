@@ -48,7 +48,7 @@ impl IdentityDescriptor {
             AiraRef::parse(identity_id).map_err(|e| ProtocolError::Schema(e.to_string()))?;
         let policy = AiraRef::parse("aira:policy:default")
             .map_err(|e| ProtocolError::Schema(e.to_string()))?;
-        let mut desc = Self {
+        let desc = Self {
             identity_id: identity_id.clone(),
             identity_type: IdentityType::User,
             public_keys: vec![PublicKeyEntry {
@@ -61,20 +61,13 @@ impl IdentityDescriptor {
             trust_anchors: vec![],
             policy_refs: vec![policy],
             metadata_hash: None,
-            signature: Signature {
-                algorithm: "ed25519".into(),
-                key_ref: identity_id,
-                signature_value: "TESTSIG".into(),
-            },
+            signature: local_signature(),
         };
-        // Prefer local_signature shape when identity is the test identity.
-        if desc.identity_id.as_str() == "aira:identity:local-test" {
-            desc.signature = local_signature();
-        }
         if desc.public_keys.is_empty() || desc.public_keys[0].public_key_material.is_empty() {
             return Err(ProtocolError::Schema("public key required".into()));
         }
-        if desc.signature.signature_value.trim().is_empty() {
+        if aira_object::verify_ed25519(&desc.signature, aira_object::LOCAL_TEST_DOMAIN_MSG).is_err()
+        {
             return Err(ProtocolError::InvalidSignature);
         }
         Ok(desc)
