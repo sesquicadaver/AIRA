@@ -2,24 +2,24 @@
 
 use aira_artifact::{ArtifactDescriptor, ArtifactType};
 use aira_event::{EventDescriptor, EventType};
-use aira_object::{local_test_signature, AiraRef, ContentHash, Timestamp};
+use aira_object::{active_identity, active_signature, AiraRef, ContentHash, Timestamp};
 use serde_json::{json, Value};
 
 use crate::manifest::{CsuManifest, CsuSandbox, CsuType, SUPPORTED_ABI_VERSION};
 
-/// Local test / MVP signature over a message (real Ed25519, Alpha.2).
+/// Signature over a message using the process primary signer (node identity when set).
 pub fn local_signature_over(message: &[u8]) -> aira_object::Signature {
-    local_test_signature(message)
+    active_signature(message)
 }
 
-/// Local test signature over the standard domain message.
+/// Signature over the standard domain message using the primary signer.
 pub fn local_signature() -> aira_object::Signature {
-    local_test_signature(aira_object::LOCAL_TEST_DOMAIN_MSG)
+    active_signature(aira_object::LOCAL_TEST_DOMAIN_MSG)
 }
 
-/// Local producer identity.
+/// Producer identity — primary signer (node identity when registered, else local-test).
 pub fn local_identity() -> AiraRef {
-    AiraRef::parse("aira:identity:local-test").expect("ref")
+    active_identity()
 }
 
 /// Fixed MVP timestamp.

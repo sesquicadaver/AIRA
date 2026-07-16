@@ -186,6 +186,8 @@ pub fn register_keyring(ring: &Keyring) {
 }
 
 /// Load node identity from `root` and register into the process keyring.
+///
+/// When a node identity is loaded, it becomes the [`primary_signer`].
 pub fn register_node_identity(root: impl AsRef<Path>) -> Result<Option<AiraRef>, CryptoError> {
     let json_path = root.as_ref().join("identity").join("local.identity.json");
     if !json_path.exists() {
@@ -193,6 +195,7 @@ pub fn register_node_identity(root: impl AsRef<Path>) -> Result<Option<AiraRef>,
     }
     let (id, ring) = Keyring::load_node_identity(root)?;
     register_keyring(&ring);
+    set_primary_signer(id.clone());
     Ok(Some(id))
 }
 
@@ -202,6 +205,45 @@ pub fn process_keyring_snapshot() -> Keyring {
         .read()
         .unwrap_or_else(|e| e.into_inner())
         .clone()
+}
+
+fn primary_slot() -> &'static RwLock<AiraRef> {
+    static PRIMARY: OnceLock<RwLock<AiraRef>> = OnceLock::new();
+    PRIMARY.get_or_init(|| RwLock::new(AiraRef::parse(LOCAL_TEST_KEY_REF).expect("local-test ref")))
+}
+
+/// Set the identity used by [`active_identity`] / [`active_signature`].
+pub fn set_primary_signer(key_ref: AiraRef) {
+    let mut g = primary_slot().write().unwrap_or_else(|e| e.into_inner());
+    *g = key_ref;
+}
+
+/// Reset primary signer to local-test (tests).
+pub fn reset_primary_signer() {
+    set_primary_signer(AiraRef::parse(LOCAL_TEST_KEY_REF).expect("local-test ref"));
+}
+
+/// Current primary producer identity (node identity when registered, else local-test).
+pub fn primary_signer() -> AiraRef {
+    primary_slot()
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
+}
+
+/// Alias for [`primary_signer`].
+pub fn active_identity() -> AiraRef {
+    primary_signer()
+}
+
+/// Sign `message` with the primary identity's registered signing key.
+pub fn active_signature(message: &[u8]) -> Signature {
+    let id = primary_signer();
+    let ring = process_keyring_snapshot();
+    match ring.sign(&id, message) {
+        Ok(sig) => sig,
+        Err(_) => local_test_signature(message),
+    }
 }
 
 /// Signing key for `aira:identity:local-test`.
@@ -330,5 +372,13 @@ mod tests {
 
         register_keyring(&ring);
         verify_ed25519(&sig, msg).unwrap();
+
+        set_primary_signer(loaded_id.clone());
+        assert_eq!(active_identity().as_str(), id);
+        let active = active_signature(msg);
+        assert_eq!(active.key_ref.as_str(), id);
+        verify_ed25519(&active, msg).unwrap();
+        reset_primary_signer();
+        assert_eq!(primary_signer().as_str(), LOCAL_TEST_KEY_REF);
     }
 }

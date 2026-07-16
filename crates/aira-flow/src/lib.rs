@@ -221,12 +221,12 @@ mod tests {
     }
 
     #[test]
-    fn local_session_registers_node_identity() {
+    fn local_session_submit_signs_with_node_identity() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join(".aira");
         init_node(&root).unwrap();
-        let sk = ed25519_dalek::SigningKey::from_bytes(&[9u8; 32]);
-        let id = "aira:identity:session-demo";
+        let sk = ed25519_dalek::SigningKey::from_bytes(&[11u8; 32]);
+        let id = "aira:identity:plane-signer";
         std::fs::create_dir_all(root.join("identity")).unwrap();
         std::fs::write(
             root.join("identity/local.ed25519"),
@@ -238,7 +238,7 @@ mod tests {
             serde_json::json!({
                 "identity_id": id,
                 "identity_type": "local",
-                "display_name": "session-demo",
+                "display_name": "plane-signer",
                 "public_key": {
                     "algorithm": "ed25519",
                     "key_hex": hex::encode(sk.verifying_key().to_bytes())
@@ -249,12 +249,30 @@ mod tests {
             .to_string(),
         )
         .unwrap();
-        let _session = LocalSession::open(&root).unwrap();
-        let ring = aira_object::process_keyring_snapshot();
-        let msg = b"session-open-registers";
-        let sig = ring
-            .sign(&aira_object::AiraRef::parse(id).unwrap(), msg)
+
+        let mut session = LocalSession::open(&root).unwrap();
+        assert_eq!(aira_object::primary_signer().as_str(), id);
+        let out = session.submit_problem("Calculate 2 + 2").unwrap();
+        assert!(matches!(out, SubmitOutcome::Completed { .. }));
+        let problem = session.plane().problem_ref().unwrap();
+        let desc = session
+            .plane()
+            .objects()
+            .get_by_object_id(problem)
+            .unwrap()
             .unwrap();
-        aira_object::verify_ed25519(&sig, msg).unwrap();
+        assert_eq!(desc.producer_identity.as_str(), id);
+        assert_eq!(desc.signature.key_ref.as_str(), id);
+        aira_object::verify_ed25519(&desc.signature, desc.content_hash.as_str().as_bytes())
+            .unwrap();
+        let ev = session
+            .plane()
+            .events()
+            .iter()
+            .find(|e| e.event_type == EventType::ProblemSubmitted)
+            .unwrap();
+        assert_eq!(ev.producer_identity.as_str(), id);
+        assert_eq!(ev.signature.key_ref.as_str(), id);
+        aira_object::reset_primary_signer();
     }
 }

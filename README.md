@@ -35,7 +35,7 @@ Problem Statement
 ## Status
 
 **Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha**.
-**Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring (`docs/crypto.md`, `aira identity sign|verify`).
+**Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing (`docs/crypto.md`).
 
 See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md` and `scripts/prepare-alpha.sh`.
 

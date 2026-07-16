@@ -272,8 +272,9 @@ fn run() -> Result<ExitCode> {
                 });
                 std::fs::write(paths.identity_json(), serde_json::to_string_pretty(&desc)?)?;
                 let mut ring = aira_object::Keyring::with_local_test();
-                ring.insert_signing(id_ref, signing);
+                ring.insert_signing(id_ref.clone(), signing);
                 aira_object::register_keyring(&ring);
+                aira_object::set_primary_signer(id_ref);
                 println!("created {identity_id}");
                 println!("public_key {public_hex}");
                 println!("identity {}", paths.identity_json().display());

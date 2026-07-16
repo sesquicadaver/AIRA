@@ -232,10 +232,10 @@ impl LocalSession {
             )));
         }
         let config = load_config(&paths.root)?;
+        // Register node identity + set primary signer BEFORE plane construction.
+        let _ = aira_object::register_node_identity(&paths.root);
         let nonce = peek_run_nonce(&paths)?;
         let plane = OperationalPlane::open_with_ready_nonce(paths.artifacts(), vec![], nonce)?;
-        // Register node identity keys (if present) into the process keyring for verify/sign.
-        let _ = aira_object::register_node_identity(&paths.root);
         Ok(Self {
             paths,
             config,
@@ -253,6 +253,8 @@ impl LocalSession {
 
     /// Submit problem, drain pipeline, persist events + problem index.
     pub fn submit_problem(&mut self, text: &str) -> Result<SubmitOutcome, FlowError> {
+        // Ensure primary signer reflects node identity for rebuilt plane.
+        let _ = aira_object::register_node_identity(&self.paths.root);
         // Allocate a fresh nonce and rebuild plane so ids never collide with prior runs.
         let nonce = alloc_run_nonce(&self.paths)?;
         self.plane =
