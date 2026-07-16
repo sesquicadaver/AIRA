@@ -111,7 +111,7 @@ enum IdentityCommands {
 
 #[derive(Subcommand, Debug)]
 enum TrustCommands {
-    /// List trusted identity public keys.
+    /// List trusted identity public keys (and revoked CRL).
     List,
     /// Add or update a trusted verifying key.
     Add {
@@ -120,10 +120,17 @@ enum TrustCommands {
         #[arg(long)]
         pubkey_hex: String,
     },
-    /// Remove a trusted identity.
+    /// Remove a trusted identity (not durable — can re-add).
     Remove {
         #[arg(long)]
         key_ref: String,
+    },
+    /// Durably revoke an identity (CRL — blocks re-add).
+    Revoke {
+        #[arg(long)]
+        key_ref: String,
+        #[arg(long)]
+        reason: Option<String>,
     },
 }
 
@@ -356,10 +363,17 @@ fn run() -> Result<ExitCode> {
                     let store = aira_object::ensure_trust_defaults(&root)
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
                     if store.entries.is_empty() {
-                        println!("(empty)");
+                        println!("(empty trusted)");
                     } else {
                         for e in &store.entries {
                             println!("{}\t{}\t{}", e.identity_id, e.algorithm, e.public_key_hex);
+                        }
+                    }
+                    if !store.revoked.is_empty() {
+                        println!("# revoked");
+                        for r in &store.revoked {
+                            let reason = r.reason.as_deref().unwrap_or("-");
+                            println!("REVOKED\t{}\t{}", r.identity_id, reason);
                         }
                     }
                     println!("trust {}", NodePaths::new(&root).trust_json().display());
@@ -395,6 +409,19 @@ fn run() -> Result<ExitCode> {
                     } else {
                         println!("not found {key_ref}");
                     }
+                    Ok(ExitCode::SUCCESS)
+                }
+                TrustCommands::Revoke { key_ref, reason } => {
+                    ensure_init(&root)?;
+                    let mut store = aira_object::TrustStore::load(&root)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    store
+                        .revoke(&key_ref, reason.as_deref())
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
+                    aira_object::sync_trust_verifiers(&root)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    println!("revoked {key_ref}");
                     Ok(ExitCode::SUCCESS)
                 }
             },

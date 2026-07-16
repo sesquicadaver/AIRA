@@ -42,7 +42,16 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust remove \
 
 `register_trust_store` merges entries into the process keyring so `verify_ed25519` / `aira identity verify` succeed for trusted peers without their signing keys on disk.
 
-**Unload / sync** (Analyze-24): `sync_trust_verifiers` prunes process verifying keys absent from `trust.json` (never unloads `local-test`; signing identities keep derived verifying keys). `identity trust remove` and `ensure_trust_defaults` call sync so revoke takes effect in-process immediately.
+**Unload / sync** (Analyze-24): `sync_trust_verifiers` prunes process verifying keys absent from `trust.json` (never unloads `local-test`; signing identities keep derived verifying keys unless revoked). `identity trust remove` and `ensure_trust_defaults` call sync so unload takes effect in-process immediately.
+
+**CRL** (Analyze-25): `trust.json` field `revoked[]` is a durable deny list. `identity trust revoke --key-ref … [--reason …]` moves an id out of `entries` onto the CRL; `trust add` / `upsert` of a revoked id fails with `RevokedKey`. `remove` is still non-durable (re-add allowed). `local-test` cannot be revoked.
+
+```bash
+cargo run -p aira-cli -- --root "$ROOT" identity trust revoke \
+  --key-ref aira:identity:peer-alice --reason compromised
+cargo run -p aira-cli -- --root "$ROOT" identity trust list
+# shows REVOKED lines; re-add of peer-alice fails
+```
 
 ## Canonical signed messages
 
@@ -59,4 +68,4 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Key rotation / revocation lists; TLS; per-CSU publisher identity overrides.
+Key rotation ceremonies / unrevoke admin path; TLS; per-CSU publisher identity overrides.

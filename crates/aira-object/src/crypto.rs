@@ -39,6 +39,10 @@ pub enum CryptoError {
     Io(String),
     #[error("no signing key registered for: {0}")]
     NoSigningKey(String),
+    #[error("identity is revoked and cannot be trusted: {0}")]
+    RevokedKey(String),
+    #[error("cannot revoke protected identity: {0}")]
+    ProtectedIdentity(String),
 }
 
 /// In-memory verifying (+ optional signing) keys keyed by identity ref.
@@ -178,6 +182,16 @@ pub struct TrustEntry {
     pub public_key_hex: String,
 }
 
+/// Durable revocation record (CRL entry) — blocks re-trust via upsert.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct RevokedEntry {
+    pub identity_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_key_hex: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
 fn default_ed25519() -> String {
     "ed25519".into()
 }
@@ -187,6 +201,9 @@ fn default_ed25519() -> String {
 pub struct TrustStore {
     #[serde(default)]
     pub entries: Vec<TrustEntry>,
+    /// Durable CRL — revoked identities cannot be re-added via [`TrustStore::upsert`].
+    #[serde(default)]
+    pub revoked: Vec<RevokedEntry>,
 }
 
 impl TrustStore {
@@ -215,11 +232,21 @@ impl TrustStore {
         fs::write(path, format!("{json}\n")).map_err(|e| CryptoError::Io(e.to_string()))
     }
 
+    /// True when `identity_id` is on the durable CRL.
+    pub fn is_revoked(&self, identity_id: &str) -> bool {
+        self.revoked.iter().any(|r| r.identity_id == identity_id)
+    }
+
     /// Insert or replace an entry by identity_id.
+    ///
+    /// Fails with [`CryptoError::RevokedKey`] if the id is on the CRL.
     pub fn upsert(&mut self, identity_id: &str, public_key_hex: &str) -> Result<(), CryptoError> {
         let _ = parse_public_hex(public_key_hex.trim())?;
         let id = identity_id.trim();
         AiraRef::parse(id).map_err(|_| CryptoError::InvalidKey)?;
+        if self.is_revoked(id) {
+            return Err(CryptoError::RevokedKey(id.to_string()));
+        }
         if let Some(e) = self.entries.iter_mut().find(|e| e.identity_id == id) {
             e.public_key_hex = public_key_hex.trim().to_string();
             e.algorithm = "ed25519".into();
@@ -235,11 +262,42 @@ impl TrustStore {
         Ok(())
     }
 
-    /// Remove entry; returns whether it existed.
+    /// Remove entry; returns whether it existed. Does **not** add to CRL (use [`TrustStore::revoke`]).
     pub fn remove(&mut self, identity_id: &str) -> bool {
         let before = self.entries.len();
         self.entries.retain(|e| e.identity_id != identity_id);
         self.entries.len() != before
+    }
+
+    /// Durably revoke an identity: drop from entries, append CRL, block re-upsert.
+    ///
+    /// Refuses [`LOCAL_TEST_KEY_REF`]. Idempotent if already revoked.
+    pub fn revoke(
+        &mut self,
+        identity_id: &str,
+        reason: Option<&str>,
+    ) -> Result<(), CryptoError> {
+        let id = identity_id.trim();
+        if id == LOCAL_TEST_KEY_REF {
+            return Err(CryptoError::ProtectedIdentity(LOCAL_TEST_KEY_REF.into()));
+        }
+        AiraRef::parse(id).map_err(|_| CryptoError::InvalidKey)?;
+        let pk = self
+            .entries
+            .iter()
+            .find(|e| e.identity_id == id)
+            .map(|e| e.public_key_hex.clone());
+        let _ = self.remove(id);
+        if !self.is_revoked(id) {
+            self.revoked.push(RevokedEntry {
+                identity_id: id.to_string(),
+                public_key_hex: pk,
+                reason: reason.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+            });
+            self.revoked
+                .sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
+        }
+        Ok(())
     }
 
     /// Ensure local-test public key is trusted.
@@ -247,7 +305,7 @@ impl TrustStore {
         self.upsert(LOCAL_TEST_KEY_REF, &local_test_public_key_hex())
     }
 
-    /// Build a verifying-only keyring from entries.
+    /// Build a verifying-only keyring from active entries (revoked excluded).
     pub fn to_keyring(&self) -> Result<Keyring, CryptoError> {
         let mut ring = Keyring::new();
         for e in &self.entries {
@@ -270,16 +328,21 @@ pub fn register_trust_store(root: impl AsRef<Path>) -> Result<usize, CryptoError
     Ok(store.entries.len())
 }
 
-/// Prune process verifying keys absent from `trust.json`, then re-register trust entries.
+/// Prune process verifying keys absent from `trust.json` (or on the CRL), then re-register trust.
 ///
 /// - Never unloads [`LOCAL_TEST_KEY_REF`].
 /// - Identities that still have signing material keep a verifying key derived from signing
-///   (node identity remains usable even if momentarily missing from the trust file).
-/// - Peer verifying-only keys removed from the file stop verifying in-process immediately.
+///   **unless** the id is on the durable CRL.
+/// - Peer verifying-only keys removed or revoked stop verifying in-process immediately.
 pub fn sync_trust_verifiers(root: impl AsRef<Path>) -> Result<usize, CryptoError> {
     let store = TrustStore::load(&root)?;
     let trusted: HashSet<String> = store
         .entries
+        .iter()
+        .map(|e| e.identity_id.clone())
+        .collect();
+    let revoked: HashSet<String> = store
+        .revoked
         .iter()
         .map(|e| e.identity_id.clone())
         .collect();
@@ -289,6 +352,10 @@ pub fn sync_trust_verifiers(root: impl AsRef<Path>) -> Result<usize, CryptoError
         let ids: Vec<String> = guard.verifying.keys().cloned().collect();
         for id in ids {
             if id == LOCAL_TEST_KEY_REF || trusted.contains(&id) {
+                continue;
+            }
+            if revoked.contains(&id) {
+                guard.verifying.remove(&id);
                 continue;
             }
             if let Some(sk) = guard.signing.get(&id).cloned() {
@@ -566,5 +633,42 @@ mod tests {
         let ring = TrustStore::load(root).unwrap().to_keyring().unwrap();
         assert!(ring.verifying_key(peer_id).is_none());
         assert!(ring.verifying_key(LOCAL_TEST_KEY_REF).is_some());
+    }
+
+    #[test]
+    fn trust_crl_revoke_blocks_readd_and_verify() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let peer_sk = SigningKey::from_bytes(&[17u8; 32]);
+        let peer_id = "aira:identity:peer-bob";
+        let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
+
+        let mut store = TrustStore::default();
+        store.ensure_local_test().unwrap();
+        store.upsert(peer_id, &peer_pub).unwrap();
+        store.save(root).unwrap();
+        register_trust_store(root).unwrap();
+
+        let msg = b"crl-message";
+        let sig = sign_with_key(AiraRef::parse(peer_id).unwrap(), &peer_sk, msg);
+        verify_ed25519(&sig, msg).unwrap();
+
+        store.revoke(peer_id, Some("compromised")).unwrap();
+        store.save(root).unwrap();
+        sync_trust_verifiers(root).unwrap();
+        assert!(store.is_revoked(peer_id));
+        assert_eq!(
+            verify_ed25519(&sig, msg),
+            Err(CryptoError::UnknownKey(peer_id.into()))
+        );
+        assert_eq!(
+            store.upsert(peer_id, &peer_pub),
+            Err(CryptoError::RevokedKey(peer_id.into()))
+        );
+        assert!(TrustStore::default()
+            .revoke(LOCAL_TEST_KEY_REF, None)
+            .is_err());
+        verify_ed25519(&local_test_signature(msg), msg).unwrap();
     }
 }
