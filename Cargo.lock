@@ -105,6 +105,7 @@ dependencies = [
  "aira-object",
  "aira-policy",
  "aira-schema",
+ "ed25519-dalek",
  "serde",
  "serde_json",
  "tempfile",
