@@ -43,6 +43,7 @@ dependencies = [
 name = "aira-cli"
 version = "0.1.0"
 dependencies = [
+ "aira-conformance",
  "aira-csu",
  "aira-flow",
  "aira-schema",
@@ -57,6 +58,26 @@ dependencies = [
 [[package]]
 name = "aira-conformance"
 version = "0.1.0"
+dependencies = [
+ "aira-artifact",
+ "aira-core",
+ "aira-csu",
+ "aira-csu-artifact-basic",
+ "aira-csu-context-basic",
+ "aira-csu-evidence-basic",
+ "aira-csu-execution-basic",
+ "aira-csu-reduction-basic",
+ "aira-csu-verification-basic",
+ "aira-event",
+ "aira-flow",
+ "aira-object",
+ "aira-policy",
+ "aira-schema",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
 
 [[package]]
 name = "aira-core"
