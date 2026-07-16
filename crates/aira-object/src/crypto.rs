@@ -8,6 +8,8 @@ use std::sync::{OnceLock, RwLock};
 use ed25519_dalek::{Signature as DalekSignature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 use crate::types::{AiraRef, Signature};
 
@@ -49,6 +51,8 @@ pub enum CryptoError {
     NotTrusted(String),
     #[error("old and new identity refs must differ")]
     SameIdentity,
+    #[error("invalid grace_until timestamp (need RFC3339 UTC): {0}")]
+    InvalidTimestamp(String),
 }
 
 /// In-memory verifying (+ optional signing) keys keyed by identity ref.
@@ -202,6 +206,10 @@ pub struct RevokedEntry {
     /// Successor identity when revoked via [`TrustStore::rotate`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub superseded_by: Option<String>,
+    /// Dual-key grace end (RFC3339 UTC). While `now <= grace_until`, the revoked
+    /// pubkey remains verifiable alongside the successor.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grace_until: Option<String>,
 }
 
 fn default_ed25519() -> String {
@@ -307,6 +315,7 @@ impl TrustStore {
                 public_key_hex: pk,
                 reason: reason.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
                 superseded_by: None,
+                grace_until: None,
             });
             self.revoked
                 .sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
@@ -319,7 +328,8 @@ impl TrustStore {
     /// - `old_ref` must currently be in `entries` (not merely on CRL).
     /// - `old_ref` is revoked with `superseded_by = new_ref`.
     /// - `new_ref` is upserted with `supersedes = old_ref` (replaces pubkey if already trusted).
-    /// - No dual-key verify window: after [`sync_trust_verifiers`], old signatures fail.
+    /// - If `grace_until` is set (RFC3339 UTC), old pubkey stays verifiable until that instant
+    ///   via [`TrustStore::to_keyring_at`] / [`sync_trust_verifiers`]. Omit for immediate cutover.
     ///
     /// Refuses [`LOCAL_TEST_KEY_REF`] as either side; refuses identical refs.
     pub fn rotate(
@@ -328,6 +338,7 @@ impl TrustStore {
         new_ref: &str,
         new_pubkey_hex: &str,
         reason: Option<&str>,
+        grace_until: Option<&str>,
     ) -> Result<(), CryptoError> {
         let old = old_ref.trim();
         let new = new_ref.trim();
@@ -340,6 +351,10 @@ impl TrustStore {
         AiraRef::parse(old).map_err(|_| CryptoError::InvalidKey)?;
         AiraRef::parse(new).map_err(|_| CryptoError::InvalidKey)?;
         let _ = parse_public_hex(new_pubkey_hex.trim())?;
+        let grace_until = match grace_until {
+            Some(s) => Some(normalize_rfc3339(s)?),
+            None => None,
+        };
         if self.is_revoked(new) {
             return Err(CryptoError::RevokedKey(new.to_string()));
         }
@@ -361,6 +376,7 @@ impl TrustStore {
                 public_key_hex: Some(old_pk),
                 reason,
                 superseded_by: Some(new.to_string()),
+                grace_until,
             });
             self.revoked
                 .sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
@@ -404,8 +420,14 @@ impl TrustStore {
         self.upsert(LOCAL_TEST_KEY_REF, &local_test_public_key_hex())
     }
 
-    /// Build a verifying-only keyring from active entries (revoked excluded).
+    /// Build a verifying-only keyring from active entries (revoked excluded; no grace).
     pub fn to_keyring(&self) -> Result<Keyring, CryptoError> {
+        self.to_keyring_at(&utc_now_rfc3339()?)
+    }
+
+    /// Build verifying keyring at `now` (RFC3339): active entries + CRL entries still in grace.
+    pub fn to_keyring_at(&self, now_rfc3339: &str) -> Result<Keyring, CryptoError> {
+        let now = parse_rfc3339(now_rfc3339)?;
         let mut ring = Keyring::new();
         for e in &self.entries {
             if e.algorithm != "ed25519" {
@@ -415,31 +437,85 @@ impl TrustStore {
             let vk = parse_public_hex(e.public_key_hex.trim())?;
             ring.insert_verifying(id, vk);
         }
+        for r in &self.revoked {
+            if !r.grace_active_at(now)? {
+                continue;
+            }
+            let Some(pk) = r.public_key_hex.as_deref() else {
+                continue;
+            };
+            let id = AiraRef::parse(&r.identity_id).map_err(|_| CryptoError::InvalidKey)?;
+            let vk = parse_public_hex(pk.trim())?;
+            ring.insert_verifying(id, vk);
+        }
         Ok(ring)
+    }
+
+    /// Identity ids on the CRL that still have an active dual-key grace at `now`.
+    pub fn grace_active_ids(&self, now_rfc3339: &str) -> Result<HashSet<String>, CryptoError> {
+        let now = parse_rfc3339(now_rfc3339)?;
+        let mut out = HashSet::new();
+        for r in &self.revoked {
+            if r.grace_active_at(now)? {
+                out.insert(r.identity_id.clone());
+            }
+        }
+        Ok(out)
     }
 }
 
-/// Load trust.json verifying keys into the process keyring.
+impl RevokedEntry {
+    fn grace_active_at(&self, now: OffsetDateTime) -> Result<bool, CryptoError> {
+        let Some(until) = self.grace_until.as_deref() else {
+            return Ok(false);
+        };
+        let until = parse_rfc3339(until)?;
+        Ok(now <= until && self.public_key_hex.is_some())
+    }
+}
+
+/// Parse and normalize an RFC3339 timestamp to a canonical UTC string.
+pub fn normalize_rfc3339(s: &str) -> Result<String, CryptoError> {
+    let dt = parse_rfc3339(s)?;
+    dt.format(&Rfc3339)
+        .map_err(|e| CryptoError::InvalidTimestamp(e.to_string()))
+}
+
+/// Current UTC time as RFC3339.
+pub fn utc_now_rfc3339() -> Result<String, CryptoError> {
+    OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .map_err(|e| CryptoError::InvalidTimestamp(e.to_string()))
+}
+
+fn parse_rfc3339(s: &str) -> Result<OffsetDateTime, CryptoError> {
+    OffsetDateTime::parse(s.trim(), &Rfc3339)
+        .map_err(|e| CryptoError::InvalidTimestamp(format!("{} ({e})", s.trim())))
+}
+
+/// Load trust.json verifying keys (including active dual-key grace) into the process keyring.
 pub fn register_trust_store(root: impl AsRef<Path>) -> Result<usize, CryptoError> {
     let store = TrustStore::load(&root)?;
-    let ring = store.to_keyring()?;
+    let now = utc_now_rfc3339()?;
+    let ring = store.to_keyring_at(&now)?;
     register_keyring(&ring);
     Ok(store.entries.len())
 }
 
-/// Prune process verifying keys absent from `trust.json` (or on the CRL), then re-register trust.
+/// Prune process verifying keys absent from trust/grace, then re-register.
 ///
 /// - Never unloads [`LOCAL_TEST_KEY_REF`].
-/// - Identities that still have signing material keep a verifying key derived from signing
-///   **unless** the id is on the durable CRL.
-/// - Peer verifying-only keys removed or revoked stop verifying in-process immediately.
+/// - Active trust entries and CRL entries with active `grace_until` stay verifiable.
+/// - Identities with signing material keep verifying keys unless revoked **and** not in grace.
 pub fn sync_trust_verifiers(root: impl AsRef<Path>) -> Result<usize, CryptoError> {
     let store = TrustStore::load(&root)?;
+    let now = utc_now_rfc3339()?;
     let trusted: HashSet<String> = store
         .entries
         .iter()
         .map(|e| e.identity_id.clone())
         .collect();
+    let grace = store.grace_active_ids(&now)?;
     let revoked: HashSet<String> = store
         .revoked
         .iter()
@@ -450,7 +526,7 @@ pub fn sync_trust_verifiers(root: impl AsRef<Path>) -> Result<usize, CryptoError
         let mut guard = process_keyring().write().unwrap_or_else(|e| e.into_inner());
         let ids: Vec<String> = guard.verifying.keys().cloned().collect();
         for id in ids {
-            if id == LOCAL_TEST_KEY_REF || trusted.contains(&id) {
+            if id == LOCAL_TEST_KEY_REF || trusted.contains(&id) || grace.contains(&id) {
                 continue;
             }
             if revoked.contains(&id) {
@@ -860,7 +936,7 @@ mod tests {
             .unwrap();
 
         store
-            .rotate(old_id, new_id, &new_pub, Some("key rollover"))
+            .rotate(old_id, new_id, &new_pub, Some("key rollover"), None)
             .unwrap();
         store.save(root).unwrap();
         let _ = sync_trust_verifiers(root).unwrap();
@@ -889,15 +965,65 @@ mod tests {
             Err(CryptoError::RevokedKey(old_id.into()))
         );
         assert_eq!(
-            store.rotate(old_id, new_id, &new_pub, None),
+            store.rotate(old_id, new_id, &new_pub, None, None),
             Err(CryptoError::NotTrusted(old_id.into()))
         );
         assert_eq!(
-            store.rotate(new_id, new_id, &new_pub, None),
+            store.rotate(new_id, new_id, &new_pub, None, None),
             Err(CryptoError::SameIdentity)
         );
         assert!(store
-            .rotate(LOCAL_TEST_KEY_REF, new_id, &new_pub, None)
+            .rotate(LOCAL_TEST_KEY_REF, new_id, &new_pub, None, None)
+            .is_err());
+    }
+
+    #[test]
+    fn trust_rotate_grace_allows_old_until() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let old_sk = SigningKey::from_bytes(&[25u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[27u8; 32]);
+        let old_id = "aira:identity:peer-grace-old";
+        let new_id = "aira:identity:peer-grace-new";
+        let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
+        let new_pub = hex::encode(new_sk.verifying_key().to_bytes());
+
+        let mut store = TrustStore::default();
+        store.ensure_local_test().unwrap();
+        store.upsert(old_id, &old_pub).unwrap();
+        store.save(root).unwrap();
+
+        let msg = b"grace-message";
+        let old_sig = sign_with_key(AiraRef::parse(old_id).unwrap(), &old_sk, msg);
+        let new_sig = sign_with_key(AiraRef::parse(new_id).unwrap(), &new_sk, msg);
+
+        store
+            .rotate(
+                old_id,
+                new_id,
+                &new_pub,
+                Some("grace rollover"),
+                Some("2099-01-01T00:00:00Z"),
+            )
+            .unwrap();
+        store.save(root).unwrap();
+
+        let during = store.to_keyring_at("2026-07-16T12:00:00Z").unwrap();
+        during.verify(&old_sig, msg).unwrap();
+        during.verify(&new_sig, msg).unwrap();
+        assert_eq!(
+            store.upsert(old_id, &old_pub),
+            Err(CryptoError::RevokedKey(old_id.into()))
+        );
+
+        let after = store.to_keyring_at("2099-01-01T00:00:01Z").unwrap();
+        assert!(after.verifying_key(old_id).is_none());
+        assert!(after.verify(&old_sig, msg).is_err());
+        after.verify(&new_sig, msg).unwrap();
+
+        assert!(store
+            .rotate(old_id, new_id, &new_pub, None, Some("not-a-timestamp"))
             .is_err());
     }
 }

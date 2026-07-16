@@ -67,15 +67,16 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust add \
 | `remove` | no | yes | n/a |
 | `revoke` | yes (CRL) | no | n/a |
 | `unrevoke` | clears CRL | then yes via `add` | **no** — need `add` |
-| `rotate` | yes (old→CRL) | old needs `unrevoke` | **yes** for new only |
+| `rotate` | yes (old→CRL) | old needs `unrevoke` | **yes** for new; old only during `--until` grace |
 
-**Rotate** (Analyze-27): atomic peer replacement — revoke `old` with `superseded_by`, trust `new` with `supersedes`. No dual-key verify window: after sync, old signatures fail immediately.
+**Rotate** (Analyze-27/28): atomic peer replacement — revoke `old` with `superseded_by`, trust `new` with `supersedes`. Without `--until`, old signatures fail immediately after sync. With `--until <RFC3339 UTC>`, dual-key grace keeps old pubkey verifiable until that instant (`RevokedEntry.grace_until`); upsert of old remains blocked.
 
 ```bash
 cargo run -p aira-cli -- --root "$ROOT" identity trust rotate \
   --old-key-ref aira:identity:peer-alice \
   --new-key-ref aira:identity:peer-alice-v2 \
-  --pubkey-hex <64-hex> --reason "rollover"
+  --pubkey-hex <64-hex> --reason "rollover" \
+  --until 2026-07-17T00:00:00Z
 ```
 
 ## Canonical signed messages
@@ -93,4 +94,4 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Dual-key rotation grace window; node signing-secret rotate; TLS; per-CSU publisher identity overrides; CRL audit log.
+Node signing-secret rotate; TLS; per-CSU publisher identity overrides; CRL audit log.

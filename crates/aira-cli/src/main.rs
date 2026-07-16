@@ -137,7 +137,9 @@ enum TrustCommands {
         #[arg(long)]
         key_ref: String,
     },
-    /// Atomically revoke old peer and trust a new key_ref (no dual-key window).
+    /// Atomically revoke old peer and trust a new key_ref.
+    ///
+    /// Optional `--until` (RFC3339 UTC) keeps old key verifiable until that instant.
     Rotate {
         #[arg(long)]
         old_key_ref: String,
@@ -147,6 +149,9 @@ enum TrustCommands {
         pubkey_hex: String,
         #[arg(long)]
         reason: Option<String>,
+        /// Dual-key grace end (RFC3339 UTC, e.g. 2026-07-17T00:00:00Z).
+        #[arg(long)]
+        until: Option<String>,
     },
 }
 
@@ -456,6 +461,7 @@ fn run() -> Result<ExitCode> {
                     new_key_ref,
                     pubkey_hex,
                     reason,
+                    until,
                 } => {
                     ensure_init(&root)?;
                     let mut store = aira_object::TrustStore::load(&root)
@@ -466,12 +472,16 @@ fn run() -> Result<ExitCode> {
                             &new_key_ref,
                             &pubkey_hex,
                             reason.as_deref(),
+                            until.as_deref(),
                         )
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
                     store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                     aira_object::sync_trust_verifiers(&root)
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
-                    println!("rotated {old_key_ref} -> {new_key_ref}");
+                    match until {
+                        Some(u) => println!("rotated {old_key_ref} -> {new_key_ref} (grace until {u})"),
+                        None => println!("rotated {old_key_ref} -> {new_key_ref}"),
+                    }
                     Ok(ExitCode::SUCCESS)
                 }
             },

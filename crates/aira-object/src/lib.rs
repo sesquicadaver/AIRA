@@ -13,8 +13,8 @@ pub use crypto::{
     local_test_public_key_hex, local_test_signature, local_test_signing_key,
     local_test_verifying_key, primary_signer, process_keyring_snapshot, register_keyring,
     register_node_identity, register_trust_store, reset_primary_signer, set_primary_signer,
-    sign_with_key, sync_trust_verifiers, verify_ed25519, CryptoError, Keyring, RevokedEntry,
-    TrustEntry, TrustStore, LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF,
+    sign_with_key, sync_trust_verifiers, utc_now_rfc3339, verify_ed25519, CryptoError, Keyring,
+    RevokedEntry, TrustEntry, TrustStore, LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF,
 };
 pub use descriptor::{ObjectDescriptor, ObjectType};
 pub use handle::Handle;
