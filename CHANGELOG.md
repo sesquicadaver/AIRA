@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.8 — 2026-07-16
+
+### Added
+
+- `aira-conformance` C0/C1 runners + Conformance Report Artifact
+- Tests: ontology, object/artifact immutability, event causality, policy gate, pipeline, failure-to-evidence
+- CLI: `aira conformance run --profile C0|C1`
+
 ## 0.1.7 — 2026-07-16
 
 ### Added

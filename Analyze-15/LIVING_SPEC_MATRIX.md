@@ -8,4 +8,4 @@
 | LS15-004 | #60 | `LocalSession::submit_problem` + CLI | problem_ref + status | mapped |
 | LS15-005 | #61 | result/artifact/event CLI | get + tail | mapped |
 | LS15-006 | #62 | `aira-node` | config + CSU + `--text` process | mapped |
-| LS15-007 | Epic 9 | — | pending Analyze-16 | open |
+| LS15-007 | Epic 9 | Analyze-16 | done | mapped |

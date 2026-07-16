@@ -1,10 +1,38 @@
-//! AIRA conformance harness skeleton
+//! AIRA C0/C1 conformance runners (Issue Set Epic 9 / #63–#70).
 //!
-//! Skeleton crate for AIRA MVP bootstrap (Issue Set Epic 0). No domain logic yet.
+//! Executes profile suites and emits immutable Conformance Report Artifacts.
 
-/// Crate version string for smoke tests.
+mod c0;
+mod c1;
+mod report;
+mod runner;
+
+pub use c0::run_c0;
+pub use c1::run_c1;
+pub use report::{
+    AiraInfo, ConformanceProfile, ConformanceReport, FailureRecord, ImplementationInfo,
+    ResultCounters,
+};
+pub use runner::{CaseOutcome, CaseResult, ConformanceError, SuiteResult};
+
+/// Crate version string.
 pub fn crate_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
+}
+
+/// Run a profile suite into `artifact_root`.
+pub fn run_profile(
+    profile: ConformanceProfile,
+    artifact_root: impl AsRef<std::path::Path>,
+) -> Result<SuiteResult, ConformanceError> {
+    match profile {
+        ConformanceProfile::C0 => run_c0(artifact_root),
+        ConformanceProfile::C1 => run_c1(artifact_root),
+        other => Err(ConformanceError::Test(format!(
+            "profile {} not implemented in this MVP",
+            other.as_str()
+        ))),
+    }
 }
 
 #[cfg(test)]
@@ -14,5 +42,43 @@ mod tests {
     #[test]
     fn version_is_semver_like() {
         assert!(!crate_version().is_empty());
+    }
+
+    #[test]
+    fn c0_suite_passes_and_emits_immutable_report() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("reports");
+        let suite = run_c0(&root).unwrap();
+        assert_eq!(suite.report.aira.profile, ConformanceProfile::C0);
+        assert_eq!(suite.report.results.failed, 0);
+        assert!(suite.report.results.passed >= 5);
+        assert!(!suite.report_artifact_id.as_str().is_empty());
+
+        let v = serde_json::to_value(&suite.report).unwrap();
+        let repo = aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let reg = aira_schema::SchemaRegistry::load(repo.join("schemas")).unwrap();
+        reg.validate("aira:schema:conformance:report:0.1", &v)
+            .unwrap();
+    }
+
+    #[test]
+    fn c1_suite_passes_and_emits_report() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("reports");
+        let suite = run_c1(&root).unwrap();
+        assert_eq!(suite.report.aira.profile, ConformanceProfile::C1);
+        assert_eq!(
+            suite.report.results.failed, 0,
+            "failures={:?}",
+            suite.report.failures
+        );
+        assert!(suite.report.results.passed >= 4);
+    }
+
+    #[test]
+    fn run_profile_dispatch() {
+        let dir = tempfile::tempdir().unwrap();
+        let suite = run_profile(ConformanceProfile::C0, dir.path().join("p")).unwrap();
+        assert_eq!(suite.cases.len(), 5);
     }
 }

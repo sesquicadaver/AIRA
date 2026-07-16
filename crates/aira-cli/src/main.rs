@@ -8,6 +8,7 @@ use clap::{Parser, Subcommand};
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 
+use aira_conformance::{run_profile, ConformanceProfile};
 use aira_csu::{CsuLifecycleState, CsuManifest, CsuRegistry};
 use aira_flow::{init_node, LocalSession, NodePaths, SubmitOutcome, DEFAULT_AIRA_ROOT};
 use aira_schema::{find_repo_root, SchemaRegistry};
@@ -67,6 +68,11 @@ enum Commands {
     Event {
         #[command(subcommand)]
         command: EventCommands,
+    },
+    /// Conformance suite runners (C0/C1).
+    Conformance {
+        #[command(subcommand)]
+        command: ConformanceCommands,
     },
 }
 
@@ -155,6 +161,19 @@ enum EventCommands {
     },
 }
 
+#[derive(Subcommand, Debug)]
+enum ConformanceCommands {
+    /// Run a conformance profile suite and emit a report artifact.
+    Run {
+        /// Profile: C0 or C1.
+        #[arg(long, default_value = "C0")]
+        profile: String,
+        /// Directory for suite artifacts / report (default: <root>/conformance/reports).
+        #[arg(long)]
+        out: Option<PathBuf>,
+    },
+}
+
 fn main() -> ExitCode {
     match run() {
         Ok(code) => code,
@@ -179,7 +198,7 @@ fn run() -> Result<ExitCode> {
         }
         Commands::Status => {
             println!("aira {}", env!("CARGO_PKG_VERSION"));
-            println!("status: C1 CLI / Local Node ready (Epic 8)");
+            println!("status: C1 Conformance ready (Epic 9)");
             if root.join("config.json").exists() {
                 let session = LocalSession::open(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                 println!(
@@ -441,6 +460,35 @@ fn run() -> Result<ExitCode> {
                     );
                 }
                 Ok(ExitCode::SUCCESS)
+            }
+        },
+        Commands::Conformance { command } => match command {
+            ConformanceCommands::Run { profile, out } => {
+                let profile = match profile.to_uppercase().as_str() {
+                    "C0" => ConformanceProfile::C0,
+                    "C1" => ConformanceProfile::C1,
+                    other => bail!("unsupported profile {other} (use C0 or C1)"),
+                };
+                let out = out.unwrap_or_else(|| root.join("conformance").join("reports"));
+                std::fs::create_dir_all(&out)?;
+                let suite = run_profile(profile, &out).map_err(|e| anyhow::anyhow!("{e}"))?;
+                println!("profile {}", suite.report.aira.profile.as_str());
+                println!(
+                    "results total={} passed={} failed={} skipped={}",
+                    suite.report.results.total,
+                    suite.report.results.passed,
+                    suite.report.results.failed,
+                    suite.report.results.skipped
+                );
+                println!("report_artifact {}", suite.report_artifact_id);
+                for f in &suite.report.failures {
+                    eprintln!("FAIL {}: {}", f.test_id, f.reason);
+                }
+                if suite.report.results.failed > 0 {
+                    Ok(ExitCode::FAILURE)
+                } else {
+                    Ok(ExitCode::SUCCESS)
+                }
             }
         },
     }

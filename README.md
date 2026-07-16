@@ -34,9 +34,9 @@ Problem Statement
 
 ## Status
 
-**Epic 0–8:** workspace + schemas + C0/C1 core + basic CSUs + Operational Flow + **CLI / Local Node** (`aira`, `aira-node`).
+**Epic 0–9:** workspace + schemas + C0/C1 core + basic CSUs + Operational Flow + CLI / Local Node + **Conformance C0/C1** (`aira-conformance`).
 
-Conformance runners (Epic 9 / #63+) are next.
+Partial Local C2 (Epic 10 / #71+) is next.
 
 ## Build
 
@@ -53,6 +53,8 @@ cargo run -p aira-cli -- --root /tmp/aira-demo init
 cargo run -p aira-cli -- --root /tmp/aira-demo identity create
 cargo run -p aira-cli -- --root /tmp/aira-demo problem submit --text "Calculate 2 + 2"
 cargo run -p aira-node -- --root /tmp/aira-demo --text "Calculate 2 + 2"
+cargo run -p aira-cli -- conformance run --profile C0 --out /tmp/aira-c0
+cargo run -p aira-cli -- conformance run --profile C1 --out /tmp/aira-c1
 ```
 
 ```bash

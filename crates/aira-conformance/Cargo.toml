@@ -5,6 +5,26 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "AIRA conformance harness skeleton"
+description = "AIRA C0/C1 conformance runners and report artifacts"
 
 [dependencies]
+aira-object = { path = "../aira-object" }
+aira-core = { path = "../aira-core" }
+aira-event = { path = "../aira-event" }
+aira-artifact = { path = "../aira-artifact" }
+aira-policy = { path = "../aira-policy" }
+aira-csu = { path = "../aira-csu" }
+aira-flow = { path = "../aira-flow" }
+aira-schema = { path = "../aira-schema" }
+aira-csu-context-basic = { path = "../../csu/context-basic" }
+aira-csu-reduction-basic = { path = "../../csu/reduction-basic" }
+aira-csu-execution-basic = { path = "../../csu/execution-basic" }
+aira-csu-verification-basic = { path = "../../csu/verification-basic" }
+aira-csu-evidence-basic = { path = "../../csu/evidence-basic" }
+aira-csu-artifact-basic = { path = "../../csu/artifact-basic" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
