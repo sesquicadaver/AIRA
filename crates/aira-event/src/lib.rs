@@ -6,7 +6,9 @@ mod descriptor;
 mod log;
 
 pub use descriptor::{EventDescriptor, EventType};
-pub use log::{EventError, EventLog, EventSink, MemoryEventLog, SubscriptionId};
+pub use log::{
+    payload_contains_secret, EventError, EventLog, EventSink, MemoryEventLog, SubscriptionId,
+};
 
 /// Crate version string.
 pub fn crate_version() -> &'static str {
@@ -93,5 +95,16 @@ mod tests {
         // duplicate append is idempotent (no second delivery)
         log.append(e).unwrap();
         assert_eq!(received.lock().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn secret_material_rejected_in_payload_ref() {
+        let mut log = MemoryEventLog::new();
+        let mut e = sample_event("aira:event:sec1", EventType::CustomEvent);
+        e.payload_ref = Some("password=hunter2".into());
+        let err = log.append(e).unwrap_err();
+        assert!(matches!(err, EventError::SecretMaterial));
+        assert!(payload_contains_secret(Some("BEGIN PRIVATE KEY-----")));
+        assert!(!payload_contains_secret(Some("Calculate 2 + 2")));
     }
 }

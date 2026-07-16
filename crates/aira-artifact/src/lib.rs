@@ -6,7 +6,10 @@ mod descriptor;
 mod store;
 
 pub use descriptor::{ArtifactDescriptor, ArtifactType};
-pub use store::{ArtifactError, ArtifactStore, CasArtifactStore, PublishResult, SupersessionMeta};
+pub use store::{
+    is_private_artifact, ArtifactError, ArtifactStore, CasArtifactStore, PublishResult,
+    SupersessionMeta, PRIVATE_ARTIFACT_POLICY,
+};
 
 /// Crate version string.
 pub fn crate_version() -> &'static str {
@@ -138,5 +141,34 @@ mod tests {
         let (desc, bytes) = store.resolve(&AiraRef::parse(id).unwrap()).unwrap();
         assert_eq!(bytes, payload);
         assert_eq!(desc.artifact_id.as_str(), id);
+    }
+
+    #[test]
+    fn unsigned_artifact_rejected_and_private_denied() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let payload = b"private-bytes";
+        let mut unsigned = descriptor_for(
+            payload,
+            "aira:artifact:sha256_3333333333333333333333333333333333333333333333333333333333333333",
+        );
+        unsigned.signature.signature_value.clear();
+        let err = store.publish(unsigned, payload).unwrap_err();
+        assert!(matches!(err, ArtifactError::Unsigned(_)));
+
+        let mut private = descriptor_for(
+            payload,
+            "aira:artifact:sha256_4444444444444444444444444444444444444444444444444444444444444444",
+        );
+        private.policy_refs = vec![AiraRef::parse(PRIVATE_ARTIFACT_POLICY).unwrap()];
+        store.publish(private.clone(), payload).unwrap();
+        let denied = store.resolve(&private.artifact_id).unwrap_err();
+        assert!(matches!(denied, ArtifactError::AccessDenied(_)));
+        let (got, bytes) = store
+            .resolve_with_access(&private.artifact_id, true)
+            .unwrap();
+        assert_eq!(got.artifact_id, private.artifact_id);
+        assert_eq!(bytes, payload);
+        assert!(is_private_artifact(&got));
     }
 }

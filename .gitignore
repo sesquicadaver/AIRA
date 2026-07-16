@@ -1,5 +1,6 @@
 /.omx
 /target
+/release
 **/*.rs.bk
 .DS_Store
 *.swp

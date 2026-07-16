@@ -1,12 +1,13 @@
-//! AIRA C0/C1 conformance runners (Issue Set Epic 9 / #63–#70).
-//!
-//! Executes profile suites and emits immutable Conformance Report Artifacts.
+//! AIRA C0/C1 conformance runners + security/alpha (Issue Set Epic 9 / #63–#70, Epic 11 / #78–#80).
 
+mod alpha;
 mod c0;
 mod c1;
 mod report;
 mod runner;
+mod security;
 
+pub use alpha::run_alpha_acceptance;
 pub use c0::run_c0;
 pub use c1::run_c1;
 pub use report::{
@@ -14,6 +15,7 @@ pub use report::{
     ResultCounters,
 };
 pub use runner::{CaseOutcome, CaseResult, ConformanceError, SuiteResult};
+pub use security::run_security_baseline;
 
 /// Crate version string.
 pub fn crate_version() -> &'static str {
@@ -80,5 +82,29 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let suite = run_profile(ConformanceProfile::C0, dir.path().join("p")).unwrap();
         assert_eq!(suite.cases.len(), 5);
+    }
+
+    #[test]
+    fn security_baseline_passes() {
+        let dir = tempfile::tempdir().unwrap();
+        let suite = run_security_baseline(dir.path().join("sec")).unwrap();
+        assert_eq!(
+            suite.report.results.failed, 0,
+            "failures={:?}",
+            suite.report.failures
+        );
+        assert_eq!(suite.report.results.passed, 4);
+    }
+
+    #[test]
+    fn alpha_acceptance_passes() {
+        let dir = tempfile::tempdir().unwrap();
+        let suite = run_alpha_acceptance(dir.path()).unwrap();
+        assert_eq!(
+            suite.report.results.failed, 0,
+            "failures={:?}",
+            suite.report.failures
+        );
+        assert!(suite.report.results.passed >= 4);
     }
 }

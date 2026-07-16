@@ -19,8 +19,23 @@ pub enum ArtifactError {
     Immutable(AiraRef),
     #[error("artifact not found: {0}")]
     NotFound(AiraRef),
+    #[error("unsigned artifact: {0}")]
+    Unsigned(AiraRef),
+    #[error("private artifact access denied: {0}")]
+    AccessDenied(AiraRef),
     #[error("storage error: {0}")]
     Storage(String),
+}
+
+/// Policy ref that marks an artifact as private (default-deny on resolve).
+pub const PRIVATE_ARTIFACT_POLICY: &str = "aira:policy:private";
+
+/// True when descriptor is marked private via policy_refs.
+pub fn is_private_artifact(descriptor: &ArtifactDescriptor) -> bool {
+    descriptor
+        .policy_refs
+        .iter()
+        .any(|r| r.as_str() == PRIVATE_ARTIFACT_POLICY)
 }
 
 /// Result of publishing an artifact.
@@ -146,6 +161,9 @@ impl ArtifactStore for CasArtifactStore {
         mut descriptor: ArtifactDescriptor,
         payload: &[u8],
     ) -> Result<PublishResult, ArtifactError> {
+        if descriptor.signature.signature_value.trim().is_empty() {
+            return Err(ArtifactError::Unsigned(descriptor.artifact_id));
+        }
         let actual = ContentHash::sha256_bytes(payload);
         if actual != descriptor.content_hash {
             return Err(ArtifactError::HashMismatch {
@@ -187,21 +205,7 @@ impl ArtifactStore for CasArtifactStore {
         &self,
         artifact_id: &AiraRef,
     ) -> Result<(ArtifactDescriptor, Vec<u8>), ArtifactError> {
-        let desc = self
-            .index
-            .get(artifact_id.as_str())
-            .cloned()
-            .ok_or_else(|| ArtifactError::NotFound(artifact_id.clone()))?;
-        let path = Self::cas_path_for(&self.root, &desc.content_hash)?;
-        let bytes = fs::read(&path).map_err(|e| ArtifactError::Storage(e.to_string()))?;
-        let actual = ContentHash::sha256_bytes(&bytes);
-        if actual != desc.content_hash {
-            return Err(ArtifactError::HashMismatch {
-                expected: desc.content_hash.as_str().to_string(),
-                actual: actual.as_str().to_string(),
-            });
-        }
-        Ok((desc, bytes))
+        self.resolve_with_access(artifact_id, false)
     }
 
     fn supersede(
@@ -222,5 +226,33 @@ impl ArtifactStore for CasArtifactStore {
             previous: previous.clone(),
             current: published.descriptor.artifact_id,
         })
+    }
+}
+
+impl CasArtifactStore {
+    /// Resolve with explicit private-access grant (default deny for private artifacts).
+    pub fn resolve_with_access(
+        &self,
+        artifact_id: &AiraRef,
+        allow_private: bool,
+    ) -> Result<(ArtifactDescriptor, Vec<u8>), ArtifactError> {
+        let desc = self
+            .index
+            .get(artifact_id.as_str())
+            .cloned()
+            .ok_or_else(|| ArtifactError::NotFound(artifact_id.clone()))?;
+        if is_private_artifact(&desc) && !allow_private {
+            return Err(ArtifactError::AccessDenied(artifact_id.clone()));
+        }
+        let path = Self::cas_path_for(&self.root, &desc.content_hash)?;
+        let bytes = fs::read(&path).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+        let actual = ContentHash::sha256_bytes(&bytes);
+        if actual != desc.content_hash {
+            return Err(ArtifactError::HashMismatch {
+                expected: desc.content_hash.as_str().to_string(),
+                actual: actual.as_str().to_string(),
+            });
+        }
+        Ok((desc, bytes))
     }
 }

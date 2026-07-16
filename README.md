@@ -34,9 +34,9 @@ Problem Statement
 
 ## Status
 
-**Epic 0–10:** workspace + schemas + C0/C1 core + basic CSUs + Operational Flow + CLI / Local Node + Conformance + **Partial Local C2** (`aira-protocol`).
+**Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha** docs/security/release pack.
 
-MVP Alpha docs/security (Epic 11 / #76+) is next.
+See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md` and `scripts/prepare-alpha.sh`.
 
 ## Build
 

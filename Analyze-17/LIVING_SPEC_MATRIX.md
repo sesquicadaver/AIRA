@@ -7,4 +7,4 @@
 | LS17-003 | #73 | `ArtifactProtocolAdapter` | publish/resolve + hash | mapped |
 | LS17-004 | #74 | `IdentityDescriptor` | schema + keys + signature | mapped |
 | LS17-005 | #75 | `DiscoveryRegistry` | Capability not Node | mapped |
-| LS17-006 | Epic 11 | — | pending Analyze-18 | open |
+| LS17-006 | Epic 11 | Analyze-18 | done | mapped |

@@ -17,6 +17,8 @@ pub enum EventError {
     NotFound(AiraRef),
     #[error("event missing signature")]
     MissingSignature,
+    #[error("secret material not allowed in event payload")]
+    SecretMaterial,
 }
 
 /// Opaque subscription id.
@@ -89,6 +91,9 @@ impl EventSink for MemoryEventLog {
         if event.signature.signature_value.is_empty() {
             return Err(EventError::MissingSignature);
         }
+        if payload_contains_secret(event.payload_ref.as_deref()) {
+            return Err(EventError::SecretMaterial);
+        }
         let id = event.event_id.as_str().to_string();
         if self.seen_ids.contains(&id) {
             // Idempotent: duplicate delivery has no additional semantic effect.
@@ -119,6 +124,23 @@ impl EventSink for MemoryEventLog {
         self.events.push(event);
         Ok(())
     }
+}
+
+/// Reject obvious secret material in event payload references (Issue #78).
+pub fn payload_contains_secret(payload_ref: Option<&str>) -> bool {
+    let Some(p) = payload_ref else {
+        return false;
+    };
+    let lower = p.to_ascii_lowercase();
+    const NEEDLES: &[&str] = &[
+        "begin private key",
+        "begin openssh private key",
+        "ed25519_secret=",
+        "secret_key=",
+        "password=",
+        "private_key=",
+    ];
+    NEEDLES.iter().any(|n| lower.contains(n))
 }
 
 impl EventLog for MemoryEventLog {

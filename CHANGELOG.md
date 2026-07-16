@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.10 — 2026-07-16
+
+### Added
+
+- MVP Alpha docs: demo, CSU development, local node, conformance, release notes
+- Security baseline: unsigned artifact reject, private artifact default-deny, secrets blocked in events
+- `run_security_baseline` / `run_alpha_acceptance` + `scripts/prepare-alpha.sh`
+
 ## 0.1.9 — 2026-07-16
 
 ### Added
