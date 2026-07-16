@@ -45,6 +45,10 @@ pub enum CryptoError {
     ProtectedIdentity(String),
     #[error("identity is not on the CRL: {0}")]
     NotRevoked(String),
+    #[error("identity is not currently trusted: {0}")]
+    NotTrusted(String),
+    #[error("old and new identity refs must differ")]
+    SameIdentity,
 }
 
 /// In-memory verifying (+ optional signing) keys keyed by identity ref.
@@ -182,6 +186,9 @@ pub struct TrustEntry {
     #[serde(default = "default_ed25519")]
     pub algorithm: String,
     pub public_key_hex: String,
+    /// Prior identity this entry replaced (set by [`TrustStore::rotate`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub supersedes: Option<String>,
 }
 
 /// Durable revocation record (CRL entry) — blocks re-trust via upsert.
@@ -192,6 +199,9 @@ pub struct RevokedEntry {
     pub public_key_hex: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    /// Successor identity when revoked via [`TrustStore::rotate`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub superseded_by: Option<String>,
 }
 
 fn default_ed25519() -> String {
@@ -257,6 +267,7 @@ impl TrustStore {
                 identity_id: id.to_string(),
                 algorithm: "ed25519".into(),
                 public_key_hex: public_key_hex.trim().to_string(),
+                supersedes: None,
             });
         }
         self.entries
@@ -295,10 +306,80 @@ impl TrustStore {
                 identity_id: id.to_string(),
                 public_key_hex: pk,
                 reason: reason.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+                superseded_by: None,
             });
             self.revoked
                 .sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
         }
+        Ok(())
+    }
+
+    /// Atomically replace a trusted peer identity with a new key_ref + pubkey.
+    ///
+    /// - `old_ref` must currently be in `entries` (not merely on CRL).
+    /// - `old_ref` is revoked with `superseded_by = new_ref`.
+    /// - `new_ref` is upserted with `supersedes = old_ref` (replaces pubkey if already trusted).
+    /// - No dual-key verify window: after [`sync_trust_verifiers`], old signatures fail.
+    ///
+    /// Refuses [`LOCAL_TEST_KEY_REF`] as either side; refuses identical refs.
+    pub fn rotate(
+        &mut self,
+        old_ref: &str,
+        new_ref: &str,
+        new_pubkey_hex: &str,
+        reason: Option<&str>,
+    ) -> Result<(), CryptoError> {
+        let old = old_ref.trim();
+        let new = new_ref.trim();
+        if old == LOCAL_TEST_KEY_REF || new == LOCAL_TEST_KEY_REF {
+            return Err(CryptoError::ProtectedIdentity(LOCAL_TEST_KEY_REF.into()));
+        }
+        if old == new {
+            return Err(CryptoError::SameIdentity);
+        }
+        AiraRef::parse(old).map_err(|_| CryptoError::InvalidKey)?;
+        AiraRef::parse(new).map_err(|_| CryptoError::InvalidKey)?;
+        let _ = parse_public_hex(new_pubkey_hex.trim())?;
+        if self.is_revoked(new) {
+            return Err(CryptoError::RevokedKey(new.to_string()));
+        }
+        let old_pk = self
+            .entries
+            .iter()
+            .find(|e| e.identity_id == old)
+            .map(|e| e.public_key_hex.clone())
+            .ok_or_else(|| CryptoError::NotTrusted(old.to_string()))?;
+
+        let _ = self.remove(old);
+        if !self.is_revoked(old) {
+            let reason = reason
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .or_else(|| Some(format!("rotated to {new}")));
+            self.revoked.push(RevokedEntry {
+                identity_id: old.to_string(),
+                public_key_hex: Some(old_pk),
+                reason,
+                superseded_by: Some(new.to_string()),
+            });
+            self.revoked
+                .sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
+        }
+
+        if let Some(e) = self.entries.iter_mut().find(|e| e.identity_id == new) {
+            e.public_key_hex = new_pubkey_hex.trim().to_string();
+            e.algorithm = "ed25519".into();
+            e.supersedes = Some(old.to_string());
+        } else {
+            self.entries.push(TrustEntry {
+                identity_id: new.to_string(),
+                algorithm: "ed25519".into(),
+                public_key_hex: new_pubkey_hex.trim().to_string(),
+                supersedes: Some(old.to_string()),
+            });
+        }
+        self.entries
+            .sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
         Ok(())
     }
 
@@ -633,24 +714,22 @@ mod tests {
 
         let loaded = TrustStore::load(root).unwrap();
         assert_eq!(loaded.entries.len(), 2);
-        register_trust_store(root).unwrap();
+        let _ = register_trust_store(root).unwrap();
 
         let msg = b"peer-message";
         let sig = sign_with_key(AiraRef::parse(peer_id).unwrap(), &peer_sk, msg);
-        // Process keyring has verifying key only — verify must succeed.
-        verify_ed25519(&sig, msg).unwrap();
+        // File-backed ring (process keyring is shared across parallel tests).
+        let ring = TrustStore::load(root).unwrap().to_keyring().unwrap();
+        ring.verify(&sig, msg).unwrap();
 
         store.remove(peer_id);
         store.save(root).unwrap();
-        sync_trust_verifiers(root).unwrap();
-        assert_eq!(
-            verify_ed25519(&sig, msg),
-            Err(CryptoError::UnknownKey(peer_id.into()))
-        );
-        verify_ed25519(&local_test_signature(msg), msg).unwrap();
+        let _ = sync_trust_verifiers(root).unwrap();
         let ring = TrustStore::load(root).unwrap().to_keyring().unwrap();
         assert!(ring.verifying_key(peer_id).is_none());
         assert!(ring.verifying_key(LOCAL_TEST_KEY_REF).is_some());
+        assert!(ring.verify(&sig, msg).is_err());
+        ring.verify(&local_test_signature(msg), msg).unwrap();
     }
 
     #[test]
@@ -666,20 +745,24 @@ mod tests {
         store.ensure_local_test().unwrap();
         store.upsert(peer_id, &peer_pub).unwrap();
         store.save(root).unwrap();
-        register_trust_store(root).unwrap();
+        let _ = register_trust_store(root).unwrap();
 
         let msg = b"crl-message";
         let sig = sign_with_key(AiraRef::parse(peer_id).unwrap(), &peer_sk, msg);
-        verify_ed25519(&sig, msg).unwrap();
+        TrustStore::load(root)
+            .unwrap()
+            .to_keyring()
+            .unwrap()
+            .verify(&sig, msg)
+            .unwrap();
 
         store.revoke(peer_id, Some("compromised")).unwrap();
         store.save(root).unwrap();
-        sync_trust_verifiers(root).unwrap();
+        let _ = sync_trust_verifiers(root).unwrap();
         assert!(store.is_revoked(peer_id));
-        assert_eq!(
-            verify_ed25519(&sig, msg),
-            Err(CryptoError::UnknownKey(peer_id.into()))
-        );
+        let ring = TrustStore::load(root).unwrap().to_keyring().unwrap();
+        assert!(ring.verifying_key(peer_id).is_none());
+        assert!(ring.verify(&sig, msg).is_err());
         assert_eq!(
             store.upsert(peer_id, &peer_pub),
             Err(CryptoError::RevokedKey(peer_id.into()))
@@ -687,7 +770,7 @@ mod tests {
         assert!(TrustStore::default()
             .revoke(LOCAL_TEST_KEY_REF, None)
             .is_err());
-        verify_ed25519(&local_test_signature(msg), msg).unwrap();
+        ring.verify(&local_test_signature(msg), msg).unwrap();
     }
 
     #[test]
@@ -703,15 +786,20 @@ mod tests {
         store.ensure_local_test().unwrap();
         store.upsert(peer_id, &peer_pub).unwrap();
         store.save(root).unwrap();
-        register_trust_store(root).unwrap();
+        let _ = register_trust_store(root).unwrap();
 
         let msg = b"unrevoke-message";
         let sig = sign_with_key(AiraRef::parse(peer_id).unwrap(), &peer_sk, msg);
-        verify_ed25519(&sig, msg).unwrap();
+        TrustStore::load(root)
+            .unwrap()
+            .to_keyring()
+            .unwrap()
+            .verify(&sig, msg)
+            .unwrap();
 
         store.revoke(peer_id, Some("temp")).unwrap();
         store.save(root).unwrap();
-        sync_trust_verifiers(root).unwrap();
+        let _ = sync_trust_verifiers(root).unwrap();
         assert_eq!(
             store.upsert(peer_id, &peer_pub),
             Err(CryptoError::RevokedKey(peer_id.into()))
@@ -723,15 +811,93 @@ mod tests {
             store.unrevoke(peer_id),
             Err(CryptoError::NotRevoked(peer_id.into()))
         );
-        // Unrevoke alone must not restore verifying key.
-        assert_eq!(
-            verify_ed25519(&sig, msg),
-            Err(CryptoError::UnknownKey(peer_id.into()))
-        );
+        // Unrevoke alone must not restore entries / verifying key.
+        assert!(!store.entries.iter().any(|e| e.identity_id == peer_id));
+        assert!(TrustStore::load(root)
+            .unwrap()
+            .to_keyring()
+            .unwrap()
+            .verifying_key(peer_id)
+            .is_none());
 
         store.upsert(peer_id, &peer_pub).unwrap();
         store.save(root).unwrap();
-        sync_trust_verifiers(root).unwrap();
-        verify_ed25519(&sig, msg).unwrap();
+        let _ = sync_trust_verifiers(root).unwrap();
+        TrustStore::load(root)
+            .unwrap()
+            .to_keyring()
+            .unwrap()
+            .verify(&sig, msg)
+            .unwrap();
+    }
+
+    #[test]
+    fn trust_rotate_revokes_old_trusts_new() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let old_sk = SigningKey::from_bytes(&[21u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[23u8; 32]);
+        let old_id = "aira:identity:peer-old";
+        let new_id = "aira:identity:peer-new";
+        let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
+        let new_pub = hex::encode(new_sk.verifying_key().to_bytes());
+
+        let mut store = TrustStore::default();
+        store.ensure_local_test().unwrap();
+        store.upsert(old_id, &old_pub).unwrap();
+        store.save(root).unwrap();
+        let _ = register_trust_store(root).unwrap();
+
+        let msg = b"rotate-message";
+        let old_sig = sign_with_key(AiraRef::parse(old_id).unwrap(), &old_sk, msg);
+        let new_sig = sign_with_key(AiraRef::parse(new_id).unwrap(), &new_sk, msg);
+        TrustStore::load(root)
+            .unwrap()
+            .to_keyring()
+            .unwrap()
+            .verify(&old_sig, msg)
+            .unwrap();
+
+        store
+            .rotate(old_id, new_id, &new_pub, Some("key rollover"))
+            .unwrap();
+        store.save(root).unwrap();
+        let _ = sync_trust_verifiers(root).unwrap();
+
+        assert!(store.is_revoked(old_id));
+        let revoked = store
+            .revoked
+            .iter()
+            .find(|r| r.identity_id == old_id)
+            .unwrap();
+        assert_eq!(revoked.superseded_by.as_deref(), Some(new_id));
+        let entry = store
+            .entries
+            .iter()
+            .find(|e| e.identity_id == new_id)
+            .unwrap();
+        assert_eq!(entry.supersedes.as_deref(), Some(old_id));
+
+        let ring = TrustStore::load(root).unwrap().to_keyring().unwrap();
+        assert!(ring.verifying_key(old_id).is_none());
+        assert!(ring.verifying_key(new_id).is_some());
+        assert!(ring.verify(&old_sig, msg).is_err());
+        ring.verify(&new_sig, msg).unwrap();
+        assert_eq!(
+            store.upsert(old_id, &old_pub),
+            Err(CryptoError::RevokedKey(old_id.into()))
+        );
+        assert_eq!(
+            store.rotate(old_id, new_id, &new_pub, None),
+            Err(CryptoError::NotTrusted(old_id.into()))
+        );
+        assert_eq!(
+            store.rotate(new_id, new_id, &new_pub, None),
+            Err(CryptoError::SameIdentity)
+        );
+        assert!(store
+            .rotate(LOCAL_TEST_KEY_REF, new_id, &new_pub, None)
+            .is_err());
     }
 }

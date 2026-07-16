@@ -67,6 +67,16 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust add \
 | `remove` | no | yes | n/a |
 | `revoke` | yes (CRL) | no | n/a |
 | `unrevoke` | clears CRL | then yes via `add` | **no** — need `add` |
+| `rotate` | yes (old→CRL) | old needs `unrevoke` | **yes** for new only |
+
+**Rotate** (Analyze-27): atomic peer replacement — revoke `old` with `superseded_by`, trust `new` with `supersedes`. No dual-key verify window: after sync, old signatures fail immediately.
+
+```bash
+cargo run -p aira-cli -- --root "$ROOT" identity trust rotate \
+  --old-key-ref aira:identity:peer-alice \
+  --new-key-ref aira:identity:peer-alice-v2 \
+  --pubkey-hex <64-hex> --reason "rollover"
+```
 
 ## Canonical signed messages
 
@@ -83,4 +93,4 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Key rotation ceremonies; TLS; per-CSU publisher identity overrides; CRL audit log.
+Dual-key rotation grace window; node signing-secret rotate; TLS; per-CSU publisher identity overrides; CRL audit log.

@@ -137,6 +137,17 @@ enum TrustCommands {
         #[arg(long)]
         key_ref: String,
     },
+    /// Atomically revoke old peer and trust a new key_ref (no dual-key window).
+    Rotate {
+        #[arg(long)]
+        old_key_ref: String,
+        #[arg(long)]
+        new_key_ref: String,
+        #[arg(long)]
+        pubkey_hex: String,
+        #[arg(long)]
+        reason: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -438,6 +449,29 @@ fn run() -> Result<ExitCode> {
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
                     store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                     println!("unrevoked {key_ref} (not trusted until `trust add`)");
+                    Ok(ExitCode::SUCCESS)
+                }
+                TrustCommands::Rotate {
+                    old_key_ref,
+                    new_key_ref,
+                    pubkey_hex,
+                    reason,
+                } => {
+                    ensure_init(&root)?;
+                    let mut store = aira_object::TrustStore::load(&root)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    store
+                        .rotate(
+                            &old_key_ref,
+                            &new_key_ref,
+                            &pubkey_hex,
+                            reason.as_deref(),
+                        )
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
+                    aira_object::sync_trust_verifiers(&root)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    println!("rotated {old_key_ref} -> {new_key_ref}");
                     Ok(ExitCode::SUCCESS)
                 }
             },
