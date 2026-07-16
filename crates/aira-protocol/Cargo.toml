@@ -1,0 +1,21 @@
+[package]
+name = "aira-protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "AIRA local C2 protocol envelope and adapters (Epic 10)"
+
+[dependencies]
+aira-object = { path = "../aira-object" }
+aira-event = { path = "../aira-event" }
+aira-artifact = { path = "../aira-artifact" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+aira-schema = { path = "../aira-schema" }
+aira-csu = { path = "../aira-csu" }

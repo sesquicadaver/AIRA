@@ -34,9 +34,9 @@ Problem Statement
 
 ## Status
 
-**Epic 0–9:** workspace + schemas + C0/C1 core + basic CSUs + Operational Flow + CLI / Local Node + **Conformance C0/C1** (`aira-conformance`).
+**Epic 0–10:** workspace + schemas + C0/C1 core + basic CSUs + Operational Flow + CLI / Local Node + Conformance + **Partial Local C2** (`aira-protocol`).
 
-Partial Local C2 (Epic 10 / #71+) is next.
+MVP Alpha docs/security (Epic 11 / #76+) is next.
 
 ## Build
 

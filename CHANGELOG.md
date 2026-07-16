@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.9 — 2026-07-16
+
+### Added
+
+- `aira-protocol` local C2: Protocol Envelope/Response, AIRA-EP/AP adapters, Identity Descriptor, Discovery registry
+- Schemas + fixtures for protocol envelope/response and identity descriptor
+
 ## 0.1.8 — 2026-07-16
 
 ### Added

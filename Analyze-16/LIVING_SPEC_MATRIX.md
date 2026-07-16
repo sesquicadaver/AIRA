@@ -10,4 +10,4 @@
 | LS16-006 | #68 | `c0.event.causality` | chain + refs | mapped |
 | LS16-007 | #69 | `c0.policy.gate` | DENY/ALLOW/REQUIRE | mapped |
 | LS16-008 | #70 | `c1.failure.to_evidence` | CapsuleFailed + evidence | mapped |
-| LS16-009 | Epic 10 | — | pending Analyze-17 | open |
+| LS16-009 | Epic 10 | Analyze-17 | done | mapped |

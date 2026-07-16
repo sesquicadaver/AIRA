@@ -10,6 +10,7 @@ members = [
     "crates/aira-flow",
     "crates/aira-schema",
     "crates/aira-conformance",
+    "crates/aira-protocol",
     "crates/aira-node",
     "crates/aira-cli",
     "csu/context-basic",

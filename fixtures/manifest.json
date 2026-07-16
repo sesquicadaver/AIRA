@@ -67,6 +67,18 @@
     {
       "schema": "aira:schema:conformance:report:0.1",
       "file": "fixtures/valid/conformance/report.json"
+    },
+    {
+      "schema": "aira:schema:protocol:envelope:0.1",
+      "file": "fixtures/valid/protocol/envelope.json"
+    },
+    {
+      "schema": "aira:schema:protocol:response:0.1",
+      "file": "fixtures/valid/protocol/response.json"
+    },
+    {
+      "schema": "aira:schema:identity:identity-descriptor:0.1",
+      "file": "fixtures/valid/identity/identity-descriptor.json"
     }
   ],
   "invalid": [
@@ -89,6 +101,10 @@
     {
       "schema": "aira:schema:result:verified-result-artifact:0.1",
       "file": "fixtures/invalid/result/verified-result-missing-evidence.json"
+    },
+    {
+      "schema": "aira:schema:protocol:envelope:0.1",
+      "file": "fixtures/invalid/protocol/envelope-unsigned.json"
     }
   ]
 }

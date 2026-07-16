@@ -1,0 +1,18 @@
+{
+  "protocol_id": "AIRA-EP",
+  "protocol_version": "0.1",
+  "message_type": "EventPublish",
+  "message_id": "aira:message:ep_bad_sig",
+  "correlation_id": null,
+  "causal_refs": [],
+  "issuer_identity": "aira:identity:local-test",
+  "target_scope": {
+    "scope_type": "local",
+    "description": "fixture"
+  },
+  "policy_refs": ["aira:policy:default"],
+  "payload_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "payload_ref": "inline:event",
+  "created_at": "2026-07-10T12:00:00Z",
+  "expires_at": null
+}

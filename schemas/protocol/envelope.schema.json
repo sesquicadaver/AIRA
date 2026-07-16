@@ -1,0 +1,59 @@
+{
+  "$id": "aira:schema:protocol:envelope:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol_id",
+    "protocol_version",
+    "message_type",
+    "message_id",
+    "issuer_identity",
+    "target_scope",
+    "policy_refs",
+    "payload_hash",
+    "payload_ref",
+    "created_at",
+    "signature"
+  ],
+  "properties": {
+    "protocol_id": {
+      "type": "string",
+      "enum": [
+        "AIRA-EP",
+        "AIRA-AP",
+        "AIRA-ID",
+        "AIRA-DP",
+        "AIRA-CAP",
+        "AIRA-CRP",
+        "AIRA-FED",
+        "AIRA-SET"
+      ]
+    },
+    "protocol_version": { "type": "string" },
+    "message_type": { "type": "string" },
+    "message_id": { "$ref": "aira:schema:common:ref:0.1" },
+    "correlation_id": {
+      "type": ["string", "null"]
+    },
+    "causal_refs": {
+      "type": "array",
+      "items": { "$ref": "aira:schema:common:ref:0.1" }
+    },
+    "issuer_identity": { "$ref": "aira:schema:common:ref:0.1" },
+    "target_scope": { "$ref": "aira:schema:common:scope-descriptor:0.1" },
+    "policy_refs": {
+      "type": "array",
+      "items": { "$ref": "aira:schema:common:ref:0.1" }
+    },
+    "payload_hash": { "$ref": "aira:schema:common:hash:0.1" },
+    "payload_ref": {
+      "type": ["string", "null"]
+    },
+    "created_at": { "$ref": "aira:schema:common:timestamp:0.1" },
+    "expires_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "signature": { "$ref": "aira:schema:common:signature:0.1" }
+  }
+}

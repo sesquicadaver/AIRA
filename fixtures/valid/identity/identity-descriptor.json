@@ -1,0 +1,21 @@
+{
+  "identity_id": "aira:identity:local-user",
+  "identity_type": "user",
+  "public_keys": [
+    {
+      "key_id": "local-ed25519",
+      "algorithm": "ed25519",
+      "public_key_material": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "valid_from": "2026-07-10T12:00:00Z",
+      "valid_to": null
+    }
+  ],
+  "trust_anchors": [],
+  "policy_refs": ["aira:policy:default"],
+  "metadata_hash": null,
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-user",
+    "signature_value": "TESTSIG"
+  }
+}

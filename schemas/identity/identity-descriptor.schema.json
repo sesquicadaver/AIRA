@@ -1,0 +1,49 @@
+{
+  "$id": "aira:schema:identity:identity-descriptor:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "identity_id",
+    "identity_type",
+    "public_keys",
+    "policy_refs",
+    "signature"
+  ],
+  "properties": {
+    "identity_id": { "$ref": "aira:schema:common:ref:0.1" },
+    "identity_type": {
+      "type": "string",
+      "enum": ["user", "csu", "federation", "service", "organization"]
+    },
+    "public_keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key_id", "algorithm", "public_key_material", "valid_from"],
+        "properties": {
+          "key_id": { "type": "string" },
+          "algorithm": { "type": "string" },
+          "public_key_material": { "type": "string" },
+          "valid_from": { "$ref": "aira:schema:common:timestamp:0.1" },
+          "valid_to": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "trust_anchors": {
+      "type": "array",
+      "items": { "$ref": "aira:schema:common:ref:0.1" }
+    },
+    "policy_refs": {
+      "type": "array",
+      "items": { "$ref": "aira:schema:common:ref:0.1" }
+    },
+    "metadata_hash": {
+      "type": ["string", "null"]
+    },
+    "signature": { "$ref": "aira:schema:common:signature:0.1" }
+  }
+}

@@ -252,6 +252,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "aira-protocol"
+version = "0.1.0"
+dependencies = [
+ "aira-artifact",
+ "aira-csu",
+ "aira-event",
+ "aira-object",
+ "aira-schema",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "aira-schema"
 version = "0.1.0"
 dependencies = [

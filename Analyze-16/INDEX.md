@@ -24,4 +24,4 @@
 
 ## Prev / Next
 - Prev: [../Analyze-15/](../Analyze-15/) Epic 8 CLI / Local Node
-- Next: Epic 10 Partial Local C2 (#71+)
+- Next: [../Analyze-17/](../Analyze-17/) Epic 10 Partial Local C2
