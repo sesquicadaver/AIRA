@@ -3,7 +3,8 @@
 //! Distinguishes Output Artifact from Verified Result Artifact.
 
 use aira_artifact::ArtifactType;
-use aira_csu::support::{basic_manifest, json_bytes, make_artifact, make_event};
+use aira_csu::support::{basic_manifest, json_bytes, make_artifact_as, make_event_as};
+use aira_object::AiraRef;
 use aira_csu::{Csu, CsuExecutionContext, CsuHandlerError, CsuManifest, CsuOutput, CsuType};
 use aira_event::{EventDescriptor, EventType};
 use serde_json::{json, Value};
@@ -46,6 +47,13 @@ impl VerificationBasicCsu {
         self
     }
 
+    /// Emit as a distinct publisher identity (must have a signing key in the process keyring).
+    pub fn with_publisher(mut self, publisher: AiraRef) -> Self {
+        aira_csu::support::apply_publisher(&mut self.manifest, publisher);
+        self
+    }
+
+
     fn next_id(&mut self, kind: &str) -> String {
         let id = format!("aira:{kind}:ver{}_{}", self.run_nonce, self.seq);
         self.seq += 1;
@@ -63,6 +71,7 @@ impl Csu for VerificationBasicCsu {
         event: &EventDescriptor,
         ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
+
         if event.event_type != EventType::CapsuleCompleted {
             return Ok(vec![]);
         }
@@ -113,38 +122,50 @@ impl Csu for VerificationBasicCsu {
         });
         let payload = json_bytes(&verified);
         let vid = self.next_id("artifact");
-        let vdesc = make_artifact(
+        let vdesc = make_artifact_as(
+            self.manifest.publisher_identity.clone(),
+            
             &vid,
             ArtifactType::VerifiedResultArtifact,
             &payload,
             vec![event.event_id.clone(), output_id.clone()],
-        );
+        ).map_err(|e| CsuHandlerError {
+            message: e.to_string(),
+        })?;
         ctx.publish_artifact(vdesc.clone(), &payload)
             .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
 
-        let completed = make_event(
+        let completed = make_event_as(
+            self.manifest.publisher_identity.clone(),
+            
             &self.next_id("event"),
             EventType::VerificationCompleted,
             event.object_refs.clone(),
             vec![vdesc.artifact_id.clone(), output_id.clone()],
             vec![event.event_id.clone()],
             None,
-        );
+        ).map_err(|e| CsuHandlerError {
+            message: e.to_string(),
+        })?;
         ctx.append_event(completed.clone())
             .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
 
-        let published = make_event(
+        let published = make_event_as(
+            self.manifest.publisher_identity.clone(),
+            
             &self.next_id("event"),
             EventType::ResultPublished,
             event.object_refs.clone(),
             vec![vdesc.artifact_id.clone()],
             vec![completed.event_id.clone()],
             None,
-        );
+        ).map_err(|e| CsuHandlerError {
+            message: e.to_string(),
+        })?;
         ctx.append_event(published.clone())
             .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
@@ -168,14 +189,18 @@ impl VerificationBasicCsu {
         event: &EventDescriptor,
         message: &str,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
-        let failed = make_event(
+        let failed = make_event_as(
+            self.manifest.publisher_identity.clone(),
+            
             &self.next_id("event"),
             EventType::VerificationFailed,
             event.object_refs.clone(),
             event.artifact_refs.clone(),
             vec![event.event_id.clone()],
             Some(message.into()),
-        );
+        ).map_err(|e| CsuHandlerError {
+            message: e.to_string(),
+        })?;
         ctx.append_event(failed.clone())
             .map_err(|e| CsuHandlerError {
                 message: e.to_string(),

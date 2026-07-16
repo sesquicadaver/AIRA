@@ -4,7 +4,7 @@
 //! Marks unresolved ambiguity; does not execute or produce results.
 
 use aira_artifact::ArtifactType;
-use aira_csu::support::{basic_manifest, json_bytes, make_artifact, make_event};
+use aira_csu::support::{basic_manifest, json_bytes, make_artifact_as, make_event_as};
 use aira_csu::{Csu, CsuExecutionContext, CsuHandlerError, CsuManifest, CsuOutput, CsuType};
 use aira_event::{EventDescriptor, EventType};
 use aira_object::AiraRef;
@@ -44,6 +44,13 @@ impl ContextBasicCsu {
         self
     }
 
+    /// Emit as a distinct publisher identity (must have a signing key in the process keyring).
+    pub fn with_publisher(mut self, publisher: AiraRef) -> Self {
+        aira_csu::support::apply_publisher(&mut self.manifest, publisher);
+        self
+    }
+
+
     fn next_id(&mut self, kind: &str) -> String {
         let id = format!("aira:{kind}:ctx{}_{}", self.run_nonce, self.seq);
         self.seq += 1;
@@ -61,6 +68,7 @@ impl Csu for ContextBasicCsu {
         event: &EventDescriptor,
         ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
+
         if event.event_type != EventType::ProblemSubmitted {
             return Ok(vec![]);
         }
@@ -99,26 +107,34 @@ impl Csu for ContextBasicCsu {
         });
         let payload = json_bytes(&context_body);
         let art_id = self.next_id("artifact");
-        let desc = make_artifact(
+        let desc = make_artifact_as(
+            self.manifest.publisher_identity.clone(),
+            
             &art_id,
             ArtifactType::ContextArtifact,
             &payload,
             vec![event.event_id.clone()],
-        );
+        ).map_err(|e| CsuHandlerError {
+            message: e.to_string(),
+        })?;
         ctx.publish_artifact(desc.clone(), &payload)
             .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
 
         let ev_id = self.next_id("event");
-        let out_ev = make_event(
+        let out_ev = make_event_as(
+            self.manifest.publisher_identity.clone(),
+            
             &ev_id,
             EventType::ContextResolved,
             vec![problem_ref],
             vec![desc.artifact_id.clone()],
             vec![event.event_id.clone()],
             Some(statement),
-        );
+        ).map_err(|e| CsuHandlerError {
+            message: e.to_string(),
+        })?;
         ctx.append_event(out_ev.clone())
             .map_err(|e| CsuHandlerError {
                 message: e.to_string(),

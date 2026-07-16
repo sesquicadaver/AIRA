@@ -2,7 +2,9 @@
 
 use aira_artifact::{ArtifactDescriptor, ArtifactType};
 use aira_event::{EventDescriptor, EventType};
-use aira_object::{active_identity, active_signature, AiraRef, ContentHash, Timestamp};
+use aira_object::{
+    active_identity, active_signature, signature_for, AiraRef, ContentHash, CryptoError, Timestamp,
+};
 use serde_json::{json, Value};
 
 use crate::manifest::{CsuManifest, CsuSandbox, CsuType, SUPPORTED_ABI_VERSION};
@@ -25,6 +27,11 @@ pub fn local_identity() -> AiraRef {
 /// Fixed MVP timestamp.
 pub fn mvp_timestamp() -> Timestamp {
     Timestamp::parse("2026-07-10T12:00:00Z").expect("ts")
+}
+
+/// Override `publisher_identity` on a manifest (emit signer; identity_ref unchanged).
+pub fn apply_publisher(manifest: &mut CsuManifest, publisher: AiraRef) {
+    manifest.publisher_identity = publisher;
 }
 
 /// Build a minimal signed manifest for a basic CSU.
@@ -69,7 +76,43 @@ pub fn basic_manifest(
     }
 }
 
-/// Build an event descriptor.
+/// Build an event descriptor signed by `producer` (fail closed if no signing key).
+pub fn make_event_as(
+    producer: AiraRef,
+    event_id: &str,
+    event_type: EventType,
+    object_refs: Vec<AiraRef>,
+    artifact_refs: Vec<AiraRef>,
+    causal_refs: Vec<AiraRef>,
+    payload_ref: Option<String>,
+) -> Result<EventDescriptor, CryptoError> {
+    let payload = payload_ref.clone().unwrap_or_default();
+    let hash = if payload.is_empty() {
+        ContentHash::parse(
+            "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        )
+        .expect("hash")
+    } else {
+        ContentHash::sha256_bytes(payload.as_bytes())
+    };
+    let sig = signature_for(&producer, hash.as_str().as_bytes())?;
+    Ok(EventDescriptor {
+        event_id: AiraRef::parse(event_id).expect("event_id"),
+        event_type,
+        schema_version: "0.1".into(),
+        producer_identity: producer,
+        causal_refs,
+        object_refs,
+        artifact_refs,
+        policy_refs: vec![],
+        payload_hash: hash,
+        payload_ref,
+        created_at: mvp_timestamp(),
+        signature: sig,
+    })
+}
+
+/// Build an event descriptor signed by the process primary (Analyze-22 path).
 pub fn make_event(
     event_id: &str,
     event_type: EventType,
@@ -104,7 +147,32 @@ pub fn make_event(
     }
 }
 
-/// Build an artifact descriptor for given payload bytes.
+/// Build an artifact descriptor signed by `producer` (fail closed if no signing key).
+pub fn make_artifact_as(
+    producer: AiraRef,
+    artifact_id: &str,
+    artifact_type: ArtifactType,
+    payload: &[u8],
+    provenance: Vec<AiraRef>,
+) -> Result<ArtifactDescriptor, CryptoError> {
+    let hash = ContentHash::sha256_bytes(payload);
+    let sig = signature_for(&producer, hash.as_str().as_bytes())?;
+    Ok(ArtifactDescriptor {
+        artifact_id: AiraRef::parse(artifact_id).expect("artifact_id"),
+        artifact_type,
+        schema_version: "0.1".into(),
+        content_hash: hash.clone(),
+        content_ref: format!("cas://{}", hash.as_str()),
+        producer_identity: producer,
+        provenance_refs: provenance,
+        dependency_refs: vec![],
+        policy_refs: vec![AiraRef::parse("aira:policy:default").expect("policy")],
+        signature: sig,
+        created_at: mvp_timestamp(),
+    })
+}
+
+/// Build an artifact descriptor signed by the process primary (Analyze-22 path).
 pub fn make_artifact(
     artifact_id: &str,
     artifact_type: ArtifactType,
@@ -131,4 +199,59 @@ pub fn make_artifact(
 /// Encode JSON value as artifact payload bytes.
 pub fn json_bytes(v: &Value) -> Vec<u8> {
     serde_json::to_vec(v).expect("json")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aira_object::{
+        register_keyring, reset_primary_signer, set_primary_signer, verify_ed25519, Keyring,
+        LOCAL_TEST_KEY_REF,
+    };
+    use ed25519_dalek::SigningKey;
+
+    #[test]
+    fn publisher_override_signs_distinct_from_primary() {
+        let pub_sk = SigningKey::from_bytes(&[31u8; 32]);
+        let pub_id = AiraRef::parse("aira:identity:csu-publisher").unwrap();
+        let mut ring = Keyring::with_local_test();
+        ring.insert_signing(pub_id.clone(), pub_sk);
+        register_keyring(&ring);
+        set_primary_signer(AiraRef::parse(LOCAL_TEST_KEY_REF).unwrap());
+
+        let mut manifest = basic_manifest(
+            "aira:csu:context.basic",
+            "context-basic",
+            CsuType::Context,
+            &["ProblemSubmitted"],
+            &["ContextResolved"],
+        );
+        apply_publisher(&mut manifest, pub_id.clone());
+        assert_eq!(manifest.identity_ref.as_str(), LOCAL_TEST_KEY_REF);
+        assert_eq!(manifest.publisher_identity.as_str(), pub_id.as_str());
+
+        let art = make_artifact_as(
+            manifest.publisher_identity.clone(),
+            "aira:artifact:pub1",
+            ArtifactType::ContextArtifact,
+            b"{}",
+            vec![],
+        )
+        .unwrap();
+        assert_eq!(art.producer_identity.as_str(), pub_id.as_str());
+        assert_eq!(art.signature.key_ref.as_str(), pub_id.as_str());
+        verify_ed25519(&art.signature, art.content_hash.as_str().as_bytes()).unwrap();
+
+        let missing = AiraRef::parse("aira:identity:no-signing-key").unwrap();
+        assert!(make_artifact_as(
+            missing,
+            "aira:artifact:x",
+            ArtifactType::ContextArtifact,
+            b"{}",
+            vec![],
+        )
+        .is_err());
+
+        reset_primary_signer();
+    }
 }

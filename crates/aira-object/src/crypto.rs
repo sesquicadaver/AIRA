@@ -638,6 +638,13 @@ pub fn active_signature(message: &[u8]) -> Signature {
     }
 }
 
+/// Sign `message` with an explicit identity — no local-test fallback.
+///
+/// Used for per-CSU `publisher_identity` emits (Analyze-29).
+pub fn signature_for(key_ref: &AiraRef, message: &[u8]) -> Result<Signature, CryptoError> {
+    process_keyring_snapshot().sign(key_ref, message)
+}
+
 /// Signing key for `aira:identity:local-test`.
 pub fn local_test_signing_key() -> SigningKey {
     SigningKey::from_bytes(&LOCAL_TEST_SEED)

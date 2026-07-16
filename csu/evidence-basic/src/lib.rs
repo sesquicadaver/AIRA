@@ -3,7 +3,8 @@
 //! Observes ResultPublished / CapsuleFailed / VerificationFailed → Evidence artifacts.
 
 use aira_artifact::ArtifactType;
-use aira_csu::support::{basic_manifest, json_bytes, make_artifact, make_event};
+use aira_csu::support::{basic_manifest, json_bytes, make_artifact_as, make_event_as};
+use aira_object::AiraRef;
 use aira_csu::{Csu, CsuExecutionContext, CsuHandlerError, CsuManifest, CsuOutput, CsuType};
 use aira_event::{EventDescriptor, EventType};
 use serde_json::json;
@@ -42,6 +43,13 @@ impl EvidenceBasicCsu {
         self
     }
 
+    /// Emit as a distinct publisher identity (must have a signing key in the process keyring).
+    pub fn with_publisher(mut self, publisher: AiraRef) -> Self {
+        aira_csu::support::apply_publisher(&mut self.manifest, publisher);
+        self
+    }
+
+
     fn next_id(&mut self, kind: &str) -> String {
         let id = format!("aira:{kind}:evi{}_{}", self.run_nonce, self.seq);
         self.seq += 1;
@@ -59,6 +67,7 @@ impl Csu for EvidenceBasicCsu {
         event: &EventDescriptor,
         ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
+
         let is_failure = matches!(
             event.event_type,
             EventType::CapsuleFailed | EventType::VerificationFailed
@@ -79,12 +88,16 @@ impl Csu for EvidenceBasicCsu {
         });
         let payload = json_bytes(&body);
         let aid = self.next_id("artifact");
-        let desc = make_artifact(
+        let desc = make_artifact_as(
+            self.manifest.publisher_identity.clone(),
+            
             &aid,
             ArtifactType::EvidenceArtifact,
             &payload,
             vec![event.event_id.clone()],
-        );
+        ).map_err(|e| CsuHandlerError {
+            message: e.to_string(),
+        })?;
         ctx.publish_artifact(desc.clone(), &payload)
             .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
@@ -96,27 +109,35 @@ impl Csu for EvidenceBasicCsu {
         }];
 
         if is_failure {
-            let fe = make_event(
+            let fe = make_event_as(
+                self.manifest.publisher_identity.clone(),
+                
                 &self.next_id("event"),
                 EventType::FailureEvidenceCreated,
                 event.object_refs.clone(),
                 vec![desc.artifact_id.clone()],
                 vec![event.event_id.clone()],
                 event.payload_ref.clone(),
-            );
+            ).map_err(|e| CsuHandlerError {
+                message: e.to_string(),
+            })?;
             ctx.append_event(fe.clone()).map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
             outs.push(CsuOutput::Event(fe));
         } else {
-            let pub_ev = make_event(
+            let pub_ev = make_event_as(
+                self.manifest.publisher_identity.clone(),
+                
                 &self.next_id("event"),
                 EventType::ArtifactPublished,
                 event.object_refs.clone(),
                 vec![desc.artifact_id.clone()],
                 vec![event.event_id.clone()],
                 None,
-            );
+            ).map_err(|e| CsuHandlerError {
+                message: e.to_string(),
+            })?;
             ctx.append_event(pub_ev.clone())
                 .map_err(|e| CsuHandlerError {
                     message: e.to_string(),

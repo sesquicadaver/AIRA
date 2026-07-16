@@ -19,3 +19,4 @@ thiserror = { workspace = true }
 [dev-dependencies]
 aira-schema = { path = "../aira-schema" }
 tempfile = "3"
+ed25519-dalek = { workspace = true }

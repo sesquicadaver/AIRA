@@ -15,6 +15,8 @@ API: `aira_object::{local_test_signature, verify_ed25519, Keyring, active_signat
 
 **Primary signer** (Analyze-22): `aira_csu::support::{local_identity, local_signature, local_signature_over}` use `active_identity` / `active_signature`. When a node identity is registered, OperationalPlane + basic CSU emits carry that `key_ref`.
 
+**Per-CSU publisher** (Analyze-29): CSU emits use `CsuManifest.publisher_identity` via `make_event_as` / `make_artifact_as` + `signature_for` (fail closed if no signing key). Default `publisher_identity == identity_ref == primary`. Override with `ContextBasicCsu::with_publisher` (and siblings). Plane ProblemStatement / lifecycle remain on primary.
+
 On `LocalSession::open` / `submit_problem` / `aira identity create`:
 
 1. Load `.aira/identity/` into the keyring
@@ -94,4 +96,4 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Node signing-secret rotate; TLS; per-CSU publisher identity overrides; CRL audit log.
+Node signing-secret rotate; TLS; multi-tenant per-CSU keyring; CRL audit log.

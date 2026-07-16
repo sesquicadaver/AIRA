@@ -3,7 +3,7 @@
 //! Prefers Ready Solution / Knowledge reuse; otherwise Negative Lookup + Execution Capsule.
 
 use aira_artifact::ArtifactType;
-use aira_csu::support::{basic_manifest, json_bytes, make_artifact, make_event};
+use aira_csu::support::{basic_manifest, json_bytes, make_artifact_as, make_event_as};
 use aira_csu::{Csu, CsuExecutionContext, CsuHandlerError, CsuManifest, CsuOutput, CsuType};
 use aira_event::{EventDescriptor, EventType};
 use aira_object::AiraRef;
@@ -53,6 +53,13 @@ impl ReductionBasicCsu {
         self
     }
 
+    /// Emit as a distinct publisher identity (must have a signing key in the process keyring).
+    pub fn with_publisher(mut self, publisher: AiraRef) -> Self {
+        aira_csu::support::apply_publisher(&mut self.manifest, publisher);
+        self
+    }
+
+
     fn next_id(&mut self, kind: &str) -> String {
         let id = format!("aira:{kind}:red{}_{}", self.run_nonce, self.seq);
         self.seq += 1;
@@ -70,6 +77,7 @@ impl Csu for ReductionBasicCsu {
         event: &EventDescriptor,
         ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
+
         if event.event_type != EventType::ContextResolved {
             return Ok(vec![]);
         }
@@ -88,27 +96,35 @@ impl Csu for ReductionBasicCsu {
         let mut outs = Vec::new();
 
         if let Some(ready) = self.ready_solutions.first().cloned() {
-            let done = make_event(
+            let done = make_event_as(
+                self.manifest.publisher_identity.clone(),
+                
                 &self.next_id("event"),
                 EventType::ReductionCompleted,
                 vec![problem_ref.clone()],
                 vec![ready.clone()],
                 vec![event.event_id.clone()],
                 Some("reuse:ready_solution".into()),
-            );
+            ).map_err(|e| CsuHandlerError {
+                message: e.to_string(),
+            })?;
             ctx.append_event(done.clone())
                 .map_err(|e| CsuHandlerError {
                     message: e.to_string(),
                 })?;
             // Reuse path publishes result without invoking Execution CSU.
-            let published = make_event(
+            let published = make_event_as(
+                self.manifest.publisher_identity.clone(),
+                
                 &self.next_id("event"),
                 EventType::ResultPublished,
                 vec![problem_ref],
                 vec![ready],
                 vec![done.event_id.clone()],
                 Some("reuse:ready_solution".into()),
-            );
+            ).map_err(|e| CsuHandlerError {
+                message: e.to_string(),
+            })?;
             ctx.append_event(published.clone())
                 .map_err(|e| CsuHandlerError {
                     message: e.to_string(),
@@ -119,14 +135,18 @@ impl Csu for ReductionBasicCsu {
         }
 
         if let Some(know) = self.knowledge.first().cloned() {
-            let ev = make_event(
+            let ev = make_event_as(
+                self.manifest.publisher_identity.clone(),
+                
                 &self.next_id("event"),
                 EventType::ReductionCompleted,
                 vec![problem_ref],
                 vec![know],
                 vec![event.event_id.clone()],
                 Some("reuse:knowledge".into()),
-            );
+            ).map_err(|e| CsuHandlerError {
+                message: e.to_string(),
+            })?;
             ctx.append_event(ev.clone()).map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
@@ -142,12 +162,16 @@ impl Csu for ReductionBasicCsu {
         });
         let neg_payload = json_bytes(&neg_body);
         let neg_id = self.next_id("artifact");
-        let neg_desc = make_artifact(
+        let neg_desc = make_artifact_as(
+            self.manifest.publisher_identity.clone(),
+            
             &neg_id,
             ArtifactType::NegativeResultArtifact,
             &neg_payload,
             vec![event.event_id.clone()],
-        );
+        ).map_err(|e| CsuHandlerError {
+            message: e.to_string(),
+        })?;
         ctx.publish_artifact(neg_desc.clone(), &neg_payload)
             .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
@@ -198,12 +222,16 @@ impl Csu for ReductionBasicCsu {
         });
         let cap_payload = json_bytes(&capsule);
         let cap_id = self.next_id("artifact");
-        let cap_desc = make_artifact(
+        let cap_desc = make_artifact_as(
+            self.manifest.publisher_identity.clone(),
+            
             &cap_id,
             ArtifactType::ExecutionArtifact,
             &cap_payload,
             vec![event.event_id.clone(), neg_desc.artifact_id.clone()],
-        );
+        ).map_err(|e| CsuHandlerError {
+            message: e.to_string(),
+        })?;
         ctx.publish_artifact(cap_desc.clone(), &cap_payload)
             .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
@@ -213,28 +241,36 @@ impl Csu for ReductionBasicCsu {
             payload: cap_payload,
         });
 
-        let created = make_event(
+        let created = make_event_as(
+            self.manifest.publisher_identity.clone(),
+            
             &self.next_id("event"),
             EventType::CapsuleCreated,
             vec![problem_ref.clone()],
             vec![cap_desc.artifact_id.clone()],
             vec![event.event_id.clone()],
             Some(action.into()),
-        );
+        ).map_err(|e| CsuHandlerError {
+            message: e.to_string(),
+        })?;
         ctx.append_event(created.clone())
             .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
         outs.push(CsuOutput::Event(created));
 
-        let done = make_event(
+        let done = make_event_as(
+            self.manifest.publisher_identity.clone(),
+            
             &self.next_id("event"),
             EventType::ReductionCompleted,
             vec![problem_ref],
             vec![cap_desc.artifact_id, neg_desc.artifact_id],
             vec![event.event_id.clone()],
             Some("escalate:execution_capsule".into()),
-        );
+        ).map_err(|e| CsuHandlerError {
+            message: e.to_string(),
+        })?;
         ctx.append_event(done.clone())
             .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
