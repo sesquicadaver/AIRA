@@ -34,7 +34,8 @@ Problem Statement
 
 ## Status
 
-**Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha** docs/security/release pack.
+**Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha**.
+**Post-MVP:** Roadmap M11 Local HTTP API (`aira-node --http`, see `docs/local-node.md`).
 
 See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md` and `scripts/prepare-alpha.sh`.
 
@@ -53,6 +54,8 @@ cargo run -p aira-cli -- --root /tmp/aira-demo init
 cargo run -p aira-cli -- --root /tmp/aira-demo identity create
 cargo run -p aira-cli -- --root /tmp/aira-demo problem submit --text "Calculate 2 + 2"
 cargo run -p aira-node -- --root /tmp/aira-demo --text "Calculate 2 + 2"
+# Local HTTP API (loopback)
+cargo run -p aira-node -- --root /tmp/aira-demo --http --listen 127.0.0.1:8787
 cargo run -p aira-cli -- conformance run --profile C0 --out /tmp/aira-c0
 cargo run -p aira-cli -- conformance run --profile C1 --out /tmp/aira-c1
 ```

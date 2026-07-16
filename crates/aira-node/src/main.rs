@@ -1,5 +1,8 @@
-//! AIRA local node binary — load config, CSU registry, process local events.
+//! AIRA local node binary — load config, CSU registry, process local events / HTTP.
 
+mod http;
+
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -8,6 +11,8 @@ use clap::Parser;
 
 use aira_csu::CsuRegistry;
 use aira_flow::{init_node, load_config, LocalSession, SubmitOutcome, DEFAULT_AIRA_ROOT};
+
+use crate::http::{router, AppState};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -27,6 +32,14 @@ struct Args {
     /// Process one problem statement then exit.
     #[arg(long)]
     text: Option<String>,
+
+    /// Serve Roadmap M11 local HTTP API (blocks).
+    #[arg(long)]
+    http: bool,
+
+    /// Listen address for `--http` (default loopback).
+    #[arg(long, default_value = "127.0.0.1:8787")]
+    listen: String,
 }
 
 fn main() -> ExitCode {
@@ -77,6 +90,13 @@ fn run() -> Result<ExitCode> {
         println!("csu_registry: (empty) — built-in basic CSUs used by OperationalPlane");
     }
 
+    if args.http {
+        if args.text.is_some() {
+            bail!("--http and --text are mutually exclusive");
+        }
+        return serve_http(args.root, &args.listen);
+    }
+
     if let Some(text) = args.text {
         let mut session = LocalSession::open(&args.root).map_err(|e| anyhow::anyhow!("{e}"))?;
         let out = session
@@ -102,8 +122,31 @@ fn run() -> Result<ExitCode> {
             println!("  {}\t{:?}", e.event_id, e.event_type);
         }
     } else {
-        println!("idle: pass --text \"Calculate 2 + 2\" to process a local problem");
+        println!("idle: pass --text \"Calculate 2 + 2\" or --http --listen 127.0.0.1:8787");
     }
 
+    Ok(ExitCode::SUCCESS)
+}
+
+fn serve_http(root: PathBuf, listen: &str) -> Result<ExitCode> {
+    let addr: SocketAddr = listen
+        .parse()
+        .map_err(|e| anyhow::anyhow!("invalid --listen {listen}: {e}"))?;
+    if !addr.ip().is_loopback() {
+        eprintln!("warning: listening on non-loopback {addr} — M11 assumes local-only trust");
+    }
+    let state = AppState::open(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let app = router(state);
+    println!("http listening on http://{addr}");
+    println!("endpoints: /health /v1/problems /v1/results /v1/artifacts /v1/events /v1/capabilities /v1/csu /v1/conformance/run");
+
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    rt.block_on(async move {
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+        axum::serve(listener, app).await?;
+        Ok::<_, anyhow::Error>(())
+    })?;
     Ok(ExitCode::SUCCESS)
 }

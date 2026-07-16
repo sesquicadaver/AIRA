@@ -29,7 +29,6 @@ mod tests {
     use aira_csu::support::{make_artifact, make_event};
     use aira_event::EventType;
     use aira_object::{AiraRef, ContentHash};
-    use serde_json::json;
 
     fn registry() -> aira_schema::SchemaRegistry {
         let root = aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
@@ -170,6 +169,6 @@ mod tests {
         let v = serde_json::to_value(&hits[0].capability).unwrap();
         assert!(v.get("provider_csu").is_some());
         assert!(v.get("node_id").is_none());
-        let _ = json!({});
+        assert_eq!(reg.list_all().len(), 1);
     }
 }

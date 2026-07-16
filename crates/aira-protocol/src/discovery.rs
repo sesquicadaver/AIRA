@@ -75,7 +75,14 @@ impl DiscoveryRegistry {
             .collect()
     }
 
-    /// Helper to build a signed local capability.
+    /// List all registered capabilities (sorted by capability_id).
+    pub fn list_all(&self) -> Vec<&CapabilityDescriptor> {
+        let mut caps: Vec<_> = self.by_type.values().flatten().collect();
+        caps.sort_by(|a, b| a.capability_id.as_str().cmp(b.capability_id.as_str()));
+        caps
+    }
+
+    /// Helper to build a signed local capability (also used by HTTP capability seed).
     pub fn local_capability(
         capability_id: &str,
         capability_type: &str,

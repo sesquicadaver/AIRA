@@ -14,7 +14,17 @@ path = "src/main.rs"
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net"] }
+axum = { workspace = true }
 aira-core = { path = "../aira-core" }
 aira-csu = { path = "../aira-csu" }
 aira-flow = { path = "../aira-flow" }
+aira-conformance = { path = "../aira-conformance" }
+aira-protocol = { path = "../aira-protocol" }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tower = { workspace = true }
+http-body-util = { workspace = true }

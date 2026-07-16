@@ -45,3 +45,7 @@ jsonschema = "0.28"
 walkdir = "2"
 rusqlite = { version = "0.32", features = ["bundled"] }
 hex = "0.4"
+axum = { version = "0.7", features = ["json", "macros"] }
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+tempfile = "3"
