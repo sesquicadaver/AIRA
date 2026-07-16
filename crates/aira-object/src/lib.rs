@@ -10,7 +10,8 @@ mod types;
 
 pub use crypto::{
     is_cryptographic_signature, local_test_public_key_hex, local_test_signature,
-    local_test_signing_key, local_test_verifying_key, sign_with_key, verify_ed25519, CryptoError,
+    local_test_signing_key, local_test_verifying_key, process_keyring_snapshot, register_keyring,
+    register_node_identity, sign_with_key, verify_ed25519, CryptoError, Keyring,
     LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF,
 };
 pub use descriptor::{ObjectDescriptor, ObjectType};

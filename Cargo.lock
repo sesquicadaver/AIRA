@@ -46,6 +46,7 @@ dependencies = [
  "aira-conformance",
  "aira-csu",
  "aira-flow",
+ "aira-object",
  "aira-schema",
  "anyhow",
  "clap",
@@ -208,6 +209,8 @@ dependencies = [
  "aira-event",
  "aira-object",
  "aira-schema",
+ "ed25519-dalek",
+ "hex",
  "serde",
  "serde_json",
  "tempfile",
@@ -245,6 +248,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "tempfile",
  "thiserror",
 ]
 

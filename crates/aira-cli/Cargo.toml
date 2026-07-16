@@ -22,3 +22,4 @@ aira-schema = { path = "../aira-schema" }
 aira-csu = { path = "../aira-csu" }
 aira-flow = { path = "../aira-flow" }
 aira-conformance = { path = "../aira-conformance" }
+aira-object = { path = "../aira-object" }

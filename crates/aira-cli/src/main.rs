@@ -84,6 +84,24 @@ enum IdentityCommands {
         #[arg(long, default_value = "local")]
         name: String,
     },
+    /// Sign a message with the node identity key.
+    Sign {
+        /// Message bytes as UTF-8 text.
+        #[arg(long)]
+        text: String,
+    },
+    /// Verify a hex signature over a message with the node (or local-test) keyring.
+    Verify {
+        /// Message bytes as UTF-8 text.
+        #[arg(long)]
+        text: String,
+        /// Hex-encoded Ed25519 signature.
+        #[arg(long)]
+        signature: String,
+        /// key_ref (default: identity from node file, else local-test).
+        #[arg(long)]
+        key_ref: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -227,7 +245,6 @@ fn run() -> Result<ExitCode> {
                 let public_hex = hex::encode(verifying.to_bytes());
                 std::fs::create_dir_all(paths.identity_dir())?;
                 std::fs::write(paths.identity_key(), format!("{secret_hex}\n"))?;
-                // Restrictive perms when possible (best-effort on Unix).
                 #[cfg(unix)]
                 {
                     use std::os::unix::fs::PermissionsExt;
@@ -237,6 +254,10 @@ fn run() -> Result<ExitCode> {
                     );
                 }
                 let identity_id = format!("aira:identity:{name}");
+                let id_ref = aira_object::AiraRef::parse(&identity_id)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                let sig =
+                    aira_object::sign_with_key(id_ref.clone(), &signing, identity_id.as_bytes());
                 let desc = serde_json::json!({
                     "identity_id": identity_id,
                     "identity_type": "local",
@@ -246,13 +267,63 @@ fn run() -> Result<ExitCode> {
                         "key_hex": public_hex
                     },
                     "created_at": "2026-07-16T00:00:00Z",
-                    "key_path": "identity/local.ed25519"
+                    "key_path": "identity/local.ed25519",
+                    "signature": sig
                 });
                 std::fs::write(paths.identity_json(), serde_json::to_string_pretty(&desc)?)?;
+                let mut ring = aira_object::Keyring::with_local_test();
+                ring.insert_signing(id_ref, signing);
+                aira_object::register_keyring(&ring);
                 println!("created {identity_id}");
                 println!("public_key {public_hex}");
                 println!("identity {}", paths.identity_json().display());
                 Ok(ExitCode::SUCCESS)
+            }
+            IdentityCommands::Sign { text } => {
+                ensure_init(&root)?;
+                let id = aira_object::register_node_identity(&root)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("no identity — run `aira identity create` first")
+                    })?;
+                let ring = aira_object::process_keyring_snapshot();
+                let sig = ring
+                    .sign(&id, text.as_bytes())
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                println!("{}", serde_json::to_string_pretty(&sig)?);
+                Ok(ExitCode::SUCCESS)
+            }
+            IdentityCommands::Verify {
+                text,
+                signature,
+                key_ref,
+            } => {
+                ensure_init(&root)?;
+                let node_id = aira_object::register_node_identity(&root)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                let key_ref = match key_ref {
+                    Some(k) => {
+                        aira_object::AiraRef::parse(k).map_err(|e| anyhow::anyhow!("{e}"))?
+                    }
+                    None => node_id.unwrap_or_else(|| {
+                        aira_object::AiraRef::parse(aira_object::LOCAL_TEST_KEY_REF).unwrap()
+                    }),
+                };
+                let sig = aira_object::Signature {
+                    algorithm: "ed25519".into(),
+                    key_ref,
+                    signature_value: signature,
+                };
+                match aira_object::verify_ed25519(&sig, text.as_bytes()) {
+                    Ok(()) => {
+                        println!("OK: signature valid");
+                        Ok(ExitCode::SUCCESS)
+                    }
+                    Err(e) => {
+                        eprintln!("FAIL: {e}");
+                        Ok(ExitCode::FAILURE)
+                    }
+                }
             }
         },
         Commands::Schema { command } => match command {

@@ -234,6 +234,8 @@ impl LocalSession {
         let config = load_config(&paths.root)?;
         let nonce = peek_run_nonce(&paths)?;
         let plane = OperationalPlane::open_with_ready_nonce(paths.artifacts(), vec![], nonce)?;
+        // Register node identity keys (if present) into the process keyring for verify/sign.
+        let _ = aira_object::register_node_identity(&paths.root);
         Ok(Self {
             paths,
             config,

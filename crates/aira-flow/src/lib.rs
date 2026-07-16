@@ -219,4 +219,42 @@ mod tests {
             .iter()
             .any(|e| e.event_type == EventType::ProblemSubmitted));
     }
+
+    #[test]
+    fn local_session_registers_node_identity() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let sk = ed25519_dalek::SigningKey::from_bytes(&[9u8; 32]);
+        let id = "aira:identity:session-demo";
+        std::fs::create_dir_all(root.join("identity")).unwrap();
+        std::fs::write(
+            root.join("identity/local.ed25519"),
+            format!("{}\n", hex::encode(sk.to_bytes())),
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("identity/local.identity.json"),
+            serde_json::json!({
+                "identity_id": id,
+                "identity_type": "local",
+                "display_name": "session-demo",
+                "public_key": {
+                    "algorithm": "ed25519",
+                    "key_hex": hex::encode(sk.verifying_key().to_bytes())
+                },
+                "created_at": "2026-07-16T00:00:00Z",
+                "key_path": "identity/local.ed25519"
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let _session = LocalSession::open(&root).unwrap();
+        let ring = aira_object::process_keyring_snapshot();
+        let msg = b"session-open-registers";
+        let sig = ring
+            .sign(&aira_object::AiraRef::parse(id).unwrap(), msg)
+            .unwrap();
+        aira_object::verify_ed25519(&sig, msg).unwrap();
+    }
 }
