@@ -22,5 +22,6 @@
 ## Next
 Analyze-12 done → [../Analyze-12/](../Analyze-12/)
 Analyze-13 done → [../Analyze-13/](../Analyze-13/)
+Analyze-14 done → [../Analyze-14/](../Analyze-14/)
 
-Next: Epic 7 Operational Flow (#47+)
+Next: Epic 8 CLI / Local Node (#57+)

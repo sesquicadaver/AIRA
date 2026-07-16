@@ -144,7 +144,7 @@ impl Csu for ExecutionBasicCsu {
     fn on_event(
         &mut self,
         event: &EventDescriptor,
-        ctx: &mut CsuExecutionContext<'_>,
+        ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
         if event.event_type != EventType::CapsuleCreated {
             return Ok(vec![]);
@@ -158,11 +158,12 @@ impl Csu for ExecutionBasicCsu {
                 message: "CapsuleCreated missing artifact_ref".into(),
             })?;
 
-        let (_desc, bytes) = ctx
-            .resolve_artifact(&capsule_id)
-            .map_err(|e| CsuHandlerError {
-                message: e.to_string(),
-            })?;
+        let (_desc, bytes) = match ctx.resolve_artifact(&capsule_id) {
+            Ok(v) => v,
+            Err(e) => {
+                return self.fail(ctx, event, &format!("missing capsule artifact: {e}"));
+            }
+        };
         let capsule: Value = serde_json::from_slice(&bytes).map_err(|e| CsuHandlerError {
             message: format!("capsule json: {e}"),
         })?;
@@ -234,7 +235,7 @@ impl Csu for ExecutionBasicCsu {
 impl ExecutionBasicCsu {
     fn fail(
         &mut self,
-        ctx: &mut CsuExecutionContext<'_>,
+        ctx: &mut CsuExecutionContext<'_, '_>,
         event: &EventDescriptor,
         message: &str,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {

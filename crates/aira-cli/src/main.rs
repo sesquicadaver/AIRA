@@ -98,8 +98,8 @@ fn run() -> Result<ExitCode> {
     match cli.command {
         Commands::Status => {
             println!("aira {}", env!("CARGO_PKG_VERSION"));
-            println!("status: C1 Basic CSU set ready (Epic 6)");
-            println!("runtime: context/reduction/execution/verification/evidence/artifact basic");
+            println!("status: C1 Operational Flow ready (Epic 7)");
+            println!("runtime: aira-flow OperationalPlane (Calculate 2+2 demo)");
             Ok(ExitCode::SUCCESS)
         }
         Commands::Schema { command } => match command {

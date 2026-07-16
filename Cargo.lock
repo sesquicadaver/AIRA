@@ -169,6 +169,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "aira-flow"
+version = "0.1.0"
+dependencies = [
+ "aira-artifact",
+ "aira-core",
+ "aira-csu",
+ "aira-csu-context-basic",
+ "aira-csu-evidence-basic",
+ "aira-csu-execution-basic",
+ "aira-csu-reduction-basic",
+ "aira-csu-verification-basic",
+ "aira-event",
+ "aira-object",
+ "aira-schema",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "aira-node"
 version = "0.1.0"
 dependencies = [

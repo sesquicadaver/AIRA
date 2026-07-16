@@ -59,7 +59,7 @@ impl Csu for ArtifactBasicCsu {
     fn on_event(
         &mut self,
         event: &EventDescriptor,
-        ctx: &mut CsuExecutionContext<'_>,
+        ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
         if event.event_type != EventType::CustomEvent {
             return Ok(vec![]);

@@ -49,7 +49,7 @@ impl Csu for EvidenceBasicCsu {
     fn on_event(
         &mut self,
         event: &EventDescriptor,
-        ctx: &mut CsuExecutionContext<'_>,
+        ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
         let is_failure = matches!(
             event.event_type,

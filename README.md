@@ -34,9 +34,9 @@ Problem Statement
 
 ## Status
 
-**Epic 0–6:** workspace + schemas + C0/C1 core + **Basic CSU set** (`csu/*-basic`).
+**Epic 0–7:** workspace + schemas + C0/C1 core + basic CSUs + **Operational Flow** (`aira-flow`).
 
-Local operational flow is **not** complete yet (Issue Set #47+).
+Full CLI / local node commands are **not** complete yet (Issue Set #57+).
 
 ## Build
 

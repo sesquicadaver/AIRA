@@ -45,17 +45,17 @@ impl std::error::Error for CsuHandlerError {}
 ///
 /// Deliberately does **not** expose ObjectStore mutation, Artifact mutation,
 /// or peer CSU invocation (Issue #40 isolation baseline).
-pub struct CsuExecutionContext<'a> {
+pub struct CsuExecutionContext<'e, 'a> {
     pub csu_id: AiraRef,
-    events: &'a mut dyn EventSink,
+    events: &'e mut dyn EventSink,
     artifacts: Option<&'a mut dyn ArtifactStore>,
     policy: Option<&'a mut PolicyGate>,
 }
 
-impl<'a> CsuExecutionContext<'a> {
+impl<'e, 'a> CsuExecutionContext<'e, 'a> {
     pub fn new(
         csu_id: AiraRef,
-        events: &'a mut dyn EventSink,
+        events: &'e mut dyn EventSink,
         artifacts: Option<&'a mut dyn ArtifactStore>,
         policy: Option<&'a mut PolicyGate>,
     ) -> Self {
@@ -160,7 +160,7 @@ pub trait Csu: Send {
     fn on_event(
         &mut self,
         event: &EventDescriptor,
-        ctx: &mut CsuExecutionContext<'_>,
+        ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError>;
 }
 
@@ -216,19 +216,69 @@ impl CsuRuntime {
         Ok(())
     }
 
-    /// Dispatch an event to all Active CSU subscribed to its type (Issue #39).
-    ///
-    /// Context is event-only during fan-out dispatch (avoids multi-borrow of
-    /// artifact/policy stores). Handlers that need artifact/policy binding use
-    /// `CsuExecutionContext::new` directly in higher-level orchestration.
+    /// Replace an already-registered handler instance (same csu_id).
+    pub fn replace_handler(&mut self, handler: Box<dyn Csu>) -> Result<(), CsuError> {
+        let id = handler.manifest().csu_id.as_str().to_string();
+        if self.registry.get(&handler.manifest().csu_id).is_none() {
+            return Err(CsuError::NotFound(handler.manifest().csu_id.clone()));
+        }
+        self.handlers.insert(id, handler);
+        Ok(())
+    }
+
+    /// Dispatch an event to all Active CSU subscribed to its type (event-only context).
     pub fn dispatch(
         &mut self,
         event: &EventDescriptor,
         events: &mut dyn EventSink,
     ) -> Result<Vec<CsuOutput>, CsuError> {
+        let ids = self.active_subscribers(event);
+        let mut all = Vec::new();
+        for csu_id in ids {
+            all.extend(self.invoke(&csu_id, event, events, None)?);
+        }
+        Ok(all)
+    }
+
+    /// Dispatch with ArtifactStore to all matching Active CSUs (sequential).
+    pub fn dispatch_with_artifacts(
+        &mut self,
+        event: &EventDescriptor,
+        events: &mut dyn EventSink,
+        artifacts: &mut dyn ArtifactStore,
+    ) -> Result<Vec<CsuOutput>, CsuError> {
+        self.dispatch_all_with_artifacts(event, events, artifacts)
+    }
+
+    /// Invoke every matching Active CSU with a bound artifact store.
+    pub fn dispatch_all_with_artifacts(
+        &mut self,
+        event: &EventDescriptor,
+        events: &mut dyn EventSink,
+        artifacts: &mut dyn ArtifactStore,
+    ) -> Result<Vec<CsuOutput>, CsuError> {
+        let ids = self.active_subscribers(event);
+        self.dispatch_ids_with_artifacts(ids, event, events, artifacts)
+    }
+
+    fn dispatch_ids_with_artifacts(
+        &mut self,
+        mut ids: Vec<AiraRef>,
+        event: &EventDescriptor,
+        events: &mut dyn EventSink,
+        artifacts: &mut dyn ArtifactStore,
+    ) -> Result<Vec<CsuOutput>, CsuError> {
+        let Some(csu_id) = ids.pop() else {
+            return Ok(vec![]);
+        };
+        let mut outs = self.invoke(&csu_id, event, events, Some(artifacts))?;
+        outs.extend(self.dispatch_ids_with_artifacts(ids, event, events, artifacts)?);
+        Ok(outs)
+    }
+
+    fn active_subscribers(&self, event: &EventDescriptor) -> Vec<AiraRef> {
         let event_type_name = format!("{:?}", event.event_type);
-        let active_ids: Vec<AiraRef> = self
-            .registry
+        self.registry
             .list()
             .iter()
             .filter(|e| e.state == CsuLifecycleState::Active)
@@ -239,28 +289,22 @@ impl CsuRuntime {
                     .any(|t| t == &event_type_name)
             })
             .map(|e| e.manifest.csu_id.clone())
-            .collect();
-
-        let mut all_outputs = Vec::new();
-        for csu_id in active_ids {
-            let outs = self.dispatch_one(&csu_id, event, events)?;
-            all_outputs.extend(outs);
-        }
-        Ok(all_outputs)
+            .collect()
     }
 
-    fn dispatch_one(
+    fn invoke(
         &mut self,
         csu_id: &AiraRef,
         event: &EventDescriptor,
         events: &mut dyn EventSink,
+        artifacts: Option<&mut dyn ArtifactStore>,
     ) -> Result<Vec<CsuOutput>, CsuError> {
         let result = {
             let handler = self
                 .handlers
                 .get_mut(csu_id.as_str())
                 .ok_or_else(|| CsuError::NotFound(csu_id.clone()))?;
-            let mut ctx = CsuExecutionContext::new(csu_id.clone(), events, None, None);
+            let mut ctx = CsuExecutionContext::new(csu_id.clone(), events, artifacts, None);
             handler.on_event(event, &mut ctx)
         };
         match result {

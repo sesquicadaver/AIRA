@@ -51,7 +51,7 @@ impl Csu for ContextBasicCsu {
     fn on_event(
         &mut self,
         event: &EventDescriptor,
-        ctx: &mut CsuExecutionContext<'_>,
+        ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
         if event.event_type != EventType::ProblemSubmitted {
             return Ok(vec![]);

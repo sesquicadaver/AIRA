@@ -83,7 +83,7 @@ mod tests {
         fn on_event(
             &mut self,
             _event: &EventDescriptor,
-            _ctx: &mut CsuExecutionContext<'_>,
+            _ctx: &mut CsuExecutionContext<'_, '_>,
         ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
             self.received.fetch_add(1, Ordering::SeqCst);
             Ok(vec![])
@@ -102,7 +102,7 @@ mod tests {
         fn on_event(
             &mut self,
             _event: &EventDescriptor,
-            _ctx: &mut CsuExecutionContext<'_>,
+            _ctx: &mut CsuExecutionContext<'_, '_>,
         ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
             Err(CsuHandlerError {
                 message: "boom".into(),

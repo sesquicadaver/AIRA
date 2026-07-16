@@ -8,4 +8,4 @@
 | LS13-004 | #44 | `csu/verification-basic` | VerifiedResult + ResultPublished | mapped |
 | LS13-005 | #45 | `csu/evidence-basic` | FailureEvidenceCreated | mapped |
 | LS13-006 | #46 | `csu/artifact-basic` | publish/resolve/supersede events | mapped |
-| LS13-007 | Epic 7 | — | pending Analyze-14 | open |
+| LS13-007 | Epic 7 | Analyze-14 | done → [../Analyze-14/](../Analyze-14/) | mapped |

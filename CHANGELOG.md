@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.6 — 2026-07-16
+
+### Added
+
+- `aira-flow` OperationalPlane (problem submit + CSU event drain)
+- Demos: Calculate 2+2, Ready Solution reuse, failure-to-evidence, normative split stub
+- Artifact-bound CSU dispatch (`dispatch_with_artifacts`)
+
 ## 0.1.5 — 2026-07-10
 
 ### Added

@@ -60,7 +60,7 @@ impl Csu for ReductionBasicCsu {
     fn on_event(
         &mut self,
         event: &EventDescriptor,
-        ctx: &mut CsuExecutionContext<'_>,
+        ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
         if event.event_type != EventType::ContextResolved {
             return Ok(vec![]);
@@ -80,18 +80,33 @@ impl Csu for ReductionBasicCsu {
         let mut outs = Vec::new();
 
         if let Some(ready) = self.ready_solutions.first().cloned() {
-            let ev = make_event(
+            let done = make_event(
                 &self.next_id("event"),
                 EventType::ReductionCompleted,
-                vec![problem_ref],
-                vec![ready],
+                vec![problem_ref.clone()],
+                vec![ready.clone()],
                 vec![event.event_id.clone()],
                 Some("reuse:ready_solution".into()),
             );
-            ctx.append_event(ev.clone()).map_err(|e| CsuHandlerError {
-                message: e.to_string(),
-            })?;
-            outs.push(CsuOutput::Event(ev));
+            ctx.append_event(done.clone())
+                .map_err(|e| CsuHandlerError {
+                    message: e.to_string(),
+                })?;
+            // Reuse path publishes result without invoking Execution CSU.
+            let published = make_event(
+                &self.next_id("event"),
+                EventType::ResultPublished,
+                vec![problem_ref],
+                vec![ready],
+                vec![done.event_id.clone()],
+                Some("reuse:ready_solution".into()),
+            );
+            ctx.append_event(published.clone())
+                .map_err(|e| CsuHandlerError {
+                    message: e.to_string(),
+                })?;
+            outs.push(CsuOutput::Event(done));
+            outs.push(CsuOutput::Event(published));
             return Ok(outs);
         }
 

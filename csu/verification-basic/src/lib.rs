@@ -53,7 +53,7 @@ impl Csu for VerificationBasicCsu {
     fn on_event(
         &mut self,
         event: &EventDescriptor,
-        ctx: &mut CsuExecutionContext<'_>,
+        ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
         if event.event_type != EventType::CapsuleCompleted {
             return Ok(vec![]);
@@ -99,7 +99,9 @@ impl Csu for VerificationBasicCsu {
             "confidence": 1.0,
             "scope": { "scope_type": "local", "description": "verification-basic" },
             "source_output_ref": output_id.as_str(),
-            "artifact_kind": "VerifiedResultArtifact"
+            "artifact_kind": "VerifiedResultArtifact",
+            "evidence_refs": [],
+            "provenance_refs": [event.event_id.as_str(), output_id.as_str()]
         });
         let payload = json_bytes(&verified);
         let vid = self.next_id("artifact");
@@ -154,7 +156,7 @@ impl Csu for VerificationBasicCsu {
 impl VerificationBasicCsu {
     fn fail(
         &mut self,
-        ctx: &mut CsuExecutionContext<'_>,
+        ctx: &mut CsuExecutionContext<'_, '_>,
         event: &EventDescriptor,
         message: &str,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
