@@ -132,6 +132,11 @@ enum TrustCommands {
         #[arg(long)]
         reason: Option<String>,
     },
+    /// Clear CRL entry (does not auto re-trust — run trust add after).
+    Unrevoke {
+        #[arg(long)]
+        key_ref: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -422,6 +427,17 @@ fn run() -> Result<ExitCode> {
                     aira_object::sync_trust_verifiers(&root)
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
                     println!("revoked {key_ref}");
+                    Ok(ExitCode::SUCCESS)
+                }
+                TrustCommands::Unrevoke { key_ref } => {
+                    ensure_init(&root)?;
+                    let mut store = aira_object::TrustStore::load(&root)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    store
+                        .unrevoke(&key_ref)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
+                    println!("unrevoked {key_ref} (not trusted until `trust add`)");
                     Ok(ExitCode::SUCCESS)
                 }
             },

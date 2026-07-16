@@ -43,6 +43,8 @@ pub enum CryptoError {
     RevokedKey(String),
     #[error("cannot revoke protected identity: {0}")]
     ProtectedIdentity(String),
+    #[error("identity is not on the CRL: {0}")]
+    NotRevoked(String),
 }
 
 /// In-memory verifying (+ optional signing) keys keyed by identity ref.
@@ -296,6 +298,22 @@ impl TrustStore {
             });
             self.revoked
                 .sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
+        }
+        Ok(())
+    }
+
+    /// Remove an identity from the durable CRL.
+    ///
+    /// Does **not** restore `entries` or register verifying keys — callers must
+    /// [`TrustStore::upsert`] / `trust add` explicitly. Fails with
+    /// [`CryptoError::NotRevoked`] if the id is not on the CRL.
+    pub fn unrevoke(&mut self, identity_id: &str) -> Result<(), CryptoError> {
+        let id = identity_id.trim();
+        AiraRef::parse(id).map_err(|_| CryptoError::InvalidKey)?;
+        let before = self.revoked.len();
+        self.revoked.retain(|r| r.identity_id != id);
+        if self.revoked.len() == before {
+            return Err(CryptoError::NotRevoked(id.to_string()));
         }
         Ok(())
     }
@@ -670,5 +688,50 @@ mod tests {
             .revoke(LOCAL_TEST_KEY_REF, None)
             .is_err());
         verify_ed25519(&local_test_signature(msg), msg).unwrap();
+    }
+
+    #[test]
+    fn trust_crl_unrevoke_allows_explicit_readd() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let peer_sk = SigningKey::from_bytes(&[19u8; 32]);
+        let peer_id = "aira:identity:peer-carol";
+        let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
+
+        let mut store = TrustStore::default();
+        store.ensure_local_test().unwrap();
+        store.upsert(peer_id, &peer_pub).unwrap();
+        store.save(root).unwrap();
+        register_trust_store(root).unwrap();
+
+        let msg = b"unrevoke-message";
+        let sig = sign_with_key(AiraRef::parse(peer_id).unwrap(), &peer_sk, msg);
+        verify_ed25519(&sig, msg).unwrap();
+
+        store.revoke(peer_id, Some("temp")).unwrap();
+        store.save(root).unwrap();
+        sync_trust_verifiers(root).unwrap();
+        assert_eq!(
+            store.upsert(peer_id, &peer_pub),
+            Err(CryptoError::RevokedKey(peer_id.into()))
+        );
+
+        store.unrevoke(peer_id).unwrap();
+        assert!(!store.is_revoked(peer_id));
+        assert_eq!(
+            store.unrevoke(peer_id),
+            Err(CryptoError::NotRevoked(peer_id.into()))
+        );
+        // Unrevoke alone must not restore verifying key.
+        assert_eq!(
+            verify_ed25519(&sig, msg),
+            Err(CryptoError::UnknownKey(peer_id.into()))
+        );
+
+        store.upsert(peer_id, &peer_pub).unwrap();
+        store.save(root).unwrap();
+        sync_trust_verifiers(root).unwrap();
+        verify_ed25519(&sig, msg).unwrap();
     }
 }

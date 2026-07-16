@@ -53,6 +53,21 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust list
 # shows REVOKED lines; re-add of peer-alice fails
 ```
 
+**Unrevoke** (Analyze-26): `identity trust unrevoke --key-ref …` clears the CRL entry only. It does **not** restore `entries` or process verifying keys (no silent re-trust from stored CRL pubkey). Operator must run `trust add` again.
+
+```bash
+cargo run -p aira-cli -- --root "$ROOT" identity trust unrevoke \
+  --key-ref aira:identity:peer-alice
+cargo run -p aira-cli -- --root "$ROOT" identity trust add \
+  --key-ref aira:identity:peer-alice --pubkey-hex <64-hex>
+```
+
+| Action | Durable deny? | Re-add without unrevoke? | Auto-trust after? |
+|--------|---------------|--------------------------|-------------------|
+| `remove` | no | yes | n/a |
+| `revoke` | yes (CRL) | no | n/a |
+| `unrevoke` | clears CRL | then yes via `add` | **no** — need `add` |
+
 ## Canonical signed messages
 
 | Object | Message bytes |
@@ -68,4 +83,4 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Key rotation ceremonies / unrevoke admin path; TLS; per-CSU publisher identity overrides.
+Key rotation ceremonies; TLS; per-CSU publisher identity overrides; CRL audit log.
