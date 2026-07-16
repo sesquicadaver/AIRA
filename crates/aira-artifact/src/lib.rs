@@ -123,4 +123,20 @@ mod tests {
         assert_eq!(old, d1);
         assert_eq!(old_bytes, b"v1");
     }
+
+    #[test]
+    fn cas_index_survives_reopen() {
+        let dir = tempfile::tempdir().unwrap();
+        let payload = b"persist-me";
+        let id =
+            "aira:artifact:sha256_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        {
+            let mut store = CasArtifactStore::open(dir.path()).unwrap();
+            store.publish(descriptor_for(payload, id), payload).unwrap();
+        }
+        let store = CasArtifactStore::open(dir.path()).unwrap();
+        let (desc, bytes) = store.resolve(&AiraRef::parse(id).unwrap()).unwrap();
+        assert_eq!(bytes, payload);
+        assert_eq!(desc.artifact_id.as_str(), id);
+    }
 }

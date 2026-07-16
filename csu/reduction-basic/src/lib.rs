@@ -13,6 +13,7 @@ use serde_json::json;
 pub struct ReductionBasicCsu {
     manifest: CsuManifest,
     seq: u64,
+    run_nonce: u64,
     /// In-memory ready solution catalog (artifact ids).
     ready_solutions: Vec<AiraRef>,
     knowledge: Vec<AiraRef>,
@@ -35,6 +36,7 @@ impl ReductionBasicCsu {
                 &["ReductionCompleted", "CapsuleCreated"],
             ),
             seq: 1,
+            run_nonce: 0,
             ready_solutions: vec![],
             knowledge: vec![],
         }
@@ -45,8 +47,14 @@ impl ReductionBasicCsu {
         self
     }
 
+    /// Namespace ids for multi-run local nodes (Epic 8).
+    pub fn with_run_nonce(mut self, run_nonce: u64) -> Self {
+        self.run_nonce = run_nonce;
+        self
+    }
+
     fn next_id(&mut self, kind: &str) -> String {
-        let id = format!("aira:{kind}:red{}", self.seq);
+        let id = format!("aira:{kind}:red{}_{}", self.run_nonce, self.seq);
         self.seq += 1;
         id
     }

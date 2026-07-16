@@ -1,9 +1,14 @@
-//! AIRA local operational flow (Issue Set Epic 7 / #47–#56).
+//! AIRA local operational flow (Issue Set Epic 7 / #47–#56 + Epic 8 local node).
 //!
 //! Wires Problem submit → basic CSU pipeline → Verified Result / Evidence.
+//! Epic 8 adds `.aira` layout persistence via [`local`].
 
+mod local;
 mod plane;
 
+pub use local::{
+    init_node, load_config, LocalSession, NodeConfig, NodePaths, ProblemRecord, DEFAULT_AIRA_ROOT,
+};
 pub use plane::{FlowError, OperationalPlane, SubmitOutcome};
 
 /// Crate version string.
@@ -180,5 +185,38 @@ mod tests {
             .events()
             .iter()
             .any(|e| e.event_type == EventType::CapsuleCompleted));
+    }
+
+    #[test]
+    fn local_init_submit_status_and_artifact() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let cfg = load_config(&root).unwrap();
+        assert_eq!(cfg.node.profile, "C1");
+        assert!(root.join("db/aira.sqlite").exists());
+        assert!(root.join("artifacts/sha256").exists());
+
+        let mut session = LocalSession::open(&root).unwrap();
+        let out = session.submit_problem("Calculate 2 + 2").unwrap();
+        let SubmitOutcome::Completed {
+            problem_id,
+            verified_artifact_id,
+            ..
+        } = out
+        else {
+            panic!("expected completed");
+        };
+
+        let status = session.problem_status(problem_id.as_str()).unwrap();
+        assert_eq!(status.status, "completed");
+        let result = session.get_result(problem_id.as_str()).unwrap();
+        assert_eq!(result["result"], json!(4.0));
+        let (_desc, bytes) = session.get_artifact(verified_artifact_id.as_str()).unwrap();
+        assert!(!bytes.is_empty());
+        let tail = session.event_tail(50).unwrap();
+        assert!(tail
+            .iter()
+            .any(|e| e.event_type == EventType::ProblemSubmitted));
     }
 }

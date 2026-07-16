@@ -51,6 +51,7 @@ pub struct OperationalPlane {
     runtime: CsuRuntime,
     problem_ref: Option<AiraRef>,
     seq: u64,
+    run_nonce: u64,
     ready_solutions: Vec<AiraRef>,
 }
 
@@ -65,22 +66,31 @@ impl OperationalPlane {
         root: impl AsRef<Path>,
         ready_solutions: Vec<AiraRef>,
     ) -> Result<Self, FlowError> {
+        Self::open_with_ready_nonce(root, ready_solutions, 0)
+    }
+
+    /// Open with a run nonce so artifact/event ids do not collide across local submits.
+    pub fn open_with_ready_nonce(
+        root: impl AsRef<Path>,
+        ready_solutions: Vec<AiraRef>,
+        run_nonce: u64,
+    ) -> Result<Self, FlowError> {
         let artifacts =
             CasArtifactStore::open(root).map_err(|e| FlowError::Artifact(e.to_string()))?;
         let mut runtime = CsuRuntime::new(local_identity(), local_signature());
         let mut events = MemoryEventLog::new();
 
-        let mut reduction = ReductionBasicCsu::new();
+        let mut reduction = ReductionBasicCsu::new().with_run_nonce(run_nonce);
         for id in &ready_solutions {
             reduction = reduction.with_ready_solution(id.clone());
         }
 
         let handlers: Vec<Box<dyn Csu>> = vec![
-            Box::new(ContextBasicCsu::new()),
+            Box::new(ContextBasicCsu::new().with_run_nonce(run_nonce)),
             Box::new(reduction),
-            Box::new(ExecutionBasicCsu::new()),
-            Box::new(VerificationBasicCsu::new()),
-            Box::new(EvidenceBasicCsu::new()),
+            Box::new(ExecutionBasicCsu::new().with_run_nonce(run_nonce)),
+            Box::new(VerificationBasicCsu::new().with_run_nonce(run_nonce)),
+            Box::new(EvidenceBasicCsu::new().with_run_nonce(run_nonce)),
         ];
         for h in handlers {
             let id = h.manifest().csu_id.clone();
@@ -99,6 +109,7 @@ impl OperationalPlane {
             runtime,
             problem_ref: None,
             seq: 1,
+            run_nonce,
             ready_solutions,
         })
     }
@@ -126,7 +137,7 @@ impl OperationalPlane {
     /// Seed a ready solution and rebuild Reduction handler (Issue #54).
     pub fn enable_ready_solution(&mut self, ready_id: AiraRef) -> Result<(), FlowError> {
         self.ready_solutions.push(ready_id.clone());
-        let mut reduction = ReductionBasicCsu::new();
+        let mut reduction = ReductionBasicCsu::new().with_run_nonce(self.run_nonce);
         for id in &self.ready_solutions {
             reduction = reduction.with_ready_solution(id.clone());
         }
@@ -147,7 +158,8 @@ impl OperationalPlane {
 
         self.seq += 1;
         let problem_id =
-            AiraRef::parse(format!("aira:problem:flow{}", self.seq)).map_err(map_obj)?;
+            AiraRef::parse(format!("aira:problem:flow{}_{}", self.run_nonce, self.seq))
+                .map_err(map_obj)?;
         let hash = ContentHash::sha256_bytes(text.as_bytes());
         let desc = ObjectDescriptor {
             object_id: problem_id.clone(),
@@ -167,7 +179,7 @@ impl OperationalPlane {
 
         self.seq += 1;
         let ev = make_event(
-            &format!("aira:event:psub{}", self.seq),
+            &format!("aira:event:psub{}_{}", self.run_nonce, self.seq),
             EventType::ProblemSubmitted,
             vec![problem_id.clone()],
             vec![],
@@ -282,7 +294,8 @@ impl OperationalPlane {
     fn emit_differentiated_field(&mut self, text: &str) -> Result<SubmitOutcome, FlowError> {
         self.seq += 1;
         let problem_id =
-            AiraRef::parse(format!("aira:problem:flow{}", self.seq)).map_err(map_obj)?;
+            AiraRef::parse(format!("aira:problem:flow{}_{}", self.run_nonce, self.seq))
+                .map_err(map_obj)?;
         let hash = ContentHash::sha256_bytes(text.as_bytes());
         let desc = ObjectDescriptor {
             object_id: problem_id.clone(),
@@ -310,7 +323,7 @@ impl OperationalPlane {
         let payload = json_bytes(&body);
         self.seq += 1;
         let art = make_artifact(
-            &format!("aira:artifact:dsf{}", self.seq),
+            &format!("aira:artifact:dsf{}_{}", self.run_nonce, self.seq),
             ArtifactType::OperationalArtifact,
             &payload,
             vec![problem_id],
@@ -322,7 +335,7 @@ impl OperationalPlane {
 
         self.seq += 1;
         let ev = make_event(
-            &format!("aira:event:dsf{}", self.seq),
+            &format!("aira:event:dsf{}_{}", self.run_nonce, self.seq),
             EventType::ProblemSubmitted,
             vec![self.problem_ref.clone().unwrap()],
             vec![art_id.clone()],

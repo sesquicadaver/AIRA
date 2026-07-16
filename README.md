@@ -34,9 +34,9 @@ Problem Statement
 
 ## Status
 
-**Epic 0–7:** workspace + schemas + C0/C1 core + basic CSUs + **Operational Flow** (`aira-flow`).
+**Epic 0–8:** workspace + schemas + C0/C1 core + basic CSUs + Operational Flow + **CLI / Local Node** (`aira`, `aira-node`).
 
-Full CLI / local node commands are **not** complete yet (Issue Set #57+).
+Conformance runners (Epic 9 / #63+) are next.
 
 ## Build
 
@@ -45,6 +45,14 @@ cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo run -p aira-cli -- schema validate --fixtures fixtures
+```
+
+```bash
+# Local node smoke
+cargo run -p aira-cli -- --root /tmp/aira-demo init
+cargo run -p aira-cli -- --root /tmp/aira-demo identity create
+cargo run -p aira-cli -- --root /tmp/aira-demo problem submit --text "Calculate 2 + 2"
+cargo run -p aira-node -- --root /tmp/aira-demo --text "Calculate 2 + 2"
 ```
 
 ```bash

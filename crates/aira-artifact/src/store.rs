@@ -75,16 +75,53 @@ pub struct CasArtifactStore {
     supersessions: HashMap<String, String>,
 }
 
+#[derive(Serialize, Deserialize, Default)]
+struct IndexFile {
+    artifacts: HashMap<String, ArtifactDescriptor>,
+    supersessions: HashMap<String, String>,
+}
+
 impl CasArtifactStore {
     pub fn open(root: impl AsRef<Path>) -> Result<Self, ArtifactError> {
         let root = root.as_ref().to_path_buf();
         fs::create_dir_all(root.join("sha256"))
             .map_err(|e| ArtifactError::Storage(e.to_string()))?;
-        Ok(Self {
+        let mut store = Self {
             root,
             index: HashMap::new(),
             supersessions: HashMap::new(),
-        })
+        };
+        store.load_index()?;
+        Ok(store)
+    }
+
+    fn index_path(&self) -> PathBuf {
+        self.root.join("index.json")
+    }
+
+    /// Persist artifact id → descriptor index for reopen across processes.
+    pub fn save_index(&self) -> Result<(), ArtifactError> {
+        let file = IndexFile {
+            artifacts: self.index.clone(),
+            supersessions: self.supersessions.clone(),
+        };
+        let json = serde_json::to_string_pretty(&file)
+            .map_err(|e| ArtifactError::Storage(e.to_string()))?;
+        fs::write(self.index_path(), json).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+        Ok(())
+    }
+
+    fn load_index(&mut self) -> Result<(), ArtifactError> {
+        let path = self.index_path();
+        if !path.exists() {
+            return Ok(());
+        }
+        let raw = fs::read_to_string(&path).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+        let file: IndexFile =
+            serde_json::from_str(&raw).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+        self.index = file.artifacts;
+        self.supersessions = file.supersessions;
+        Ok(())
     }
 
     fn cas_path_for(root: &Path, hash: &ContentHash) -> Result<PathBuf, ArtifactError> {
@@ -139,6 +176,7 @@ impl ArtifactStore for CasArtifactStore {
         }
 
         self.index.insert(key, descriptor.clone());
+        self.save_index()?;
         Ok(PublishResult {
             descriptor,
             cas_path,

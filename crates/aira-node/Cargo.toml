@@ -5,11 +5,16 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "AIRA local node binary skeleton"
+description = "AIRA local node binary"
 
 [[bin]]
 name = "aira-node"
 path = "src/main.rs"
 
 [dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde_json = { workspace = true }
 aira-core = { path = "../aira-core" }
+aira-csu = { path = "../aira-csu" }
+aira-flow = { path = "../aira-flow" }

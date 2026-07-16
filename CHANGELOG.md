@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.7 — 2026-07-16
+
+### Added
+
+- Local `.aira` node layout (`aira init`) + Ed25519 identity create
+- CLI: `problem submit|status`, `result get`, `artifact get`, `event tail`
+- `aira-node` loads config/CSU registry and processes `--text`
+- Persisted CAS artifact index; `run_nonce` for multi-submit safety
+
 ## 0.1.6 — 2026-07-16
 
 ### Added

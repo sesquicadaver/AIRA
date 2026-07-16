@@ -8,4 +8,4 @@
 | LS14-004 | #54 | ready solution reuse | no CapsuleCompleted | mapped |
 | LS14-005 | #55 | missing capsule artifact | CapsuleFailed + FailureEvidence | mapped |
 | LS14-006 | #56 | DSF stub | requires_human_collapse | mapped |
-| LS14-007 | Epic 8 | — | pending Analyze-15 | open |
+| LS14-007 | Epic 8 | Analyze-15 | done | mapped |

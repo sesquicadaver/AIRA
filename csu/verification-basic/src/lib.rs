@@ -12,6 +12,7 @@ use serde_json::{json, Value};
 pub struct VerificationBasicCsu {
     manifest: CsuManifest,
     seq: u64,
+    run_nonce: u64,
 }
 
 impl Default for VerificationBasicCsu {
@@ -35,11 +36,18 @@ impl VerificationBasicCsu {
                 ],
             ),
             seq: 1,
+            run_nonce: 0,
         }
     }
 
+    /// Namespace ids for multi-run local nodes (Epic 8).
+    pub fn with_run_nonce(mut self, run_nonce: u64) -> Self {
+        self.run_nonce = run_nonce;
+        self
+    }
+
     fn next_id(&mut self, kind: &str) -> String {
-        let id = format!("aira:{kind}:ver{}", self.seq);
+        let id = format!("aira:{kind}:ver{}_{}", self.run_nonce, self.seq);
         self.seq += 1;
         id
     }
