@@ -1,8 +1,8 @@
 # Analyze-31 — Opt-in Node Secret Durable Backup
 
-**Scope:** Before rotate overwrite, optional write of previous `local.ed25519` to `local.ed25519.prev` (0600).
+**Scope:** Opt-in durable backup of previous `local.ed25519` via `*.tmp` staging → `.prev` after successful rotate.
 
-**Status:** ralplan → ralph → code-review **REQUEST CHANGES** (Cycle 3: backup-commit rollback after trust)
+**Status:** ralplan → ralph → code-review **APPROVE/CLEAR**
 
 ## Ralplan (APPROVED — consensus)
 
