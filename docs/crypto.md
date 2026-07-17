@@ -92,7 +92,13 @@ cargo run -p aira-cli -- --root "$ROOT" identity rotate
 # rotated aira:identity:local
 # old_public_key …
 # public_key …
+
+# Opt-in durable previous secret (Analyze-31):
+cargo run -p aira-cli -- --root "$ROOT" identity rotate --backup
+# … backup …/identity/local.ed25519.prev
 ```
+
+Default rotate still leaves no durable old secret. With `--backup`, the previous secret is staged under `*.tmp` (mode `0600`) before overwrite and renamed to `identity/local.ed25519.prev` (+ `local.ed25519.prev.meta.json`) only after a successful rotate. Staging failure or mid-rotate abort removes tmp only (existing `.prev` slot is preserved). A single `.prev` slot is overwritten on each successful `--backup` rotate.
 
 ## Canonical signed messages
 
@@ -109,4 +115,4 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Dual-key grace for the same node `key_ref`; durable old-secret backup; TLS; multi-tenant per-CSU keyring; CRL audit log.
+Dual-key grace for the same node `key_ref`; TLS; multi-tenant per-CSU keyring; CRL audit log; auto peer notify of rotated pubkey.

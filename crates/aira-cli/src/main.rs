@@ -85,7 +85,11 @@ enum IdentityCommands {
         name: String,
     },
     /// Rotate node signing secret (same identity_id, new key material).
-    Rotate,
+    Rotate {
+        /// Persist previous secret to `identity/local.ed25519.prev` before overwrite.
+        #[arg(long, default_value_t = false)]
+        backup: bool,
+    },
     /// Sign a message with the node identity key.
     Sign {
         /// Message bytes as UTF-8 text.
@@ -334,16 +338,19 @@ fn run() -> Result<ExitCode> {
                 println!("identity {}", paths.identity_json().display());
                 Ok(ExitCode::SUCCESS)
             }
-            IdentityCommands::Rotate => {
+            IdentityCommands::Rotate { backup } => {
                 ensure_init(&root)?;
                 let mut rng = OsRng;
                 let signing = SigningKey::generate(&mut rng);
-                let (id, new_pub, old_pub) =
-                    aira_object::rotate_node_signing_secret(&root, signing)
+                let (id, new_pub, old_pub, backup_path) =
+                    aira_object::rotate_node_signing_secret(&root, signing, backup)
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
                 println!("rotated {}", id.as_str());
                 println!("old_public_key {old_pub}");
                 println!("public_key {new_pub}");
+                if let Some(path) = backup_path {
+                    println!("backup {}", path.display());
+                }
                 println!("identity {}", NodePaths::new(&root).identity_json().display());
                 Ok(ExitCode::SUCCESS)
             }

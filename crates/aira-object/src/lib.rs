@@ -15,7 +15,8 @@ pub use crypto::{
     register_node_identity, register_trust_store, reset_primary_signer, rotate_node_signing_secret,
     set_primary_signer, sign_with_key, signature_for, sync_trust_verifiers, utc_now_rfc3339,
     verify_ed25519, CryptoError, Keyring, RevokedEntry, TrustEntry, TrustStore,
-    LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF,
+    LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF, NODE_SECRET_BACKUP_FILE,
+    NODE_SECRET_BACKUP_META_FILE,
 };
 pub use descriptor::{ObjectDescriptor, ObjectType};
 pub use handle::Handle;

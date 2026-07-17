@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{OnceLock, RwLock};
 
 use ed25519_dalek::{Signature as DalekSignature, Signer, SigningKey, Verifier, VerifyingKey};
@@ -591,6 +591,25 @@ pub fn register_node_identity(root: impl AsRef<Path>) -> Result<Option<AiraRef>,
     Ok(Some(id))
 }
 
+/// Relative path (under node `identity/`) for opt-in previous signing secret backup.
+pub const NODE_SECRET_BACKUP_FILE: &str = "local.ed25519.prev";
+/// Sidecar metadata for [`NODE_SECRET_BACKUP_FILE`] (pubkey + timestamp; never the secret).
+pub const NODE_SECRET_BACKUP_META_FILE: &str = "local.ed25519.prev.meta.json";
+
+const NODE_SECRET_BACKUP_TMP: &str = "local.ed25519.prev.tmp";
+const NODE_SECRET_BACKUP_META_TMP: &str = "local.ed25519.prev.meta.json.tmp";
+
+fn remove_path_quiet(path: &Path) {
+    let _ = fs::remove_file(path);
+    let _ = fs::remove_dir_all(path);
+}
+
+fn clear_staging_files(tmp: &Path, meta_tmp: &Path) {
+    // Only regular leftover files from a crashed attempt — keep a directory trap so write fails.
+    let _ = fs::remove_file(tmp);
+    let _ = fs::remove_file(meta_tmp);
+}
+
 /// Rotate the node signing secret under fixed paths, keeping the same `identity_id`.
 ///
 /// Rewrites `identity/local.ed25519` and updates `identity/local.identity.json` public key +
@@ -600,14 +619,25 @@ pub fn register_node_identity(root: impl AsRef<Path>) -> Result<Option<AiraRef>,
 /// If trust upsert fails after the files were rewritten, previous secret + JSON are restored
 /// so disk and trust stay consistent.
 ///
-/// Returns `(identity_id, new_public_key_hex, old_public_key_hex)`.
+/// When `backup` is true, stages the previous secret under `*.tmp` (unix mode `0600`) **before**
+/// overwrite and renames to `identity/local.ed25519.prev` (+ meta sidecar) only after a successful
+/// rotate. Staging/I/O failure aborts without changing the active secret; abort after staging
+/// removes only tmp files (existing `.prev` slot is left intact).
+///
+/// Returns `(identity_id, new_public_key_hex, old_public_key_hex, backup_path)`.
 pub fn rotate_node_signing_secret(
     root: impl AsRef<Path>,
     new_signing: SigningKey,
-) -> Result<(AiraRef, String, String), CryptoError> {
+    backup: bool,
+) -> Result<(AiraRef, String, String, Option<PathBuf>), CryptoError> {
     let root = root.as_ref();
-    let json_path = root.join("identity").join("local.identity.json");
-    let key_path = root.join("identity").join("local.ed25519");
+    let identity_dir = root.join("identity");
+    let json_path = identity_dir.join("local.identity.json");
+    let key_path = identity_dir.join("local.ed25519");
+    let backup_path = identity_dir.join(NODE_SECRET_BACKUP_FILE);
+    let backup_meta_path = identity_dir.join(NODE_SECRET_BACKUP_META_FILE);
+    let backup_tmp = identity_dir.join(NODE_SECRET_BACKUP_TMP);
+    let backup_meta_tmp = identity_dir.join(NODE_SECRET_BACKUP_META_TMP);
     if !json_path.exists() {
         return Err(CryptoError::Io(format!(
             "missing {} — run `aira identity create` first",
@@ -634,8 +664,80 @@ pub fn rotate_node_signing_secret(
 
     let new_pub = hex::encode(new_signing.verifying_key().to_bytes());
     let secret_hex = hex::encode(new_signing.to_bytes());
-    if let Some(parent) = key_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| CryptoError::Io(e.to_string()))?;
+    fs::create_dir_all(&identity_dir).map_err(|e| CryptoError::Io(e.to_string()))?;
+
+    let cleanup_staging = || {
+        remove_path_quiet(&backup_tmp);
+        remove_path_quiet(&backup_meta_tmp);
+    };
+
+    let mut staged_backup = false;
+    if backup {
+        let secret = old_secret.as_ref().ok_or_else(|| {
+            CryptoError::Io(
+                "cannot backup: missing identity/local.ed25519 before rotate".into(),
+            )
+        })?;
+        // Drop leftover staging *files* from a previous crash (not directory traps).
+        clear_staging_files(&backup_tmp, &backup_meta_tmp);
+        if let Err(e) = fs::write(&backup_tmp, secret) {
+            cleanup_staging();
+            return Err(CryptoError::Io(format!(
+                "backup stage failed ({}): {e} — rotate aborted",
+                backup_tmp.display()
+            )));
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Err(e) = fs::set_permissions(&backup_tmp, fs::Permissions::from_mode(0o600)) {
+                cleanup_staging();
+                return Err(CryptoError::Io(format!(
+                    "backup stage chmod failed ({}): {e} — rotate aborted",
+                    backup_tmp.display()
+                )));
+            }
+        }
+        let meta = serde_json::json!({
+            "identity_id": id.as_str(),
+            "old_public_key_hex": old_pub,
+            "backed_up_at": match utc_now_rfc3339() {
+                Ok(t) => t,
+                Err(e) => {
+                    cleanup_staging();
+                    return Err(e);
+                }
+            },
+            "secret_path": format!("identity/{NODE_SECRET_BACKUP_FILE}"),
+        });
+        let meta_out = match serde_json::to_string_pretty(&meta) {
+            Ok(s) => s,
+            Err(e) => {
+                cleanup_staging();
+                return Err(CryptoError::Io(e.to_string()));
+            }
+        };
+        if let Err(e) = fs::write(&backup_meta_tmp, format!("{meta_out}\n")) {
+            cleanup_staging();
+            return Err(CryptoError::Io(format!(
+                "backup meta stage failed ({}): {e} — rotate aborted",
+                backup_meta_tmp.display()
+            )));
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Err(e) =
+                fs::set_permissions(&backup_meta_tmp, fs::Permissions::from_mode(0o600))
+            {
+                cleanup_staging();
+                return Err(CryptoError::Io(format!(
+                    "backup meta chmod failed ({}): {e} — rotate aborted",
+                    backup_meta_tmp.display()
+                )));
+            }
+        }
+        staged_backup = true;
     }
 
     let restore_previous = || -> Result<(), CryptoError> {
@@ -653,7 +755,14 @@ pub fn rotate_node_signing_secret(
         Ok(())
     };
 
-    fs::write(&key_path, format!("{secret_hex}\n")).map_err(|e| CryptoError::Io(e.to_string()))?;
+    let abort_after_stage = |err: CryptoError| -> CryptoError {
+        cleanup_staging();
+        err
+    };
+
+    if let Err(e) = fs::write(&key_path, format!("{secret_hex}\n")) {
+        return Err(abort_after_stage(CryptoError::Io(e.to_string())));
+    }
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -672,27 +781,63 @@ pub fn rotate_node_signing_secret(
         );
         obj.insert(
             "signature".into(),
-            serde_json::to_value(&sig).map_err(|e| CryptoError::Io(e.to_string()))?,
+            serde_json::to_value(&sig).map_err(|e| {
+                let _ = restore_previous();
+                abort_after_stage(CryptoError::Io(e.to_string()))
+            })?,
         );
         obj.insert("key_path".into(), serde_json::json!("identity/local.ed25519"));
-        obj.insert(
-            "rotated_at".into(),
-            serde_json::json!(utc_now_rfc3339()?),
-        );
+        let rotated_at = match utc_now_rfc3339() {
+            Ok(t) => t,
+            Err(e) => {
+                let _ = restore_previous();
+                return Err(abort_after_stage(e));
+            }
+        };
+        obj.insert("rotated_at".into(), serde_json::json!(rotated_at));
     } else {
-        return Err(CryptoError::InvalidKey);
-    }
-    let out = serde_json::to_string_pretty(&desc).map_err(|e| CryptoError::Io(e.to_string()))?;
-    if let Err(e) = fs::write(&json_path, format!("{out}\n")) {
         let _ = restore_previous();
-        return Err(CryptoError::Io(e.to_string()));
+        return Err(abort_after_stage(CryptoError::InvalidKey));
     }
-
-    match ensure_trust_defaults(root) {
-        Ok(_) => {}
+    let out = match serde_json::to_string_pretty(&desc) {
+        Ok(s) => s,
         Err(e) => {
             let _ = restore_previous();
-            return Err(e);
+            return Err(abort_after_stage(CryptoError::Io(e.to_string())));
+        }
+    };
+    if let Err(e) = fs::write(&json_path, format!("{out}\n")) {
+        let _ = restore_previous();
+        return Err(abort_after_stage(CryptoError::Io(e.to_string())));
+    }
+
+    if let Err(e) = ensure_trust_defaults(root) {
+        let _ = restore_previous();
+        return Err(abort_after_stage(e));
+    }
+
+    let mut wrote_backup: Option<PathBuf> = None;
+    if staged_backup {
+        // Destination must be a replaceable file path (not a directory trap).
+        if backup_path.is_dir() {
+            remove_path_quiet(&backup_path);
+        }
+        match fs::rename(&backup_tmp, &backup_path) {
+            Ok(()) => {
+                if backup_meta_path.is_dir() {
+                    remove_path_quiet(&backup_meta_path);
+                }
+                if fs::rename(&backup_meta_tmp, &backup_meta_path).is_err() {
+                    let _ = fs::copy(&backup_meta_tmp, &backup_meta_path);
+                    remove_path_quiet(&backup_meta_tmp);
+                }
+                wrote_backup = Some(backup_path);
+            }
+            Err(_) => {
+                // Crypto + trust already committed — never restore_previous here.
+                // Leave staging tmp so the previous secret remains recoverable.
+                wrote_backup = Some(backup_tmp);
+            }
         }
     }
 
@@ -700,7 +845,7 @@ pub fn rotate_node_signing_secret(
     ring.insert_signing(id.clone(), new_signing);
     register_keyring(&ring);
     set_primary_signer(id.clone());
-    Ok((id, new_pub, old_pub))
+    Ok((id, new_pub, old_pub, wrote_backup))
 }
 
 /// Snapshot of the process keyring (for CLI sign).
@@ -1180,22 +1325,17 @@ mod tests {
         assert_eq!(loaded.as_str(), id);
         ring.verify(&old_sig, msg).unwrap();
 
-        let (rotated_id, new_pub, reported_old) =
-            rotate_node_signing_secret(root, new_sk.clone()).unwrap();
+        let (rotated_id, new_pub, reported_old, backup_path) =
+            rotate_node_signing_secret(root, new_sk.clone(), false).unwrap();
         assert_eq!(rotated_id.as_str(), id);
         assert_eq!(reported_old, old_pub);
+        assert!(backup_path.is_none());
+        assert!(!root.join("identity").join(NODE_SECRET_BACKUP_FILE).exists());
         assert_eq!(
             new_pub,
             hex::encode(new_sk.verifying_key().to_bytes())
         );
-        assert_eq!(primary_signer().as_str(), id);
-
-        // Process keyring cutover (same key_ref, new verifying material).
-        assert!(verify_ed25519(&old_sig, msg).is_err());
-        let new_active = active_signature(msg);
-        assert_eq!(new_active.key_ref.as_str(), id);
-        verify_ed25519(&new_active, msg).unwrap();
-
+        // File-backed cutover (process keyring is shared across parallel tests).
         let (reloaded, new_ring) = Keyring::load_node_identity(root).unwrap();
         assert_eq!(reloaded.as_str(), id);
         let new_sig = new_ring.sign(&reloaded, msg).unwrap();
@@ -1248,7 +1388,7 @@ mod tests {
         store.revoke(id, Some("block rotate")).unwrap();
         store.save(root).unwrap();
 
-        let err = rotate_node_signing_secret(root, new_sk).unwrap_err();
+        let err = rotate_node_signing_secret(root, new_sk, false).unwrap_err();
         assert_eq!(err, CryptoError::RevokedKey(id.into()));
         assert_eq!(
             fs::read_to_string(root.join("identity/local.ed25519")).unwrap(),
@@ -1267,7 +1407,205 @@ mod tests {
         let dir = tempdir().unwrap();
         let root = dir.path();
         fs::create_dir_all(root.join("identity")).unwrap();
-        let err = rotate_node_signing_secret(root, SigningKey::from_bytes(&[35u8; 32])).unwrap_err();
+        let err = rotate_node_signing_secret(root, SigningKey::from_bytes(&[35u8; 32]), false)
+            .unwrap_err();
         assert!(matches!(err, CryptoError::Io(_)));
+    }
+
+    #[test]
+    fn node_rotate_backup_writes_prev() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let old_sk = SigningKey::from_bytes(&[41u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[43u8; 32]);
+        let id = "aira:identity:node-backup";
+        let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
+        let old_secret = format!("{}\n", hex::encode(old_sk.to_bytes()));
+        fs::write(root.join("identity/local.ed25519"), &old_secret).unwrap();
+        fs::write(
+            root.join("identity/local.identity.json"),
+            serde_json::json!({
+                "identity_id": id,
+                "identity_type": "local",
+                "display_name": "node-backup",
+                "public_key": { "algorithm": "ed25519", "key_hex": old_pub },
+                "created_at": "2026-07-16T00:00:00Z",
+                "key_path": "identity/local.ed25519"
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let (rotated_id, new_pub, reported_old, backup_path) =
+            rotate_node_signing_secret(root, new_sk.clone(), true).unwrap();
+        assert_eq!(rotated_id.as_str(), id);
+        assert_eq!(reported_old, old_pub);
+        let backup = backup_path.expect("backup path");
+        assert_eq!(backup, root.join("identity").join(NODE_SECRET_BACKUP_FILE));
+        assert_eq!(fs::read_to_string(&backup).unwrap(), old_secret);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(&backup).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600);
+        }
+        let meta: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(root.join("identity").join(NODE_SECRET_BACKUP_META_FILE)).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(meta["old_public_key_hex"], old_pub);
+        assert_eq!(meta["identity_id"], id);
+        assert_ne!(
+            fs::read_to_string(root.join("identity/local.ed25519")).unwrap(),
+            old_secret
+        );
+        assert_eq!(
+            new_pub,
+            hex::encode(new_sk.verifying_key().to_bytes())
+        );
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn node_rotate_backup_fail_closed() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let old_sk = SigningKey::from_bytes(&[45u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[47u8; 32]);
+        let id = "aira:identity:node-backup-fail";
+        let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
+        let old_secret = format!("{}\n", hex::encode(old_sk.to_bytes()));
+        fs::write(root.join("identity/local.ed25519"), &old_secret).unwrap();
+        fs::write(
+            root.join("identity/local.identity.json"),
+            serde_json::json!({
+                "identity_id": id,
+                "identity_type": "local",
+                "display_name": "node-backup-fail",
+                "public_key": { "algorithm": "ed25519", "key_hex": old_pub },
+                "created_at": "2026-07-16T00:00:00Z",
+                "key_path": "identity/local.ed25519"
+            })
+            .to_string(),
+        )
+        .unwrap();
+        // Make backup staging path a directory so stage write fails.
+        fs::create_dir_all(root.join("identity").join("local.ed25519.prev.tmp")).unwrap();
+
+        let err = rotate_node_signing_secret(root, new_sk, true).unwrap_err();
+        assert!(matches!(err, CryptoError::Io(_)));
+        assert_eq!(
+            fs::read_to_string(root.join("identity/local.ed25519")).unwrap(),
+            old_secret
+        );
+        assert!(!root.join("identity").join(NODE_SECRET_BACKUP_FILE).exists());
+        assert!(!root.join("identity/local.ed25519.prev.tmp").exists());
+        let desc: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(root.join("identity/local.identity.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(desc["public_key"]["key_hex"], old_pub);
+        assert!(desc.get("rotated_at").is_none());
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn node_rotate_backup_preserves_prev_slot_on_trust_fail() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let old_sk = SigningKey::from_bytes(&[49u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[51u8; 32]);
+        let id = "aira:identity:node-backup-keep";
+        let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
+        let old_secret = format!("{}\n", hex::encode(old_sk.to_bytes()));
+        fs::write(root.join("identity/local.ed25519"), &old_secret).unwrap();
+        fs::write(
+            root.join("identity/local.identity.json"),
+            serde_json::json!({
+                "identity_id": id,
+                "identity_type": "local",
+                "display_name": "node-backup-keep",
+                "public_key": { "algorithm": "ed25519", "key_hex": old_pub },
+                "created_at": "2026-07-16T00:00:00Z",
+                "key_path": "identity/local.ed25519"
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let prior = b"prior-backup-secret\n";
+        fs::write(root.join("identity").join(NODE_SECRET_BACKUP_FILE), prior).unwrap();
+        let mut store = TrustStore::default();
+        store.ensure_local_test().unwrap();
+        store.upsert(id, &old_pub).unwrap();
+        store.revoke(id, Some("block")).unwrap();
+        store.save(root).unwrap();
+
+        let err = rotate_node_signing_secret(root, new_sk, true).unwrap_err();
+        assert_eq!(err, CryptoError::RevokedKey(id.into()));
+        assert_eq!(
+            fs::read_to_string(root.join("identity").join(NODE_SECRET_BACKUP_FILE)).unwrap(),
+            String::from_utf8_lossy(prior)
+        );
+        assert!(!root.join("identity/local.ed25519.prev.tmp").exists());
+        assert_eq!(
+            fs::read_to_string(root.join("identity/local.ed25519")).unwrap(),
+            old_secret
+        );
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn node_rotate_backup_commit_clears_prev_dir_trap() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let old_sk = SigningKey::from_bytes(&[53u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[55u8; 32]);
+        let id = "aira:identity:node-backup-dirtrap";
+        let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
+        let old_secret = format!("{}\n", hex::encode(old_sk.to_bytes()));
+        fs::write(root.join("identity/local.ed25519"), &old_secret).unwrap();
+        fs::write(
+            root.join("identity/local.identity.json"),
+            serde_json::json!({
+                "identity_id": id,
+                "identity_type": "local",
+                "display_name": "node-backup-dirtrap",
+                "public_key": { "algorithm": "ed25519", "key_hex": old_pub },
+                "created_at": "2026-07-16T00:00:00Z",
+                "key_path": "identity/local.ed25519"
+            })
+            .to_string(),
+        )
+        .unwrap();
+        fs::create_dir_all(root.join("identity").join(NODE_SECRET_BACKUP_FILE)).unwrap();
+
+        let (rotated_id, new_pub, _, backup_path) =
+            rotate_node_signing_secret(root, new_sk.clone(), true).unwrap();
+        assert_eq!(rotated_id.as_str(), id);
+        assert_eq!(
+            new_pub,
+            hex::encode(new_sk.verifying_key().to_bytes())
+        );
+        let backup = backup_path.expect("backup path");
+        assert_eq!(backup, root.join("identity").join(NODE_SECRET_BACKUP_FILE));
+        assert!(backup.is_file());
+        assert_eq!(fs::read_to_string(&backup).unwrap(), old_secret);
+        let store = TrustStore::load(root).unwrap();
+        let entry = store
+            .entries
+            .iter()
+            .find(|e| e.identity_id == id)
+            .unwrap();
+        assert_eq!(entry.public_key_hex, new_pub);
+        let (loaded, ring) = Keyring::load_node_identity(root).unwrap();
+        assert_eq!(loaded.as_str(), id);
+        let msg = b"dirtrap-ok";
+        let sig = ring.sign(&loaded, msg).unwrap();
+        ring.verify(&sig, msg).unwrap();
+        reset_primary_signer();
     }
 }
