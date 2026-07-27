@@ -116,3 +116,5 @@ Empty and `TESTSIG` are rejected on admission.
 ## Out of scope (later)
 
 Dual-key grace for the same node `key_ref`; TLS; multi-tenant per-CSU keyring; CRL audit log; auto peer notify of rotated pubkey.
+
+See also: [peer-link.md](peer-link.md) (Analyze-32 authenticated peer links P0).

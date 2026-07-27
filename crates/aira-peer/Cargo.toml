@@ -1,0 +1,23 @@
+[package]
+name = "aira-peer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "AIRA authenticated peer links (P0: framed TCP + Ed25519 hello)"
+
+[dependencies]
+aira-object = { path = "../aira-object" }
+aira-protocol = { path = "../aira-protocol" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+hex = { workspace = true }
+rand = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+ed25519-dalek = { workspace = true }
+aira-flow = { path = "../aira-flow" }

@@ -11,6 +11,7 @@ members = [
     "crates/aira-schema",
     "crates/aira-conformance",
     "crates/aira-protocol",
+    "crates/aira-peer",
     "crates/aira-node",
     "crates/aira-cli",
     "csu/context-basic",

@@ -75,6 +75,8 @@ curl -sS -X POST http://127.0.0.1:8787/v1/problems \
 
 Non-goals for M11: auth hardening, TLS, multi-tenant, public bind by default, federation.
 
+Peer-to-peer authenticated links (Analyze-32) are documented in [peer-link.md](peer-link.md); they are separate from this loopback HTTP API.
+
 ## Notes
 
 - Config is JSON MVP (`config.json`); YAML parity is deferred.
