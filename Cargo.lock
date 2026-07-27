@@ -255,6 +255,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "aira-peer"
+version = "0.1.0"
+dependencies = [
+ "aira-flow",
+ "aira-object",
+ "aira-protocol",
+ "ed25519-dalek",
+ "hex",
+ "rand",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "aira-policy"
 version = "0.1.0"
 dependencies = [
@@ -1818,6 +1835,7 @@ version = "1.52.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fc7f01b389ac15039e4dc9531aa973a135d7a4135281b12d7c1bc79fd57fffe"
 dependencies = [
+ "bytes",
  "libc",
  "mio",
  "pin-project-lite",
