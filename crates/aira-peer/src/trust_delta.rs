@@ -59,7 +59,7 @@ pub struct TrustDelta {
     /// Successor / new Ed25519 pubkey hex (rotate / rekey).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub new_pubkey_hex: Option<String>,
-    /// Optional dual-key grace end RFC3339 UTC (rotate / informational on rekey).
+    /// Optional dual-key grace end RFC3339 UTC (rotate CRL grace / rekey same-id previous_*).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub grace_until: Option<String>,
 }
@@ -267,7 +267,11 @@ pub fn apply_trust_delta(
                 return Err(PeerError::IdentityMismatch);
             }
             let pk = delta.new_pubkey_hex.as_deref().unwrap().trim();
-            store.upsert(delta.subject_id.trim(), pk)?;
+            store.rekey(
+                delta.subject_id.trim(),
+                pk,
+                delta.grace_until.as_deref(),
+            )?;
         }
     }
     store.save(root)?;

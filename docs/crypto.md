@@ -101,6 +101,8 @@ Rewrites `.aira/identity/local.ed25519` and updates `local.identity.json` **with
 
 **Peer notify** (Analyze-38): `identity rotate --notify-peers` announces the **upcoming** pubkey to the address book **before** cutover (`trust-delta` op `rekey`), so hello still verifies; receivers with `--apply-trust` upsert the issuer pubkey.
 
+**Remote same-id dual-key** (Analyze-50): `rekey` with `--until` / `grace_until` stores `previous_public_key_hex` on the peer `TrustEntry` so both old and new Ed25519 keys verify under the same `identity_id` until cutoff. Prefer `--notify-peers --until <RFC3339>` so receivers keep the old key through the notify→rotate window.
+
 **Noise static rotate** (Analyze-49): the same `identity rotate` always regenerates `identity/local.x25519`. With `--backup`, the prior secret is written to `identity/local.x25519.prev` (prior `.prev` archived as `local.x25519.prev.<stamp>`).
 
 ```bash
@@ -117,8 +119,8 @@ cargo run -p aira-cli -- --root "$ROOT" identity rotate --backup
 cargo run -p aira-cli -- --root "$ROOT" identity rotate --until 2099-01-01T00:00:00Z
 # … grace_until …
 
-# Notify address-book peers before cutover (Analyze-38):
-cargo run -p aira-cli -- --root "$ROOT" identity rotate --notify-peers
+# Notify address-book peers before cutover (Analyze-38 + A-50 grace):
+cargo run -p aira-cli -- --root "$ROOT" identity rotate --notify-peers --until 2099-01-01T00:00:00Z
 ```
 
 Default rotate still leaves no durable old secret. With `--backup`, the previous secret is staged under `*.tmp` (mode `0600`) before overwrite and renamed to `identity/local.ed25519.prev` (+ `local.ed25519.prev.meta.json`) only after a successful rotate. Staging failure or mid-rotate abort removes tmp only (existing `.prev` / history slots are preserved).
@@ -147,9 +149,9 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Dual-key grace for peer TrustStore (remote same-id multi-key); mTLS; on-disk per-CSU secret files; SQLite ceremony audit table (JSONL is Analyze-40); UDP discv5 / iterative FIND_NODE.
+mTLS; on-disk per-CSU secret files; SQLite ceremony audit table (JSONL is Analyze-40); UDP discv5 / iterative FIND_NODE.
 
-Local HTTP TLS (server PEM / self-signed) shipped in Analyze-45; optional HTTP Bearer (`--http-token` / `AIRA_HTTP_TOKEN`) in Analyze-48; trusted-mesh DHT-lite in Analyze-47; coordinated `local.x25519` rotate with Ed25519 in Analyze-49; mTLS still deferred.
+Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50).
 
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify).

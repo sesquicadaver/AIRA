@@ -256,6 +256,12 @@ pub struct TrustEntry {
     /// Prior identity this entry replaced (set by [`TrustStore::rotate`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub supersedes: Option<String>,
+    /// Previous Ed25519 pubkey during same-id rekey grace (Analyze-50).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub previous_public_key_hex: Option<String>,
+    /// End of same-id dual-key grace (RFC3339 UTC).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub previous_grace_until: Option<String>,
 }
 
 /// Durable revocation record (CRL entry) — blocks re-trust via upsert.
@@ -334,12 +340,17 @@ impl TrustStore {
         if let Some(e) = self.entries.iter_mut().find(|e| e.identity_id == id) {
             e.public_key_hex = public_key_hex.trim().to_string();
             e.algorithm = "ed25519".into();
+            // Upsert is immediate cutover — drop any same-id grace slot.
+            e.previous_public_key_hex = None;
+            e.previous_grace_until = None;
         } else {
             self.entries.push(TrustEntry {
                 identity_id: id.to_string(),
                 algorithm: "ed25519".into(),
                 public_key_hex: public_key_hex.trim().to_string(),
                 supersedes: None,
+                previous_public_key_hex: None,
+                previous_grace_until: None,
             });
         }
         self.entries
@@ -448,16 +459,71 @@ impl TrustStore {
             e.public_key_hex = new_pubkey_hex.trim().to_string();
             e.algorithm = "ed25519".into();
             e.supersedes = Some(old.to_string());
+            e.previous_public_key_hex = None;
+            e.previous_grace_until = None;
         } else {
             self.entries.push(TrustEntry {
                 identity_id: new.to_string(),
                 algorithm: "ed25519".into(),
                 public_key_hex: new_pubkey_hex.trim().to_string(),
                 supersedes: Some(old.to_string()),
+                previous_public_key_hex: None,
+                previous_grace_until: None,
             });
         }
         self.entries
             .sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
+        Ok(())
+    }
+
+    /// Same-identity pubkey rekey (Analyze-50).
+    ///
+    /// - Requires `identity_id` already in `entries` (not merely on CRL).
+    /// - With `grace_until` (RFC3339 UTC): keeps the prior pubkey as
+    ///   `previous_public_key_hex` until that instant (dual-key via
+    ///   [`TrustStore::to_keyring_at`]).
+    /// - Without grace: immediate cutover (clears any previous_*).
+    ///
+    /// Refuses [`LOCAL_TEST_KEY_REF`]. Idempotent when new pubkey equals current
+    /// (still refreshes / clears grace according to `grace_until`).
+    pub fn rekey(
+        &mut self,
+        identity_id: &str,
+        new_pubkey_hex: &str,
+        grace_until: Option<&str>,
+    ) -> Result<(), CryptoError> {
+        let id = identity_id.trim();
+        if id == LOCAL_TEST_KEY_REF {
+            return Err(CryptoError::ProtectedIdentity(LOCAL_TEST_KEY_REF.into()));
+        }
+        AiraRef::parse(id).map_err(|_| CryptoError::InvalidKey)?;
+        let new_pk = new_pubkey_hex.trim();
+        let _ = parse_public_hex(new_pk)?;
+        if self.is_revoked(id) {
+            return Err(CryptoError::RevokedKey(id.to_string()));
+        }
+        let grace_until = match grace_until {
+            Some(s) => Some(normalize_rfc3339(s)?),
+            None => None,
+        };
+        let e = self
+            .entries
+            .iter_mut()
+            .find(|e| e.identity_id == id)
+            .ok_or_else(|| CryptoError::NotTrusted(id.to_string()))?;
+        let old_pk = e.public_key_hex.clone();
+        if let Some(until) = grace_until {
+            if old_pk != new_pk {
+                e.previous_public_key_hex = Some(old_pk);
+                e.previous_grace_until = Some(until);
+            }
+            // Same pubkey + grace: leave previous slot unchanged.
+        } else {
+            e.previous_public_key_hex = None;
+            e.previous_grace_until = None;
+        }
+        e.public_key_hex = new_pk.to_string();
+        e.algorithm = "ed25519".into();
         Ok(())
     }
 
@@ -487,7 +553,8 @@ impl TrustStore {
         self.to_keyring_at(&utc_now_rfc3339()?)
     }
 
-    /// Build verifying keyring at `now` (RFC3339): active entries + CRL entries still in grace.
+    /// Build verifying keyring at `now` (RFC3339): active entries (incl. same-id
+    /// previous_* grace) + CRL entries still in grace.
     pub fn to_keyring_at(&self, now_rfc3339: &str) -> Result<Keyring, CryptoError> {
         let now = parse_rfc3339(now_rfc3339)?;
         let mut ring = Keyring::new();
@@ -497,7 +564,16 @@ impl TrustStore {
             }
             let id = AiraRef::parse(&e.identity_id).map_err(|_| CryptoError::InvalidKey)?;
             let vk = parse_public_hex(e.public_key_hex.trim())?;
-            ring.insert_verifying(id, vk);
+            ring.insert_verifying(id.clone(), vk);
+            if let (Some(prev), Some(until)) =
+                (e.previous_public_key_hex.as_deref(), e.previous_grace_until.as_deref())
+            {
+                let until_dt = parse_rfc3339(until)?;
+                if now <= until_dt {
+                    let prev_vk = parse_public_hex(prev.trim())?;
+                    ring.add_verifying(id, prev_vk);
+                }
+            }
         }
         for r in &self.revoked {
             if !r.grace_active_at(now)? {
@@ -513,13 +589,24 @@ impl TrustStore {
         Ok(ring)
     }
 
-    /// Identity ids on the CRL that still have an active dual-key grace at `now`.
+    /// Identity ids with an active dual-key grace at `now` (CRL rotate grace **or**
+    /// same-id `previous_grace_until` on an entry).
     pub fn grace_active_ids(&self, now_rfc3339: &str) -> Result<HashSet<String>, CryptoError> {
         let now = parse_rfc3339(now_rfc3339)?;
         let mut out = HashSet::new();
         for r in &self.revoked {
             if r.grace_active_at(now)? {
                 out.insert(r.identity_id.clone());
+            }
+        }
+        for e in &self.entries {
+            if let (Some(_), Some(until)) =
+                (e.previous_public_key_hex.as_deref(), e.previous_grace_until.as_deref())
+            {
+                let until_dt = parse_rfc3339(until)?;
+                if now <= until_dt {
+                    out.insert(e.identity_id.clone());
+                }
             }
         }
         Ok(out)
@@ -567,7 +654,8 @@ pub fn register_trust_store(root: impl AsRef<Path>) -> Result<usize, CryptoError
 /// Prune process verifying keys absent from trust/grace, then re-register.
 ///
 /// - Never unloads [`LOCAL_TEST_KEY_REF`].
-/// - Active trust entries and CRL entries with active `grace_until` stay verifiable.
+/// - Active trust entries (incl. same-id previous_* grace) and CRL entries with
+///   active `grace_until` stay verifiable.
 /// - Identities with signing material keep verifying keys unless revoked **and** not in grace.
 pub fn sync_trust_verifiers(root: impl AsRef<Path>) -> Result<usize, CryptoError> {
     let store = TrustStore::load(&root)?;
@@ -604,7 +692,7 @@ pub fn sync_trust_verifiers(root: impl AsRef<Path>) -> Result<usize, CryptoError
     }
 
     let n = register_trust_store(root.as_ref())?;
-    // Re-apply node signing + dual-key grace from identity JSON (trust upsert is single pubkey).
+    // Re-apply node signing + dual-key grace from identity JSON.
     let _ = register_node_identity(root.as_ref())?;
     Ok(n)
 }
@@ -1617,6 +1705,61 @@ mod tests {
         assert!(store
             .rotate(old_id, new_id, &new_pub, None, Some("not-a-timestamp"))
             .is_err());
+    }
+
+    #[test]
+    fn trust_rekey_grace_allows_old_same_id() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let old_sk = SigningKey::from_bytes(&[41u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[43u8; 32]);
+        let id = "aira:identity:peer-rekey-grace";
+        let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
+        let new_pub = hex::encode(new_sk.verifying_key().to_bytes());
+
+        let mut store = TrustStore::default();
+        store.ensure_local_test().unwrap();
+        store.upsert(id, &old_pub).unwrap();
+        store.save(root).unwrap();
+
+        let msg = b"same-id-grace";
+        let old_sig = sign_with_key(AiraRef::parse(id).unwrap(), &old_sk, msg);
+        let new_sig = sign_with_key(AiraRef::parse(id).unwrap(), &new_sk, msg);
+
+        store
+            .rekey(id, &new_pub, Some("2099-06-01T00:00:00Z"))
+            .unwrap();
+        store.save(root).unwrap();
+
+        let entry = store
+            .entries
+            .iter()
+            .find(|e| e.identity_id == id)
+            .unwrap();
+        assert_eq!(entry.public_key_hex, new_pub);
+        assert_eq!(entry.previous_public_key_hex.as_deref(), Some(old_pub.as_str()));
+        assert_eq!(
+            entry.previous_grace_until.as_deref(),
+            Some("2099-06-01T00:00:00Z")
+        );
+
+        let during = store.to_keyring_at("2026-07-28T12:00:00Z").unwrap();
+        assert_eq!(during.verifying_keys(id).len(), 2);
+        during.verify(&old_sig, msg).unwrap();
+        during.verify(&new_sig, msg).unwrap();
+
+        let after = store.to_keyring_at("2099-06-01T00:00:01Z").unwrap();
+        assert_eq!(after.verifying_keys(id).len(), 1);
+        assert!(after.verify(&old_sig, msg).is_err());
+        after.verify(&new_sig, msg).unwrap();
+
+        // Immediate cutover clears previous_*.
+        store.rekey(id, &old_pub, None).unwrap();
+        let e2 = store.entries.iter().find(|e| e.identity_id == id).unwrap();
+        assert_eq!(e2.public_key_hex, old_pub);
+        assert!(e2.previous_public_key_hex.is_none());
+        assert!(e2.previous_grace_until.is_none());
     }
 
     #[test]

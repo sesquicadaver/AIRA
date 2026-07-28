@@ -50,6 +50,6 @@ cargo run -p aira-cli -- --root "$B" peer dht list
 
 ## Out of scope (later)
 
-STUN/ICE; UDP discv5 / iterative FIND_NODE; federation join; public HTTP bind; remote TrustStore dual-key; mTLS; durable relay session store; auto address-book mutation from DHT.
+STUN/ICE; UDP discv5 / iterative FIND_NODE; federation join; public HTTP bind; mTLS; durable relay session store; auto address-book mutation from DHT.
 
 See `Analyze-43/provenance/ADR-connectivity-relay-first.md`.

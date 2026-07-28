@@ -645,9 +645,69 @@ mod tests {
             .find(|e| e.identity_id == id_a.as_str())
             .unwrap();
         assert_eq!(entry.public_key_hex, new_pub);
+        assert!(entry.previous_public_key_hex.is_none());
 
         // Now rotate; subsequent dials use the new key against updated trust.
         aira_object::rotate_node_signing_secret(root_a, new_sk, false, None).unwrap();
+    }
+
+    #[tokio::test]
+    async fn notify_rekey_with_grace_keeps_old_pubkey() {
+        let dir_a = tempdir().unwrap();
+        let dir_b = tempdir().unwrap();
+        let root_a = dir_a.path();
+        let root_b = dir_b.path();
+        init_node(root_a).unwrap();
+        init_node(root_b).unwrap();
+        let (id_a, pub_a) = write_node_identity(root_a, "alice-grace", [121u8; 32]);
+        let (id_b, pub_b) = write_node_identity(root_b, "bob-grace", [123u8; 32]);
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
+
+        let new_sk = SigningKey::from_bytes(&[125u8; 32]);
+        let new_pub = hex::encode(new_sk.verifying_key().to_bytes());
+        let until = "2099-12-01T00:00:00Z";
+
+        let listener = listen("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut book = AddressBook::default();
+        book.upsert(id_b.as_str(), addr.to_string());
+        book.save(root_a).unwrap();
+
+        let root_b2 = root_b.to_path_buf();
+        let accept_task = tokio::spawn(async move {
+            let mut peer = accept(&listener, &root_b2).await.unwrap();
+            let env = peer.recv_envelope().await.unwrap();
+            let delta = parse_trust_delta(&env).unwrap();
+            apply_trust_delta(&root_b2, &env.issuer_identity, &delta).unwrap();
+            delta
+        });
+
+        let results = notify_peers_of_rekey(root_a, &new_pub, Some(until))
+            .await
+            .unwrap();
+        assert!(results[0].ok, "{:?}", results[0].error);
+        let delta = accept_task.await.unwrap();
+        assert_eq!(delta.grace_until.as_deref(), Some(until));
+
+        let tb = TrustStore::load(root_b).unwrap();
+        let entry = tb
+            .entries
+            .iter()
+            .find(|e| e.identity_id == id_a.as_str())
+            .unwrap();
+        assert_eq!(entry.public_key_hex, new_pub);
+        assert_eq!(
+            entry.previous_public_key_hex.as_deref(),
+            Some(pub_a.as_str())
+        );
+        let ring = tb.to_keyring_at("2026-07-28T18:00:00Z").unwrap();
+        assert_eq!(ring.verifying_keys(id_a.as_str()).len(), 2);
+        let old_sk = SigningKey::from_bytes(&[121u8; 32]);
+        let msg = b"still-old";
+        let old_sig = sign_with_key(id_a.clone(), &old_sk, msg);
+        let new_sig = sign_with_key(id_a.clone(), &new_sk, msg);
+        ring.verify(&old_sig, msg).unwrap();
+        ring.verify(&new_sig, msg).unwrap();
     }
 
     #[tokio::test]
