@@ -52,7 +52,9 @@ impl ArtifactBasicCsu {
         self
     }
 
-    /// Emit as a distinct publisher identity (must have a signing key in the process keyring).
+    /// Emit as a distinct publisher identity.
+    ///
+    /// Requires [`aira_object::register_csu_tenant_signing`] for this CSU before emits.
     pub fn with_publisher(mut self, publisher: AiraRef) -> Self {
         aira_csu::support::apply_publisher(&mut self.manifest, publisher);
         self
@@ -83,6 +85,7 @@ impl Csu for ArtifactBasicCsu {
             let payload = rest.as_bytes();
             let aid = self.next_id("artifact");
             let desc = make_artifact_as(
+                self.manifest.csu_id.clone(),
                 self.manifest.publisher_identity.clone(),
                 &aid,
                 ArtifactType::CustomArtifact,
@@ -95,6 +98,7 @@ impl Csu for ArtifactBasicCsu {
             // Hash integrity: reject if caller planted mismatched hash via empty payload edge.
             if payload.is_empty() {
                 let invalid = make_event_as(
+                    self.manifest.csu_id.clone(),
                     self.manifest.publisher_identity.clone(),
                     &self.next_id("event"),
                     EventType::ArtifactInvalid,
@@ -117,6 +121,7 @@ impl Csu for ArtifactBasicCsu {
                     message: e.to_string(),
                 })?;
             let published = make_event_as(
+                self.manifest.csu_id.clone(),
                 self.manifest.publisher_identity.clone(),
                 &self.next_id("event"),
                 EventType::ArtifactPublished,
@@ -144,6 +149,7 @@ impl Csu for ArtifactBasicCsu {
         if op == "op:resolve" {
             let Some(id) = event.artifact_refs.first() else {
                 let invalid = make_event_as(
+                    self.manifest.csu_id.clone(),
                     self.manifest.publisher_identity.clone(),
                     &self.next_id("event"),
                     EventType::ArtifactInvalid,
@@ -166,6 +172,7 @@ impl Csu for ArtifactBasicCsu {
                     let actual = ContentHash::sha256_bytes(&bytes);
                     if actual != desc.content_hash {
                         let invalid = make_event_as(
+                            self.manifest.csu_id.clone(),
                             self.manifest.publisher_identity.clone(),
                             &self.next_id("event"),
                             EventType::ArtifactInvalid,
@@ -184,6 +191,7 @@ impl Csu for ArtifactBasicCsu {
                         return Ok(vec![CsuOutput::Event(invalid)]);
                     }
                     let resolved = make_event_as(
+                        self.manifest.csu_id.clone(),
                         self.manifest.publisher_identity.clone(),
                         &self.next_id("event"),
                         EventType::ArtifactResolved,
@@ -203,6 +211,7 @@ impl Csu for ArtifactBasicCsu {
                 }
                 Err(e) => {
                     let invalid = make_event_as(
+                        self.manifest.csu_id.clone(),
                         self.manifest.publisher_identity.clone(),
                         &self.next_id("event"),
                         EventType::ArtifactInvalid,
@@ -232,6 +241,7 @@ impl Csu for ArtifactBasicCsu {
             let payload = rest.as_bytes();
             let aid = self.next_id("artifact");
             let desc = make_artifact_as(
+                self.manifest.csu_id.clone(),
                 self.manifest.publisher_identity.clone(),
                 &aid,
                 ArtifactType::CustomArtifact,
@@ -246,6 +256,7 @@ impl Csu for ArtifactBasicCsu {
                     message: e.to_string(),
                 })?;
             let superseded = make_event_as(
+                self.manifest.csu_id.clone(),
                 self.manifest.publisher_identity.clone(),
                 &self.next_id("event"),
                 EventType::ArtifactSuperseded,

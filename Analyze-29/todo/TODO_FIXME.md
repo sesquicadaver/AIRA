@@ -3,7 +3,7 @@
 ## Deferred
 - [ ] Node signing-secret rotate (`local.ed25519`)
 - [x] CsuRuntime emit_failed / lifecycle as publisher (Analyze-39)
-- [ ] Multi-tenant per-CSU keyring isolation
+- [x] Multi-tenant per-CSU keyring isolation (Analyze-42)
 - [x] CRL audit / SQLite event log (Analyze-40 JSONL; SQLite table deferred)
 
 ## Done

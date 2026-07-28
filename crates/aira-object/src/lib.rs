@@ -7,6 +7,7 @@ mod audit;
 mod crypto;
 mod descriptor;
 mod handle;
+mod tenant;
 mod types;
 
 pub use audit::{
@@ -21,6 +22,10 @@ pub use crypto::{
     sync_trust_verifiers, utc_now_rfc3339, verify_ed25519, CryptoError, Keyring, NodeSecretBackupInfo,
     RevokedEntry, TrustEntry, TrustStore, LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF,
     NODE_SECRET_BACKUP_FILE, NODE_SECRET_BACKUP_META_FILE,
+};
+pub use tenant::{
+    csu_tenant_registered, register_csu_tenant_signing, reset_csu_tenants, signature_for_tenant,
+    unregister_csu_tenant,
 };
 pub use descriptor::{ObjectDescriptor, ObjectType};
 pub use handle::Handle;

@@ -47,7 +47,9 @@ impl VerificationBasicCsu {
         self
     }
 
-    /// Emit as a distinct publisher identity (must have a signing key in the process keyring).
+    /// Emit as a distinct publisher identity.
+    ///
+    /// Requires [`aira_object::register_csu_tenant_signing`] for this CSU before emits.
     pub fn with_publisher(mut self, publisher: AiraRef) -> Self {
         aira_csu::support::apply_publisher(&mut self.manifest, publisher);
         self
@@ -121,6 +123,7 @@ impl Csu for VerificationBasicCsu {
         let payload = json_bytes(&verified);
         let vid = self.next_id("artifact");
         let vdesc = make_artifact_as(
+            self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &vid,
             ArtifactType::VerifiedResultArtifact,
@@ -136,6 +139,7 @@ impl Csu for VerificationBasicCsu {
             })?;
 
         let completed = make_event_as(
+            self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &self.next_id("event"),
             EventType::VerificationCompleted,
@@ -153,6 +157,7 @@ impl Csu for VerificationBasicCsu {
             })?;
 
         let published = make_event_as(
+            self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &self.next_id("event"),
             EventType::ResultPublished,
@@ -188,6 +193,7 @@ impl VerificationBasicCsu {
         message: &str,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
         let failed = make_event_as(
+            self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &self.next_id("event"),
             EventType::VerificationFailed,

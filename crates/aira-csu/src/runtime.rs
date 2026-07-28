@@ -345,6 +345,7 @@ impl CsuRuntime {
         self.fail_seq += 1;
         let id = format!("aira:event:csufail{}", self.fail_seq);
         let ev = crate::support::make_event_as(
+            csu_id.clone(),
             publisher,
             &id,
             EventType::CSUFailed,

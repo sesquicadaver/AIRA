@@ -53,7 +53,9 @@ impl ReductionBasicCsu {
         self
     }
 
-    /// Emit as a distinct publisher identity (must have a signing key in the process keyring).
+    /// Emit as a distinct publisher identity.
+    ///
+    /// Requires [`aira_object::register_csu_tenant_signing`] for this CSU before emits.
     pub fn with_publisher(mut self, publisher: AiraRef) -> Self {
         aira_csu::support::apply_publisher(&mut self.manifest, publisher);
         self
@@ -95,6 +97,7 @@ impl Csu for ReductionBasicCsu {
 
         if let Some(ready) = self.ready_solutions.first().cloned() {
             let done = make_event_as(
+                self.manifest.csu_id.clone(),
                 self.manifest.publisher_identity.clone(),
                 &self.next_id("event"),
                 EventType::ReductionCompleted,
@@ -112,6 +115,7 @@ impl Csu for ReductionBasicCsu {
                 })?;
             // Reuse path publishes result without invoking Execution CSU.
             let published = make_event_as(
+                self.manifest.csu_id.clone(),
                 self.manifest.publisher_identity.clone(),
                 &self.next_id("event"),
                 EventType::ResultPublished,
@@ -134,6 +138,7 @@ impl Csu for ReductionBasicCsu {
 
         if let Some(know) = self.knowledge.first().cloned() {
             let ev = make_event_as(
+                self.manifest.csu_id.clone(),
                 self.manifest.publisher_identity.clone(),
                 &self.next_id("event"),
                 EventType::ReductionCompleted,
@@ -161,6 +166,7 @@ impl Csu for ReductionBasicCsu {
         let neg_payload = json_bytes(&neg_body);
         let neg_id = self.next_id("artifact");
         let neg_desc = make_artifact_as(
+            self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &neg_id,
             ArtifactType::NegativeResultArtifact,
@@ -221,6 +227,7 @@ impl Csu for ReductionBasicCsu {
         let cap_payload = json_bytes(&capsule);
         let cap_id = self.next_id("artifact");
         let cap_desc = make_artifact_as(
+            self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &cap_id,
             ArtifactType::ExecutionArtifact,
@@ -240,6 +247,7 @@ impl Csu for ReductionBasicCsu {
         });
 
         let created = make_event_as(
+            self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &self.next_id("event"),
             EventType::CapsuleCreated,
@@ -258,6 +266,7 @@ impl Csu for ReductionBasicCsu {
         outs.push(CsuOutput::Event(created));
 
         let done = make_event_as(
+            self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &self.next_id("event"),
             EventType::ReductionCompleted,

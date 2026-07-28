@@ -3,7 +3,8 @@
 use aira_artifact::{ArtifactDescriptor, ArtifactType};
 use aira_event::{EventDescriptor, EventType};
 use aira_object::{
-    active_identity, active_signature, signature_for, AiraRef, ContentHash, CryptoError, Timestamp,
+    active_identity, active_signature, signature_for_tenant, AiraRef, ContentHash, CryptoError,
+    Timestamp,
 };
 use serde_json::{json, Value};
 
@@ -30,6 +31,9 @@ pub fn mvp_timestamp() -> Timestamp {
 }
 
 /// Override `publisher_identity` on a manifest (emit signer; identity_ref unchanged).
+///
+/// For a non-primary / non-local-test publisher, also call
+/// [`aira_object::register_csu_tenant_signing`] so emits can sign under tenant isolation.
 pub fn apply_publisher(manifest: &mut CsuManifest, publisher: AiraRef) {
     manifest.publisher_identity = publisher;
 }
@@ -76,8 +80,10 @@ pub fn basic_manifest(
     }
 }
 
-/// Build an event descriptor signed by `producer` (fail closed if no signing key).
+/// Build an event descriptor signed by `producer` under CSU tenant isolation.
+#[allow(clippy::too_many_arguments)]
 pub fn make_event_as(
+    tenant_csu: AiraRef,
     producer: AiraRef,
     event_id: &str,
     event_type: EventType,
@@ -95,7 +101,7 @@ pub fn make_event_as(
     } else {
         ContentHash::sha256_bytes(payload.as_bytes())
     };
-    let sig = signature_for(&producer, hash.as_str().as_bytes())?;
+    let sig = signature_for_tenant(&tenant_csu, &producer, hash.as_str().as_bytes())?;
     Ok(EventDescriptor {
         event_id: AiraRef::parse(event_id).expect("event_id"),
         event_type,
@@ -147,8 +153,9 @@ pub fn make_event(
     }
 }
 
-/// Build an artifact descriptor signed by `producer` (fail closed if no signing key).
+/// Build an artifact descriptor signed by `producer` under CSU tenant isolation.
 pub fn make_artifact_as(
+    tenant_csu: AiraRef,
     producer: AiraRef,
     artifact_id: &str,
     artifact_type: ArtifactType,
@@ -156,7 +163,7 @@ pub fn make_artifact_as(
     provenance: Vec<AiraRef>,
 ) -> Result<ArtifactDescriptor, CryptoError> {
     let hash = ContentHash::sha256_bytes(payload);
-    let sig = signature_for(&producer, hash.as_str().as_bytes())?;
+    let sig = signature_for_tenant(&tenant_csu, &producer, hash.as_str().as_bytes())?;
     Ok(ArtifactDescriptor {
         artifact_id: AiraRef::parse(artifact_id).expect("artifact_id"),
         artifact_type,
@@ -205,8 +212,8 @@ pub fn json_bytes(v: &Value) -> Vec<u8> {
 mod tests {
     use super::*;
     use aira_object::{
-        register_keyring, reset_primary_signer, set_primary_signer, verify_ed25519, Keyring,
-        LOCAL_TEST_KEY_REF,
+        register_csu_tenant_signing, reset_primary_signer, set_primary_signer, signature_for,
+        unregister_csu_tenant, verify_ed25519, LOCAL_TEST_KEY_REF,
     };
     use ed25519_dalek::SigningKey;
 
@@ -214,9 +221,6 @@ mod tests {
     fn publisher_override_signs_distinct_from_primary() {
         let pub_sk = SigningKey::from_bytes(&[31u8; 32]);
         let pub_id = AiraRef::parse("aira:identity:csu-publisher").unwrap();
-        let mut ring = Keyring::with_local_test();
-        ring.insert_signing(pub_id.clone(), pub_sk);
-        register_keyring(&ring);
         set_primary_signer(AiraRef::parse(LOCAL_TEST_KEY_REF).unwrap());
 
         let mut manifest = basic_manifest(
@@ -227,10 +231,12 @@ mod tests {
             &["ContextResolved"],
         );
         apply_publisher(&mut manifest, pub_id.clone());
+        register_csu_tenant_signing(&manifest.csu_id, pub_id.clone(), pub_sk).unwrap();
         assert_eq!(manifest.identity_ref.as_str(), LOCAL_TEST_KEY_REF);
         assert_eq!(manifest.publisher_identity.as_str(), pub_id.as_str());
 
         let art = make_artifact_as(
+            manifest.csu_id.clone(),
             manifest.publisher_identity.clone(),
             "aira:artifact:pub1",
             ArtifactType::ContextArtifact,
@@ -242,8 +248,15 @@ mod tests {
         assert_eq!(art.signature.key_ref.as_str(), pub_id.as_str());
         verify_ed25519(&art.signature, art.content_hash.as_str().as_bytes()).unwrap();
 
+        // Tenant signing secret is not in the process signing map.
+        assert!(matches!(
+            signature_for(&pub_id, b"{}"),
+            Err(aira_object::CryptoError::NoSigningKey(_))
+        ));
+
         let missing = AiraRef::parse("aira:identity:no-signing-key").unwrap();
         assert!(make_artifact_as(
+            manifest.csu_id.clone(),
             missing,
             "aira:artifact:x",
             ArtifactType::ContextArtifact,
@@ -252,6 +265,7 @@ mod tests {
         )
         .is_err());
 
+        unregister_csu_tenant(&manifest.csu_id);
         reset_primary_signer();
     }
 }

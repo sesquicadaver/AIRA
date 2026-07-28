@@ -43,7 +43,9 @@ impl ExecutionBasicCsu {
         self
     }
 
-    /// Emit as a distinct publisher identity (must have a signing key in the process keyring).
+    /// Emit as a distinct publisher identity.
+    ///
+    /// Requires [`aira_object::register_csu_tenant_signing`] for this CSU before emits.
     pub fn with_publisher(mut self, publisher: AiraRef) -> Self {
         aira_csu::support::apply_publisher(&mut self.manifest, publisher);
         self
@@ -213,6 +215,7 @@ impl Csu for ExecutionBasicCsu {
                 let payload = json_bytes(&result);
                 let out_id = self.next_id("artifact");
                 let out_desc = make_artifact_as(
+                    self.manifest.csu_id.clone(),
                     self.manifest.publisher_identity.clone(),
                     &out_id,
                     ArtifactType::ExecutionArtifact,
@@ -227,6 +230,7 @@ impl Csu for ExecutionBasicCsu {
                         message: e.to_string(),
                     })?;
                 let done = make_event_as(
+                    self.manifest.csu_id.clone(),
                     self.manifest.publisher_identity.clone(),
                     &self.next_id("event"),
                     EventType::CapsuleCompleted,
@@ -263,6 +267,7 @@ impl ExecutionBasicCsu {
         message: &str,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
         let failed = make_event_as(
+            self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &self.next_id("event"),
             EventType::CapsuleFailed,

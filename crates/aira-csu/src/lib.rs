@@ -235,16 +235,13 @@ mod tests {
     #[test]
     fn emit_failed_and_lifecycle_use_publisher_identity() {
         use aira_object::{
-            register_keyring, reset_primary_signer, set_primary_signer, verify_ed25519, Keyring,
-            LOCAL_TEST_KEY_REF,
+            register_csu_tenant_signing, reset_primary_signer, set_primary_signer, signature_for,
+            unregister_csu_tenant, verify_ed25519, LOCAL_TEST_KEY_REF,
         };
         use ed25519_dalek::SigningKey;
 
         let pub_sk = SigningKey::from_bytes(&[41u8; 32]);
         let pub_id = AiraRef::parse("aira:identity:csu-fail-publisher").unwrap();
-        let mut ring = Keyring::with_local_test();
-        ring.insert_signing(pub_id.clone(), pub_sk);
-        register_keyring(&ring);
         set_primary_signer(AiraRef::parse(LOCAL_TEST_KEY_REF).unwrap());
 
         let mut log = MemoryEventLog::new();
@@ -254,6 +251,7 @@ mod tests {
         m.signature = aira_object::local_test_signature(m.csu_id.as_str().as_bytes());
         m.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
         support::apply_publisher(&mut m, pub_id.clone());
+        register_csu_tenant_signing(&m.csu_id, pub_id.clone(), pub_sk).unwrap();
         let id = m.csu_id.clone();
 
         rt.register_handler(Box::new(FailingCsu { manifest: m }), Some(&mut log))
@@ -270,6 +268,10 @@ mod tests {
             registered.payload_hash.as_str().as_bytes(),
         )
         .unwrap();
+        assert!(matches!(
+            signature_for(&pub_id, b"x"),
+            Err(aira_object::CryptoError::NoSigningKey(_))
+        ));
 
         rt.activate(&id, Some(&mut log)).unwrap();
         let err = rt
@@ -330,6 +332,9 @@ mod tests {
         assert_eq!(log.all().len(), before);
         let _ = id2;
 
+        unregister_csu_tenant(&id);
+        unregister_csu_tenant(&AiraRef::parse("aira:csu:fail.nosign").unwrap());
+        unregister_csu_tenant(&id3);
         reset_primary_signer();
     }
 

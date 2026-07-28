@@ -9,7 +9,7 @@
 | Гілка | Стан |
 |-------|------|
 | MVP Epic 0–11 + Alpha.2 / Keyring / Plane / Trust / Peer P0+CLI | **done** |
-| Відкритий Analyze-34+ | **Analyze-41 CLOSED**; наступний = #9 Multi-tenant per-CSU keyring |
+| Відкритий Analyze-34+ | **Analyze-42 CLOSED**; наступний = #10 NAT / gossip / DHT |
 | Канон наступних milestone | `specs/mvp-roadmap.md` M12–M13 + post-MVP |
 
 Дубльовані пункти з `Analyze-*/todo/TODO_FIXME.md` зведено тут. Старі TODO у Analyze-N лишаються як provenance; **черга виконання = цей файл**.
@@ -36,14 +36,14 @@
 | 6 | **P1** | ~~Analyze-39 — CSU emit_failed publisher~~ **DONE** | Довести publisher lifecycle (A-29 deferred) | незалежно | Peer |
 | 7 | **P2** | ~~CRL / ceremony audit log~~ **DONE** (Analyze-40) | rotate/revoke/unrevoke → durable audit | після #4 | — |
 | 8 | **P2** | ~~Timestamped `.prev` history~~ **DONE** (Analyze-41) | історія бекапів, не один слот | після #4 | — |
-| 9 | **P2** | Multi-tenant per-CSU keyring | ізоляція keyring | після #6 | — |
+| 9 | **P2** | ~~Multi-tenant per-CSU keyring~~ **DONE** (Analyze-42) | ізоляція keyring | після #6 | — |
 | 10 | **P2** | NAT / gossip / DHT | федерація-lite | після #2–3 | не MVP |
 | 11 | **P2** | HTTP TLS / persist discovery | A-19 deferred | окремий трек | peer P0 |
 | 12 | **P2** | Roadmap M12–M13 / v0.2 C2 | conformance harness + partial C2 protocols | окремий трек | peer crypto |
 
 ### Рекомендований наступний цикл
 
-**Analyze-42 / #9 — Multi-tenant per-CSU keyring** (ізоляція keyring).
+**Analyze-43 / #10 — NAT / gossip / DHT** (федерація-lite; не MVP-критично).
 
 ### Залежності (скорочено)
 

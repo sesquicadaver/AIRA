@@ -44,7 +44,9 @@ impl ContextBasicCsu {
         self
     }
 
-    /// Emit as a distinct publisher identity (must have a signing key in the process keyring).
+    /// Emit as a distinct publisher identity.
+    ///
+    /// Requires [`aira_object::register_csu_tenant_signing`] for this CSU before emits.
     pub fn with_publisher(mut self, publisher: AiraRef) -> Self {
         aira_csu::support::apply_publisher(&mut self.manifest, publisher);
         self
@@ -106,6 +108,7 @@ impl Csu for ContextBasicCsu {
         let payload = json_bytes(&context_body);
         let art_id = self.next_id("artifact");
         let desc = make_artifact_as(
+            self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &art_id,
             ArtifactType::ContextArtifact,
@@ -122,6 +125,7 @@ impl Csu for ContextBasicCsu {
 
         let ev_id = self.next_id("event");
         let out_ev = make_event_as(
+            self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &ev_id,
             EventType::ContextResolved,

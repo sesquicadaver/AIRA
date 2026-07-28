@@ -43,7 +43,9 @@ impl EvidenceBasicCsu {
         self
     }
 
-    /// Emit as a distinct publisher identity (must have a signing key in the process keyring).
+    /// Emit as a distinct publisher identity.
+    ///
+    /// Requires [`aira_object::register_csu_tenant_signing`] for this CSU before emits.
     pub fn with_publisher(mut self, publisher: AiraRef) -> Self {
         aira_csu::support::apply_publisher(&mut self.manifest, publisher);
         self
@@ -87,6 +89,7 @@ impl Csu for EvidenceBasicCsu {
         let payload = json_bytes(&body);
         let aid = self.next_id("artifact");
         let desc = make_artifact_as(
+            self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &aid,
             ArtifactType::EvidenceArtifact,
@@ -108,6 +111,7 @@ impl Csu for EvidenceBasicCsu {
 
         if is_failure {
             let fe = make_event_as(
+                self.manifest.csu_id.clone(),
                 self.manifest.publisher_identity.clone(),
                 &self.next_id("event"),
                 EventType::FailureEvidenceCreated,
@@ -125,6 +129,7 @@ impl Csu for EvidenceBasicCsu {
             outs.push(CsuOutput::Event(fe));
         } else {
             let pub_ev = make_event_as(
+                self.manifest.csu_id.clone(),
                 self.manifest.publisher_identity.clone(),
                 &self.next_id("event"),
                 EventType::ArtifactPublished,

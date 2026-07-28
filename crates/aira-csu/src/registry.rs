@@ -157,6 +157,7 @@ impl CsuRegistry {
         let id = format!("aira:event:csulife{}", self.event_seq);
         let ev = if let Some(entry) = self.entries.get(subject.as_str()) {
             crate::support::make_event_as(
+                subject.clone(),
                 entry.manifest.publisher_identity.clone(),
                 &id,
                 event_type,

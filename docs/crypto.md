@@ -15,7 +15,7 @@ API: `aira_object::{local_test_signature, verify_ed25519, Keyring, active_signat
 
 **Primary signer** (Analyze-22): `aira_csu::support::{local_identity, local_signature, local_signature_over}` use `active_identity` / `active_signature`. When a node identity is registered, OperationalPlane + basic CSU emits carry that `key_ref`.
 
-**Per-CSU publisher** (Analyze-29 / Analyze-39): CSU business emits, `CSUFailed`, and CSU registry lifecycle events (`CSURegistered` / `CSUSuspended` / …) use `CsuManifest.publisher_identity` via `make_event_as` / `make_artifact_as` + `signature_for` (fail closed if no signing key). Default `publisher_identity == identity_ref == primary`. Override with `ContextBasicCsu::with_publisher` (and siblings). OperationalPlane ProblemStatement / plane lifecycle remain on primary.
+**Per-CSU publisher** (Analyze-29 / Analyze-39 / Analyze-42): CSU business emits, `CSUFailed`, and CSU registry lifecycle events use `CsuManifest.publisher_identity` via `make_event_as` / `make_artifact_as` + `signature_for_tenant` (fail closed). Default `publisher_identity == identity_ref == primary` signs through the process keyring. A distinct publisher requires `register_csu_tenant_signing(csu_id, publisher, sk)` — the **signing** secret stays in the tenant map (CSU-A cannot use CSU-B’s key); only the verifying pubkey merges into the process Keyring. Override helpers: `ContextBasicCsu::with_publisher` (and siblings). OperationalPlane ProblemStatement / plane lifecycle remain on primary.
 
 On `LocalSession::open` / `submit_problem` / `aira identity create`:
 
@@ -145,6 +145,6 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Dual-key grace for peer TrustStore (remote same-id multi-key); TLS; multi-tenant per-CSU keyring; SQLite ceremony audit table (JSONL is Analyze-40); gossip fanout; coordinated rotate of `local.x25519` with Ed25519.
+Dual-key grace for peer TrustStore (remote same-id multi-key); TLS; on-disk per-CSU secret files; SQLite ceremony audit table (JSONL is Analyze-40); gossip fanout; coordinated rotate of `local.x25519` with Ed25519.
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify).

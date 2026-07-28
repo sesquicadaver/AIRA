@@ -53,6 +53,8 @@ pub enum CryptoError {
     SameIdentity,
     #[error("invalid grace_until timestamp (need RFC3339 UTC): {0}")]
     InvalidTimestamp(String),
+    #[error("csu tenant isolation: {0}")]
+    TenantIsolation(String),
 }
 
 /// In-memory verifying (+ optional signing) keys keyed by identity ref.
