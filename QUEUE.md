@@ -42,14 +42,16 @@
 | 7 | **P2** | ~~CRL / ceremony audit log~~ **DONE** (Analyze-40) | rotate/revoke/unrevoke → durable audit | після #4 | — |
 | 8 | **P2** | ~~Timestamped `.prev` history~~ **DONE** (Analyze-41) | історія бекапів, не один слот | після #4 | — |
 | 9 | **P2** | ~~Multi-tenant per-CSU keyring~~ **DONE** (Analyze-42) | ізоляція keyring | після #6 | — |
-| 10 | **P2** | ~~Gossip + discovery~~ **DONE** (A-43); ~~relay-first hub~~ **DONE** (A-44); next: DHT micro optional | #10 split | після #2–3 | STUN в одному PR |
+| 10 | **P2** | ~~Gossip + discovery~~ **DONE** (A-43); ~~relay-first hub~~ **DONE** (A-44); ~~DHT-lite~~ **DONE** (A-47) | #10 split | після #2–3 | STUN/discv5 |
 | 11 | **P2** | ~~HTTP TLS + persist discovery~~ **DONE** (Analyze-45) | A-19 deferred | окремий трек | mTLS/authn |
-| 12 | **P2** | ~~Partial C2 conformance (M13)~~ **DONE** (Analyze-46); M12 C0/C1 already shipped | harness + local protocols | окремий трек | network C2 / DHT |
+| 12 | **P2** | ~~Partial C2 conformance (M13)~~ **DONE** (Analyze-46); M12 C0/C1 already shipped | harness + local protocols | окремий трек | network C2 |
+| 13 | **P2** | post-MVP: mTLS / HTTP authn | A-19 deferred | після #11 | — |
+| 14 | **P2** | post-MVP: dual-key remote TrustStore / coordinated x25519 rotate | crypto docs Out | після peer P0 | — |
 
 
 ### Рекомендований наступний цикл
 
-**DHT micro** (опційно) або post-MVP: mTLS/HTTP authn, dual-key remote TrustStore, coordinated x25519 rotate.
+**Analyze-48 / #13 — mTLS або HTTP authn**, або #14 coordinated `local.x25519` rotate.
 
 ### Залежності (скорочено)
 

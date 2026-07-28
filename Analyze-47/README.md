@@ -2,7 +2,7 @@
 
 **Scope:** Local durable DHT table + XOR closest + `peer.dht.announce` over authenticated peer links. No UDP/discv5/STUN. No Manifesto/Meditation.
 
-**Status:** ralplan APPROVED → ralph
+**Status:** CLOSED (APPROVE/CLEAR)
 
 ## RALPLAN-DR
 
@@ -33,11 +33,16 @@
 - **Critic: APPROVE**
 
 ### Acceptance
-- [ ] `PeerDhtStore` persist + XOR closest
-- [ ] `peer.dht.announce` make/parse/apply
-- [ ] CLI dht announce/find/list + listen `--dht`
-- [ ] Integration: A announces to B; B finds A
-- [ ] docs + QUEUE; tests + clippy; APPROVE/CLEAR
+- [x] `PeerDhtStore` persist + XOR closest
+- [x] `peer.dht.announce` make/parse/apply
+- [x] CLI dht announce/find/list + listen `--dht`
+- [x] Integration: A announces to B; B finds A
+- [x] docs + QUEUE; tests + clippy; APPROVE/CLEAR
+
+### Delivered
+- `peers/dht.json` + XOR closest
+- `peer.dht.announce` + CLI
+- Anti-spoof apply (issuer must equal announced identity)
 
 ### Out
 discv5, UDP, iterative multi-hop FIND_NODE, STUN, auto address-book mutation.
