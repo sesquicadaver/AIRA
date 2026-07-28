@@ -35,7 +35,8 @@ Problem Statement
 ## Status
 
 **Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha**.
-**Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing (`docs/crypto.md`).
+**Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing; Trust; Peer P0+CLI (`docs/crypto.md`, `docs/peer-link.md`).
+**Черга задач:** [`QUEUE.md`](QUEUE.md) (наступний slice: Analyze-34 peer listen daemon).
 
 See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md` and `scripts/prepare-alpha.sh`.
 
