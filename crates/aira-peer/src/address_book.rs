@@ -14,6 +14,9 @@ use crate::error::PeerError;
 pub struct PeerEndpoint {
     pub identity_id: String,
     pub addr: String,
+    /// Optional trusted relay identity used as courier (Analyze-44).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub via: Option<String>,
 }
 
 /// Local static address book under `peers/address_book.json`.
@@ -50,14 +53,29 @@ impl AddressBook {
         fs::write(path, format!("{json}\n")).map_err(|e| PeerError::AddressBook(e.to_string()))
     }
 
-    /// Insert or replace by identity_id.
+    /// Insert or replace by identity_id (clears `via`).
     pub fn upsert(&mut self, identity_id: impl Into<String>, addr: impl Into<String>) {
+        self.upsert_via(identity_id, addr, None);
+    }
+
+    /// Insert or replace by identity_id, optionally setting courier relay.
+    pub fn upsert_via(
+        &mut self,
+        identity_id: impl Into<String>,
+        addr: impl Into<String>,
+        via: Option<String>,
+    ) {
         let identity_id = identity_id.into();
         let addr = addr.into();
         if let Some(p) = self.peers.iter_mut().find(|p| p.identity_id == identity_id) {
             p.addr = addr;
+            p.via = via;
         } else {
-            self.peers.push(PeerEndpoint { identity_id, addr });
+            self.peers.push(PeerEndpoint {
+                identity_id,
+                addr,
+                via,
+            });
         }
         self.peers.sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
     }
@@ -72,6 +90,14 @@ impl AddressBook {
         ep.addr
             .parse()
             .map_err(|e| PeerError::AddressBook(format!("bad addr {}: {e}", ep.addr)))
+    }
+
+    /// Courier relay identity for `identity_id`, if configured.
+    pub fn via_of(&self, identity_id: &str) -> Option<&str> {
+        self.peers
+            .iter()
+            .find(|p| p.identity_id == identity_id)
+            .and_then(|p| p.via.as_deref())
     }
 
     /// Map view for tests / diagnostics.

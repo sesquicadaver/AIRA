@@ -59,9 +59,23 @@ impl AuthenticatedPeer {
         self.write_envelope_bytes(envelope).await
     }
 
+    /// Forward an original signed envelope whose issuer is not local (courier).
+    ///
+    /// Used by gossip trust-delta and relay-hub deliver. Signature/`key_ref`
+    /// must still bind to `issuer_identity`.
+    pub async fn send_relayed_envelope(
+        &mut self,
+        envelope: &ProtocolEnvelope,
+    ) -> Result<(), PeerError> {
+        if envelope.signature.key_ref != envelope.issuer_identity {
+            return Err(PeerError::IdentityMismatch);
+        }
+        self.write_envelope_bytes(envelope).await
+    }
+
     /// Forward an original `peer.trust.delta` envelope whose issuer is not local.
     ///
-    /// Does not re-sign. Signature/`key_ref` must still bind to `issuer_identity`.
+    /// Prefer [`Self::send_relayed_envelope`] for new call sites.
     pub async fn send_relayed_trust_delta(
         &mut self,
         envelope: &ProtocolEnvelope,
@@ -72,10 +86,7 @@ impl AuthenticatedPeer {
                 envelope.message_type
             )));
         }
-        if envelope.signature.key_ref != envelope.issuer_identity {
-            return Err(PeerError::IdentityMismatch);
-        }
-        self.write_envelope_bytes(envelope).await
+        self.send_relayed_envelope(envelope).await
     }
 
     async fn write_envelope_bytes(
@@ -96,9 +107,17 @@ impl AuthenticatedPeer {
         self.recv_envelope_inner(false).await
     }
 
-    /// Like [`Self::recv_envelope`], but also accepts relayed `peer.trust.delta`
-    /// signed by a trusted originator (issuer ≠ TCP peer). Used for gossip apply.
+    /// Like [`Self::recv_envelope`], but also accepts courier-delivered envelopes
+    /// signed by a trusted originator (issuer ≠ TCP peer). Used for gossip apply
+    /// and relay-hold receivers.
     pub async fn recv_envelope_allow_relayed_trust_delta(
+        &mut self,
+    ) -> Result<ProtocolEnvelope, PeerError> {
+        self.recv_envelope_inner(true).await
+    }
+
+    /// Alias: accept any relayed signed envelope from a trusted issuer.
+    pub async fn recv_envelope_allow_relayed(
         &mut self,
     ) -> Result<ProtocolEnvelope, PeerError> {
         self.recv_envelope_inner(true).await
@@ -106,7 +125,7 @@ impl AuthenticatedPeer {
 
     async fn recv_envelope_inner(
         &mut self,
-        allow_relayed_trust_delta: bool,
+        allow_relayed: bool,
     ) -> Result<ProtocolEnvelope, PeerError> {
         let bytes = with_timeout(read_encrypted(&mut self.stream, &mut self.transport)).await?;
         let env: ProtocolEnvelope = serde_json::from_slice(&bytes)?;
@@ -123,10 +142,7 @@ impl AuthenticatedPeer {
             return Ok(env);
         }
 
-        if allow_relayed_trust_delta
-            && env.message_type == TRUST_DELTA_MESSAGE_TYPE
-            && env.signature.key_ref == env.issuer_identity
-        {
+        if allow_relayed && env.signature.key_ref == env.issuer_identity {
             let issuer = env.issuer_identity.as_str();
             if trust.is_revoked(issuer) {
                 return Err(PeerError::Revoked(issuer.into()));

@@ -1,9 +1,10 @@
-//! AIRA authenticated peer links (Analyze-32…43).
+//! AIRA authenticated peer links (Analyze-32…44).
 //!
 //! Framed TCP + mutual Ed25519 hello v1 + Noise XX + signed [`ProtocolEnvelope`].
 //! Admission is local [`TrustStore`] only — no controlling center, no DHT.
 //! Trust-delta (`peer.trust.delta`) can propagate CRL ops and same-id rekey over the encrypted link.
 //! Analyze-43: optional gossip fanout + durable `peers/discovery.json`.
+//! Analyze-44: relay-first hub (`peer.relay.deliver` + address-book `via`).
 
 mod address_book;
 mod discovery;
@@ -14,6 +15,7 @@ mod gossip;
 mod handshake;
 mod noise;
 mod notify;
+mod relay;
 mod session;
 mod trust_delta;
 
@@ -29,6 +31,10 @@ pub use handshake::{HelloMessage, HelloResult, HELLO_DOMAIN};
 pub use noise::{load_or_create_noise_static, x25519_public, NOISE_PATTERN};
 pub use notify::{
     notify_peer_of_rekey, notify_peers_of_rekey, upcoming_rekey_delta, NotifyPeerResult,
+};
+pub use relay::{
+    make_relay_deliver_envelope, parse_relay_deliver, send_envelope_to_peer, serve_relay_peer,
+    RelayDeliver, RelayHub, RELAY_DELIVER_MESSAGE_TYPE, RELAY_DELIVER_SCHEMA,
 };
 pub use session::{accept, dial, listen, listen_explicit, AuthenticatedPeer, DEFAULT_PEER_TIMEOUT};
 pub use trust_delta::{
@@ -693,5 +699,100 @@ mod tests {
             .await
             .unwrap();
         assert!(again.iter().any(|r| r.skipped));
+    }
+
+    #[tokio::test]
+    async fn relay_hub_delivers_trust_delta_a_to_c_via_r() {
+        let dir_a = tempdir().unwrap();
+        let dir_r = tempdir().unwrap();
+        let dir_c = tempdir().unwrap();
+        let root_a = dir_a.path();
+        let root_r = dir_r.path();
+        let root_c = dir_c.path();
+        init_node(root_a).unwrap();
+        init_node(root_r).unwrap();
+        init_node(root_c).unwrap();
+        let (id_a, pub_a) = write_node_identity(root_a, "r-alice", [121u8; 32]);
+        let (id_r, pub_r) = write_node_identity(root_r, "r-relay", [123u8; 32]);
+        let (id_c, pub_c) = write_node_identity(root_c, "r-carol", [125u8; 32]);
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_r, id_r.as_str(), &pub_r);
+        mutual_trust(root_c, id_c.as_str(), &pub_c, root_r, id_r.as_str(), &pub_r);
+        // C must trust originator A to apply courier-delivered delta.
+        let mut tc = TrustStore::load(root_c).unwrap();
+        tc.upsert(id_a.as_str(), &pub_a).unwrap();
+        tc.save(root_c).unwrap();
+
+        let victim = "aira:identity:relay-victim";
+        let victim_sk = SigningKey::from_bytes(&[127u8; 32]);
+        let victim_pub = hex::encode(victim_sk.verifying_key().to_bytes());
+        for root in [root_a, root_r, root_c] {
+            let mut t = TrustStore::load(root).unwrap();
+            t.upsert(victim, &victim_pub).unwrap();
+            t.save(root).unwrap();
+        }
+
+        let hub = RelayHub::new();
+        let listener = listen("127.0.0.1:0").await.unwrap();
+        let addr_r = listener.local_addr().unwrap();
+        let hub_accept = hub.clone();
+        let root_r2 = root_r.to_path_buf();
+        let accept_task = tokio::spawn(async move {
+            // Accept C then A (order not guaranteed — accept two).
+            for _ in 0..2 {
+                let peer = accept(&listener, &root_r2).await.unwrap();
+                let hub_c = hub_accept.clone();
+                tokio::spawn(async move {
+                    let _ = serve_relay_peer(hub_c, peer).await;
+                });
+            }
+        });
+
+        let mut book_c = AddressBook::default();
+        book_c.upsert(id_r.as_str(), addr_r.to_string());
+        book_c.save(root_c).unwrap();
+
+        let mut book_a = AddressBook::default();
+        book_a.upsert(id_r.as_str(), addr_r.to_string());
+        // C is not dialable from A — courier via R only (dummy addr).
+        book_a.upsert_via(
+            id_c.as_str(),
+            "127.0.0.1:1",
+            Some(id_r.as_str().to_string()),
+        );
+        book_a.save(root_a).unwrap();
+
+        let root_c2 = root_c.to_path_buf();
+        let id_r_s = id_r.as_str().to_string();
+        let hold = tokio::spawn(async move {
+            let mut peer = dial(&root_c2, &id_r_s).await.unwrap();
+            let env = peer.recv_envelope_allow_relayed().await.unwrap();
+            let delta = parse_trust_delta(&env).unwrap();
+            apply_trust_delta(&root_c2, &env.issuer_identity, &delta).unwrap();
+            delta
+        });
+
+        // Wait until C is registered on the hub.
+        for _ in 0..50 {
+            if hub.registered().iter().any(|id| id == id_c.as_str()) {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        }
+        assert!(
+            hub.registered().iter().any(|id| id == id_c.as_str()),
+            "carol not registered: {:?}",
+            hub.registered()
+        );
+
+        let delta = TrustDelta::revoke(victim, Some("via-relay".into()));
+        let env = make_trust_delta_envelope(root_a, &delta).unwrap();
+        send_envelope_to_peer(root_a, id_c.as_str(), &env)
+            .await
+            .unwrap();
+
+        let applied = hold.await.unwrap();
+        assert_eq!(applied.subject_id, victim);
+        assert!(TrustStore::load(root_c).unwrap().is_revoked(victim));
+        let _ = accept_task.await;
     }
 }

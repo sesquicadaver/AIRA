@@ -9,7 +9,8 @@
 | Гілка | Стан |
 |-------|------|
 | MVP Epic 0–11 + Alpha.2 / Keyring / Plane / Trust / Peer P0+CLI | **done** |
-| Відкритий Analyze-34+ | **Analyze-43 CLOSED** (gossip micro + discovery); наступний = #10b relay-first NAT або #11 |
+| Відкритий Analyze-34+ | **Analyze-44 CLOSED** (relay-first hub); наступний = #11 HTTP TLS / discovery або DHT micro |
+
 
 | Канон наступних milestone | `specs/mvp-roadmap.md` M12–M13 + post-MVP |
 
@@ -38,13 +39,13 @@
 | 7 | **P2** | ~~CRL / ceremony audit log~~ **DONE** (Analyze-40) | rotate/revoke/unrevoke → durable audit | після #4 | — |
 | 8 | **P2** | ~~Timestamped `.prev` history~~ **DONE** (Analyze-41) | історія бекапів, не один слот | після #4 | — |
 | 9 | **P2** | ~~Multi-tenant per-CSU keyring~~ **DONE** (Analyze-42) | ізоляція keyring | після #6 | — |
-| 10 | **P2** | ~~Gossip + discovery persist~~ **DONE** (Analyze-43); next: relay-first NAT | мікро з #10; DHT окремо | після #2–3 | STUN/DHT в одному PR |
+| 10 | **P2** | ~~Gossip + discovery~~ **DONE** (A-43); ~~relay-first hub~~ **DONE** (A-44); next: DHT micro optional | #10 split | після #2–3 | STUN в одному PR |
 | 11 | **P2** | HTTP TLS / persist discovery | A-19 deferred | окремий трек | peer P0 |
 | 12 | **P2** | Roadmap M12–M13 / v0.2 C2 | conformance harness + partial C2 protocols | окремий трек | peer crypto |
 
 ### Рекомендований наступний цикл
 
-**Analyze-44 / #10b — relay-first NAT** (ADR у Analyze-43); DHT лише після доказу користі gossip/discovery.
+**Analyze-45 / #11 — HTTP TLS** або окремий DHT micro (лише після доказу користі gossip/discovery/relay).
 
 ### Залежності (скорочено)
 

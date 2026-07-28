@@ -265,6 +265,9 @@ enum PeerCommands {
         /// Socket address, e.g. 127.0.0.1:7900
         #[arg(long)]
         addr: String,
+        /// Optional courier relay identity (Analyze-44). Send/trust-send use deliver via this peer.
+        #[arg(long)]
+        via: Option<String>,
     },
     /// List address-book peers.
     List,
@@ -287,9 +290,20 @@ enum PeerCommands {
         /// After apply, fan out the original trust-delta to other address-book peers (Analyze-43).
         #[arg(long, default_value_t = false)]
         gossip: bool,
+        /// Run as relay hub: register live sessions and forward `peer.relay.deliver` (Analyze-44).
+        #[arg(long, default_value_t = false)]
+        relay: bool,
     },
     /// List durable peer discovery journal (`peers/discovery.json`).
     Discovery,
+    /// Hold an outbound session to a relay (register for inbound delivers).
+    RelayHold {
+        #[arg(long)]
+        key_ref: String,
+        /// Apply inbound `peer.trust.delta` (courier-delivered) into local trust.json.
+        #[arg(long, default_value_t = false)]
+        apply_trust: bool,
+    },
     /// Dial a trusted peer and complete hello.
     Dial {
         #[arg(long)]
@@ -1019,15 +1033,21 @@ fn build_peer_ping(root: &Path, text: &str) -> Result<aira_protocol::ProtocolEnv
 
 async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
     match command {
-        PeerCommands::Add { key_ref, addr } => {
+        PeerCommands::Add { key_ref, addr, via } => {
             require_trusted(root, &key_ref)?;
             addr.parse::<std::net::SocketAddr>()
                 .with_context(|| format!("invalid addr {addr}"))?;
+            if let Some(ref via_id) = via {
+                require_trusted(root, via_id)?;
+            }
             let mut book =
                 aira_peer::AddressBook::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
-            book.upsert(&key_ref, &addr);
+            book.upsert_via(&key_ref, &addr, via.clone());
             book.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
-            println!("peer {key_ref} -> {addr}");
+            match &via {
+                Some(v) => println!("peer {key_ref} -> {addr} via {v}"),
+                None => println!("peer {key_ref} -> {addr}"),
+            }
             println!(
                 "address_book {}",
                 aira_peer::AddressBook::path(root).display()
@@ -1040,7 +1060,10 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                 println!("(empty address book)");
             } else {
                 for p in &book.peers {
-                    println!("{}\t{}", p.identity_id, p.addr);
+                    match &p.via {
+                        Some(v) => println!("{}\t{}\tvia {}", p.identity_id, p.addr, v),
+                        None => println!("{}\t{}", p.identity_id, p.addr),
+                    }
                 }
             }
             println!(
@@ -1080,12 +1103,19 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             recv,
             apply_trust,
             gossip,
+            relay,
         } => {
-            if apply_trust && !recv {
-                bail!("--apply-trust requires --recv");
+            if apply_trust && !recv && !relay {
+                bail!("--apply-trust requires --recv (or use --relay)");
             }
             if gossip && !apply_trust {
                 bail!("--gossip requires --apply-trust");
+            }
+            if relay && gossip {
+                bail!("--relay and --gossip are mutually exclusive in this slice");
+            }
+            if relay && recv {
+                bail!("--relay implies hub mode; omit --recv");
             }
             let listener = aira_peer::listen(&bind)
                 .await
@@ -1097,6 +1127,9 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             } else {
                 println!("mode daemon");
             }
+            if relay {
+                println!("relay hub enabled");
+            }
             if recv {
                 println!("recv enabled");
             }
@@ -1107,6 +1140,38 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                 println!("gossip enabled");
             }
             let root_owned = root.to_path_buf();
+            if relay {
+                let hub = aira_peer::RelayHub::new();
+                loop {
+                    let peer = match aira_peer::accept(&listener, root).await {
+                        Ok(p) => p,
+                        Err(e) => {
+                            eprintln!("accept error: {e}");
+                            if once {
+                                return Err(anyhow::anyhow!("{e}"));
+                            }
+                            if matches!(e, aira_peer::PeerError::Io(_)) {
+                                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                            }
+                            continue;
+                        }
+                    };
+                    println!("relay registered {}", peer.peer_id.as_str());
+                    let hub_c = hub.clone();
+                    if once {
+                        aira_peer::serve_relay_peer(hub_c, peer)
+                            .await
+                            .map_err(|e| anyhow::anyhow!("{e}"))?;
+                        break;
+                    }
+                    tokio::spawn(async move {
+                        if let Err(e) = aira_peer::serve_relay_peer(hub_c, peer).await {
+                            eprintln!("relay session ended: {e}");
+                        }
+                    });
+                }
+                return Ok(ExitCode::SUCCESS);
+            }
             loop {
                 let mut peer = match aira_peer::accept(&listener, root).await {
                     Ok(p) => p,
@@ -1265,6 +1330,47 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             }
             Ok(ExitCode::SUCCESS)
         }
+        PeerCommands::RelayHold {
+            key_ref,
+            apply_trust,
+        } => {
+            require_trusted(root, &key_ref)?;
+            let mut peer = aira_peer::dial(root, &key_ref)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!("relay-hold {}", peer.peer_id.as_str());
+            if apply_trust {
+                println!("apply_trust enabled");
+            }
+            loop {
+                match peer.recv_envelope_allow_relayed().await {
+                    Ok(env) => {
+                        println!(
+                            "received {}\t{}\t{}",
+                            env.message_type,
+                            env.message_id.as_str(),
+                            env.issuer_identity.as_str()
+                        );
+                        if apply_trust && env.message_type == aira_peer::TRUST_DELTA_MESSAGE_TYPE {
+                            match aira_peer::parse_trust_delta(&env).and_then(|d| {
+                                aira_peer::apply_trust_delta(root, &env.issuer_identity, &d)
+                                    .map(|_| d)
+                            }) {
+                                Ok(delta) => println!(
+                                    "applied trust-delta {:?}\tsubject {}",
+                                    delta.op, delta.subject_id
+                                ),
+                                Err(e) => eprintln!("apply_trust error: {e}"),
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("relay-hold ended: {e}");
+                        return Err(anyhow::anyhow!("{e}"));
+                    }
+                }
+            }
+        }
         PeerCommands::Dial { key_ref } => {
             require_trusted(root, &key_ref)?;
             let peer = aira_peer::dial(root, &key_ref)
@@ -1277,18 +1383,27 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
         PeerCommands::Send { key_ref, text } => {
             require_trusted(root, &key_ref)?;
             let env = build_peer_ping(root, &text)?;
-            let mut peer = aira_peer::dial(root, &key_ref)
+            aira_peer::send_envelope_to_peer(root, &key_ref, &env)
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
-            peer.send_envelope(&env)
-                .await
-                .map_err(|e| anyhow::anyhow!("{e}"))?;
-            println!(
-                "sent {}\t{}\t-> {}",
-                env.message_type,
-                env.message_id.as_str(),
-                peer.peer_id.as_str()
-            );
+            let via = aira_peer::AddressBook::load(root)
+                .ok()
+                .and_then(|b| b.via_of(&key_ref).map(|s| s.to_string()));
+            match via {
+                Some(v) => println!(
+                    "sent {}\t{}\t-> {} via {}",
+                    env.message_type,
+                    env.message_id.as_str(),
+                    key_ref,
+                    v
+                ),
+                None => println!(
+                    "sent {}\t{}\t-> {}",
+                    env.message_type,
+                    env.message_id.as_str(),
+                    key_ref
+                ),
+            }
             Ok(ExitCode::SUCCESS)
         }
         PeerCommands::TrustSend {
@@ -1320,19 +1435,22 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             };
             let env = aira_peer::make_trust_delta_envelope(root, &delta)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
-            let mut peer = aira_peer::dial(root, &key_ref)
+            aira_peer::send_envelope_to_peer(root, &key_ref, &env)
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
-            peer.send_envelope(&env)
-                .await
-                .map_err(|e| anyhow::anyhow!("{e}"))?;
-            println!(
-                "sent {}\t{:?}\t{}\t-> {}",
-                env.message_type,
-                delta.op,
-                delta.subject_id,
-                peer.peer_id.as_str()
-            );
+            let via = aira_peer::AddressBook::load(root)
+                .ok()
+                .and_then(|b| b.via_of(&key_ref).map(|s| s.to_string()));
+            match via {
+                Some(v) => println!(
+                    "sent {}\t{:?}\t{}\t-> {} via {}",
+                    env.message_type, delta.op, delta.subject_id, key_ref, v
+                ),
+                None => println!(
+                    "sent {}\t{:?}\t{}\t-> {}",
+                    env.message_type, delta.op, delta.subject_id, key_ref
+                ),
+            }
             Ok(ExitCode::SUCCESS)
         }
         PeerCommands::NotifyRekey {
