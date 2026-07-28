@@ -59,7 +59,6 @@ impl ReductionBasicCsu {
         self
     }
 
-
     fn next_id(&mut self, kind: &str) -> String {
         let id = format!("aira:{kind}:red{}_{}", self.run_nonce, self.seq);
         self.seq += 1;
@@ -77,7 +76,6 @@ impl Csu for ReductionBasicCsu {
         event: &EventDescriptor,
         ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
-
         if event.event_type != EventType::ContextResolved {
             return Ok(vec![]);
         }
@@ -98,14 +96,14 @@ impl Csu for ReductionBasicCsu {
         if let Some(ready) = self.ready_solutions.first().cloned() {
             let done = make_event_as(
                 self.manifest.publisher_identity.clone(),
-                
                 &self.next_id("event"),
                 EventType::ReductionCompleted,
                 vec![problem_ref.clone()],
                 vec![ready.clone()],
                 vec![event.event_id.clone()],
                 Some("reuse:ready_solution".into()),
-            ).map_err(|e| CsuHandlerError {
+            )
+            .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
             ctx.append_event(done.clone())
@@ -115,14 +113,14 @@ impl Csu for ReductionBasicCsu {
             // Reuse path publishes result without invoking Execution CSU.
             let published = make_event_as(
                 self.manifest.publisher_identity.clone(),
-                
                 &self.next_id("event"),
                 EventType::ResultPublished,
                 vec![problem_ref],
                 vec![ready],
                 vec![done.event_id.clone()],
                 Some("reuse:ready_solution".into()),
-            ).map_err(|e| CsuHandlerError {
+            )
+            .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
             ctx.append_event(published.clone())
@@ -137,14 +135,14 @@ impl Csu for ReductionBasicCsu {
         if let Some(know) = self.knowledge.first().cloned() {
             let ev = make_event_as(
                 self.manifest.publisher_identity.clone(),
-                
                 &self.next_id("event"),
                 EventType::ReductionCompleted,
                 vec![problem_ref],
                 vec![know],
                 vec![event.event_id.clone()],
                 Some("reuse:knowledge".into()),
-            ).map_err(|e| CsuHandlerError {
+            )
+            .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
             ctx.append_event(ev.clone()).map_err(|e| CsuHandlerError {
@@ -164,12 +162,12 @@ impl Csu for ReductionBasicCsu {
         let neg_id = self.next_id("artifact");
         let neg_desc = make_artifact_as(
             self.manifest.publisher_identity.clone(),
-            
             &neg_id,
             ArtifactType::NegativeResultArtifact,
             &neg_payload,
             vec![event.event_id.clone()],
-        ).map_err(|e| CsuHandlerError {
+        )
+        .map_err(|e| CsuHandlerError {
             message: e.to_string(),
         })?;
         ctx.publish_artifact(neg_desc.clone(), &neg_payload)
@@ -224,12 +222,12 @@ impl Csu for ReductionBasicCsu {
         let cap_id = self.next_id("artifact");
         let cap_desc = make_artifact_as(
             self.manifest.publisher_identity.clone(),
-            
             &cap_id,
             ArtifactType::ExecutionArtifact,
             &cap_payload,
             vec![event.event_id.clone(), neg_desc.artifact_id.clone()],
-        ).map_err(|e| CsuHandlerError {
+        )
+        .map_err(|e| CsuHandlerError {
             message: e.to_string(),
         })?;
         ctx.publish_artifact(cap_desc.clone(), &cap_payload)
@@ -243,14 +241,14 @@ impl Csu for ReductionBasicCsu {
 
         let created = make_event_as(
             self.manifest.publisher_identity.clone(),
-            
             &self.next_id("event"),
             EventType::CapsuleCreated,
             vec![problem_ref.clone()],
             vec![cap_desc.artifact_id.clone()],
             vec![event.event_id.clone()],
             Some(action.into()),
-        ).map_err(|e| CsuHandlerError {
+        )
+        .map_err(|e| CsuHandlerError {
             message: e.to_string(),
         })?;
         ctx.append_event(created.clone())
@@ -261,14 +259,14 @@ impl Csu for ReductionBasicCsu {
 
         let done = make_event_as(
             self.manifest.publisher_identity.clone(),
-            
             &self.next_id("event"),
             EventType::ReductionCompleted,
             vec![problem_ref],
             vec![cap_desc.artifact_id, neg_desc.artifact_id],
             vec![event.event_id.clone()],
             Some("escalate:execution_capsule".into()),
-        ).map_err(|e| CsuHandlerError {
+        )
+        .map_err(|e| CsuHandlerError {
             message: e.to_string(),
         })?;
         ctx.append_event(done.clone())

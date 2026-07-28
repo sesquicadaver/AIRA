@@ -36,7 +36,11 @@ mod tests {
     use ed25519_dalek::SigningKey;
     use tempfile::tempdir;
 
-    fn write_node_identity(root: &std::path::Path, name: &str, seed: [u8; 32]) -> (AiraRef, String) {
+    fn write_node_identity(
+        root: &std::path::Path,
+        name: &str,
+        seed: [u8; 32],
+    ) -> (AiraRef, String) {
         let paths = NodePaths::new(root);
         fs::create_dir_all(paths.identity_dir()).unwrap();
         let sk = SigningKey::from_bytes(&seed);
@@ -67,7 +71,14 @@ mod tests {
         (id_ref, pub_hex)
     }
 
-    fn mutual_trust(a_root: &std::path::Path, a_id: &str, a_pub: &str, b_root: &std::path::Path, b_id: &str, b_pub: &str) {
+    fn mutual_trust(
+        a_root: &std::path::Path,
+        a_id: &str,
+        a_pub: &str,
+        b_root: &std::path::Path,
+        b_id: &str,
+        b_pub: &str,
+    ) {
         let mut ta = TrustStore::load(a_root).unwrap();
         ta.upsert(b_id, b_pub).unwrap();
         ta.save(a_root).unwrap();
@@ -78,9 +89,7 @@ mod tests {
 
     fn make_envelope(issuer: &AiraRef, ring: &Keyring, payload: &str) -> ProtocolEnvelope {
         let hash = ContentHash::sha256_bytes(payload.as_bytes());
-        let sig = ring
-            .sign(issuer, hash.as_str().as_bytes())
-            .unwrap();
+        let sig = ring.sign(issuer, hash.as_str().as_bytes()).unwrap();
         ProtocolEnvelope {
             protocol_id: ProtocolId::Identity,
             protocol_version: "0.1".into(),
@@ -109,14 +118,7 @@ mod tests {
         init_node(root_b).unwrap();
         let (id_a, pub_a) = write_node_identity(root_a, "alice", [11u8; 32]);
         let (id_b, pub_b) = write_node_identity(root_b, "bob", [13u8; 32]);
-        mutual_trust(
-            root_a,
-            id_a.as_str(),
-            &pub_a,
-            root_b,
-            id_b.as_str(),
-            &pub_b,
-        );
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
         let listener = listen("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
@@ -187,14 +189,7 @@ mod tests {
         init_node(root_b).unwrap();
         let (id_a, pub_a) = write_node_identity(root_a, "alice-r", [21u8; 32]);
         let (id_b, pub_b) = write_node_identity(root_b, "bob-r", [23u8; 32]);
-        mutual_trust(
-            root_a,
-            id_a.as_str(),
-            &pub_a,
-            root_b,
-            id_b.as_str(),
-            &pub_b,
-        );
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
         let mut ta = TrustStore::load(root_a).unwrap();
         ta.revoke(id_b.as_str(), Some("compromised")).unwrap();
         ta.save(root_a).unwrap();
@@ -216,14 +211,7 @@ mod tests {
         init_node(root_b).unwrap();
         let (id_a, pub_a) = write_node_identity(root_a, "alice-m", [25u8; 32]);
         let (id_b, pub_b) = write_node_identity(root_b, "bob-m", [27u8; 32]);
-        mutual_trust(
-            root_a,
-            id_a.as_str(),
-            &pub_a,
-            root_b,
-            id_b.as_str(),
-            &pub_b,
-        );
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
         let listener = listen("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();

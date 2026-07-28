@@ -248,7 +248,8 @@ impl TrustStore {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|e| CryptoError::Io(e.to_string()))?;
         }
-        let json = serde_json::to_string_pretty(self).map_err(|e| CryptoError::Io(e.to_string()))?;
+        let json =
+            serde_json::to_string_pretty(self).map_err(|e| CryptoError::Io(e.to_string()))?;
         fs::write(path, format!("{json}\n")).map_err(|e| CryptoError::Io(e.to_string()))
     }
 
@@ -293,11 +294,7 @@ impl TrustStore {
     /// Durably revoke an identity: drop from entries, append CRL, block re-upsert.
     ///
     /// Refuses [`LOCAL_TEST_KEY_REF`]. Idempotent if already revoked.
-    pub fn revoke(
-        &mut self,
-        identity_id: &str,
-        reason: Option<&str>,
-    ) -> Result<(), CryptoError> {
+    pub fn revoke(&mut self, identity_id: &str, reason: Option<&str>) -> Result<(), CryptoError> {
         let id = identity_id.trim();
         if id == LOCAL_TEST_KEY_REF {
             return Err(CryptoError::ProtectedIdentity(LOCAL_TEST_KEY_REF.into()));
@@ -313,7 +310,9 @@ impl TrustStore {
             self.revoked.push(RevokedEntry {
                 identity_id: id.to_string(),
                 public_key_hex: pk,
-                reason: reason.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+                reason: reason
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty()),
                 superseded_by: None,
                 grace_until: None,
             });
@@ -674,9 +673,7 @@ pub fn rotate_node_signing_secret(
     let mut staged_backup = false;
     if backup {
         let secret = old_secret.as_ref().ok_or_else(|| {
-            CryptoError::Io(
-                "cannot backup: missing identity/local.ed25519 before rotate".into(),
-            )
+            CryptoError::Io("cannot backup: missing identity/local.ed25519 before rotate".into())
         })?;
         // Drop leftover staging *files* from a previous crash (not directory traps).
         clear_staging_files(&backup_tmp, &backup_meta_tmp);
@@ -727,8 +724,7 @@ pub fn rotate_node_signing_secret(
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            if let Err(e) =
-                fs::set_permissions(&backup_meta_tmp, fs::Permissions::from_mode(0o600))
+            if let Err(e) = fs::set_permissions(&backup_meta_tmp, fs::Permissions::from_mode(0o600))
             {
                 cleanup_staging();
                 return Err(CryptoError::Io(format!(
@@ -786,7 +782,10 @@ pub fn rotate_node_signing_secret(
                 abort_after_stage(CryptoError::Io(e.to_string()))
             })?,
         );
-        obj.insert("key_path".into(), serde_json::json!("identity/local.ed25519"));
+        obj.insert(
+            "key_path".into(),
+            serde_json::json!("identity/local.ed25519"),
+        );
         let rotated_at = match utc_now_rfc3339() {
             Ok(t) => t,
             Err(e) => {
@@ -1331,10 +1330,7 @@ mod tests {
         assert_eq!(reported_old, old_pub);
         assert!(backup_path.is_none());
         assert!(!root.join("identity").join(NODE_SECRET_BACKUP_FILE).exists());
-        assert_eq!(
-            new_pub,
-            hex::encode(new_sk.verifying_key().to_bytes())
-        );
+        assert_eq!(new_pub, hex::encode(new_sk.verifying_key().to_bytes()));
         // File-backed cutover (process keyring is shared across parallel tests).
         let (reloaded, new_ring) = Keyring::load_node_identity(root).unwrap();
         assert_eq!(reloaded.as_str(), id);
@@ -1351,8 +1347,7 @@ mod tests {
         assert_eq!(entry.public_key_hex, new_pub);
         assert!(!store.is_revoked(id));
 
-        let desc_raw =
-            fs::read_to_string(root.join("identity/local.identity.json")).unwrap();
+        let desc_raw = fs::read_to_string(root.join("identity/local.identity.json")).unwrap();
         let desc: serde_json::Value = serde_json::from_str(&desc_raw).unwrap();
         assert_eq!(desc["identity_id"], id);
         assert_eq!(desc["display_name"], "node-rotate");
@@ -1394,9 +1389,10 @@ mod tests {
             fs::read_to_string(root.join("identity/local.ed25519")).unwrap(),
             old_secret
         );
-        let restored: serde_json::Value =
-            serde_json::from_str(&fs::read_to_string(root.join("identity/local.identity.json")).unwrap())
-                .unwrap();
+        let restored: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(root.join("identity/local.identity.json")).unwrap(),
+        )
+        .unwrap();
         assert_eq!(restored["public_key"]["key_hex"], old_pub);
         assert!(restored.get("rotated_at").is_none());
         reset_primary_signer();
@@ -1460,10 +1456,7 @@ mod tests {
             fs::read_to_string(root.join("identity/local.ed25519")).unwrap(),
             old_secret
         );
-        assert_eq!(
-            new_pub,
-            hex::encode(new_sk.verifying_key().to_bytes())
-        );
+        assert_eq!(new_pub, hex::encode(new_sk.verifying_key().to_bytes()));
         reset_primary_signer();
     }
 
@@ -1586,20 +1579,13 @@ mod tests {
         let (rotated_id, new_pub, _, backup_path) =
             rotate_node_signing_secret(root, new_sk.clone(), true).unwrap();
         assert_eq!(rotated_id.as_str(), id);
-        assert_eq!(
-            new_pub,
-            hex::encode(new_sk.verifying_key().to_bytes())
-        );
+        assert_eq!(new_pub, hex::encode(new_sk.verifying_key().to_bytes()));
         let backup = backup_path.expect("backup path");
         assert_eq!(backup, root.join("identity").join(NODE_SECRET_BACKUP_FILE));
         assert!(backup.is_file());
         assert_eq!(fs::read_to_string(&backup).unwrap(), old_secret);
         let store = TrustStore::load(root).unwrap();
-        let entry = store
-            .entries
-            .iter()
-            .find(|e| e.identity_id == id)
-            .unwrap();
+        let entry = store.entries.iter().find(|e| e.identity_id == id).unwrap();
         assert_eq!(entry.public_key_hex, new_pub);
         let (loaded, ring) = Keyring::load_node_identity(root).unwrap();
         assert_eq!(loaded.as_str(), id);

@@ -4,9 +4,9 @@
 
 use aira_artifact::ArtifactType;
 use aira_csu::support::{basic_manifest, json_bytes, make_artifact_as, make_event_as};
-use aira_object::AiraRef;
 use aira_csu::{Csu, CsuExecutionContext, CsuHandlerError, CsuManifest, CsuOutput, CsuType};
 use aira_event::{EventDescriptor, EventType};
+use aira_object::AiraRef;
 use serde_json::{json, Value};
 
 /// Safe local execution CSU.
@@ -48,7 +48,6 @@ impl ExecutionBasicCsu {
         aira_csu::support::apply_publisher(&mut self.manifest, publisher);
         self
     }
-
 
     fn next_id(&mut self, kind: &str) -> String {
         let id = format!("aira:{kind}:exec{}_{}", self.run_nonce, self.seq);
@@ -162,7 +161,6 @@ impl Csu for ExecutionBasicCsu {
         event: &EventDescriptor,
         ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
-
         if event.event_type != EventType::CapsuleCreated {
             return Ok(vec![]);
         }
@@ -216,12 +214,12 @@ impl Csu for ExecutionBasicCsu {
                 let out_id = self.next_id("artifact");
                 let out_desc = make_artifact_as(
                     self.manifest.publisher_identity.clone(),
-                    
                     &out_id,
                     ArtifactType::ExecutionArtifact,
                     &payload,
                     vec![event.event_id.clone(), capsule_id.clone()],
-                ).map_err(|e| CsuHandlerError {
+                )
+                .map_err(|e| CsuHandlerError {
                     message: e.to_string(),
                 })?;
                 ctx.publish_artifact(out_desc.clone(), &payload)
@@ -230,14 +228,14 @@ impl Csu for ExecutionBasicCsu {
                     })?;
                 let done = make_event_as(
                     self.manifest.publisher_identity.clone(),
-                    
                     &self.next_id("event"),
                     EventType::CapsuleCompleted,
                     event.object_refs.clone(),
                     vec![out_desc.artifact_id.clone(), capsule_id],
                     vec![event.event_id.clone()],
                     Some(result.to_string()),
-                ).map_err(|e| CsuHandlerError {
+                )
+                .map_err(|e| CsuHandlerError {
                     message: e.to_string(),
                 })?;
                 ctx.append_event(done.clone())
@@ -266,14 +264,14 @@ impl ExecutionBasicCsu {
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
         let failed = make_event_as(
             self.manifest.publisher_identity.clone(),
-            
             &self.next_id("event"),
             EventType::CapsuleFailed,
             event.object_refs.clone(),
             event.artifact_refs.clone(),
             vec![event.event_id.clone()],
             Some(message.into()),
-        ).map_err(|e| CsuHandlerError {
+        )
+        .map_err(|e| CsuHandlerError {
             message: e.to_string(),
         })?;
         ctx.append_event(failed.clone())

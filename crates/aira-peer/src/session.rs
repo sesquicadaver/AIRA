@@ -91,10 +91,8 @@ pub async fn dial(
     }
     let book = AddressBook::load(&local_root)?;
     let addr = book.resolve(peer_identity_id)?;
-    let mut stream = with_timeout(async {
-        TcpStream::connect(addr).await.map_err(PeerError::from)
-    })
-    .await?;
+    let mut stream =
+        with_timeout(async { TcpStream::connect(addr).await.map_err(PeerError::from) }).await?;
     let peer_id = with_timeout(handshake_as_initiator(&mut stream, &local_root)).await?;
     if peer_id.as_str() != peer_identity_id {
         return Err(PeerError::IdentityMismatch);
@@ -127,9 +125,7 @@ pub async fn accept(
 }
 
 fn is_loopback_bind(bind: &str) -> bool {
-    bind.starts_with("127.0.0.1:")
-        || bind.starts_with("[::1]:")
-        || bind.starts_with("localhost:")
+    bind.starts_with("127.0.0.1:") || bind.starts_with("[::1]:") || bind.starts_with("localhost:")
 }
 
 /// Bind a **loopback** listener for inbound peer links.

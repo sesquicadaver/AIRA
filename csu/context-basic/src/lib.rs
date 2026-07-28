@@ -50,7 +50,6 @@ impl ContextBasicCsu {
         self
     }
 
-
     fn next_id(&mut self, kind: &str) -> String {
         let id = format!("aira:{kind}:ctx{}_{}", self.run_nonce, self.seq);
         self.seq += 1;
@@ -68,7 +67,6 @@ impl Csu for ContextBasicCsu {
         event: &EventDescriptor,
         ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
-
         if event.event_type != EventType::ProblemSubmitted {
             return Ok(vec![]);
         }
@@ -109,12 +107,12 @@ impl Csu for ContextBasicCsu {
         let art_id = self.next_id("artifact");
         let desc = make_artifact_as(
             self.manifest.publisher_identity.clone(),
-            
             &art_id,
             ArtifactType::ContextArtifact,
             &payload,
             vec![event.event_id.clone()],
-        ).map_err(|e| CsuHandlerError {
+        )
+        .map_err(|e| CsuHandlerError {
             message: e.to_string(),
         })?;
         ctx.publish_artifact(desc.clone(), &payload)
@@ -125,14 +123,14 @@ impl Csu for ContextBasicCsu {
         let ev_id = self.next_id("event");
         let out_ev = make_event_as(
             self.manifest.publisher_identity.clone(),
-            
             &ev_id,
             EventType::ContextResolved,
             vec![problem_ref],
             vec![desc.artifact_id.clone()],
             vec![event.event_id.clone()],
             Some(statement),
-        ).map_err(|e| CsuHandlerError {
+        )
+        .map_err(|e| CsuHandlerError {
             message: e.to_string(),
         })?;
         ctx.append_event(out_ev.clone())

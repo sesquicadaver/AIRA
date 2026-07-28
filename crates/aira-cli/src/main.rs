@@ -387,7 +387,10 @@ fn run() -> Result<ExitCode> {
                 if let Some(path) = backup_path {
                     println!("backup {}", path.display());
                 }
-                println!("identity {}", NodePaths::new(&root).identity_json().display());
+                println!(
+                    "identity {}",
+                    NodePaths::new(&root).identity_json().display()
+                );
                 Ok(ExitCode::SUCCESS)
             }
             IdentityCommands::Sign { text } => {
@@ -463,8 +466,8 @@ fn run() -> Result<ExitCode> {
                     pubkey_hex,
                 } => {
                     ensure_init(&root)?;
-                    let mut store = aira_object::TrustStore::load(&root)
-                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let mut store =
+                        aira_object::TrustStore::load(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                     store
                         .upsert(&key_ref, &pubkey_hex)
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -475,8 +478,8 @@ fn run() -> Result<ExitCode> {
                 }
                 TrustCommands::Remove { key_ref } => {
                     ensure_init(&root)?;
-                    let mut store = aira_object::TrustStore::load(&root)
-                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let mut store =
+                        aira_object::TrustStore::load(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                     if key_ref == aira_object::LOCAL_TEST_KEY_REF {
                         bail!("refusing to remove local-test from trust store");
                     }
@@ -492,21 +495,20 @@ fn run() -> Result<ExitCode> {
                 }
                 TrustCommands::Revoke { key_ref, reason } => {
                     ensure_init(&root)?;
-                    let mut store = aira_object::TrustStore::load(&root)
-                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let mut store =
+                        aira_object::TrustStore::load(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                     store
                         .revoke(&key_ref, reason.as_deref())
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
                     store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
-                    aira_object::sync_trust_verifiers(&root)
-                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    aira_object::sync_trust_verifiers(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                     println!("revoked {key_ref}");
                     Ok(ExitCode::SUCCESS)
                 }
                 TrustCommands::Unrevoke { key_ref } => {
                     ensure_init(&root)?;
-                    let mut store = aira_object::TrustStore::load(&root)
-                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let mut store =
+                        aira_object::TrustStore::load(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                     store
                         .unrevoke(&key_ref)
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -522,8 +524,8 @@ fn run() -> Result<ExitCode> {
                     until,
                 } => {
                     ensure_init(&root)?;
-                    let mut store = aira_object::TrustStore::load(&root)
-                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let mut store =
+                        aira_object::TrustStore::load(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                     store
                         .rotate(
                             &old_key_ref,
@@ -534,10 +536,11 @@ fn run() -> Result<ExitCode> {
                         )
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
                     store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
-                    aira_object::sync_trust_verifiers(&root)
-                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    aira_object::sync_trust_verifiers(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                     match until {
-                        Some(u) => println!("rotated {old_key_ref} -> {new_key_ref} (grace until {u})"),
+                        Some(u) => {
+                            println!("rotated {old_key_ref} -> {new_key_ref} (grace until {u})")
+                        }
                         None => println!("rotated {old_key_ref} -> {new_key_ref}"),
                     }
                     Ok(ExitCode::SUCCESS)
@@ -823,11 +826,15 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             require_trusted(root, &key_ref)?;
             addr.parse::<std::net::SocketAddr>()
                 .with_context(|| format!("invalid addr {addr}"))?;
-            let mut book = aira_peer::AddressBook::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+            let mut book =
+                aira_peer::AddressBook::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
             book.upsert(&key_ref, &addr);
             book.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
             println!("peer {key_ref} -> {addr}");
-            println!("address_book {}", aira_peer::AddressBook::path(root).display());
+            println!(
+                "address_book {}",
+                aira_peer::AddressBook::path(root).display()
+            );
             Ok(ExitCode::SUCCESS)
         }
         PeerCommands::List => {
@@ -839,7 +846,10 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                     println!("{}\t{}", p.identity_id, p.addr);
                 }
             }
-            println!("address_book {}", aira_peer::AddressBook::path(root).display());
+            println!(
+                "address_book {}",
+                aira_peer::AddressBook::path(root).display()
+            );
             Ok(ExitCode::SUCCESS)
         }
         PeerCommands::Listen { bind } => {

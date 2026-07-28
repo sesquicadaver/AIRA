@@ -23,11 +23,9 @@ pub fn make_peer_ping(
         .map_err(|e| PeerError::Crypto(e.to_string()))?;
     let mut nonce = [0u8; 8];
     OsRng.fill_bytes(&mut nonce);
-    let message_id = aira_object::AiraRef::parse(format!(
-        "aira:message:peer-{}",
-        hex::encode(nonce)
-    ))
-    .map_err(|e| PeerError::Protocol(e.to_string()))?;
+    let message_id =
+        aira_object::AiraRef::parse(format!("aira:message:peer-{}", hex::encode(nonce)))
+            .map_err(|e| PeerError::Protocol(e.to_string()))?;
     let created = aira_object::utc_now_rfc3339()?;
     Ok(ProtocolEnvelope {
         protocol_id: ProtocolId::Identity,

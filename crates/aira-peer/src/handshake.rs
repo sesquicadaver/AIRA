@@ -22,7 +22,12 @@ pub struct HelloMessage {
     pub signature: Signature,
 }
 
-fn hello_bytes(role: &str, identity_id: &str, nonce_hex: &str, peer_nonce_hex: Option<&str>) -> Vec<u8> {
+fn hello_bytes(
+    role: &str,
+    identity_id: &str,
+    nonce_hex: &str,
+    peer_nonce_hex: Option<&str>,
+) -> Vec<u8> {
     match peer_nonce_hex {
         Some(pn) => format!("{HELLO_DOMAIN}|{role}|{identity_id}|{nonce_hex}|{pn}").into_bytes(),
         None => format!("{HELLO_DOMAIN}|{role}|{identity_id}|{nonce_hex}").into_bytes(),
@@ -99,7 +104,9 @@ pub async fn handshake_as_initiator(
         return Err(PeerError::Handshake("expected server hello".into()));
     }
     if reply.peer_nonce_hex.as_deref() != Some(nonce_c.as_str()) {
-        return Err(PeerError::Handshake("server did not echo client nonce".into()));
+        return Err(PeerError::Handshake(
+            "server did not echo client nonce".into(),
+        ));
     }
     verify_hello(&trust, &reply)?;
 
@@ -146,8 +153,7 @@ pub async fn handshake_as_responder(
     if ack.identity_id != hello.identity_id {
         return Err(PeerError::IdentityMismatch);
     }
-    if ack.nonce_hex != hello.nonce_hex || ack.peer_nonce_hex.as_deref() != Some(nonce_s.as_str())
-    {
+    if ack.nonce_hex != hello.nonce_hex || ack.peer_nonce_hex.as_deref() != Some(nonce_s.as_str()) {
         return Err(PeerError::Handshake("client-ack nonce mismatch".into()));
     }
     verify_hello(&trust, &ack)?;

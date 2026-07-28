@@ -45,8 +45,8 @@ impl AddressBook {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|e| PeerError::AddressBook(e.to_string()))?;
         }
-        let json =
-            serde_json::to_string_pretty(self).map_err(|e| PeerError::AddressBook(e.to_string()))?;
+        let json = serde_json::to_string_pretty(self)
+            .map_err(|e| PeerError::AddressBook(e.to_string()))?;
         fs::write(path, format!("{json}\n")).map_err(|e| PeerError::AddressBook(e.to_string()))
     }
 
@@ -59,8 +59,7 @@ impl AddressBook {
         } else {
             self.peers.push(PeerEndpoint { identity_id, addr });
         }
-        self.peers
-            .sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
+        self.peers.sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
     }
 
     /// Lookup socket address for identity.

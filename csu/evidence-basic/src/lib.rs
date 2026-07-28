@@ -4,9 +4,9 @@
 
 use aira_artifact::ArtifactType;
 use aira_csu::support::{basic_manifest, json_bytes, make_artifact_as, make_event_as};
-use aira_object::AiraRef;
 use aira_csu::{Csu, CsuExecutionContext, CsuHandlerError, CsuManifest, CsuOutput, CsuType};
 use aira_event::{EventDescriptor, EventType};
+use aira_object::AiraRef;
 use serde_json::json;
 
 /// Evidence capture CSU.
@@ -49,7 +49,6 @@ impl EvidenceBasicCsu {
         self
     }
 
-
     fn next_id(&mut self, kind: &str) -> String {
         let id = format!("aira:{kind}:evi{}_{}", self.run_nonce, self.seq);
         self.seq += 1;
@@ -67,7 +66,6 @@ impl Csu for EvidenceBasicCsu {
         event: &EventDescriptor,
         ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
-
         let is_failure = matches!(
             event.event_type,
             EventType::CapsuleFailed | EventType::VerificationFailed
@@ -90,12 +88,12 @@ impl Csu for EvidenceBasicCsu {
         let aid = self.next_id("artifact");
         let desc = make_artifact_as(
             self.manifest.publisher_identity.clone(),
-            
             &aid,
             ArtifactType::EvidenceArtifact,
             &payload,
             vec![event.event_id.clone()],
-        ).map_err(|e| CsuHandlerError {
+        )
+        .map_err(|e| CsuHandlerError {
             message: e.to_string(),
         })?;
         ctx.publish_artifact(desc.clone(), &payload)
@@ -111,14 +109,14 @@ impl Csu for EvidenceBasicCsu {
         if is_failure {
             let fe = make_event_as(
                 self.manifest.publisher_identity.clone(),
-                
                 &self.next_id("event"),
                 EventType::FailureEvidenceCreated,
                 event.object_refs.clone(),
                 vec![desc.artifact_id.clone()],
                 vec![event.event_id.clone()],
                 event.payload_ref.clone(),
-            ).map_err(|e| CsuHandlerError {
+            )
+            .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
             ctx.append_event(fe.clone()).map_err(|e| CsuHandlerError {
@@ -128,14 +126,14 @@ impl Csu for EvidenceBasicCsu {
         } else {
             let pub_ev = make_event_as(
                 self.manifest.publisher_identity.clone(),
-                
                 &self.next_id("event"),
                 EventType::ArtifactPublished,
                 event.object_refs.clone(),
                 vec![desc.artifact_id.clone()],
                 vec![event.event_id.clone()],
                 None,
-            ).map_err(|e| CsuHandlerError {
+            )
+            .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
             ctx.append_event(pub_ev.clone())

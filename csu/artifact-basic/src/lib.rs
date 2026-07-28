@@ -58,7 +58,6 @@ impl ArtifactBasicCsu {
         self
     }
 
-
     fn next_id(&mut self, kind: &str) -> String {
         let id = format!("aira:{kind}:art{}_{}", self.run_nonce, self.seq);
         self.seq += 1;
@@ -76,7 +75,6 @@ impl Csu for ArtifactBasicCsu {
         event: &EventDescriptor,
         ctx: &mut CsuExecutionContext<'_, '_>,
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
-
         if event.event_type != EventType::CustomEvent {
             return Ok(vec![]);
         }
@@ -86,26 +84,26 @@ impl Csu for ArtifactBasicCsu {
             let aid = self.next_id("artifact");
             let desc = make_artifact_as(
                 self.manifest.publisher_identity.clone(),
-                
                 &aid,
                 ArtifactType::CustomArtifact,
                 payload,
                 vec![event.event_id.clone()],
-            ).map_err(|e| CsuHandlerError {
+            )
+            .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
             // Hash integrity: reject if caller planted mismatched hash via empty payload edge.
             if payload.is_empty() {
                 let invalid = make_event_as(
                     self.manifest.publisher_identity.clone(),
-                    
                     &self.next_id("event"),
                     EventType::ArtifactInvalid,
                     event.object_refs.clone(),
                     vec![],
                     vec![event.event_id.clone()],
                     Some("empty payload".into()),
-                ).map_err(|e| CsuHandlerError {
+                )
+                .map_err(|e| CsuHandlerError {
                     message: e.to_string(),
                 })?;
                 ctx.append_event(invalid.clone())
@@ -120,14 +118,14 @@ impl Csu for ArtifactBasicCsu {
                 })?;
             let published = make_event_as(
                 self.manifest.publisher_identity.clone(),
-                
                 &self.next_id("event"),
                 EventType::ArtifactPublished,
                 event.object_refs.clone(),
                 vec![desc.artifact_id.clone()],
                 vec![event.event_id.clone()],
                 Some(desc.content_hash.as_str().into()),
-            ).map_err(|e| CsuHandlerError {
+            )
+            .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
             ctx.append_event(published.clone())
@@ -147,14 +145,14 @@ impl Csu for ArtifactBasicCsu {
             let Some(id) = event.artifact_refs.first() else {
                 let invalid = make_event_as(
                     self.manifest.publisher_identity.clone(),
-                    
                     &self.next_id("event"),
                     EventType::ArtifactInvalid,
                     event.object_refs.clone(),
                     vec![],
                     vec![event.event_id.clone()],
                     Some("missing artifact_ref".into()),
-                ).map_err(|e| CsuHandlerError {
+                )
+                .map_err(|e| CsuHandlerError {
                     message: e.to_string(),
                 })?;
                 ctx.append_event(invalid.clone())
@@ -169,14 +167,14 @@ impl Csu for ArtifactBasicCsu {
                     if actual != desc.content_hash {
                         let invalid = make_event_as(
                             self.manifest.publisher_identity.clone(),
-                            
                             &self.next_id("event"),
                             EventType::ArtifactInvalid,
                             event.object_refs.clone(),
                             vec![id.clone()],
                             vec![event.event_id.clone()],
                             Some("hash mismatch".into()),
-                        ).map_err(|e| CsuHandlerError {
+                        )
+                        .map_err(|e| CsuHandlerError {
                             message: e.to_string(),
                         })?;
                         ctx.append_event(invalid.clone())
@@ -187,14 +185,14 @@ impl Csu for ArtifactBasicCsu {
                     }
                     let resolved = make_event_as(
                         self.manifest.publisher_identity.clone(),
-                        
                         &self.next_id("event"),
                         EventType::ArtifactResolved,
                         event.object_refs.clone(),
                         vec![id.clone()],
                         vec![event.event_id.clone()],
                         Some(desc.content_hash.as_str().into()),
-                    ).map_err(|e| CsuHandlerError {
+                    )
+                    .map_err(|e| CsuHandlerError {
                         message: e.to_string(),
                     })?;
                     ctx.append_event(resolved.clone())
@@ -206,14 +204,14 @@ impl Csu for ArtifactBasicCsu {
                 Err(e) => {
                     let invalid = make_event_as(
                         self.manifest.publisher_identity.clone(),
-                        
                         &self.next_id("event"),
                         EventType::ArtifactInvalid,
                         event.object_refs.clone(),
                         vec![id.clone()],
                         vec![event.event_id.clone()],
                         Some(e.to_string()),
-                    ).map_err(|e| CsuHandlerError {
+                    )
+                    .map_err(|e| CsuHandlerError {
                         message: e.to_string(),
                     })?;
                     ctx.append_event(invalid.clone())
@@ -235,12 +233,12 @@ impl Csu for ArtifactBasicCsu {
             let aid = self.next_id("artifact");
             let desc = make_artifact_as(
                 self.manifest.publisher_identity.clone(),
-                
                 &aid,
                 ArtifactType::CustomArtifact,
                 payload,
                 vec![event.event_id.clone(), previous.clone()],
-            ).map_err(|e| CsuHandlerError {
+            )
+            .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
             ctx.supersede_artifact(&previous, desc.clone(), payload)
@@ -249,14 +247,14 @@ impl Csu for ArtifactBasicCsu {
                 })?;
             let superseded = make_event_as(
                 self.manifest.publisher_identity.clone(),
-                
                 &self.next_id("event"),
                 EventType::ArtifactSuperseded,
                 event.object_refs.clone(),
                 vec![previous, desc.artifact_id.clone()],
                 vec![event.event_id.clone()],
                 None,
-            ).map_err(|e| CsuHandlerError {
+            )
+            .map_err(|e| CsuHandlerError {
                 message: e.to_string(),
             })?;
             ctx.append_event(superseded.clone())
