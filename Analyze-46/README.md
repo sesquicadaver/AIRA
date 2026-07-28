@@ -33,11 +33,16 @@
 - **Critic: APPROVE**
 
 ### Acceptance
-- [ ] `run_c2` passes with ≥5 cases covering M13 exits
-- [ ] `run_profile(C2)` works
-- [ ] CLI + HTTP accept C2
-- [ ] docs/conformance.md + QUEUE
-- [ ] Tests + clippy; CODE_REVIEW APPROVE/CLEAR
+- [x] `run_c2` passes with ≥5 cases covering M13 exits
+- [x] `run_profile(C2)` works
+- [x] CLI + HTTP accept C2
+- [x] docs/conformance.md + QUEUE
+- [x] Tests + clippy; CODE_REVIEW APPROVE/CLEAR
+
+### Delivered
+- `aira_conformance::run_c2` (5 cases)
+- CLI `conformance run --profile C2`
+- HTTP `POST /v1/conformance/run` with C2
 
 ### Out
 Network C2, DHT, federation, security/alpha profile expansion.
