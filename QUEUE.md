@@ -9,7 +9,7 @@
 | Гілка | Стан |
 |-------|------|
 | MVP Epic 0–11 + Alpha.2 / Keyring / Plane / Trust / Peer P0+CLI | **done** |
-| Відкритий Analyze-34+ | **Analyze-37 CLOSED**; наступний = #5 Peer pubkey notify |
+| Відкритий Analyze-34+ | **Analyze-38 CLOSED**; наступний = #6 CSU emit_failed publisher |
 | Канон наступних milestone | `specs/mvp-roadmap.md` M12–M13 + post-MVP |
 
 Дубльовані пункти з `Analyze-*/todo/TODO_FIXME.md` зведено тут. Старі TODO у Analyze-N лишаються як provenance; **черга виконання = цей файл**.
@@ -32,7 +32,7 @@
 | 2 | **P0** | ~~Analyze-35 — Noise XX~~ **DONE** | Noise XX під тим самим frame/envelope + CLI `peer *` | #1 (стабільний listen для smoke) | Trust-delta, DHT |
 | 3 | **P1** | ~~Analyze-36 — Trust-delta over peer~~ **DONE** | CRL / trust-delta message по peer link | #2 (краще шифр. payload) або мінімум #1 | Auto-notify UX |
 | 4 | **P1** | ~~Analyze-37 — Dual-key node grace~~ **DONE** | Multi-pubkey Keyring для того ж node `key_ref` | crypto в `aira-object` (паралельно до #2–3) | Peer notify |
-| 5 | **P1** | **Analyze-38 — Peer pubkey notify** | Auto-notify peers про новий node pubkey | #3 + #4 | Gossip fanout |
+| 5 | **P1** | ~~Analyze-38 — Peer pubkey notify~~ **DONE** | Auto-notify peers про новий node pubkey | #3 + #4 | Gossip fanout |
 | 6 | **P1** | **Analyze-39 — CSU emit_failed publisher** | Довести publisher lifecycle (A-29 deferred) | незалежно | Peer |
 | 7 | **P2** | CRL / ceremony audit log | rotate/revoke/unrevoke → durable audit | після #4 | — |
 | 8 | **P2** | Timestamped `.prev` history | історія бекапів, не один слот | після #4 | — |
@@ -43,7 +43,7 @@
 
 ### Рекомендований наступний цикл
 
-**Analyze-38 — Peer pubkey notify** (auto-notify peers про новий node pubkey).
+**Analyze-39 — CSU emit_failed publisher** (A-29 deferred publisher lifecycle).
 
 ### Залежності (скорочено)
 

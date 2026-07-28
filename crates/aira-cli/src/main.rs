@@ -97,6 +97,9 @@ enum IdentityCommands {
         /// Keep previous pubkey verifiable for the same key_ref until this RFC3339 UTC instant.
         #[arg(long)]
         until: Option<String>,
+        /// After rotate, best-effort notify address-book peers of the new pubkey (Analyze-38).
+        #[arg(long, default_value_t = false)]
+        notify_peers: bool,
     },
     /// Sign a message with the node identity key.
     Sign {
@@ -289,10 +292,10 @@ enum PeerCommands {
     TrustSend {
         #[arg(long)]
         key_ref: String,
-        /// revoke | rotate | unrevoke
+        /// revoke | rotate | unrevoke | rekey
         #[arg(long)]
         op: String,
-        /// Subject (revoke/unrevoke) or old identity (rotate).
+        /// Subject (revoke/unrevoke/rekey) or old identity (rotate).
         #[arg(long)]
         subject: String,
         #[arg(long)]
@@ -300,10 +303,25 @@ enum PeerCommands {
         /// Successor identity (rotate).
         #[arg(long)]
         new_id: Option<String>,
-        /// Successor pubkey hex (rotate).
+        /// Successor / new pubkey hex (rotate / rekey).
         #[arg(long)]
         pubkey_hex: Option<String>,
-        /// Optional grace until RFC3339 UTC (rotate).
+        /// Optional grace until RFC3339 UTC (rotate / rekey informational).
+        #[arg(long)]
+        until: Option<String>,
+    },
+    /// Notify one peer (or all address-book peers) of an upcoming pubkey rekey (Analyze-38).
+    ///
+    /// Call **before** `identity rotate` (or pass `--pubkey-hex` of the key you are about to
+    /// install). Hello must still verify under the peer's current trust entry.
+    NotifyRekey {
+        /// If set, notify only this peer; otherwise all address-book peers.
+        #[arg(long)]
+        key_ref: Option<String>,
+        /// New Ed25519 public key hex (64 chars) peers should trust.
+        #[arg(long)]
+        pubkey_hex: String,
+        /// Optional grace_until forwarded in the rekey payload (informational).
         #[arg(long)]
         until: Option<String>,
     },
@@ -411,20 +429,55 @@ fn run() -> Result<ExitCode> {
                 println!("identity {}", paths.identity_json().display());
                 Ok(ExitCode::SUCCESS)
             }
-            IdentityCommands::Rotate { backup, until } => {
+            IdentityCommands::Rotate {
+                backup,
+                until,
+                notify_peers,
+            } => {
                 ensure_init(&root)?;
                 let mut rng = OsRng;
                 let signing = SigningKey::generate(&mut rng);
-                let (id, new_pub, old_pub, backup_path) = aira_object::rotate_node_signing_secret(
-                    &root,
-                    signing,
-                    backup,
-                    until.as_deref(),
-                )
-                .map_err(|e| anyhow::anyhow!("{e}"))?;
+                let new_pub = hex::encode(signing.verifying_key().to_bytes());
+                // Notify *before* cutover so peers can still verify hello with the old pubkey.
+                if notify_peers {
+                    let rt = tokio::runtime::Builder::new_multi_thread()
+                        .enable_all()
+                        .build()
+                        .context("tokio runtime")?;
+                    let results = rt
+                        .block_on(aira_peer::notify_peers_of_rekey(
+                            &root,
+                            &new_pub,
+                            until.as_deref(),
+                        ))
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    if results.is_empty() {
+                        println!("notify_peers (empty address book)");
+                    } else {
+                        for r in results {
+                            if r.ok {
+                                println!("notified {}", r.peer_id);
+                            } else {
+                                eprintln!(
+                                    "notify failed {}\t{}",
+                                    r.peer_id,
+                                    r.error.unwrap_or_default()
+                                );
+                            }
+                        }
+                    }
+                }
+                let (id, reported_new, old_pub, backup_path) =
+                    aira_object::rotate_node_signing_secret(
+                        &root,
+                        signing,
+                        backup,
+                        until.as_deref(),
+                    )
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
                 println!("rotated {}", id.as_str());
                 println!("old_public_key {old_pub}");
-                println!("public_key {new_pub}");
+                println!("public_key {reported_new}");
                 if let Some(until) = until.as_deref() {
                     println!("grace_until {until}");
                 }
@@ -1063,6 +1116,11 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                         .ok_or_else(|| anyhow::anyhow!("rotate requires --pubkey-hex"))?;
                     aira_peer::TrustDelta::rotate(subject, new_id, pubkey_hex, reason, until)
                 }
+                aira_peer::TrustDeltaOp::Rekey => {
+                    let pubkey_hex =
+                        pubkey_hex.ok_or_else(|| anyhow::anyhow!("rekey requires --pubkey-hex"))?;
+                    aira_peer::TrustDelta::rekey(subject, pubkey_hex, reason, until)
+                }
             };
             let env = aira_peer::make_trust_delta_envelope(root, &delta)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -1079,6 +1137,45 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                 delta.subject_id,
                 peer.peer_id.as_str()
             );
+            Ok(ExitCode::SUCCESS)
+        }
+        PeerCommands::NotifyRekey {
+            key_ref,
+            pubkey_hex,
+            until,
+        } => {
+            if let Some(key_ref) = key_ref {
+                require_trusted(root, &key_ref)?;
+                aira_peer::notify_peer_of_rekey(
+                    root,
+                    &key_ref,
+                    &pubkey_hex,
+                    until.as_deref(),
+                )
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+                println!("notified {key_ref}");
+            } else {
+                let results =
+                    aira_peer::notify_peers_of_rekey(root, &pubkey_hex, until.as_deref())
+                        .await
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                if results.is_empty() {
+                    println!("notify_rekey (empty address book)");
+                } else {
+                    for r in results {
+                        if r.ok {
+                            println!("notified {}", r.peer_id);
+                        } else {
+                            eprintln!(
+                                "notify failed {}\t{}",
+                                r.peer_id,
+                                r.error.unwrap_or_default()
+                            );
+                        }
+                    }
+                }
+            }
             Ok(ExitCode::SUCCESS)
         }
     }

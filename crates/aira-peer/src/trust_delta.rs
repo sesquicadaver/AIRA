@@ -1,4 +1,4 @@
-//! Trust-delta messages over authenticated peer links (Analyze-36).
+//! Trust-delta messages over authenticated peer links (Analyze-36/38).
 
 use std::path::Path;
 
@@ -25,6 +25,8 @@ pub enum TrustDeltaOp {
     Revoke,
     Rotate,
     Unrevoke,
+    /// Same identity_id, new Ed25519 pubkey (node rekey notify — Analyze-38).
+    Rekey,
 }
 
 impl TrustDeltaOp {
@@ -34,6 +36,7 @@ impl TrustDeltaOp {
             "revoke" => Ok(Self::Revoke),
             "rotate" => Ok(Self::Rotate),
             "unrevoke" => Ok(Self::Unrevoke),
+            "rekey" => Ok(Self::Rekey),
             other => Err(PeerError::Protocol(format!(
                 "unknown trust-delta op: {other}"
             ))),
@@ -46,17 +49,17 @@ impl TrustDeltaOp {
 pub struct TrustDelta {
     pub schema: String,
     pub op: TrustDeltaOp,
-    /// Subject identity (revoke/unrevoke) or old identity (rotate).
+    /// Subject identity (revoke/unrevoke/rekey) or old identity (rotate).
     pub subject_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     /// Successor identity (rotate).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub new_id: Option<String>,
-    /// Successor Ed25519 pubkey hex (rotate).
+    /// Successor / new Ed25519 pubkey hex (rotate / rekey).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub new_pubkey_hex: Option<String>,
-    /// Optional dual-key grace end RFC3339 UTC (rotate).
+    /// Optional dual-key grace end RFC3339 UTC (rotate / informational on rekey).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub grace_until: Option<String>,
 }
@@ -88,7 +91,7 @@ impl TrustDelta {
         }
     }
 
-    /// Build a rotate announcement.
+    /// Build a rotate announcement (different identity ids).
     pub fn rotate(
         old_id: impl Into<String>,
         new_id: impl Into<String>,
@@ -107,9 +110,36 @@ impl TrustDelta {
         }
     }
 
+    /// Build a same-id pubkey rekey announcement (Analyze-38).
+    pub fn rekey(
+        identity_id: impl Into<String>,
+        new_pubkey_hex: impl Into<String>,
+        reason: Option<String>,
+        grace_until: Option<String>,
+    ) -> Self {
+        Self {
+            schema: TRUST_DELTA_SCHEMA.into(),
+            op: TrustDeltaOp::Rekey,
+            subject_id: identity_id.into(),
+            reason,
+            new_id: None,
+            new_pubkey_hex: Some(new_pubkey_hex.into()),
+            grace_until,
+        }
+    }
+
     /// Canonical JSON bytes used for `payload_hash`.
     pub fn canonical_bytes(&self) -> Result<Vec<u8>, PeerError> {
         serde_json::to_vec(self).map_err(|e| PeerError::Protocol(e.to_string()))
+    }
+
+    fn require_pubkey_hex(pk: &str) -> Result<(), PeerError> {
+        if pk.len() != 64 {
+            return Err(PeerError::Protocol(
+                "new_pubkey_hex must be 64 hex chars".into(),
+            ));
+        }
+        Ok(())
     }
 
     /// Validate schema + op-specific required fields (no TrustStore mutation).
@@ -143,12 +173,21 @@ impl TrustDelta {
                     .map(str::trim)
                     .filter(|s| !s.is_empty())
                     .ok_or_else(|| PeerError::Protocol("rotate requires new_pubkey_hex".into()))?;
-                if pk.len() != 64 {
+                Self::require_pubkey_hex(pk)
+            }
+            TrustDeltaOp::Rekey => {
+                if self.new_id.is_some() {
                     return Err(PeerError::Protocol(
-                        "new_pubkey_hex must be 64 hex chars".into(),
+                        "rekey must not set new_id (same identity)".into(),
                     ));
                 }
-                Ok(())
+                let pk = self
+                    .new_pubkey_hex
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .ok_or_else(|| PeerError::Protocol("rekey requires new_pubkey_hex".into()))?;
+                Self::require_pubkey_hex(pk)
             }
         }
     }
@@ -220,6 +259,14 @@ pub fn apply_trust_delta(
                 delta.grace_until.as_deref(),
             )?;
         }
+        TrustDeltaOp::Rekey => {
+            // Only the authenticated issuer may announce their own pubkey change.
+            if delta.subject_id.trim() != issuer.as_str() {
+                return Err(PeerError::IdentityMismatch);
+            }
+            let pk = delta.new_pubkey_hex.as_deref().unwrap().trim();
+            store.upsert(delta.subject_id.trim(), pk)?;
+        }
     }
     store.save(root)?;
     let _ = sync_trust_verifiers(root)?;
@@ -285,4 +332,27 @@ pub fn make_trust_delta_envelope(
         expires_at: None,
         signature,
     })
+}
+
+/// Build a rekey delta for the local node identity's current pubkey.
+pub fn local_rekey_delta(
+    root: impl AsRef<Path>,
+    reason: Option<String>,
+    grace_until: Option<String>,
+) -> Result<TrustDelta, PeerError> {
+    let root = root.as_ref();
+    let (local_id, _) = Keyring::load_node_identity(root)?;
+    let trust = TrustStore::load(root)?;
+    let pk = trust
+        .entries
+        .iter()
+        .find(|e| e.identity_id == local_id.as_str())
+        .map(|e| e.public_key_hex.clone())
+        .ok_or_else(|| PeerError::Untrusted(local_id.as_str().into()))?;
+    Ok(TrustDelta::rekey(
+        local_id.as_str(),
+        pk,
+        reason.or_else(|| Some("node signing secret rotated".into())),
+        grace_until,
+    ))
 }

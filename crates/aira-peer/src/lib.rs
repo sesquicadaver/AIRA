@@ -1,8 +1,8 @@
-//! AIRA authenticated peer links (Analyze-32…36).
+//! AIRA authenticated peer links (Analyze-32…38).
 //!
 //! Framed TCP + mutual Ed25519 hello v1 + Noise XX + signed [`ProtocolEnvelope`].
 //! Admission is local [`TrustStore`] only — no controlling center, no DHT.
-//! Trust-delta (`peer.trust.delta`) can propagate CRL ops over the encrypted link.
+//! Trust-delta (`peer.trust.delta`) can propagate CRL ops and same-id rekey over the encrypted link.
 
 mod address_book;
 mod envelope;
@@ -10,6 +10,7 @@ mod error;
 mod frame;
 mod handshake;
 mod noise;
+mod notify;
 mod session;
 mod trust_delta;
 
@@ -19,10 +20,13 @@ pub use error::PeerError;
 pub use frame::{read_frame, write_frame, MAX_FRAME_BYTES};
 pub use handshake::{HelloMessage, HelloResult, HELLO_DOMAIN};
 pub use noise::{load_or_create_noise_static, x25519_public, NOISE_PATTERN};
+pub use notify::{
+    notify_peer_of_rekey, notify_peers_of_rekey, upcoming_rekey_delta, NotifyPeerResult,
+};
 pub use session::{accept, dial, listen, listen_explicit, AuthenticatedPeer, DEFAULT_PEER_TIMEOUT};
 pub use trust_delta::{
-    apply_trust_delta, make_trust_delta_envelope, parse_trust_delta, TrustDelta, TrustDeltaOp,
-    TRUST_DELTA_MESSAGE_TYPE, TRUST_DELTA_SCHEMA,
+    apply_trust_delta, local_rekey_delta, make_trust_delta_envelope, parse_trust_delta, TrustDelta,
+    TrustDeltaOp, TRUST_DELTA_MESSAGE_TYPE, TRUST_DELTA_SCHEMA,
 };
 
 /// Crate version string.
@@ -482,5 +486,90 @@ mod tests {
         d.schema = "nope".into();
         assert!(d.validate_shape().is_err());
         assert!(TrustDeltaOp::parse("nope").is_err());
+    }
+
+    #[test]
+    fn trust_delta_rekey_requires_issuer_subject_match() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let (_id, _) = write_node_identity(root, "host-rk", [91u8; 32]);
+        let peer = "aira:identity:peer-rk";
+        let other = "aira:identity:other-rk";
+        let peer_sk = SigningKey::from_bytes(&[93u8; 32]);
+        let other_sk = SigningKey::from_bytes(&[95u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[97u8; 32]);
+        let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
+        let other_pub = hex::encode(other_sk.verifying_key().to_bytes());
+        let new_pk = hex::encode(new_sk.verifying_key().to_bytes());
+        let mut t = TrustStore::load(root).unwrap();
+        t.upsert(peer, &peer_pub).unwrap();
+        t.upsert(other, &other_pub).unwrap();
+        t.save(root).unwrap();
+        let issuer = AiraRef::parse(peer).unwrap();
+
+        // Wrong subject (not issuer) → IdentityMismatch.
+        let bad = TrustDelta::rekey(other, &new_pk, None, None);
+        let err = apply_trust_delta(root, &issuer, &bad).unwrap_err();
+        assert!(matches!(err, PeerError::IdentityMismatch));
+
+        // Issuer rekeys self → upsert.
+        let ok = TrustDelta::rekey(peer, &new_pk, Some("rotated".into()), None);
+        apply_trust_delta(root, &issuer, &ok).unwrap();
+        let t = TrustStore::load(root).unwrap();
+        let entry = t.entries.iter().find(|e| e.identity_id == peer).unwrap();
+        assert_eq!(entry.public_key_hex, new_pk);
+    }
+
+    #[tokio::test]
+    async fn notify_rekey_updates_peer_trust() {
+        let dir_a = tempdir().unwrap();
+        let dir_b = tempdir().unwrap();
+        let root_a = dir_a.path();
+        let root_b = dir_b.path();
+        init_node(root_a).unwrap();
+        init_node(root_b).unwrap();
+        let (id_a, pub_a) = write_node_identity(root_a, "alice-nk", [101u8; 32]);
+        let (id_b, pub_b) = write_node_identity(root_b, "bob-nk", [103u8; 32]);
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
+
+        // Announce upcoming key *before* rotate so hello still verifies.
+        let new_sk = SigningKey::from_bytes(&[105u8; 32]);
+        let new_pub = hex::encode(new_sk.verifying_key().to_bytes());
+
+        let listener = listen("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut book = AddressBook::default();
+        book.upsert(id_b.as_str(), addr.to_string());
+        book.save(root_a).unwrap();
+
+        let root_b2 = root_b.to_path_buf();
+        let accept_task = tokio::spawn(async move {
+            let mut peer = accept(&listener, &root_b2).await.unwrap();
+            let env = peer.recv_envelope().await.unwrap();
+            let delta = parse_trust_delta(&env).unwrap();
+            apply_trust_delta(&root_b2, &env.issuer_identity, &delta).unwrap();
+            delta
+        });
+
+        let results = notify_peers_of_rekey(root_a, &new_pub, None).await.unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0].ok, "{:?}", results[0].error);
+
+        let delta = accept_task.await.unwrap();
+        assert_eq!(delta.op, TrustDeltaOp::Rekey);
+        assert_eq!(delta.subject_id, id_a.as_str());
+        assert_eq!(delta.new_pubkey_hex.as_deref(), Some(new_pub.as_str()));
+
+        let tb = TrustStore::load(root_b).unwrap();
+        let entry = tb
+            .entries
+            .iter()
+            .find(|e| e.identity_id == id_a.as_str())
+            .unwrap();
+        assert_eq!(entry.public_key_hex, new_pub);
+
+        // Now rotate; subsequent dials use the new key against updated trust.
+        aira_object::rotate_node_signing_secret(root_a, new_sk, false, None).unwrap();
     }
 }

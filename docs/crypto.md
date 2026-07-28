@@ -89,6 +89,8 @@ Rewrites `.aira/identity/local.ed25519` and updates `local.identity.json` **with
 
 **Dual-key grace** (Analyze-37): `identity rotate --until <RFC3339 UTC>` keeps the previous verifying key for the same `key_ref` until that instant (`previous_public_key` + `previous_grace_until` on the identity descriptor). `Keyring` may hold multiple verifying keys per ref; signing remains the current secret only.
 
+**Peer notify** (Analyze-38): `identity rotate --notify-peers` announces the **upcoming** pubkey to the address book **before** cutover (`trust-delta` op `rekey`), so hello still verifies; receivers with `--apply-trust` upsert the issuer pubkey.
+
 ```bash
 cargo run -p aira-cli -- --root "$ROOT" identity rotate
 # rotated aira:identity:local
@@ -102,6 +104,9 @@ cargo run -p aira-cli -- --root "$ROOT" identity rotate --backup
 # Dual-key grace (Analyze-37):
 cargo run -p aira-cli -- --root "$ROOT" identity rotate --until 2099-01-01T00:00:00Z
 # … grace_until …
+
+# Notify address-book peers before cutover (Analyze-38):
+cargo run -p aira-cli -- --root "$ROOT" identity rotate --notify-peers
 ```
 
 Default rotate still leaves no durable old secret. With `--backup`, the previous secret is staged under `*.tmp` (mode `0600`) before overwrite and renamed to `identity/local.ed25519.prev` (+ `local.ed25519.prev.meta.json`) only after a successful rotate. Staging failure or mid-rotate abort removes tmp only (existing `.prev` slot is preserved). A single `.prev` slot is overwritten on each successful `--backup` rotate.
@@ -121,6 +126,6 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Dual-key grace for peer *same* identity across nodes (notify); TLS; multi-tenant per-CSU keyring; CRL audit log; auto peer notify of rotated pubkey; coordinated rotate of `local.x25519` with Ed25519.
+Dual-key grace for peer TrustStore (remote same-id multi-key); TLS; multi-tenant per-CSU keyring; CRL audit log; gossip fanout; coordinated rotate of `local.x25519` with Ed25519.
 
-See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta).
+See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify).
