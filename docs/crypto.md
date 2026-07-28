@@ -101,6 +101,8 @@ Rewrites `.aira/identity/local.ed25519` and updates `local.identity.json` **with
 
 **Peer notify** (Analyze-38): `identity rotate --notify-peers` announces the **upcoming** pubkey to the address book **before** cutover (`trust-delta` op `rekey`), so hello still verifies; receivers with `--apply-trust` upsert the issuer pubkey.
 
+**Noise static rotate** (Analyze-49): the same `identity rotate` always regenerates `identity/local.x25519`. With `--backup`, the prior secret is written to `identity/local.x25519.prev` (prior `.prev` archived as `local.x25519.prev.<stamp>`).
+
 ```bash
 cargo run -p aira-cli -- --root "$ROOT" identity rotate
 # rotated aira:identity:local
@@ -145,9 +147,9 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Dual-key grace for peer TrustStore (remote same-id multi-key); mTLS; on-disk per-CSU secret files; SQLite ceremony audit table (JSONL is Analyze-40); UDP discv5 / iterative FIND_NODE; coordinated rotate of `local.x25519` with Ed25519.
+Dual-key grace for peer TrustStore (remote same-id multi-key); mTLS; on-disk per-CSU secret files; SQLite ceremony audit table (JSONL is Analyze-40); UDP discv5 / iterative FIND_NODE.
 
-Local HTTP TLS (server PEM / self-signed) shipped in Analyze-45; optional HTTP Bearer (`--http-token` / `AIRA_HTTP_TOKEN`) in Analyze-48; trusted-mesh DHT-lite in Analyze-47; mTLS still deferred.
+Local HTTP TLS (server PEM / self-signed) shipped in Analyze-45; optional HTTP Bearer (`--http-token` / `AIRA_HTTP_TOKEN`) in Analyze-48; trusted-mesh DHT-lite in Analyze-47; coordinated `local.x25519` rotate with Ed25519 in Analyze-49; mTLS still deferred.
 
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify).

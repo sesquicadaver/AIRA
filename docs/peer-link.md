@@ -5,7 +5,7 @@ Decentralized node-to-node messaging **without a controlling center**.
 ## Model
 
 - **Identity** = Ed25519 node identity (`identity/local.ed25519`)
-- **Noise static** = X25519 at `identity/local.x25519` (auto-created)
+- **Noise static** = X25519 at `identity/local.x25519` (auto-created; rotated with `identity rotate`, Analyze-49)
 - **Admission** = local `.aira/identity/trust.json` (+ CRL); unknown/revoked peers are rejected
 - **Hello v1** = mutual Ed25519 (`aira:peer:hello:v1`) signing identity + `x25519_pub_hex`
 - **Noise** = `Noise_XX_25519_ChaChaPoly_BLAKE2s` (`snow`); remote static must match hello

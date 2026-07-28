@@ -35,7 +35,10 @@ pub use gossip::{
     gossip_forward_trust_delta, gossip_mark_seen, GossipForwardResult, GossipSeenLog, GOSSIP_SEEN_CAP,
 };
 pub use handshake::{HelloMessage, HelloResult, HELLO_DOMAIN};
-pub use noise::{load_or_create_noise_static, x25519_public, NOISE_PATTERN};
+pub use noise::{
+    load_or_create_noise_static, rotate_noise_static, x25519_public, NoiseStaticRotate,
+    NODE_X25519_BACKUP_FILE, NOISE_PATTERN,
+};
 pub use notify::{
     notify_peer_of_rekey, notify_peers_of_rekey, upcoming_rekey_delta, NotifyPeerResult,
 };
@@ -241,6 +244,52 @@ mod tests {
         let a = load_or_create_noise_static(root).unwrap();
         let b = load_or_create_noise_static(root).unwrap();
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn noise_static_rotate_changes_secret_and_backup() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let before = load_or_create_noise_static(root).unwrap();
+        let expected_old = hex::encode(x25519_public(&before));
+        let r1 = rotate_noise_static(root, true).unwrap();
+        let after = load_or_create_noise_static(root).unwrap();
+        assert_ne!(before, after);
+        assert_eq!(r1.old_public_hex.as_deref(), Some(expected_old.as_str()));
+        assert_eq!(r1.new_public_hex, hex::encode(x25519_public(&after)));
+        let prev = root.join("identity").join(NODE_X25519_BACKUP_FILE);
+        assert!(prev.is_file());
+        assert_eq!(
+            r1.backup_path.as_ref().map(|p| p.as_path()),
+            Some(prev.as_path())
+        );
+        let prev_bytes = hex::decode(fs::read_to_string(&prev).unwrap().trim()).unwrap();
+        assert_eq!(prev_bytes, before);
+
+        // Second rotate with backup archives the prior .prev.
+        let r2 = rotate_noise_static(root, true).unwrap();
+        assert!(prev.is_file());
+        let archived: Vec<_> = fs::read_dir(root.join("identity"))
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|n| n.starts_with("local.x25519.prev.") && !n.ends_with(".meta.json"))
+            .collect();
+        assert_eq!(archived.len(), 1, "{archived:?}");
+        assert!(r2.backup_path.is_some());
+    }
+
+    #[test]
+    fn noise_static_rotate_without_prior_creates_fresh() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let r = rotate_noise_static(root, true).unwrap();
+        assert!(r.old_public_hex.is_none());
+        assert!(r.backup_path.is_none());
+        assert!(root.join("identity/local.x25519").is_file());
+        assert!(!root.join("identity").join(NODE_X25519_BACKUP_FILE).exists());
     }
 
     #[tokio::test]

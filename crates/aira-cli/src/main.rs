@@ -530,6 +530,8 @@ fn run() -> Result<ExitCode> {
                         until.as_deref(),
                     )
                     .map_err(|e| anyhow::anyhow!("{e}"))?;
+                let noise = aira_peer::rotate_noise_static(&root, backup)
+                    .map_err(|e| anyhow::anyhow!("x25519 rotate: {e}"))?;
                 println!("rotated {}", id.as_str());
                 println!("old_public_key {old_pub}");
                 println!("public_key {reported_new}");
@@ -538,6 +540,13 @@ fn run() -> Result<ExitCode> {
                 }
                 if let Some(path) = backup_path {
                     println!("backup {}", path.display());
+                }
+                if let Some(ref old_x) = noise.old_public_hex {
+                    println!("x25519_old_public_key {old_x}");
+                }
+                println!("x25519_public_key {}", noise.new_public_hex);
+                if let Some(path) = noise.backup_path {
+                    println!("x25519_backup {}", path.display());
                 }
                 println!(
                     "identity {}",
