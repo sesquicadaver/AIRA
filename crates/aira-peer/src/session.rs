@@ -1,4 +1,4 @@
-//! Authenticated peer session: dial / accept + envelope exchange.
+//! Authenticated peer session: dial / accept + Noise XX + envelope exchange.
 
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
@@ -6,16 +6,20 @@ use std::time::Duration;
 
 use aira_object::{AiraRef, TrustStore};
 use aira_protocol::ProtocolEnvelope;
+use snow::TransportState;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::time::timeout;
 
 use crate::address_book::AddressBook;
 use crate::error::PeerError;
-use crate::frame::{read_json, write_json};
 use crate::handshake::{handshake_as_initiator, handshake_as_responder};
+use crate::noise::{
+    load_or_create_noise_static, noise_xx_initiator, noise_xx_responder, read_encrypted,
+    write_encrypted,
+};
 
 /// Default I/O / handshake deadline for peer link operations.
-pub const DEFAULT_PEER_TIMEOUT: Duration = Duration::from_secs(10);
+pub const DEFAULT_PEER_TIMEOUT: Duration = Duration::from_secs(15);
 
 async fn with_timeout<T, F>(fut: F) -> Result<T, PeerError>
 where
@@ -26,10 +30,11 @@ where
         .map_err(|_| PeerError::Io("peer operation timed out".into()))?
 }
 
-/// Authenticated TCP session bound to a remote peer identity.
+/// Authenticated TCP session bound to a remote peer identity (Noise transport).
 #[derive(Debug)]
 pub struct AuthenticatedPeer {
     pub(crate) stream: TcpStream,
+    pub(crate) transport: TransportState,
     /// Local node root (for trust-backed envelope verify).
     local_root: PathBuf,
     /// Authenticated remote identity.
@@ -39,7 +44,7 @@ pub struct AuthenticatedPeer {
 }
 
 impl AuthenticatedPeer {
-    /// Send one signed protocol envelope.
+    /// Send one signed protocol envelope (Noise-encrypted frame).
     pub async fn send_envelope(&mut self, envelope: &ProtocolEnvelope) -> Result<(), PeerError> {
         if envelope.issuer_identity != self.local_id {
             return Err(PeerError::IdentityMismatch);
@@ -47,14 +52,19 @@ impl AuthenticatedPeer {
         if envelope.signature.key_ref != self.local_id {
             return Err(PeerError::IdentityMismatch);
         }
-        with_timeout(write_json(&mut self.stream, envelope)).await
+        let bytes = serde_json::to_vec(envelope)?;
+        with_timeout(write_encrypted(
+            &mut self.stream,
+            &mut self.transport,
+            &bytes,
+        ))
+        .await
     }
 
     /// Receive one envelope; fail closed unless issuer/sig bind to authenticated peer.
-    ///
-    /// Verifies signature strictly over `payload_hash` (no local-test domain fallback on wire).
     pub async fn recv_envelope(&mut self) -> Result<ProtocolEnvelope, PeerError> {
-        let env: ProtocolEnvelope = with_timeout(read_json(&mut self.stream)).await?;
+        let bytes = with_timeout(read_encrypted(&mut self.stream, &mut self.transport)).await?;
+        let env: ProtocolEnvelope = serde_json::from_slice(&bytes)?;
         if env.issuer_identity != self.peer_id {
             return Err(PeerError::IdentityMismatch);
         }
@@ -72,7 +82,57 @@ impl AuthenticatedPeer {
     }
 }
 
-/// Dial a trusted peer from the local address book and complete hello.
+pub(crate) fn ensure_noise_static_bind(
+    expected: &[u8; 32],
+    actual: &[u8; 32],
+) -> Result<(), PeerError> {
+    if expected != actual {
+        return Err(PeerError::Handshake(
+            "Noise remote static does not match hello x25519_pub".into(),
+        ));
+    }
+    Ok(())
+}
+
+async fn finish_initiator(
+    stream: TcpStream,
+    local_root: PathBuf,
+    hello: crate::handshake::HelloResult,
+) -> Result<AuthenticatedPeer, PeerError> {
+    let static_priv = load_or_create_noise_static(&local_root)?;
+    let mut stream = stream;
+    let (transport, remote_static) = noise_xx_initiator(&mut stream, &static_priv).await?;
+    ensure_noise_static_bind(&hello.peer_x25519_pub, &remote_static)?;
+    let (local_id, _) = aira_object::Keyring::load_node_identity(&local_root)?;
+    Ok(AuthenticatedPeer {
+        stream,
+        transport,
+        local_root,
+        peer_id: hello.peer_id,
+        local_id,
+    })
+}
+
+async fn finish_responder(
+    stream: TcpStream,
+    local_root: PathBuf,
+    hello: crate::handshake::HelloResult,
+) -> Result<AuthenticatedPeer, PeerError> {
+    let static_priv = load_or_create_noise_static(&local_root)?;
+    let mut stream = stream;
+    let (transport, remote_static) = noise_xx_responder(&mut stream, &static_priv).await?;
+    ensure_noise_static_bind(&hello.peer_x25519_pub, &remote_static)?;
+    let (local_id, _) = aira_object::Keyring::load_node_identity(&local_root)?;
+    Ok(AuthenticatedPeer {
+        stream,
+        transport,
+        local_root,
+        peer_id: hello.peer_id,
+        local_id,
+    })
+}
+
+/// Dial a trusted peer from the local address book and complete hello + Noise XX.
 pub async fn dial(
     local_root: impl AsRef<Path>,
     peer_identity_id: &str,
@@ -93,38 +153,24 @@ pub async fn dial(
     let addr = book.resolve(peer_identity_id)?;
     let mut stream =
         with_timeout(async { TcpStream::connect(addr).await.map_err(PeerError::from) }).await?;
-    let peer_id = with_timeout(handshake_as_initiator(&mut stream, &local_root)).await?;
-    if peer_id.as_str() != peer_identity_id {
+    let hello = with_timeout(handshake_as_initiator(&mut stream, &local_root)).await?;
+    if hello.peer_id.as_str() != peer_identity_id {
         return Err(PeerError::IdentityMismatch);
     }
-    let (local_id, _) = aira_object::Keyring::load_node_identity(&local_root)?;
-    Ok(AuthenticatedPeer {
-        stream,
-        local_root,
-        peer_id,
-        local_id,
-    })
+    with_timeout(finish_initiator(stream, local_root, hello)).await
 }
 
-/// Accept one inbound connection and complete hello.
+/// Accept one inbound connection and complete hello + Noise XX.
 ///
-/// Waiting for the next TCP connection is **not** bounded by [`DEFAULT_PEER_TIMEOUT`]
-/// so a long-running listen daemon can idle safely. Handshake and later frame I/O
-/// still use the default peer deadline.
+/// Waiting for the next TCP connection is **not** bounded by [`DEFAULT_PEER_TIMEOUT`].
 pub async fn accept(
     listener: &TcpListener,
     local_root: impl AsRef<Path>,
 ) -> Result<AuthenticatedPeer, PeerError> {
     let local_root = local_root.as_ref().to_path_buf();
     let (mut stream, _addr) = listener.accept().await.map_err(PeerError::from)?;
-    let peer_id = with_timeout(handshake_as_responder(&mut stream, &local_root)).await?;
-    let (local_id, _) = aira_object::Keyring::load_node_identity(&local_root)?;
-    Ok(AuthenticatedPeer {
-        stream,
-        local_root,
-        peer_id,
-        local_id,
-    })
+    let hello = with_timeout(handshake_as_responder(&mut stream, &local_root)).await?;
+    with_timeout(finish_responder(stream, local_root, hello)).await
 }
 
 fn is_loopback_bind(bind: &str) -> bool {
@@ -132,8 +178,6 @@ fn is_loopback_bind(bind: &str) -> bool {
 }
 
 /// Bind a **loopback** listener for inbound peer links.
-///
-/// Non-loopback binds are rejected in P0 — use [`listen_explicit`] for overrides.
 pub async fn listen(bind: &str) -> Result<TcpListener, PeerError> {
     if !is_loopback_bind(bind) {
         return Err(PeerError::Io(format!(

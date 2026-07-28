@@ -1,6 +1,6 @@
-//! AIRA authenticated peer links (Analyze-32 P0).
+//! AIRA authenticated peer links (Analyze-32…35).
 //!
-//! Framed TCP + mutual Ed25519 hello + signed [`ProtocolEnvelope`] exchange.
+//! Framed TCP + mutual Ed25519 hello v1 + Noise XX + signed [`ProtocolEnvelope`].
 //! Admission is local [`TrustStore`] only — no controlling center, no DHT.
 
 mod address_book;
@@ -8,13 +8,15 @@ mod envelope;
 mod error;
 mod frame;
 mod handshake;
+mod noise;
 mod session;
 
 pub use address_book::{AddressBook, PeerEndpoint};
 pub use envelope::make_peer_ping;
 pub use error::PeerError;
 pub use frame::{read_frame, write_frame, MAX_FRAME_BYTES};
-pub use handshake::{HelloMessage, HELLO_DOMAIN};
+pub use handshake::{HelloMessage, HelloResult, HELLO_DOMAIN};
+pub use noise::{load_or_create_noise_static, x25519_public, NOISE_PATTERN};
 pub use session::{accept, dial, listen, listen_explicit, AuthenticatedPeer, DEFAULT_PEER_TIMEOUT};
 
 /// Crate version string.
@@ -29,8 +31,7 @@ mod tests {
 
     use aira_flow::{init_node, NodePaths};
     use aira_object::{
-        ensure_trust_defaults, sign_with_key, AiraRef, ContentHash, Keyring, Signature, Timestamp,
-        TrustStore,
+        ensure_trust_defaults, sign_with_key, AiraRef, ContentHash, Keyring, Timestamp, TrustStore,
     };
     use aira_protocol::{ProtocolEnvelope, ProtocolId, ScopeDescriptor};
     use ed25519_dalek::SigningKey;
@@ -183,6 +184,35 @@ mod tests {
         assert_eq!(accept_loop.await.unwrap(), 2);
     }
 
+    #[test]
+    fn noise_static_bind_rejects_mismatch() {
+        let expected = [1u8; 32];
+        let actual = [2u8; 32];
+        let err = crate::session::ensure_noise_static_bind(&expected, &actual).unwrap_err();
+        assert!(matches!(err, PeerError::Handshake(_)));
+        crate::session::ensure_noise_static_bind(&expected, &expected).unwrap();
+    }
+
+    #[test]
+    fn noise_static_file_created_mode_600() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let _ = load_or_create_noise_static(root).unwrap();
+        let path = root.join("identity").join("local.x25519");
+        assert!(path.is_file());
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600);
+        }
+        // Idempotent reload.
+        let a = load_or_create_noise_static(root).unwrap();
+        let b = load_or_create_noise_static(root).unwrap();
+        assert_eq!(a, b);
+    }
+
     #[tokio::test]
     async fn untrusted_peer_rejected_at_handshake() {
         let dir_a = tempdir().unwrap();
@@ -273,23 +303,15 @@ mod tests {
         let err = client.send_envelope(&env).await.unwrap_err();
         assert!(matches!(err, PeerError::IdentityMismatch));
 
-        // Direct frame with mismatched issuer after handshake.
-        let (_ida2, ring_a2) = Keyring::load_node_identity(root_a).unwrap();
-        let mut forged = make_envelope(&id_a, &ring_a2, "forged");
-        forged.issuer_identity = id_b.clone();
-        forged.signature = Signature {
-            algorithm: "ed25519".into(),
-            key_ref: id_b.clone(),
-            signature_value: forged.signature.signature_value.clone(),
-        };
-        crate::frame::write_json(&mut client.stream, &forged)
+        // Cleartext frame after Noise must fail closed on decrypt.
+        crate::frame::write_frame(&mut client.stream, b"{\"not\":\"noise\"}")
             .await
             .unwrap();
         let err = server.recv_envelope().await.unwrap_err();
-        assert!(matches!(
-            err,
-            PeerError::IdentityMismatch | PeerError::InvalidSignature
-        ));
+        assert!(
+            matches!(err, PeerError::Crypto(_) | PeerError::Protocol(_)),
+            "unexpected: {err}"
+        );
     }
 
     #[tokio::test]

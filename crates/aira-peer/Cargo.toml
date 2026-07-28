@@ -16,6 +16,8 @@ thiserror = { workspace = true }
 hex = { workspace = true }
 rand = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
+snow = { workspace = true }
+x25519-dalek = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

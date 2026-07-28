@@ -4,6 +4,6 @@
 
 - [x] Persistent listen daemon (multi-accept) → **Analyze-34 DONE**
 - [x] `peer dial` smoke without requiring envelope recv on listener → **Analyze-34 DONE**
-- [ ] Noise XX under same CLI → QUEUE #2
+- [x] Noise XX under same CLI → **Analyze-35 DONE**
 - [ ] Trust-delta / CRL sync message over peer link → QUEUE #3
 - [ ] NAT / gossip / DHT → QUEUE #10
