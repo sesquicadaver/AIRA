@@ -293,9 +293,17 @@ enum PeerCommands {
         /// Run as relay hub: register live sessions and forward `peer.relay.deliver` (Analyze-44).
         #[arg(long, default_value_t = false)]
         relay: bool,
+        /// Apply inbound `peer.dht.announce` into local DHT table (Analyze-47).
+        #[arg(long, default_value_t = false)]
+        dht: bool,
     },
     /// List durable peer discovery journal (`peers/discovery.json`).
     Discovery,
+    /// Trusted-mesh DHT-lite (Analyze-47).
+    Dht {
+        #[command(subcommand)]
+        command: PeerDhtCommands,
+    },
     /// Hold an outbound session to a relay (register for inbound delivers).
     RelayHold {
         #[arg(long)]
@@ -353,6 +361,25 @@ enum PeerCommands {
         #[arg(long)]
         until: Option<String>,
     },
+}
+
+#[derive(Subcommand, Debug)]
+enum PeerDhtCommands {
+    /// Announce local listen addr into DHT and fan out to address-book peers.
+    Announce {
+        /// Dialable socket addr to advertise (e.g. 127.0.0.1:7900).
+        #[arg(long)]
+        addr: String,
+    },
+    /// Find closest DHT records for an identity (local table).
+    Find {
+        #[arg(long)]
+        key_ref: String,
+        #[arg(long, default_value_t = aira_peer::DHT_DEFAULT_K)]
+        k: usize,
+    },
+    /// List local DHT records.
+    List,
 }
 
 #[derive(Subcommand, Debug)]
@@ -1098,6 +1125,65 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             );
             Ok(ExitCode::SUCCESS)
         }
+        PeerCommands::Dht { command } => match command {
+            PeerDhtCommands::Announce { addr } => {
+                addr.parse::<std::net::SocketAddr>()
+                    .with_context(|| format!("invalid addr {addr}"))?;
+                let results = aira_peer::dht_announce_to_peers(root, &addr)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                println!("dht announced {addr}");
+                println!("dht {}", aira_peer::PeerDhtStore::path(root).display());
+                for (peer, ok, err) in results {
+                    if ok {
+                        println!("announce -> {peer}");
+                    } else {
+                        eprintln!(
+                            "announce failed {peer}\t{}",
+                            err.unwrap_or_default()
+                        );
+                    }
+                }
+                Ok(ExitCode::SUCCESS)
+            }
+            PeerDhtCommands::Find { key_ref, k } => {
+                let store =
+                    aira_peer::PeerDhtStore::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+                if let Some(exact) = store.get(&key_ref) {
+                    println!(
+                        "exact\t{}\t{}\t{}",
+                        exact.identity_id, exact.addr, exact.key_hex
+                    );
+                }
+                let closest = store.closest(&key_ref, k);
+                if closest.is_empty() {
+                    println!("(empty dht)");
+                } else {
+                    for r in closest {
+                        println!("{}\t{}\t{}", r.identity_id, r.addr, r.key_hex);
+                    }
+                }
+                println!("dht {}", aira_peer::PeerDhtStore::path(root).display());
+                Ok(ExitCode::SUCCESS)
+            }
+            PeerDhtCommands::List => {
+                let store =
+                    aira_peer::PeerDhtStore::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+                if store.records.is_empty() {
+                    println!("(empty dht)");
+                } else {
+                    for r in &store.records {
+                        let src = r.source.as_deref().unwrap_or("-");
+                        println!(
+                            "{}\t{}\t{}\t{}\t{}",
+                            r.identity_id, r.addr, r.key_hex, r.updated_at, src
+                        );
+                    }
+                }
+                println!("dht {}", aira_peer::PeerDhtStore::path(root).display());
+                Ok(ExitCode::SUCCESS)
+            }
+        },
         PeerCommands::Listen {
             bind,
             once,
@@ -1105,15 +1191,22 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             apply_trust,
             gossip,
             relay,
+            dht,
         } => {
             if apply_trust && !recv && !relay {
                 bail!("--apply-trust requires --recv (or use --relay)");
+            }
+            if dht && !recv && !relay {
+                bail!("--dht requires --recv (or use with --relay separately)");
             }
             if gossip && !apply_trust {
                 bail!("--gossip requires --apply-trust");
             }
             if relay && gossip {
                 bail!("--relay and --gossip are mutually exclusive in this slice");
+            }
+            if relay && dht {
+                bail!("--relay and --dht are mutually exclusive in this slice");
             }
             if relay && recv {
                 bail!("--relay implies hub mode; omit --recv");
@@ -1139,6 +1232,9 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             }
             if gossip {
                 println!("gossip enabled");
+            }
+            if dht {
+                println!("dht apply enabled");
             }
             let root_owned = root.to_path_buf();
             if relay {
@@ -1243,11 +1339,22 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                                 }
                             }
                         }
+                        if dht && env.message_type == aira_peer::DHT_ANNOUNCE_MESSAGE_TYPE {
+                            let announce = aira_peer::parse_dht_announce(&env)
+                                .map_err(|e| anyhow::anyhow!("{e}"))?;
+                            aira_peer::apply_dht_announce(root, &env.issuer_identity, &announce)
+                                .map_err(|e| anyhow::anyhow!("{e}"))?;
+                            println!(
+                                "applied dht-announce {}\t{}",
+                                announce.identity_id, announce.addr
+                            );
+                        }
                         break;
                     }
                     let root_bg = root_owned.clone();
                     let do_apply = apply_trust;
                     let do_gossip = gossip;
+                    let do_dht = dht;
                     tokio::spawn(async move {
                         let from = peer.peer_id.as_str().to_string();
                         let recv = if do_apply {
@@ -1315,6 +1422,24 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                                             "apply_trust error from {}: {e}",
                                             env.issuer_identity.as_str()
                                         ),
+                                    }
+                                }
+                                if do_dht
+                                    && env.message_type == aira_peer::DHT_ANNOUNCE_MESSAGE_TYPE
+                                {
+                                    match aira_peer::parse_dht_announce(&env).and_then(|a| {
+                                        aira_peer::apply_dht_announce(
+                                            &root_bg,
+                                            &env.issuer_identity,
+                                            &a,
+                                        )
+                                        .map(|_| a)
+                                    }) {
+                                        Ok(announce) => println!(
+                                            "applied dht-announce {}\t{}",
+                                            announce.identity_id, announce.addr
+                                        ),
+                                        Err(e) => eprintln!("dht apply error: {e}"),
                                     }
                                 }
                             }

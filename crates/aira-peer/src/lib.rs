@@ -1,12 +1,14 @@
-//! AIRA authenticated peer links (Analyze-32…44).
+//! AIRA authenticated peer links (Analyze-32…47).
 //!
 //! Framed TCP + mutual Ed25519 hello v1 + Noise XX + signed [`ProtocolEnvelope`].
-//! Admission is local [`TrustStore`] only — no controlling center, no DHT.
+//! Admission is local [`TrustStore`] only — no controlling center.
 //! Trust-delta (`peer.trust.delta`) can propagate CRL ops and same-id rekey over the encrypted link.
 //! Analyze-43: optional gossip fanout + durable `peers/discovery.json`.
 //! Analyze-44: relay-first hub (`peer.relay.deliver` + address-book `via`).
+//! Analyze-47: trusted-mesh DHT-lite (`peers/dht.json` + `peer.dht.announce`).
 
 mod address_book;
+mod dht;
 mod discovery;
 mod envelope;
 mod error;
@@ -20,6 +22,11 @@ mod session;
 mod trust_delta;
 
 pub use address_book::{AddressBook, PeerEndpoint};
+pub use dht::{
+    apply_dht_announce, dht_announce_to_peers, dht_key_hex, make_dht_announce_envelope,
+    parse_dht_announce, xor_distance, DhtAnnounce, DhtRecord, PeerDhtStore, DHT_ANNOUNCE_MESSAGE_TYPE,
+    DHT_DEFAULT_K, DHT_SCHEMA,
+};
 pub use discovery::{DiscoveryEntry, DiscoverySource, PeerDiscoveryStore};
 pub use envelope::make_peer_ping;
 pub use error::PeerError;
@@ -794,5 +801,53 @@ mod tests {
         assert_eq!(applied.subject_id, victim);
         assert!(TrustStore::load(root_c).unwrap().is_revoked(victim));
         let _ = accept_task.await;
+    }
+
+    #[tokio::test]
+    async fn dht_announce_a_to_b_then_find() {
+        let dir_a = tempdir().unwrap();
+        let dir_b = tempdir().unwrap();
+        let root_a = dir_a.path();
+        let root_b = dir_b.path();
+        init_node(root_a).unwrap();
+        init_node(root_b).unwrap();
+        let (id_a, pub_a) = write_node_identity(root_a, "dht-alice", [131u8; 32]);
+        let (id_b, pub_b) = write_node_identity(root_b, "dht-bob", [133u8; 32]);
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
+
+        let listener = listen("127.0.0.1:0").await.unwrap();
+        let addr_b = listener.local_addr().unwrap();
+        let mut book_a = AddressBook::default();
+        book_a.upsert(id_b.as_str(), addr_b.to_string());
+        book_a.save(root_a).unwrap();
+
+        let root_b2 = root_b.to_path_buf();
+        let b_task = tokio::spawn(async move {
+            let mut peer = accept(&listener, &root_b2).await.unwrap();
+            let env = peer.recv_envelope().await.unwrap();
+            let announce = parse_dht_announce(&env).unwrap();
+            apply_dht_announce(&root_b2, &env.issuer_identity, &announce).unwrap();
+            announce
+        });
+
+        let announce_addr = "127.0.0.1:17900";
+        let results = dht_announce_to_peers(root_a, announce_addr).await.unwrap();
+        assert!(
+            results.iter().any(|(id, ok, _)| id == id_b.as_str() && *ok),
+            "{results:?}"
+        );
+
+        let got = b_task.await.unwrap();
+        assert_eq!(got.identity_id, id_a.as_str());
+        assert_eq!(got.addr, announce_addr);
+
+        let store_b = PeerDhtStore::load(root_b).unwrap();
+        let found = store_b.get(id_a.as_str()).unwrap();
+        assert_eq!(found.addr, announce_addr);
+        let closest = store_b.closest(id_a.as_str(), 1);
+        assert_eq!(closest[0].identity_id, id_a.as_str());
+
+        let store_a = PeerDhtStore::load(root_a).unwrap();
+        assert_eq!(store_a.get(id_a.as_str()).unwrap().addr, announce_addr);
     }
 }

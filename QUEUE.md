@@ -9,7 +9,8 @@
 | Гілка | Стан |
 |-------|------|
 | MVP Epic 0–11 + Alpha.2 / Keyring / Plane / Trust / Peer P0+CLI | **done** |
-| Відкритий Analyze-34+ | **Analyze-46 CLOSED** (partial C2 conformance); наступний = DHT micro або post-MVP follow-ups |
+| Відкритий Analyze-34+ | **Analyze-47 CLOSED** (DHT-lite); наступний = post-MVP (mTLS/authn, dual-key remote, x25519 rotate) |
+
 
 
 
