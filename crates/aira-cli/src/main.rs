@@ -253,10 +253,19 @@ enum PeerCommands {
     },
     /// List address-book peers.
     List,
-    /// Listen (loopback), accept one peer, receive one envelope.
+    /// Listen (loopback). Default: persistent accept loop (daemon).
+    ///
+    /// Without `--recv`, only hello is completed (dial smoke works). Use `--recv`
+    /// to receive one envelope per accepted peer. Use `--once` for a single accept.
     Listen {
         #[arg(long, default_value = "127.0.0.1:0")]
         bind: String,
+        /// Exit after one successful accept (and optional recv).
+        #[arg(long, default_value_t = false)]
+        once: bool,
+        /// After hello, receive one envelope from the peer.
+        #[arg(long, default_value_t = false)]
+        recv: bool,
     },
     /// Dial a trusted peer and complete hello.
     Dial {
@@ -852,28 +861,78 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             );
             Ok(ExitCode::SUCCESS)
         }
-        PeerCommands::Listen { bind } => {
+        PeerCommands::Listen { bind, once, recv } => {
             let listener = aira_peer::listen(&bind)
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
             let addr = listener.local_addr()?;
             println!("listening {addr}");
-            let mut peer = aira_peer::accept(&listener, root)
-                .await
-                .map_err(|e| anyhow::anyhow!("{e}"))?;
-            println!("accepted {}", peer.peer_id.as_str());
-            let env = peer
-                .recv_envelope()
-                .await
-                .map_err(|e| anyhow::anyhow!("{e}"))?;
-            println!(
-                "received {}\t{}\t{}",
-                env.message_type,
-                env.message_id.as_str(),
-                env.issuer_identity.as_str()
-            );
-            if let Some(payload) = env.payload_ref.as_deref() {
-                println!("payload_ref {payload}");
+            if once {
+                println!("mode once");
+            } else {
+                println!("mode daemon");
+            }
+            if recv {
+                println!("recv enabled");
+            }
+            loop {
+                let mut peer = match aira_peer::accept(&listener, root).await {
+                    Ok(p) => p,
+                    Err(e) => {
+                        eprintln!("accept error: {e}");
+                        if once {
+                            return Err(anyhow::anyhow!("{e}"));
+                        }
+                        // Avoid tight spin if the listener is wedged; admission errors
+                        // still return to waiting on the next TCP accept.
+                        if matches!(e, aira_peer::PeerError::Io(_)) {
+                            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                        }
+                        continue;
+                    }
+                };
+                println!("accepted {}", peer.peer_id.as_str());
+                if recv {
+                    if once {
+                        let env = peer
+                            .recv_envelope()
+                            .await
+                            .map_err(|e| anyhow::anyhow!("{e}"))?;
+                        println!(
+                            "received {}\t{}\t{}",
+                            env.message_type,
+                            env.message_id.as_str(),
+                            env.issuer_identity.as_str()
+                        );
+                        if let Some(payload) = env.payload_ref.as_deref() {
+                            println!("payload_ref {payload}");
+                        }
+                        break;
+                    }
+                    // Daemon: recv off the accept path so the next hello is not blocked.
+                    tokio::spawn(async move {
+                        match peer.recv_envelope().await {
+                            Ok(env) => {
+                                println!(
+                                    "received {}\t{}\t{}",
+                                    env.message_type,
+                                    env.message_id.as_str(),
+                                    env.issuer_identity.as_str()
+                                );
+                                if let Some(payload) = env.payload_ref.as_deref() {
+                                    println!("payload_ref {payload}");
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("recv error from {}: {e}", peer.peer_id.as_str());
+                            }
+                        }
+                    });
+                    continue;
+                }
+                if once {
+                    break;
+                }
             }
             Ok(ExitCode::SUCCESS)
         }

@@ -107,13 +107,16 @@ pub async fn dial(
 }
 
 /// Accept one inbound connection and complete hello.
+///
+/// Waiting for the next TCP connection is **not** bounded by [`DEFAULT_PEER_TIMEOUT`]
+/// so a long-running listen daemon can idle safely. Handshake and later frame I/O
+/// still use the default peer deadline.
 pub async fn accept(
     listener: &TcpListener,
     local_root: impl AsRef<Path>,
 ) -> Result<AuthenticatedPeer, PeerError> {
     let local_root = local_root.as_ref().to_path_buf();
-    let (mut stream, _addr) =
-        with_timeout(async { listener.accept().await.map_err(PeerError::from) }).await?;
+    let (mut stream, _addr) = listener.accept().await.map_err(PeerError::from)?;
     let peer_id = with_timeout(handshake_as_responder(&mut stream, &local_root)).await?;
     let (local_id, _) = aira_object::Keyring::load_node_identity(&local_root)?;
     Ok(AuthenticatedPeer {

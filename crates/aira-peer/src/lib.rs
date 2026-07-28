@@ -143,6 +143,47 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn listen_accepts_multiple_hello_only_dials() {
+        let dir_a = tempdir().unwrap();
+        let dir_b = tempdir().unwrap();
+        let root_a = dir_a.path();
+        let root_b = dir_b.path();
+        init_node(root_a).unwrap();
+        init_node(root_b).unwrap();
+        let (id_a, pub_a) = write_node_identity(root_a, "alice-d", [31u8; 32]);
+        let (id_b, pub_b) = write_node_identity(root_b, "bob-d", [33u8; 32]);
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
+
+        let listener = listen("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut book = AddressBook::default();
+        book.upsert(id_b.as_str(), addr.to_string());
+        book.save(root_a).unwrap();
+
+        let root_b2 = root_b.to_path_buf();
+        let accept_loop = tokio::spawn(async move {
+            let mut n = 0usize;
+            while n < 2 {
+                let peer = accept(&listener, &root_b2).await.unwrap();
+                assert_eq!(peer.peer_id, id_a);
+                // Hello-only: drop without recv_envelope (dial smoke).
+                drop(peer);
+                n += 1;
+            }
+            n
+        });
+
+        let d1 = dial(root_a, id_b.as_str()).await.unwrap();
+        assert_eq!(d1.peer_id, id_b);
+        drop(d1);
+        let d2 = dial(root_a, id_b.as_str()).await.unwrap();
+        assert_eq!(d2.peer_id, id_b);
+        drop(d2);
+
+        assert_eq!(accept_loop.await.unwrap(), 2);
+    }
+
+    #[tokio::test]
     async fn untrusted_peer_rejected_at_handshake() {
         let dir_a = tempdir().unwrap();
         let dir_b = tempdir().unwrap();
