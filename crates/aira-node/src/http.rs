@@ -295,10 +295,11 @@ async fn post_conformance_run(
     let profile = match body.profile.to_uppercase().as_str() {
         "C0" => ConformanceProfile::C0,
         "C1" => ConformanceProfile::C1,
+        "C2" => ConformanceProfile::C2,
         other => {
             return err(
                 StatusCode::BAD_REQUEST,
-                &format!("unsupported profile {other} (use C0 or C1)"),
+                &format!("unsupported profile {other} (use C0, C1, or C2)"),
             )
         }
     };
@@ -550,17 +551,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn http_conformance_c0() {
+    async fn http_conformance_c2() {
         let (_dir, state) = setup();
         let (st, v) = json_req(
             router(state),
             "POST",
             "/v1/conformance/run",
-            Some(json!({"profile": "C0"})),
+            Some(json!({"profile": "C2"})),
         )
         .await;
         assert_eq!(st, StatusCode::OK, "{v}");
-        assert_eq!(v["profile"], "C0");
+        assert_eq!(v["profile"], "C2");
         assert_eq!(v["results"]["failed"], 0);
+        assert_eq!(v["results"]["passed"], 5);
     }
 }

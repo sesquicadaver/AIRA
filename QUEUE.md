@@ -9,7 +9,8 @@
 | Гілка | Стан |
 |-------|------|
 | MVP Epic 0–11 + Alpha.2 / Keyring / Plane / Trust / Peer P0+CLI | **done** |
-| Відкритий Analyze-34+ | **Analyze-45 CLOSED** (HTTP TLS + discovery persist); наступний = #12 M12–M13 / C2 або DHT micro |
+| Відкритий Analyze-34+ | **Analyze-46 CLOSED** (partial C2 conformance); наступний = DHT micro або post-MVP follow-ups |
+
 
 
 
@@ -42,11 +43,12 @@
 | 9 | **P2** | ~~Multi-tenant per-CSU keyring~~ **DONE** (Analyze-42) | ізоляція keyring | після #6 | — |
 | 10 | **P2** | ~~Gossip + discovery~~ **DONE** (A-43); ~~relay-first hub~~ **DONE** (A-44); next: DHT micro optional | #10 split | після #2–3 | STUN в одному PR |
 | 11 | **P2** | ~~HTTP TLS + persist discovery~~ **DONE** (Analyze-45) | A-19 deferred | окремий трек | mTLS/authn |
-| 12 | **P2** | Roadmap M12–M13 / v0.2 C2 | conformance harness + partial C2 protocols | окремий трек | peer crypto |
+| 12 | **P2** | ~~Partial C2 conformance (M13)~~ **DONE** (Analyze-46); M12 C0/C1 already shipped | harness + local protocols | окремий трек | network C2 / DHT |
+
 
 ### Рекомендований наступний цикл
 
-**Analyze-46 / #12 — Roadmap M12–M13 / C2**, або окремий DHT micro (опційно).
+**DHT micro** (опційно) або post-MVP: mTLS/HTTP authn, dual-key remote TrustStore, coordinated x25519 rotate.
 
 ### Залежності (скорочено)
 

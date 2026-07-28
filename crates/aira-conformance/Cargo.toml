@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "AIRA C0/C1 conformance runners and report artifacts"
+description = "AIRA C0/C1/C2 conformance runners and report artifacts"
 
 [dependencies]
 aira-object = { path = "../aira-object" }
@@ -16,6 +16,7 @@ aira-policy = { path = "../aira-policy" }
 aira-csu = { path = "../aira-csu" }
 aira-flow = { path = "../aira-flow" }
 aira-schema = { path = "../aira-schema" }
+aira-protocol = { path = "../aira-protocol" }
 aira-csu-context-basic = { path = "../../csu/context-basic" }
 aira-csu-reduction-basic = { path = "../../csu/reduction-basic" }
 aira-csu-execution-basic = { path = "../../csu/execution-basic" }

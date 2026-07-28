@@ -978,7 +978,8 @@ fn run() -> Result<ExitCode> {
                 let profile = match profile.to_uppercase().as_str() {
                     "C0" => ConformanceProfile::C0,
                     "C1" => ConformanceProfile::C1,
-                    other => bail!("unsupported profile {other} (use C0 or C1)"),
+                    "C2" => ConformanceProfile::C2,
+                    other => bail!("unsupported profile {other} (use C0, C1, or C2)"),
                 };
                 let out = out.unwrap_or_else(|| root.join("conformance").join("reports"));
                 std::fs::create_dir_all(&out)?;

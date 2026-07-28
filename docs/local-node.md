@@ -70,7 +70,7 @@ cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 \
 | GET | `/v1/capabilities` | local discovery (durable `discovery/registry.json`) |
 | GET | `/v1/csu` | registry list |
 | POST | `/v1/csu/register` | `{"manifest":{...},"activate":true}` |
-| POST | `/v1/conformance/run` | `{"profile":"C0"}` |
+| POST | `/v1/conformance/run` | `{"profile":"C0\|C1\|C2"}` |
 
 Example:
 

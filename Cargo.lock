@@ -111,6 +111,7 @@ dependencies = [
  "aira-flow",
  "aira-object",
  "aira-policy",
+ "aira-protocol",
  "aira-schema",
  "serde",
  "serde_json",
