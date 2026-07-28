@@ -4,12 +4,14 @@
 //! Admission is local [`TrustStore`] only — no controlling center, no DHT.
 
 mod address_book;
+mod envelope;
 mod error;
 mod frame;
 mod handshake;
 mod session;
 
 pub use address_book::{AddressBook, PeerEndpoint};
+pub use envelope::make_peer_ping;
 pub use error::PeerError;
 pub use frame::{read_frame, write_frame, MAX_FRAME_BYTES};
 pub use handshake::{HelloMessage, HELLO_DOMAIN};
@@ -301,5 +303,21 @@ mod tests {
     async fn listen_rejects_non_loopback() {
         let err = listen("0.0.0.0:0").await.unwrap_err();
         assert!(matches!(err, PeerError::Io(_)));
+    }
+
+    #[test]
+    fn make_peer_ping_signs_payload_hash() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let (id, _) = write_node_identity(root, "ping-builder", [61u8; 32]);
+        let env = make_peer_ping(root, "hello-ping").unwrap();
+        assert_eq!(env.message_type, "peer.ping");
+        assert_eq!(env.issuer_identity, id);
+        assert_eq!(env.signature.key_ref, id);
+        assert_eq!(env.payload_ref.as_deref(), Some("hello-ping"));
+        let ring = TrustStore::load(root).unwrap().to_keyring().unwrap();
+        ring.verify(&env.signature, env.payload_hash.as_str().as_bytes())
+            .unwrap();
     }
 }

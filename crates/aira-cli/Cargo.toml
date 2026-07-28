@@ -23,3 +23,6 @@ aira-csu = { path = "../aira-csu" }
 aira-flow = { path = "../aira-flow" }
 aira-conformance = { path = "../aira-conformance" }
 aira-object = { path = "../aira-object" }
+aira-peer = { path = "../aira-peer" }
+aira-protocol = { path = "../aira-protocol" }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }

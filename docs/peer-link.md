@@ -1,4 +1,4 @@
-# Peer links (Analyze-32 P0)
+# Peer links (Analyze-32 P0 + Analyze-33 CLI)
 
 Decentralized node-to-node messaging **without a controlling center**.
 
@@ -22,9 +22,27 @@ Static address book: `.aira/peers/address_book.json` — no DHT, no global regis
 - `listen` / `accept` / `dial`
 - `AuthenticatedPeer::{send_envelope, recv_envelope}`
 
+## CLI (Analyze-33)
+
+```bash
+# both nodes: init + identity create + mutual identity trust add
+cargo run -p aira-cli -- --root "$A" peer add --key-ref aira:identity:bob --addr 127.0.0.1:7900
+cargo run -p aira-cli -- --root "$A" peer list
+
+# terminal B
+cargo run -p aira-cli -- --root "$B" peer listen --bind 127.0.0.1:0
+# note printed "listening …" addr; upsert it on A via peer add
+
+# terminal A
+cargo run -p aira-cli -- --root "$A" peer dial --key-ref aira:identity:bob
+cargo run -p aira-cli -- --root "$A" peer send --key-ref aira:identity:bob --text "hello"
+```
+
+`peer add` fail-closed if the identity is missing from trust or revoked.
+
 ## Out of scope (later)
 
-Noise XX / mTLS; NAT traversal; gossip; DHT; federation join; public HTTP bind; CLI `peer send`.
+Noise XX / mTLS; NAT traversal; gossip; DHT; federation join; public HTTP bind; trust-delta over wire; long-running listen daemon.
 
 ## Relation to crypto docs
 

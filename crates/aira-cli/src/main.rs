@@ -69,6 +69,11 @@ enum Commands {
         #[command(subcommand)]
         command: EventCommands,
     },
+    /// Authenticated peer links (Analyze-32/33 — no controlling center).
+    Peer {
+        #[command(subcommand)]
+        command: PeerCommands,
+    },
     /// Conformance suite runners (C0/C1).
     Conformance {
         #[command(subcommand)]
@@ -233,6 +238,37 @@ enum EventCommands {
     Tail {
         #[arg(long, default_value_t = 20)]
         limit: usize,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum PeerCommands {
+    /// Upsert a peer into the static address book (must already be trusted).
+    Add {
+        #[arg(long)]
+        key_ref: String,
+        /// Socket address, e.g. 127.0.0.1:7900
+        #[arg(long)]
+        addr: String,
+    },
+    /// List address-book peers.
+    List,
+    /// Listen (loopback), accept one peer, receive one envelope.
+    Listen {
+        #[arg(long, default_value = "127.0.0.1:0")]
+        bind: String,
+    },
+    /// Dial a trusted peer and complete hello.
+    Dial {
+        #[arg(long)]
+        key_ref: String,
+    },
+    /// Dial a peer and send one signed peer.ping envelope.
+    Send {
+        #[arg(long)]
+        key_ref: String,
+        #[arg(long)]
+        text: String,
     },
 }
 
@@ -715,6 +751,14 @@ fn run() -> Result<ExitCode> {
                 Ok(ExitCode::SUCCESS)
             }
         },
+        Commands::Peer { command } => {
+            ensure_init(&root)?;
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .context("tokio runtime")?;
+            rt.block_on(run_peer(&root, command))
+        }
         Commands::Conformance { command } => match command {
             ConformanceCommands::Run { profile, out } => {
                 let profile = match profile.to_uppercase().as_str() {
@@ -756,6 +800,100 @@ fn ensure_init(root: &Path) -> Result<()> {
         );
     }
     Ok(())
+}
+
+fn require_trusted(root: &Path, key_ref: &str) -> Result<()> {
+    let store = aira_object::TrustStore::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+    if store.is_revoked(key_ref) {
+        bail!("peer identity revoked: {key_ref}");
+    }
+    if !store.entries.iter().any(|e| e.identity_id == key_ref) {
+        bail!("peer not trusted — run `aira identity trust add` first: {key_ref}");
+    }
+    Ok(())
+}
+
+fn build_peer_ping(root: &Path, text: &str) -> Result<aira_protocol::ProtocolEnvelope> {
+    aira_peer::make_peer_ping(root, text).map_err(|e| anyhow::anyhow!("{e}"))
+}
+
+async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
+    match command {
+        PeerCommands::Add { key_ref, addr } => {
+            require_trusted(root, &key_ref)?;
+            addr.parse::<std::net::SocketAddr>()
+                .with_context(|| format!("invalid addr {addr}"))?;
+            let mut book = aira_peer::AddressBook::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+            book.upsert(&key_ref, &addr);
+            book.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!("peer {key_ref} -> {addr}");
+            println!("address_book {}", aira_peer::AddressBook::path(root).display());
+            Ok(ExitCode::SUCCESS)
+        }
+        PeerCommands::List => {
+            let book = aira_peer::AddressBook::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+            if book.peers.is_empty() {
+                println!("(empty address book)");
+            } else {
+                for p in &book.peers {
+                    println!("{}\t{}", p.identity_id, p.addr);
+                }
+            }
+            println!("address_book {}", aira_peer::AddressBook::path(root).display());
+            Ok(ExitCode::SUCCESS)
+        }
+        PeerCommands::Listen { bind } => {
+            let listener = aira_peer::listen(&bind)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            let addr = listener.local_addr()?;
+            println!("listening {addr}");
+            let mut peer = aira_peer::accept(&listener, root)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!("accepted {}", peer.peer_id.as_str());
+            let env = peer
+                .recv_envelope()
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!(
+                "received {}\t{}\t{}",
+                env.message_type,
+                env.message_id.as_str(),
+                env.issuer_identity.as_str()
+            );
+            if let Some(payload) = env.payload_ref.as_deref() {
+                println!("payload_ref {payload}");
+            }
+            Ok(ExitCode::SUCCESS)
+        }
+        PeerCommands::Dial { key_ref } => {
+            require_trusted(root, &key_ref)?;
+            let peer = aira_peer::dial(root, &key_ref)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!("dialed {}", peer.peer_id.as_str());
+            println!("local {}", peer.local_id.as_str());
+            Ok(ExitCode::SUCCESS)
+        }
+        PeerCommands::Send { key_ref, text } => {
+            require_trusted(root, &key_ref)?;
+            let env = build_peer_ping(root, &text)?;
+            let mut peer = aira_peer::dial(root, &key_ref)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            peer.send_envelope(&env)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!(
+                "sent {}\t{}\t-> {}",
+                env.message_type,
+                env.message_id.as_str(),
+                peer.peer_id.as_str()
+            );
+            Ok(ExitCode::SUCCESS)
+        }
+    }
 }
 
 fn default_csu_registry(root: &Path) -> PathBuf {

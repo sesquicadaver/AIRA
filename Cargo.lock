@@ -47,6 +47,8 @@ dependencies = [
  "aira-csu",
  "aira-flow",
  "aira-object",
+ "aira-peer",
+ "aira-protocol",
  "aira-schema",
  "anyhow",
  "clap",
@@ -54,6 +56,7 @@ dependencies = [
  "hex",
  "rand",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
