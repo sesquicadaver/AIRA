@@ -81,11 +81,13 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust rotate \
   --until 2026-07-17T00:00:00Z
 ```
 
-## Node signing-secret rotate (Analyze-30)
+## Node signing-secret rotate (Analyze-30/31/37)
 
-Rewrites `.aira/identity/local.ed25519` and updates `local.identity.json` **without** changing `identity_id`. Trust store upserts the new pubkey for the same id (no CRL). Immediate cutover: signatures made with the previous secret fail under the same `key_ref`.
+Rewrites `.aira/identity/local.ed25519` and updates `local.identity.json` **without** changing `identity_id`. Trust store upserts the new pubkey for the same id (no CRL).
 
-This is **not** peer `identity trust rotate` (which replaces one trusted id with another).
+**Immediate cutover** (default): signatures made with the previous secret fail under the same `key_ref`.
+
+**Dual-key grace** (Analyze-37): `identity rotate --until <RFC3339 UTC>` keeps the previous verifying key for the same `key_ref` until that instant (`previous_public_key` + `previous_grace_until` on the identity descriptor). `Keyring` may hold multiple verifying keys per ref; signing remains the current secret only.
 
 ```bash
 cargo run -p aira-cli -- --root "$ROOT" identity rotate
@@ -96,6 +98,10 @@ cargo run -p aira-cli -- --root "$ROOT" identity rotate
 # Opt-in durable previous secret (Analyze-31):
 cargo run -p aira-cli -- --root "$ROOT" identity rotate --backup
 # … backup …/identity/local.ed25519.prev
+
+# Dual-key grace (Analyze-37):
+cargo run -p aira-cli -- --root "$ROOT" identity rotate --until 2099-01-01T00:00:00Z
+# … grace_until …
 ```
 
 Default rotate still leaves no durable old secret. With `--backup`, the previous secret is staged under `*.tmp` (mode `0600`) before overwrite and renamed to `identity/local.ed25519.prev` (+ `local.ed25519.prev.meta.json`) only after a successful rotate. Staging failure or mid-rotate abort removes tmp only (existing `.prev` slot is preserved). A single `.prev` slot is overwritten on each successful `--backup` rotate.
@@ -115,6 +121,6 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Dual-key grace for the same node `key_ref`; TLS; multi-tenant per-CSU keyring; CRL audit log; auto peer notify of rotated pubkey; coordinated rotate of `local.x25519` with Ed25519.
+Dual-key grace for peer *same* identity across nodes (notify); TLS; multi-tenant per-CSU keyring; CRL audit log; auto peer notify of rotated pubkey; coordinated rotate of `local.x25519` with Ed25519.
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta).

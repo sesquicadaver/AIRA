@@ -94,6 +94,9 @@ enum IdentityCommands {
         /// Persist previous secret to `identity/local.ed25519.prev` before overwrite.
         #[arg(long, default_value_t = false)]
         backup: bool,
+        /// Keep previous pubkey verifiable for the same key_ref until this RFC3339 UTC instant.
+        #[arg(long)]
+        until: Option<String>,
     },
     /// Sign a message with the node identity key.
     Sign {
@@ -408,16 +411,23 @@ fn run() -> Result<ExitCode> {
                 println!("identity {}", paths.identity_json().display());
                 Ok(ExitCode::SUCCESS)
             }
-            IdentityCommands::Rotate { backup } => {
+            IdentityCommands::Rotate { backup, until } => {
                 ensure_init(&root)?;
                 let mut rng = OsRng;
                 let signing = SigningKey::generate(&mut rng);
-                let (id, new_pub, old_pub, backup_path) =
-                    aira_object::rotate_node_signing_secret(&root, signing, backup)
-                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                let (id, new_pub, old_pub, backup_path) = aira_object::rotate_node_signing_secret(
+                    &root,
+                    signing,
+                    backup,
+                    until.as_deref(),
+                )
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
                 println!("rotated {}", id.as_str());
                 println!("old_public_key {old_pub}");
                 println!("public_key {new_pub}");
+                if let Some(until) = until.as_deref() {
+                    println!("grace_until {until}");
+                }
                 if let Some(path) = backup_path {
                     println!("backup {}", path.display());
                 }

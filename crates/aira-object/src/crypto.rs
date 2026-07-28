@@ -56,9 +56,12 @@ pub enum CryptoError {
 }
 
 /// In-memory verifying (+ optional signing) keys keyed by identity ref.
+///
+/// Multiple verifying keys per `key_ref` enable same-identity dual-key grace
+/// after node secret rotate (Analyze-37). Signing remains a single current key.
 #[derive(Debug, Default, Clone)]
 pub struct Keyring {
-    verifying: HashMap<String, VerifyingKey>,
+    verifying: HashMap<String, Vec<VerifyingKey>>,
     signing: HashMap<String, SigningKey>,
 }
 
@@ -73,27 +76,57 @@ impl Keyring {
         let mut k = Self::new();
         let sk = local_test_signing_key();
         let id = LOCAL_TEST_KEY_REF.to_string();
-        k.verifying.insert(id.clone(), sk.verifying_key());
+        k.verifying.insert(id.clone(), vec![sk.verifying_key()]);
         k.signing.insert(id, sk);
         k
     }
 
-    /// Register a verifying key for `key_ref`.
+    /// Replace verifying key(s) for `key_ref` with a single key.
     pub fn insert_verifying(&mut self, key_ref: AiraRef, verifying: VerifyingKey) {
         self.verifying
-            .insert(key_ref.as_str().to_string(), verifying);
+            .insert(key_ref.as_str().to_string(), vec![verifying]);
     }
 
-    /// Register signing + verifying material for `key_ref`.
+    /// Append a verifying key for `key_ref` if not already present (dual-key grace).
+    pub fn add_verifying(&mut self, key_ref: AiraRef, verifying: VerifyingKey) {
+        let id = key_ref.as_str().to_string();
+        let slot = self.verifying.entry(id).or_default();
+        if !slot.iter().any(|k| k.as_bytes() == verifying.as_bytes()) {
+            slot.push(verifying);
+        }
+    }
+
+    /// Register signing + primary verifying material for `key_ref`.
+    ///
+    /// The new verifying key becomes first; any prior verifying keys for the same
+    /// ref (grace) are retained after it.
     pub fn insert_signing(&mut self, key_ref: AiraRef, signing: SigningKey) {
         let id = key_ref.as_str().to_string();
-        self.verifying.insert(id.clone(), signing.verifying_key());
+        let vk = signing.verifying_key();
+        let mut rest = self
+            .verifying
+            .remove(&id)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|k| k.as_bytes() != vk.as_bytes())
+            .collect::<Vec<_>>();
+        let mut keys = vec![vk];
+        keys.append(&mut rest);
+        self.verifying.insert(id.clone(), keys);
         self.signing.insert(id, signing);
     }
 
-    /// Resolve verifying key for a ref.
+    /// Primary (current) verifying key for a ref, if any.
     pub fn verifying_key(&self, key_ref: &str) -> Option<&VerifyingKey> {
-        self.verifying.get(key_ref)
+        self.verifying.get(key_ref).and_then(|v| v.first())
+    }
+
+    /// All verifying keys for a ref (current first when loaded via insert_signing).
+    pub fn verifying_keys(&self, key_ref: &str) -> &[VerifyingKey] {
+        self.verifying
+            .get(key_ref)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
     }
 
     /// Sign with a registered signing key.
@@ -105,7 +138,7 @@ impl Keyring {
         Ok(sign_with_key(key_ref.clone(), sk, message))
     }
 
-    /// Verify using keys in this ring only.
+    /// Verify using keys in this ring only (tries all keys for `signature.key_ref`).
     pub fn verify(&self, signature: &Signature, message: &[u8]) -> Result<(), CryptoError> {
         if signature.algorithm != "ed25519" {
             return Err(CryptoError::UnsupportedAlgorithm(
@@ -116,20 +149,28 @@ impl Keyring {
         if raw.is_empty() || raw == "TESTSIG" {
             return Err(CryptoError::MissingOrLegacy);
         }
-        let vk = self
-            .verifying_key(signature.key_ref.as_str())
-            .ok_or_else(|| CryptoError::UnknownKey(signature.key_ref.as_str().to_string()))?;
+        let keys = self.verifying_keys(signature.key_ref.as_str());
+        if keys.is_empty() {
+            return Err(CryptoError::UnknownKey(
+                signature.key_ref.as_str().to_string(),
+            ));
+        }
         let bytes = hex::decode(raw).map_err(|_| CryptoError::InvalidEncoding)?;
         let sig_bytes: [u8; 64] = bytes.try_into().map_err(|_| CryptoError::InvalidEncoding)?;
         let dalek = DalekSignature::from_bytes(&sig_bytes);
-        vk.verify(message, &dalek)
-            .map_err(|_| CryptoError::VerifyFailed)
+        for vk in keys {
+            if vk.verify(message, &dalek).is_ok() {
+                return Ok(());
+            }
+        }
+        Err(CryptoError::VerifyFailed)
     }
 
     /// Load identity descriptor + secret from a node root (`.aira`).
     ///
     /// Expects `identity/local.identity.json` and `identity/local.ed25519` as written by
-    /// `aira identity create`.
+    /// `aira identity create`. When `previous_public_key` + active `previous_grace_until`
+    /// are present, the previous verifying key is also registered for the same `key_ref`.
     pub fn load_node_identity(root: impl AsRef<Path>) -> Result<(AiraRef, Self), CryptoError> {
         let root = root.as_ref();
         let json_path = root.join("identity").join("local.identity.json");
@@ -157,6 +198,15 @@ impl Keyring {
             let pk = parse_public_hex(desc.public_key.key_hex.trim())?;
             ring.insert_verifying(key_ref.clone(), pk);
         }
+        if let (Some(prev), Some(until)) = (
+            desc.previous_public_key.as_ref(),
+            desc.previous_grace_until.as_deref(),
+        ) {
+            if node_grace_active(until)? {
+                let prev_vk = parse_public_hex(prev.key_hex.trim())?;
+                ring.add_verifying(key_ref.clone(), prev_vk);
+            }
+        }
         Ok((key_ref, ring))
     }
 }
@@ -165,11 +215,22 @@ impl Keyring {
 struct NodeIdentityFile {
     identity_id: String,
     public_key: NodePublicKey,
+    #[serde(default)]
+    previous_public_key: Option<NodePublicKey>,
+    #[serde(default)]
+    previous_grace_until: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct NodePublicKey {
     key_hex: String,
+}
+
+/// True when `grace_until` is still active at process UTC now.
+fn node_grace_active(grace_until: &str) -> Result<bool, CryptoError> {
+    let until = parse_rfc3339(grace_until)?;
+    let now = parse_rfc3339(&utc_now_rfc3339()?)?;
+    Ok(now <= until)
 }
 
 fn parse_secret_hex(s: &str) -> Result<[u8; 32], CryptoError> {
@@ -533,14 +594,17 @@ pub fn sync_trust_verifiers(root: impl AsRef<Path>) -> Result<usize, CryptoError
                 continue;
             }
             if let Some(sk) = guard.signing.get(&id).cloned() {
-                guard.verifying.insert(id, sk.verifying_key());
+                guard.verifying.insert(id, vec![sk.verifying_key()]);
                 continue;
             }
             guard.verifying.remove(&id);
         }
     }
 
-    register_trust_store(root)
+    let n = register_trust_store(root.as_ref())?;
+    // Re-apply node signing + dual-key grace from identity JSON (trust upsert is single pubkey).
+    let _ = register_node_identity(root.as_ref())?;
+    Ok(n)
 }
 
 /// Ensure local-test (+ node identity if present) are in trust.json and registered.
@@ -566,10 +630,13 @@ fn process_keyring() -> &'static RwLock<Keyring> {
 }
 
 /// Merge verifying/signing keys from `ring` into the process keyring (local-test preserved).
+///
+/// For each `key_ref` present in `ring.verifying`, the verifying list is **replaced**
+/// (supports dual-key grace cutover and trust upserts). Signing keys are upserted.
 pub fn register_keyring(ring: &Keyring) {
     let mut guard = process_keyring().write().unwrap_or_else(|e| e.into_inner());
-    for (id, vk) in &ring.verifying {
-        guard.verifying.insert(id.clone(), *vk);
+    for (id, vks) in &ring.verifying {
+        guard.verifying.insert(id.clone(), vks.clone());
     }
     for (id, sk) in &ring.signing {
         guard.signing.insert(id.clone(), sk.clone());
@@ -612,8 +679,11 @@ fn clear_staging_files(tmp: &Path, meta_tmp: &Path) {
 /// Rotate the node signing secret under fixed paths, keeping the same `identity_id`.
 ///
 /// Rewrites `identity/local.ed25519` and updates `identity/local.identity.json` public key +
-/// descriptor signature. Trust store gets an upsert (no CRL). Immediate cutover: the previous
-/// verifying key for this id is replaced in the process keyring.
+/// descriptor signature. Trust store gets an upsert (no CRL).
+///
+/// - Without `grace_until`: immediate cutover — previous verifying key for this id is dropped.
+/// - With `grace_until` (RFC3339 UTC): persists `previous_public_key` + `previous_grace_until`
+///   so old signatures under the same `key_ref` still verify until that instant (Analyze-37).
 ///
 /// If trust upsert fails after the files were rewritten, previous secret + JSON are restored
 /// so disk and trust stay consistent.
@@ -628,6 +698,7 @@ pub fn rotate_node_signing_secret(
     root: impl AsRef<Path>,
     new_signing: SigningKey,
     backup: bool,
+    grace_until: Option<&str>,
 ) -> Result<(AiraRef, String, String, Option<PathBuf>), CryptoError> {
     let root = root.as_ref();
     let identity_dir = root.join("identity");
@@ -660,6 +731,11 @@ pub fn rotate_node_signing_secret(
         .ok_or(CryptoError::InvalidKey)?
         .trim()
         .to_string();
+
+    let grace_until = match grace_until {
+        Some(s) => Some(normalize_rfc3339(s)?),
+        None => None,
+    };
 
     let new_pub = hex::encode(new_signing.verifying_key().to_bytes());
     let secret_hex = hex::encode(new_signing.to_bytes());
@@ -794,6 +870,19 @@ pub fn rotate_node_signing_secret(
             }
         };
         obj.insert("rotated_at".into(), serde_json::json!(rotated_at));
+        if let Some(until) = grace_until.as_deref() {
+            obj.insert(
+                "previous_public_key".into(),
+                serde_json::json!({
+                    "algorithm": "ed25519",
+                    "key_hex": old_pub
+                }),
+            );
+            obj.insert("previous_grace_until".into(), serde_json::json!(until));
+        } else {
+            obj.remove("previous_public_key");
+            obj.remove("previous_grace_until");
+        }
     } else {
         let _ = restore_previous();
         return Err(abort_after_stage(CryptoError::InvalidKey));
@@ -840,8 +929,8 @@ pub fn rotate_node_signing_secret(
         }
     }
 
-    let mut ring = Keyring::with_local_test();
-    ring.insert_signing(id.clone(), new_signing);
+    // Reload so dual-key grace (if any) is registered for the same key_ref.
+    let (id, ring) = Keyring::load_node_identity(root)?;
     register_keyring(&ring);
     set_primary_signer(id.clone());
     Ok((id, new_pub, old_pub, wrote_backup))
@@ -1325,7 +1414,7 @@ mod tests {
         ring.verify(&old_sig, msg).unwrap();
 
         let (rotated_id, new_pub, reported_old, backup_path) =
-            rotate_node_signing_secret(root, new_sk.clone(), false).unwrap();
+            rotate_node_signing_secret(root, new_sk.clone(), false, None).unwrap();
         assert_eq!(rotated_id.as_str(), id);
         assert_eq!(reported_old, old_pub);
         assert!(backup_path.is_none());
@@ -1383,7 +1472,7 @@ mod tests {
         store.revoke(id, Some("block rotate")).unwrap();
         store.save(root).unwrap();
 
-        let err = rotate_node_signing_secret(root, new_sk, false).unwrap_err();
+        let err = rotate_node_signing_secret(root, new_sk, false, None).unwrap_err();
         assert_eq!(err, CryptoError::RevokedKey(id.into()));
         assert_eq!(
             fs::read_to_string(root.join("identity/local.ed25519")).unwrap(),
@@ -1403,8 +1492,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let root = dir.path();
         fs::create_dir_all(root.join("identity")).unwrap();
-        let err = rotate_node_signing_secret(root, SigningKey::from_bytes(&[35u8; 32]), false)
-            .unwrap_err();
+        let err =
+            rotate_node_signing_secret(root, SigningKey::from_bytes(&[35u8; 32]), false, None)
+                .unwrap_err();
         assert!(matches!(err, CryptoError::Io(_)));
     }
 
@@ -1434,7 +1524,7 @@ mod tests {
         .unwrap();
 
         let (rotated_id, new_pub, reported_old, backup_path) =
-            rotate_node_signing_secret(root, new_sk.clone(), true).unwrap();
+            rotate_node_signing_secret(root, new_sk.clone(), true, None).unwrap();
         assert_eq!(rotated_id.as_str(), id);
         assert_eq!(reported_old, old_pub);
         let backup = backup_path.expect("backup path");
@@ -1487,7 +1577,7 @@ mod tests {
         // Make backup staging path a directory so stage write fails.
         fs::create_dir_all(root.join("identity").join("local.ed25519.prev.tmp")).unwrap();
 
-        let err = rotate_node_signing_secret(root, new_sk, true).unwrap_err();
+        let err = rotate_node_signing_secret(root, new_sk, true, None).unwrap_err();
         assert!(matches!(err, CryptoError::Io(_)));
         assert_eq!(
             fs::read_to_string(root.join("identity/local.ed25519")).unwrap(),
@@ -1536,7 +1626,7 @@ mod tests {
         store.revoke(id, Some("block")).unwrap();
         store.save(root).unwrap();
 
-        let err = rotate_node_signing_secret(root, new_sk, true).unwrap_err();
+        let err = rotate_node_signing_secret(root, new_sk, true, None).unwrap_err();
         assert_eq!(err, CryptoError::RevokedKey(id.into()));
         assert_eq!(
             fs::read_to_string(root.join("identity").join(NODE_SECRET_BACKUP_FILE)).unwrap(),
@@ -1577,7 +1667,7 @@ mod tests {
         fs::create_dir_all(root.join("identity").join(NODE_SECRET_BACKUP_FILE)).unwrap();
 
         let (rotated_id, new_pub, _, backup_path) =
-            rotate_node_signing_secret(root, new_sk.clone(), true).unwrap();
+            rotate_node_signing_secret(root, new_sk.clone(), true, None).unwrap();
         assert_eq!(rotated_id.as_str(), id);
         assert_eq!(new_pub, hex::encode(new_sk.verifying_key().to_bytes()));
         let backup = backup_path.expect("backup path");
@@ -1592,6 +1682,102 @@ mod tests {
         let msg = b"dirtrap-ok";
         let sig = ring.sign(&loaded, msg).unwrap();
         ring.verify(&sig, msg).unwrap();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn node_rotate_grace_allows_old_until() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let old_sk = SigningKey::from_bytes(&[57u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[59u8; 32]);
+        let id = "aira:identity:node-grace";
+        let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
+        fs::write(
+            root.join("identity/local.ed25519"),
+            format!("{}\n", hex::encode(old_sk.to_bytes())),
+        )
+        .unwrap();
+        fs::write(
+            root.join("identity/local.identity.json"),
+            serde_json::json!({
+                "identity_id": id,
+                "identity_type": "local",
+                "display_name": "node-grace",
+                "public_key": { "algorithm": "ed25519", "key_hex": old_pub },
+                "created_at": "2026-07-16T00:00:00Z",
+                "key_path": "identity/local.ed25519"
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let _ = ensure_trust_defaults(root).unwrap();
+
+        let msg = b"node-grace-message";
+        let old_sig = sign_with_key(AiraRef::parse(id).unwrap(), &old_sk, msg);
+        let until = "2099-01-01T00:00:00Z";
+        let (rotated_id, _new_pub, _, _) =
+            rotate_node_signing_secret(root, new_sk.clone(), false, Some(until)).unwrap();
+        assert_eq!(rotated_id.as_str(), id);
+
+        let (reloaded, ring) = Keyring::load_node_identity(root).unwrap();
+        assert_eq!(ring.verifying_keys(id).len(), 2);
+        ring.verify(&old_sig, msg).unwrap();
+        let new_sig = ring.sign(&reloaded, msg).unwrap();
+        ring.verify(&new_sig, msg).unwrap();
+
+        let desc_raw = fs::read_to_string(root.join("identity/local.identity.json")).unwrap();
+        let desc: serde_json::Value = serde_json::from_str(&desc_raw).unwrap();
+        assert_eq!(desc["previous_public_key"]["key_hex"], old_pub);
+        assert_eq!(desc["previous_grace_until"], until);
+
+        // Expired grace: rewrite until to the past and reload.
+        let mut desc_obj = desc.as_object().unwrap().clone();
+        desc_obj.insert(
+            "previous_grace_until".into(),
+            serde_json::json!("2020-01-01T00:00:00Z"),
+        );
+        fs::write(
+            root.join("identity/local.identity.json"),
+            serde_json::to_string_pretty(&desc_obj).unwrap(),
+        )
+        .unwrap();
+        let (_, expired) = Keyring::load_node_identity(root).unwrap();
+        assert_eq!(expired.verifying_keys(id).len(), 1);
+        assert!(expired.verify(&old_sig, msg).is_err());
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn node_rotate_rejects_bad_grace_until() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let old_sk = SigningKey::from_bytes(&[61u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[63u8; 32]);
+        let id = "aira:identity:node-bad-grace";
+        let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
+        fs::write(
+            root.join("identity/local.ed25519"),
+            format!("{}\n", hex::encode(old_sk.to_bytes())),
+        )
+        .unwrap();
+        fs::write(
+            root.join("identity/local.identity.json"),
+            serde_json::json!({
+                "identity_id": id,
+                "identity_type": "local",
+                "display_name": "node-bad-grace",
+                "public_key": { "algorithm": "ed25519", "key_hex": old_pub },
+                "created_at": "2026-07-16T00:00:00Z",
+                "key_path": "identity/local.ed25519"
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let err = rotate_node_signing_secret(root, new_sk, false, Some("not-a-time")).unwrap_err();
+        assert!(matches!(err, CryptoError::InvalidTimestamp(_)));
         reset_primary_signer();
     }
 }
