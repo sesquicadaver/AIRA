@@ -92,6 +92,7 @@ enum IdentityCommands {
     /// Rotate node signing secret (same identity_id, new key material).
     Rotate {
         /// Persist previous secret to `identity/local.ed25519.prev` before overwrite.
+        /// Prior `.prev` is archived under a UTC timestamp (Analyze-41).
         #[arg(long, default_value_t = false)]
         backup: bool,
         /// Keep previous pubkey verifiable for the same key_ref until this RFC3339 UTC instant.
@@ -101,6 +102,8 @@ enum IdentityCommands {
         #[arg(long, default_value_t = false)]
         notify_peers: bool,
     },
+    /// List durable node signing-secret backups (latest + timestamped history).
+    Backups,
     /// Sign a message with the node identity key.
     Sign {
         /// Message bytes as UTF-8 text.
@@ -493,6 +496,31 @@ fn run() -> Result<ExitCode> {
                 println!(
                     "identity {}",
                     NodePaths::new(&root).identity_json().display()
+                );
+                Ok(ExitCode::SUCCESS)
+            }
+            IdentityCommands::Backups => {
+                ensure_init(&root)?;
+                let list = aira_object::list_node_secret_backups(&root)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                if list.is_empty() {
+                    println!("(no backups — use `identity rotate --backup`)");
+                } else {
+                    for b in &list {
+                        let pk = b.old_public_key_hex.as_deref().unwrap_or("-");
+                        let at = b.backed_up_at.as_deref().unwrap_or("-");
+                        println!(
+                            "{}\t{}\t{}\t{}",
+                            b.stamp,
+                            pk,
+                            at,
+                            b.secret_path.display()
+                        );
+                    }
+                }
+                println!(
+                    "backups {}",
+                    NodePaths::new(&root).identity_dir().display()
                 );
                 Ok(ExitCode::SUCCESS)
             }

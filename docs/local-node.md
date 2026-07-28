@@ -22,7 +22,7 @@ ROOT=/tmp/aira-node
 cargo run -p aira-cli -- --root "$ROOT" init
 cargo run -p aira-cli -- --root "$ROOT" identity create --name local
 cargo run -p aira-cli -- --root "$ROOT" identity rotate   # same id, new secret
-# optional: identity rotate --backup  → identity/local.ed25519.prev
+# optional: identity rotate --backup  → identity/local.ed25519.prev (+ timestamped history)
 cargo run -p aira-cli -- --root "$ROOT" identity trust list
 cargo run -p aira-cli -- --root "$ROOT" status
 ```

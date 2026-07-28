@@ -14,13 +14,13 @@ pub use audit::{
 };
 pub use crypto::{
     active_identity, active_signature, ensure_trust_defaults, is_cryptographic_signature,
-    local_test_public_key_hex, local_test_signature, local_test_signing_key,
-    local_test_verifying_key, primary_signer, process_keyring_snapshot, register_keyring,
-    register_node_identity, register_trust_store, reset_primary_signer, rotate_node_signing_secret,
-    set_primary_signer, sign_with_key, signature_for, sync_trust_verifiers, utc_now_rfc3339,
-    verify_ed25519, CryptoError, Keyring, RevokedEntry, TrustEntry, TrustStore,
-    LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF, NODE_SECRET_BACKUP_FILE,
-    NODE_SECRET_BACKUP_META_FILE,
+    list_node_secret_backups, local_test_public_key_hex, local_test_signature,
+    local_test_signing_key, local_test_verifying_key, primary_signer, process_keyring_snapshot,
+    register_keyring, register_node_identity, register_trust_store, reset_primary_signer,
+    rotate_node_signing_secret, set_primary_signer, sign_with_key, signature_for,
+    sync_trust_verifiers, utc_now_rfc3339, verify_ed25519, CryptoError, Keyring, NodeSecretBackupInfo,
+    RevokedEntry, TrustEntry, TrustStore, LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF,
+    NODE_SECRET_BACKUP_FILE, NODE_SECRET_BACKUP_META_FILE,
 };
 pub use descriptor::{ObjectDescriptor, ObjectType};
 pub use handle::Handle;

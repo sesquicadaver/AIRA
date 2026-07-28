@@ -7,4 +7,4 @@
 - [x] Dual-key grace for same node `key_ref` (multi-pubkey Keyring) → **Analyze-37 DONE**
 - [ ] CRL / ceremony audit log (rotate, revoke, unrevoke) → QUEUE #7
 - [x] Auto-notify peers of new node pubkey → **Analyze-38 DONE**
-- [ ] Timestamped backup rotation history (not single `.prev` slot) → QUEUE #8
+- [x] Timestamped backup rotation history (not single `.prev` slot) → **Analyze-41 DONE**

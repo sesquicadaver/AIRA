@@ -2,7 +2,7 @@
 
 ## Deferred
 - [ ] SQLite ceremony audit table (optional; JSONL is durable now)
-- [ ] Timestamped `.prev` history (QUEUE #8)
+- [x] Timestamped `.prev` history (QUEUE #8 → Analyze-41)
 
 ## Done
 - [x] `TrustAuditLog` / `trust-audit.jsonl`

@@ -119,7 +119,16 @@ cargo run -p aira-cli -- --root "$ROOT" identity rotate --until 2099-01-01T00:00
 cargo run -p aira-cli -- --root "$ROOT" identity rotate --notify-peers
 ```
 
-Default rotate still leaves no durable old secret. With `--backup`, the previous secret is staged under `*.tmp` (mode `0600`) before overwrite and renamed to `identity/local.ed25519.prev` (+ `local.ed25519.prev.meta.json`) only after a successful rotate. Staging failure or mid-rotate abort removes tmp only (existing `.prev` slot is preserved). A single `.prev` slot is overwritten on each successful `--backup` rotate.
+Default rotate still leaves no durable old secret. With `--backup`, the previous secret is staged under `*.tmp` (mode `0600`) before overwrite and renamed to `identity/local.ed25519.prev` (+ `local.ed25519.prev.meta.json`) only after a successful rotate. Staging failure or mid-rotate abort removes tmp only (existing `.prev` / history slots are preserved).
+
+**Timestamped history** (Analyze-41): each new `--backup` archives the prior latest slot to `local.ed25519.prev.<YYYYMMDDTHHMMSSZ>` (+ matching `.meta.json`) so earlier secrets remain recoverable. Canonical `.prev` is always the most recent backup.
+
+```bash
+cargo run -p aira-cli -- --root "$ROOT" identity rotate --backup
+cargo run -p aira-cli -- --root "$ROOT" identity rotate --backup
+cargo run -p aira-cli -- --root "$ROOT" identity backups
+# latest / <stamp>  old_public_key_hex  backed_up_at  path
+```
 
 ## Canonical signed messages
 

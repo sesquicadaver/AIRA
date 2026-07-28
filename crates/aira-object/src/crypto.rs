@@ -665,6 +665,219 @@ pub const NODE_SECRET_BACKUP_META_FILE: &str = "local.ed25519.prev.meta.json";
 const NODE_SECRET_BACKUP_TMP: &str = "local.ed25519.prev.tmp";
 const NODE_SECRET_BACKUP_META_TMP: &str = "local.ed25519.prev.meta.json.tmp";
 
+/// One listed node signing-secret backup (latest slot or archived timestamped slot).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NodeSecretBackupInfo {
+    /// `latest` or compact UTC stamp (`YYYYMMDDTHHMMSSZ`[+`-N`]).
+    pub stamp: String,
+    pub secret_path: PathBuf,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta_path: Option<PathBuf>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub old_public_key_hex: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backed_up_at: Option<String>,
+    /// True when this is the canonical [`NODE_SECRET_BACKUP_FILE`] slot.
+    pub is_latest: bool,
+}
+
+fn compact_utc_stamp(rfc3339: &str) -> Result<String, CryptoError> {
+    let dt = parse_rfc3339(rfc3339)?;
+    Ok(format!(
+        "{:04}{:02}{:02}T{:02}{:02}{:02}Z",
+        dt.year(),
+        u8::from(dt.month()),
+        dt.day(),
+        dt.hour(),
+        dt.minute(),
+        dt.second(),
+    ))
+}
+
+fn backup_stamp_from_meta(meta_path: &Path) -> Result<String, CryptoError> {
+    if meta_path.is_file() {
+        let raw = fs::read_to_string(meta_path).map_err(|e| CryptoError::Io(e.to_string()))?;
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&raw) {
+            if let Some(s) = v.get("backed_up_at").and_then(|x| x.as_str()) {
+                if let Ok(stamp) = compact_utc_stamp(s) {
+                    return Ok(stamp);
+                }
+            }
+        }
+    }
+    compact_utc_stamp(&utc_now_rfc3339()?)
+}
+
+fn unique_archived_backup_stamp(identity_dir: &Path, base: &str) -> String {
+    let mut stamp = base.to_string();
+    let mut n = 2u32;
+    loop {
+        let candidate = identity_dir.join(format!("{NODE_SECRET_BACKUP_FILE}.{stamp}"));
+        if !candidate.exists() {
+            return stamp;
+        }
+        stamp = format!("{base}-{n}");
+        n += 1;
+    }
+}
+
+/// Move the canonical `.prev` slot into a timestamped archive name (Analyze-41).
+///
+/// No-op when the latest slot is missing. On I/O failure returns `Err` without
+/// deleting the latest slot.
+fn archive_latest_prev_slot(identity_dir: &Path) -> Result<Option<PathBuf>, CryptoError> {
+    let latest = identity_dir.join(NODE_SECRET_BACKUP_FILE);
+    if !latest.is_file() {
+        return Ok(None);
+    }
+    let meta = identity_dir.join(NODE_SECRET_BACKUP_META_FILE);
+    let base = backup_stamp_from_meta(&meta)?;
+    let stamp = unique_archived_backup_stamp(identity_dir, &base);
+    let archived = identity_dir.join(format!("{NODE_SECRET_BACKUP_FILE}.{stamp}"));
+    let archived_meta = identity_dir.join(format!("{NODE_SECRET_BACKUP_FILE}.{stamp}.meta.json"));
+
+    fs::rename(&latest, &archived).map_err(|e| {
+        CryptoError::Io(format!(
+            "archive prev rename failed ({} → {}): {e}",
+            latest.display(),
+            archived.display()
+        ))
+    })?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&archived, fs::Permissions::from_mode(0o600));
+    }
+
+    if meta.is_file() {
+        let raw = fs::read_to_string(&meta).map_err(|e| CryptoError::Io(e.to_string()))?;
+        let mut v: serde_json::Value =
+            serde_json::from_str(&raw).unwrap_or_else(|_| serde_json::json!({}));
+        if let Some(obj) = v.as_object_mut() {
+            obj.insert(
+                "secret_path".into(),
+                serde_json::json!(format!("identity/{NODE_SECRET_BACKUP_FILE}.{stamp}")),
+            );
+            if let Ok(now) = utc_now_rfc3339() {
+                obj.insert("archived_at".into(), serde_json::json!(now));
+            }
+            obj.insert("archive_stamp".into(), serde_json::json!(stamp));
+        }
+        let out = serde_json::to_string_pretty(&v).map_err(|e| CryptoError::Io(e.to_string()))?;
+        fs::write(&archived_meta, format!("{out}\n")).map_err(|e| CryptoError::Io(e.to_string()))?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&archived_meta, fs::Permissions::from_mode(0o600));
+        }
+        let _ = fs::remove_file(&meta);
+    }
+
+    Ok(Some(archived))
+}
+
+fn read_backup_meta_fields(meta_path: &Path) -> (Option<String>, Option<String>, Option<String>) {
+    let Ok(raw) = fs::read_to_string(meta_path) else {
+        return (None, None, None);
+    };
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(&raw) else {
+        return (None, None, None);
+    };
+    (
+        v.get("identity_id")
+            .and_then(|x| x.as_str())
+            .map(str::to_string),
+        v.get("old_public_key_hex")
+            .and_then(|x| x.as_str())
+            .map(str::to_string),
+        v.get("backed_up_at")
+            .and_then(|x| x.as_str())
+            .map(str::to_string),
+    )
+}
+
+/// List durable node signing-secret backups (latest + archived timestamped slots).
+///
+/// Newest first. Does not read or return secret material.
+pub fn list_node_secret_backups(
+    root: impl AsRef<Path>,
+) -> Result<Vec<NodeSecretBackupInfo>, CryptoError> {
+    let identity_dir = root.as_ref().join("identity");
+    if !identity_dir.is_dir() {
+        return Ok(Vec::new());
+    }
+    let mut out = Vec::new();
+    let latest = identity_dir.join(NODE_SECRET_BACKUP_FILE);
+    if latest.is_file() {
+        let meta = identity_dir.join(NODE_SECRET_BACKUP_META_FILE);
+        let (identity_id, old_public_key_hex, backed_up_at) = if meta.is_file() {
+            read_backup_meta_fields(&meta)
+        } else {
+            (None, None, None)
+        };
+        out.push(NodeSecretBackupInfo {
+            stamp: "latest".into(),
+            secret_path: latest,
+            meta_path: meta.is_file().then_some(meta),
+            identity_id,
+            old_public_key_hex,
+            backed_up_at,
+            is_latest: true,
+        });
+    }
+
+    let prefix = format!("{NODE_SECRET_BACKUP_FILE}.");
+    let rd = fs::read_dir(&identity_dir).map_err(|e| CryptoError::Io(e.to_string()))?;
+    for ent in rd {
+        let ent = ent.map_err(|e| CryptoError::Io(e.to_string()))?;
+        let name = ent.file_name();
+        let name = name.to_string_lossy();
+        if !name.starts_with(&prefix) {
+            continue;
+        }
+        if name.ends_with(".meta.json") || name.ends_with(".tmp") || name == NODE_SECRET_BACKUP_META_FILE
+        {
+            continue;
+        }
+        // Archived secret: local.ed25519.prev.<stamp>
+        let stamp = name[prefix.len()..].to_string();
+        if stamp.is_empty() || stamp.contains('.') {
+            continue;
+        }
+        let path = ent.path();
+        if !path.is_file() {
+            continue;
+        }
+        let meta = identity_dir.join(format!("{NODE_SECRET_BACKUP_FILE}.{stamp}.meta.json"));
+        let (identity_id, old_public_key_hex, backed_up_at) = if meta.is_file() {
+            read_backup_meta_fields(&meta)
+        } else {
+            (None, None, None)
+        };
+        out.push(NodeSecretBackupInfo {
+            stamp,
+            secret_path: path,
+            meta_path: meta.is_file().then_some(meta),
+            identity_id,
+            old_public_key_hex,
+            backed_up_at,
+            is_latest: false,
+        });
+    }
+
+    out.sort_by(|a, b| {
+        // latest first, then stamp descending (lexicographic works for compact UTC).
+        match (a.is_latest, b.is_latest) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => b.stamp.cmp(&a.stamp),
+        }
+    });
+    Ok(out)
+}
+
 fn remove_path_quiet(path: &Path) {
     let _ = fs::remove_file(path);
     let _ = fs::remove_dir_all(path);
@@ -690,8 +903,10 @@ fn clear_staging_files(tmp: &Path, meta_tmp: &Path) {
 ///
 /// When `backup` is true, stages the previous secret under `*.tmp` (unix mode `0600`) **before**
 /// overwrite and renames to `identity/local.ed25519.prev` (+ meta sidecar) only after a successful
-/// rotate. Staging/I/O failure aborts without changing the active secret; abort after staging
-/// removes only tmp files (existing `.prev` slot is left intact).
+/// rotate. If a prior `.prev` already exists, it is archived to
+/// `local.ed25519.prev.<YYYYMMDDTHHMMSSZ>` (+ matching meta) before the new latest slot is committed
+/// (Analyze-41). Staging/I/O failure aborts without changing the active secret; abort after staging
+/// removes only tmp files (existing `.prev` / history slots are left intact).
 ///
 /// Returns `(identity_id, new_public_key_hex, old_public_key_hex, backup_path)`.
 pub fn rotate_node_signing_secret(
@@ -910,21 +1125,32 @@ pub fn rotate_node_signing_secret(
         if backup_path.is_dir() {
             remove_path_quiet(&backup_path);
         }
-        match fs::rename(&backup_tmp, &backup_path) {
-            Ok(()) => {
-                if backup_meta_path.is_dir() {
-                    remove_path_quiet(&backup_meta_path);
-                }
-                if fs::rename(&backup_meta_tmp, &backup_meta_path).is_err() {
-                    let _ = fs::copy(&backup_meta_tmp, &backup_meta_path);
-                    remove_path_quiet(&backup_meta_tmp);
-                }
-                wrote_backup = Some(backup_path);
-            }
+        // Archive prior latest into timestamped history before committing the new latest.
+        // On archive failure: leave staging tmp + existing `.prev` (never destroy history).
+        let archive_ok = match archive_latest_prev_slot(&identity_dir) {
+            Ok(_) => true,
             Err(_) => {
-                // Crypto + trust already committed — never restore_previous here.
-                // Leave staging tmp so the previous secret remains recoverable.
-                wrote_backup = Some(backup_tmp);
+                wrote_backup = Some(backup_tmp.clone());
+                false
+            }
+        };
+        if archive_ok {
+            match fs::rename(&backup_tmp, &backup_path) {
+                Ok(()) => {
+                    if backup_meta_path.is_dir() {
+                        remove_path_quiet(&backup_meta_path);
+                    }
+                    if fs::rename(&backup_meta_tmp, &backup_meta_path).is_err() {
+                        let _ = fs::copy(&backup_meta_tmp, &backup_meta_path);
+                        remove_path_quiet(&backup_meta_tmp);
+                    }
+                    wrote_backup = Some(backup_path);
+                }
+                Err(_) => {
+                    // Crypto + trust already committed — never restore_previous here.
+                    // Leave staging tmp so the previous secret remains recoverable.
+                    wrote_backup = Some(backup_tmp);
+                }
             }
         }
     }
@@ -1566,6 +1792,65 @@ mod tests {
             old_secret
         );
         assert_eq!(new_pub, hex::encode(new_sk.verifying_key().to_bytes()));
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn node_rotate_backup_archives_prior_slot() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("identity")).unwrap();
+        let sk1 = SigningKey::from_bytes(&[61u8; 32]);
+        let sk2 = SigningKey::from_bytes(&[62u8; 32]);
+        let sk3 = SigningKey::from_bytes(&[63u8; 32]);
+        let id = "aira:identity:node-backup-hist";
+        let pub1 = hex::encode(sk1.verifying_key().to_bytes());
+        let secret1 = format!("{}\n", hex::encode(sk1.to_bytes()));
+        fs::write(root.join("identity/local.ed25519"), &secret1).unwrap();
+        fs::write(
+            root.join("identity/local.identity.json"),
+            serde_json::json!({
+                "identity_id": id,
+                "identity_type": "local",
+                "display_name": "node-backup-hist",
+                "public_key": { "algorithm": "ed25519", "key_hex": pub1 },
+                "created_at": "2026-07-16T00:00:00Z",
+                "key_path": "identity/local.ed25519"
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        rotate_node_signing_secret(root, sk2.clone(), true, None).unwrap();
+        let first_prev = fs::read_to_string(root.join("identity").join(NODE_SECRET_BACKUP_FILE))
+            .unwrap();
+        assert_eq!(first_prev, secret1);
+
+        let secret2 = format!("{}\n", hex::encode(sk2.to_bytes()));
+        rotate_node_signing_secret(root, sk3.clone(), true, None).unwrap();
+        let latest = fs::read_to_string(root.join("identity").join(NODE_SECRET_BACKUP_FILE)).unwrap();
+        assert_eq!(latest, secret2);
+        assert_ne!(latest, secret1);
+
+        let list = list_node_secret_backups(root).unwrap();
+        assert!(list.iter().any(|b| b.is_latest));
+        assert!(
+            list.iter().any(|b| !b.is_latest),
+            "expected archived timestamped backup"
+        );
+        let archived = list.iter().find(|b| !b.is_latest).unwrap();
+        assert_eq!(fs::read_to_string(&archived.secret_path).unwrap(), secret1);
+        assert_eq!(
+            archived.old_public_key_hex.as_deref(),
+            Some(pub1.as_str())
+        );
+        // Both secrets still recoverable.
+        let secrets: Vec<_> = list
+            .iter()
+            .map(|b| fs::read_to_string(&b.secret_path).unwrap())
+            .collect();
+        assert!(secrets.iter().any(|s| s == &secret1));
+        assert!(secrets.iter().any(|s| s == &secret2));
         reset_primary_signer();
     }
 
