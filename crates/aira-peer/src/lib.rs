@@ -478,6 +478,14 @@ mod tests {
         let t = TrustStore::load(root).unwrap();
         assert!(t.is_revoked(old));
         assert!(t.entries.iter().any(|e| e.identity_id == new));
+        let audit = aira_object::TrustAuditLog::load(root).unwrap();
+        assert!(audit.iter().any(|e| {
+            e.action == aira_object::TrustAuditAction::Rotate
+                && e.subject_id == old
+                && e.new_id.as_deref() == Some(new)
+                && e.source.as_deref() == Some("peer-delta")
+                && e.issuer_id.as_deref() == Some(peer)
+        }));
     }
 
     #[test]

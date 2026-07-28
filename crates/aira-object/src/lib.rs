@@ -3,11 +3,15 @@
 //! Provides typed references, hashes, signatures, opaque handles, and
 //! `ObjectDescriptor` aligned with Schema Pack core schemas.
 
+mod audit;
 mod crypto;
 mod descriptor;
 mod handle;
 mod types;
 
+pub use audit::{
+    record_trust_audit, TrustAuditAction, TrustAuditEntry, TrustAuditLog, TRUST_AUDIT_FILE,
+};
 pub use crypto::{
     active_identity, active_signature, ensure_trust_defaults, is_cryptographic_signature,
     local_test_public_key_hex, local_test_signature, local_test_signing_key,

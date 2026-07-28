@@ -4,7 +4,7 @@
 - [ ] Dual-key rotation grace window
 - [ ] Node signing-secret rotate (`local.ed25519`)
 - [ ] Per-CSU publisher identity distinct from node primary
-- [ ] CRL audit / SQLite event log
+- [x] CRL audit / SQLite event log (Analyze-40 JSONL)
 - [ ] Process-keyring test isolation (serial_test) — trust tests use file-backed rings
 
 ## Done

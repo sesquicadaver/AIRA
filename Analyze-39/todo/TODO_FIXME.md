@@ -2,7 +2,7 @@
 
 ## Deferred
 - [ ] Multi-tenant per-CSU keyring (QUEUE #9)
-- [ ] CRL / ceremony audit log (QUEUE #7)
+- [x] CRL / ceremony audit log (QUEUE #7 → Analyze-40)
 
 ## Done
 - [x] `emit_failed` via `make_event_as(publisher_identity)`

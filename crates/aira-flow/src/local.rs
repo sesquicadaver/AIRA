@@ -113,6 +113,9 @@ impl NodePaths {
     pub fn trust_json(&self) -> PathBuf {
         self.identity_dir().join("trust.json")
     }
+    pub fn trust_audit_jsonl(&self) -> PathBuf {
+        self.identity_dir().join(aira_object::TRUST_AUDIT_FILE)
+    }
     pub fn db_dir(&self) -> PathBuf {
         self.root.join("db")
     }

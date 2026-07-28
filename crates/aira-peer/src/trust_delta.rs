@@ -270,6 +270,43 @@ pub fn apply_trust_delta(
     }
     store.save(root)?;
     let _ = sync_trust_verifiers(root)?;
+
+    let audit = match delta.op {
+        TrustDeltaOp::Revoke => aira_object::TrustAuditEntry::new(
+            aira_object::TrustAuditAction::Revoke,
+            delta.subject_id.trim(),
+            Some("peer-delta"),
+        )?
+        .with_reason(delta.reason.as_deref())
+        .with_issuer(Some(issuer.as_str())),
+        TrustDeltaOp::Unrevoke => aira_object::TrustAuditEntry::new(
+            aira_object::TrustAuditAction::Unrevoke,
+            delta.subject_id.trim(),
+            Some("peer-delta"),
+        )?
+        .with_issuer(Some(issuer.as_str())),
+        TrustDeltaOp::Rotate => aira_object::TrustAuditEntry::new(
+            aira_object::TrustAuditAction::Rotate,
+            delta.subject_id.trim(),
+            Some("peer-delta"),
+        )?
+        .with_new_id(delta.new_id.as_deref())
+        .with_pubkey_hex(delta.new_pubkey_hex.as_deref())
+        .with_grace_until(delta.grace_until.as_deref())
+        .with_reason(delta.reason.as_deref())
+        .with_issuer(Some(issuer.as_str())),
+        TrustDeltaOp::Rekey => aira_object::TrustAuditEntry::new(
+            aira_object::TrustAuditAction::Rekey,
+            delta.subject_id.trim(),
+            Some("peer-delta"),
+        )?
+        .with_pubkey_hex(delta.new_pubkey_hex.as_deref())
+        .with_grace_until(delta.grace_until.as_deref())
+        .with_reason(delta.reason.as_deref())
+        .with_issuer(Some(issuer.as_str())),
+    };
+    aira_object::TrustAuditLog::append(root, &audit)?;
+
     Ok(())
 }
 

@@ -71,6 +71,16 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust add \
 | `unrevoke` | clears CRL | then yes via `add` | **no** — need `add` |
 | `rotate` | yes (old→CRL) | old needs `unrevoke` | **yes** for new; old only during `--until` grace |
 
+**Ceremony audit** (Analyze-40): append-only `.aira/identity/trust-audit.jsonl` records `revoke` / `unrevoke` / `rotate` / `rekey` / `node_rotate` (public metadata only — never secrets). Written by CLI trust commands, `apply_trust_delta`, and `rotate_node_signing_secret`.
+
+```bash
+cargo run -p aira-cli -- --root "$ROOT" identity trust revoke \
+  --key-ref aira:identity:peer-alice --reason compromised
+cargo run -p aira-cli -- --root "$ROOT" identity trust audit
+# recorded_at  action  subject  new_id  reason  source
+cargo run -p aira-cli -- --root "$ROOT" identity trust audit --last 5
+```
+
 **Rotate** (Analyze-27/28): atomic peer replacement — revoke `old` with `superseded_by`, trust `new` with `supersedes`. Without `--until`, old signatures fail immediately after sync. With `--until <RFC3339 UTC>`, dual-key grace keeps old pubkey verifiable until that instant (`RevokedEntry.grace_until`); upsert of old remains blocked.
 
 ```bash
@@ -126,6 +136,6 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Dual-key grace for peer TrustStore (remote same-id multi-key); TLS; multi-tenant per-CSU keyring; CRL audit log; gossip fanout; coordinated rotate of `local.x25519` with Ed25519.
+Dual-key grace for peer TrustStore (remote same-id multi-key); TLS; multi-tenant per-CSU keyring; SQLite ceremony audit table (JSONL is Analyze-40); gossip fanout; coordinated rotate of `local.x25519` with Ed25519.
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify).

@@ -3,7 +3,7 @@
 ## Deferred
 - [ ] Per-CSU publisher identity distinct from node primary
 - [ ] Node signing-secret rotate (`local.ed25519`)
-- [ ] CRL audit / SQLite event log
+- [x] CRL audit / SQLite event log (Analyze-40 JSONL)
 - [ ] YAML config (older backlog)
 
 ## Done

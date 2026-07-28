@@ -170,6 +170,12 @@ enum TrustCommands {
         #[arg(long)]
         until: Option<String>,
     },
+    /// List durable trust/ceremony audit entries (`identity/trust-audit.jsonl`).
+    Audit {
+        /// Show only the last N entries (default: all).
+        #[arg(long)]
+        last: Option<usize>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -599,6 +605,15 @@ fn run() -> Result<ExitCode> {
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
                     store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                     aira_object::sync_trust_verifiers(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let audit = aira_object::TrustAuditEntry::new(
+                        aira_object::TrustAuditAction::Revoke,
+                        &key_ref,
+                        Some("cli"),
+                    )
+                    .map_err(|e| anyhow::anyhow!("{e}"))?
+                    .with_reason(reason.as_deref());
+                    aira_object::TrustAuditLog::append(&root, &audit)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
                     println!("revoked {key_ref}");
                     Ok(ExitCode::SUCCESS)
                 }
@@ -610,6 +625,14 @@ fn run() -> Result<ExitCode> {
                         .unrevoke(&key_ref)
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
                     store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let audit = aira_object::TrustAuditEntry::new(
+                        aira_object::TrustAuditAction::Unrevoke,
+                        &key_ref,
+                        Some("cli"),
+                    )
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    aira_object::TrustAuditLog::append(&root, &audit)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
                     println!("unrevoked {key_ref} (not trusted until `trust add`)");
                     Ok(ExitCode::SUCCESS)
                 }
@@ -634,12 +657,56 @@ fn run() -> Result<ExitCode> {
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
                     store.save(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                     aira_object::sync_trust_verifiers(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let audit = aira_object::TrustAuditEntry::new(
+                        aira_object::TrustAuditAction::Rotate,
+                        &old_key_ref,
+                        Some("cli"),
+                    )
+                    .map_err(|e| anyhow::anyhow!("{e}"))?
+                    .with_new_id(Some(&new_key_ref))
+                    .with_pubkey_hex(Some(&pubkey_hex))
+                    .with_grace_until(until.as_deref())
+                    .with_reason(reason.as_deref());
+                    aira_object::TrustAuditLog::append(&root, &audit)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
                     match until {
                         Some(u) => {
                             println!("rotated {old_key_ref} -> {new_key_ref} (grace until {u})")
                         }
                         None => println!("rotated {old_key_ref} -> {new_key_ref}"),
                     }
+                    Ok(ExitCode::SUCCESS)
+                }
+                TrustCommands::Audit { last } => {
+                    ensure_init(&root)?;
+                    let entries = aira_object::TrustAuditLog::load(&root)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let slice: &[aira_object::TrustAuditEntry] = match last {
+                        Some(n) if n < entries.len() => &entries[entries.len() - n..],
+                        _ => &entries,
+                    };
+                    if slice.is_empty() {
+                        println!("(empty audit)");
+                    } else {
+                        for e in slice {
+                            let reason = e.reason.as_deref().unwrap_or("-");
+                            let new_id = e.new_id.as_deref().unwrap_or("-");
+                            let source = e.source.as_deref().unwrap_or("-");
+                            println!(
+                                "{}\t{}\t{}\t{}\t{}\t{}",
+                                e.recorded_at,
+                                e.action.as_str(),
+                                e.subject_id,
+                                new_id,
+                                reason,
+                                source
+                            );
+                        }
+                    }
+                    println!(
+                        "audit {}",
+                        NodePaths::new(&root).trust_audit_jsonl().display()
+                    );
                     Ok(ExitCode::SUCCESS)
                 }
             },

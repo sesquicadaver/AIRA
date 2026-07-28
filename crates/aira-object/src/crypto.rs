@@ -933,6 +933,18 @@ pub fn rotate_node_signing_secret(
     let (id, ring) = Keyring::load_node_identity(root)?;
     register_keyring(&ring);
     set_primary_signer(id.clone());
+
+    // Durable ceremony audit (pubkey only — never the secret).
+    let audit = crate::audit::TrustAuditEntry::new(
+        crate::audit::TrustAuditAction::NodeRotate,
+        id.as_str(),
+        Some("node-rotate"),
+    )?
+    .with_pubkey_hex(Some(new_pub.as_str()))
+    .with_grace_until(grace_until.as_deref())
+    .with_reason(Some("node signing secret rotated"));
+    crate::audit::TrustAuditLog::append(root, &audit)?;
+
     Ok((id, new_pub, old_pub, wrote_backup))
 }
 
@@ -1435,6 +1447,13 @@ mod tests {
             .expect("node trust entry");
         assert_eq!(entry.public_key_hex, new_pub);
         assert!(!store.is_revoked(id));
+        let audit = crate::audit::TrustAuditLog::load(root).unwrap();
+        assert!(audit.iter().any(|e| {
+            e.action == crate::audit::TrustAuditAction::NodeRotate
+                && e.subject_id == id
+                && e.public_key_hex.as_deref() == Some(new_pub.as_str())
+                && e.source.as_deref() == Some("node-rotate")
+        }));
 
         let desc_raw = fs::read_to_string(root.join("identity/local.identity.json")).unwrap();
         let desc: serde_json::Value = serde_json::from_str(&desc_raw).unwrap();

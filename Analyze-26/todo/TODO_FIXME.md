@@ -3,7 +3,7 @@
 ## Deferred
 - [ ] Key rotation ceremony (supersedes / dual-key window)
 - [ ] Per-CSU publisher identity distinct from node primary
-- [ ] CRL audit log / SQLite event log
+- [x] CRL audit log / SQLite event log (Analyze-40 JSONL)
 - [ ] YAML config (older backlog)
 
 ## Done
