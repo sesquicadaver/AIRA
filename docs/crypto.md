@@ -15,7 +15,7 @@ API: `aira_object::{local_test_signature, verify_ed25519, Keyring, active_signat
 
 **Primary signer** (Analyze-22): `aira_csu::support::{local_identity, local_signature, local_signature_over}` use `active_identity` / `active_signature`. When a node identity is registered, OperationalPlane + basic CSU emits carry that `key_ref`.
 
-**Per-CSU publisher** (Analyze-29): CSU emits use `CsuManifest.publisher_identity` via `make_event_as` / `make_artifact_as` + `signature_for` (fail closed if no signing key). Default `publisher_identity == identity_ref == primary`. Override with `ContextBasicCsu::with_publisher` (and siblings). Plane ProblemStatement / lifecycle remain on primary.
+**Per-CSU publisher** (Analyze-29 / Analyze-39): CSU business emits, `CSUFailed`, and CSU registry lifecycle events (`CSURegistered` / `CSUSuspended` / …) use `CsuManifest.publisher_identity` via `make_event_as` / `make_artifact_as` + `signature_for` (fail closed if no signing key). Default `publisher_identity == identity_ref == primary`. Override with `ContextBasicCsu::with_publisher` (and siblings). OperationalPlane ProblemStatement / plane lifecycle remain on primary.
 
 On `LocalSession::open` / `submit_problem` / `aira identity create`:
 

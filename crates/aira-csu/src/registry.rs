@@ -142,6 +142,8 @@ impl CsuRegistry {
         Ok(reg)
     }
 
+    /// Emit a lifecycle event signed as the CSU's `publisher_identity` when registered;
+    /// otherwise fall back to `with_event_identity` (primary). Fail closed on missing key.
     fn emit_lifecycle(
         &mut self,
         events: Option<&mut dyn EventSink>,
@@ -151,28 +153,41 @@ impl CsuRegistry {
         let Some(log) = events else {
             return Ok(());
         };
-        let (Some(producer), Some(signer)) = (self.producer.clone(), self.signer.clone()) else {
-            return Ok(());
-        };
         self.event_seq += 1;
         let id = format!("aira:event:csulife{}", self.event_seq);
-        let ev = EventDescriptor {
-            event_id: AiraRef::parse(&id).map_err(|e| CsuError::Storage(e.to_string()))?,
-            event_type,
-            schema_version: "0.1".into(),
-            producer_identity: producer,
-            causal_refs: vec![],
-            object_refs: vec![subject.clone()],
-            artifact_refs: vec![],
-            policy_refs: vec![],
-            payload_hash: ContentHash::parse(
-                "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        let ev = if let Some(entry) = self.entries.get(subject.as_str()) {
+            crate::support::make_event_as(
+                entry.manifest.publisher_identity.clone(),
+                &id,
+                event_type,
+                vec![subject.clone()],
+                vec![],
+                vec![],
+                None,
             )
-            .map_err(|e| CsuError::Storage(e.to_string()))?,
-            payload_ref: None,
-            created_at: Timestamp::parse("2026-07-10T12:00:00Z")
+            .map_err(|e| CsuError::Dispatch(e.to_string()))?
+        } else {
+            let (Some(producer), Some(signer)) = (self.producer.clone(), self.signer.clone()) else {
+                return Ok(());
+            };
+            EventDescriptor {
+                event_id: AiraRef::parse(&id).map_err(|e| CsuError::Storage(e.to_string()))?,
+                event_type,
+                schema_version: "0.1".into(),
+                producer_identity: producer,
+                causal_refs: vec![],
+                object_refs: vec![subject.clone()],
+                artifact_refs: vec![],
+                policy_refs: vec![],
+                payload_hash: ContentHash::parse(
+                    "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                )
                 .map_err(|e| CsuError::Storage(e.to_string()))?,
-            signature: signer,
+                payload_ref: None,
+                created_at: Timestamp::parse("2026-07-10T12:00:00Z")
+                    .map_err(|e| CsuError::Storage(e.to_string()))?,
+                signature: signer,
+            }
         };
         log.append(ev).map_err(|e| CsuError::Storage(e.to_string()))
     }

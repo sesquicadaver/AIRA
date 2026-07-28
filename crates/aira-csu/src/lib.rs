@@ -222,10 +222,115 @@ mod tests {
             .dispatch(&sample_event(EventType::ProblemSubmitted), &mut log)
             .unwrap_err();
         assert!(matches!(err, CsuError::Dispatch(_)));
-        assert!(log
+        let failed = log
             .all()
             .iter()
-            .any(|e| e.event_type == EventType::CSUFailed));
+            .find(|e| e.event_type == EventType::CSUFailed)
+            .expect("CSUFailed");
+        assert_eq!(failed.producer_identity.as_str(), producer().as_str());
+        assert_eq!(failed.signature.key_ref.as_str(), producer().as_str());
+        assert_eq!(failed.payload_ref.as_deref(), Some("boom"));
+    }
+
+    #[test]
+    fn emit_failed_and_lifecycle_use_publisher_identity() {
+        use aira_object::{
+            register_keyring, reset_primary_signer, set_primary_signer, verify_ed25519, Keyring,
+            LOCAL_TEST_KEY_REF,
+        };
+        use ed25519_dalek::SigningKey;
+
+        let pub_sk = SigningKey::from_bytes(&[41u8; 32]);
+        let pub_id = AiraRef::parse("aira:identity:csu-fail-publisher").unwrap();
+        let mut ring = Keyring::with_local_test();
+        ring.insert_signing(pub_id.clone(), pub_sk);
+        register_keyring(&ring);
+        set_primary_signer(AiraRef::parse(LOCAL_TEST_KEY_REF).unwrap());
+
+        let mut log = MemoryEventLog::new();
+        let mut rt = CsuRuntime::new(producer(), sig());
+        let mut m = sample_manifest();
+        m.csu_id = AiraRef::parse("aira:csu:fail.publisher").unwrap();
+        m.signature = aira_object::local_test_signature(m.csu_id.as_str().as_bytes());
+        m.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
+        support::apply_publisher(&mut m, pub_id.clone());
+        let id = m.csu_id.clone();
+
+        rt.register_handler(Box::new(FailingCsu { manifest: m }), Some(&mut log))
+            .unwrap();
+        let registered = log
+            .all()
+            .iter()
+            .find(|e| e.event_type == EventType::CSURegistered)
+            .expect("CSURegistered");
+        assert_eq!(registered.producer_identity.as_str(), pub_id.as_str());
+        assert_eq!(registered.signature.key_ref.as_str(), pub_id.as_str());
+        verify_ed25519(
+            &registered.signature,
+            registered.payload_hash.as_str().as_bytes(),
+        )
+        .unwrap();
+
+        rt.activate(&id, Some(&mut log)).unwrap();
+        let err = rt
+            .dispatch(&sample_event(EventType::ProblemSubmitted), &mut log)
+            .unwrap_err();
+        assert!(matches!(err, CsuError::Dispatch(_)));
+        let failed = log
+            .all()
+            .iter()
+            .find(|e| e.event_type == EventType::CSUFailed)
+            .expect("CSUFailed");
+        assert_eq!(failed.producer_identity.as_str(), pub_id.as_str());
+        assert_eq!(failed.signature.key_ref.as_str(), pub_id.as_str());
+        assert_eq!(failed.payload_ref.as_deref(), Some("boom"));
+        verify_ed25519(&failed.signature, failed.payload_hash.as_str().as_bytes()).unwrap();
+
+        // Missing signing key → fail closed (no CSUFailed with wrong producer).
+        let mut rt2 = CsuRuntime::new(producer(), sig());
+        let mut m2 = sample_manifest();
+        m2.csu_id = AiraRef::parse("aira:csu:fail.nosign").unwrap();
+        m2.signature = aira_object::local_test_signature(m2.csu_id.as_str().as_bytes());
+        m2.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
+        let missing = AiraRef::parse("aira:identity:no-signing-key").unwrap();
+        support::apply_publisher(&mut m2, missing);
+        let id2 = m2.csu_id.clone();
+        // Lifecycle emit also fail-closed when events sink is provided.
+        let mut log2 = MemoryEventLog::new();
+        assert!(rt2
+            .register_handler(Box::new(FailingCsu { manifest: m2 }), Some(&mut log2))
+            .is_err());
+        // Without lifecycle sink, register succeeds; dispatch emit_failed fails closed.
+        let mut m3 = sample_manifest();
+        m3.csu_id = AiraRef::parse("aira:csu:fail.nosign2").unwrap();
+        m3.signature = aira_object::local_test_signature(m3.csu_id.as_str().as_bytes());
+        m3.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
+        support::apply_publisher(
+            &mut m3,
+            AiraRef::parse("aira:identity:no-signing-key").unwrap(),
+        );
+        let id3 = m3.csu_id.clone();
+        rt2.register_handler(Box::new(FailingCsu { manifest: m3 }), None)
+            .unwrap();
+        rt2.activate(&id3, None).unwrap();
+        let before = log.all().len();
+        let err2 = rt2
+            .dispatch(&sample_event(EventType::ProblemSubmitted), &mut log)
+            .unwrap_err();
+        assert!(matches!(err2, CsuError::Dispatch(_)));
+        assert_eq!(
+            log.all()
+                .iter()
+                .filter(|e| e.event_type == EventType::CSUFailed
+                    && e.object_refs.iter().any(|r| r.as_str() == id3.as_str()))
+                .count(),
+            0,
+            "no CSUFailed when publisher cannot sign"
+        );
+        assert_eq!(log.all().len(), before);
+        let _ = id2;
+
+        reset_primary_signer();
     }
 
     #[test]

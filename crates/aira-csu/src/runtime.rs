@@ -5,7 +5,7 @@ use std::fmt;
 
 use aira_artifact::{ArtifactDescriptor, ArtifactStore};
 use aira_event::{EventDescriptor, EventSink, EventType};
-use aira_object::{AiraRef, ContentHash, Signature, Timestamp};
+use aira_object::{AiraRef, Signature};
 use aira_policy::{PolicyDecision, PolicyGate, PolicyQuery};
 
 use crate::error::CsuError;
@@ -169,18 +169,16 @@ pub struct CsuRuntime {
     pub registry: CsuRegistry,
     handlers: HashMap<String, Box<dyn Csu>>,
     producer: AiraRef,
-    signer: Signature,
     fail_seq: u64,
 }
 
 impl CsuRuntime {
     pub fn new(producer: AiraRef, signer: Signature) -> Self {
-        let registry = CsuRegistry::new().with_event_identity(producer.clone(), signer.clone());
+        let registry = CsuRegistry::new().with_event_identity(producer.clone(), signer);
         Self {
             registry,
             handlers: HashMap::new(),
             producer,
-            signer,
             fail_seq: 0,
         }
     }
@@ -323,33 +321,39 @@ impl CsuRuntime {
         }
     }
 
+    /// Resolve the CSU's `publisher_identity` for failure/lifecycle-style emits.
+    fn publisher_for(&self, csu_id: &AiraRef) -> AiraRef {
+        self.registry
+            .get(csu_id)
+            .map(|e| e.manifest.publisher_identity.clone())
+            .or_else(|| {
+                self.handlers
+                    .get(csu_id.as_str())
+                    .map(|h| h.manifest().publisher_identity.clone())
+            })
+            .unwrap_or_else(|| self.producer.clone())
+    }
+
+    /// Emit `CSUFailed` signed as the CSU's `publisher_identity` (fail closed).
     fn emit_failed(
         &mut self,
         csu_id: &AiraRef,
         message: &str,
         events: &mut dyn EventSink,
     ) -> Result<(), CsuError> {
-        let _ = message;
+        let publisher = self.publisher_for(csu_id);
         self.fail_seq += 1;
         let id = format!("aira:event:csufail{}", self.fail_seq);
-        let ev = EventDescriptor {
-            event_id: AiraRef::parse(&id).map_err(|e| CsuError::Storage(e.to_string()))?,
-            event_type: EventType::CSUFailed,
-            schema_version: "0.1".into(),
-            producer_identity: self.producer.clone(),
-            causal_refs: vec![],
-            object_refs: vec![csu_id.clone()],
-            artifact_refs: vec![],
-            policy_refs: vec![],
-            payload_hash: ContentHash::parse(
-                "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            )
-            .map_err(|e| CsuError::Storage(e.to_string()))?,
-            payload_ref: None,
-            created_at: Timestamp::parse("2026-07-10T12:00:00Z")
-                .map_err(|e| CsuError::Storage(e.to_string()))?,
-            signature: self.signer.clone(),
-        };
+        let ev = crate::support::make_event_as(
+            publisher,
+            &id,
+            EventType::CSUFailed,
+            vec![csu_id.clone()],
+            vec![],
+            vec![],
+            Some(message.to_string()),
+        )
+        .map_err(|e| CsuError::Dispatch(e.to_string()))?;
         events
             .append(ev)
             .map_err(|e| CsuError::Storage(e.to_string()))
