@@ -5,7 +5,7 @@
 ```text
 .aira/
   config.json
-  identity/          # aira identity create + trust.json
+  identity/          # aira identity create + trust.json + trust-audit.jsonl
   db/aira.sqlite
   artifacts/         # CAS + index.json
   csu/registry.json
