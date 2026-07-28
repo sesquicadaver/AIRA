@@ -38,12 +38,18 @@
 - **Verdict: APPROVE**
 
 ### Acceptance
-- [ ] DiscoveryRegistry load/save under `.aira/discovery/registry.json`
-- [ ] AppState seeds then persists
-- [ ] `--tls-cert` + `--tls-key` HTTPS serve
-- [ ] `--tls-self-signed` generates PEM under root
-- [ ] docs/local-node.md + QUEUE #11 DONE for this micro
-- [ ] Tests + clippy; CODE_REVIEW APPROVE/CLEAR
+- [x] DiscoveryRegistry load/save under `.aira/discovery/registry.json`
+- [x] AppState seeds then persists
+- [x] `--tls-cert` + `--tls-key` HTTPS serve
+- [x] `--tls-self-signed` generates PEM under root
+- [x] docs/local-node.md + QUEUE #11 DONE for this micro
+- [x] Tests + clippy; CODE_REVIEW APPROVE/CLEAR
+
+### Delivered
+- `DiscoveryRegistry::{path,load,save,contains}`
+- `aira-node` TLS module + CLI flags
+- A-19 TODO items for TLS + persist discovery marked done
 
 ### Out
 mTLS, bearer auth, DHT, changing default bind off loopback.
+
