@@ -9,7 +9,9 @@ mod event_adapter;
 mod identity;
 
 pub use artifact_adapter::{ArtifactOpResult, ArtifactProtocolAdapter, AP_VERSION};
-pub use discovery::{CapabilityDescriptor, DiscoveryHit, DiscoveryRegistry};
+pub use discovery::{
+    CapabilityDescriptor, DiscoveryHit, DiscoveryRegistry, DISCOVERY_REGISTRY_SCHEMA,
+};
 pub use envelope::{
     local_identity, local_signature, mvp_timestamp, ProtocolEnvelope, ProtocolError, ProtocolId,
     ProtocolResponse, ProtocolStatus, ScopeDescriptor,

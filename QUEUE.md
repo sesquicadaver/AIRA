@@ -9,7 +9,8 @@
 | Гілка | Стан |
 |-------|------|
 | MVP Epic 0–11 + Alpha.2 / Keyring / Plane / Trust / Peer P0+CLI | **done** |
-| Відкритий Analyze-34+ | **Analyze-44 CLOSED** (relay-first hub); наступний = #11 HTTP TLS / discovery або DHT micro |
+| Відкритий Analyze-34+ | **Analyze-45 CLOSED** (HTTP TLS + discovery persist); наступний = #12 M12–M13 / C2 або DHT micro |
+
 
 
 | Канон наступних milestone | `specs/mvp-roadmap.md` M12–M13 + post-MVP |
@@ -40,12 +41,12 @@
 | 8 | **P2** | ~~Timestamped `.prev` history~~ **DONE** (Analyze-41) | історія бекапів, не один слот | після #4 | — |
 | 9 | **P2** | ~~Multi-tenant per-CSU keyring~~ **DONE** (Analyze-42) | ізоляція keyring | після #6 | — |
 | 10 | **P2** | ~~Gossip + discovery~~ **DONE** (A-43); ~~relay-first hub~~ **DONE** (A-44); next: DHT micro optional | #10 split | після #2–3 | STUN в одному PR |
-| 11 | **P2** | HTTP TLS / persist discovery | A-19 deferred | окремий трек | peer P0 |
+| 11 | **P2** | ~~HTTP TLS + persist discovery~~ **DONE** (Analyze-45) | A-19 deferred | окремий трек | mTLS/authn |
 | 12 | **P2** | Roadmap M12–M13 / v0.2 C2 | conformance harness + partial C2 protocols | окремий трек | peer crypto |
 
 ### Рекомендований наступний цикл
 
-**Analyze-45 / #11 — HTTP TLS** або окремий DHT micro (лише після доказу користі gossip/discovery/relay).
+**Analyze-46 / #12 — Roadmap M12–M13 / C2**, або окремий DHT micro (опційно).
 
 ### Залежності (скорочено)
 

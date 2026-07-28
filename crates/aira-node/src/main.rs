@@ -1,6 +1,7 @@
 //! AIRA local node binary — load config, CSU registry, process local events / HTTP.
 
 mod http;
+mod tls;
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -11,8 +12,10 @@ use clap::Parser;
 
 use aira_csu::CsuRegistry;
 use aira_flow::{init_node, load_config, LocalSession, SubmitOutcome, DEFAULT_AIRA_ROOT};
+use aira_protocol::DiscoveryRegistry;
 
 use crate::http::{router, AppState};
+use crate::tls::{resolve_tls_paths, serve_https};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -40,6 +43,18 @@ struct Args {
     /// Listen address for `--http` (default loopback).
     #[arg(long, default_value = "127.0.0.1:8787")]
     listen: String,
+
+    /// PEM certificate for HTTPS (requires `--tls-key`).
+    #[arg(long)]
+    tls_cert: Option<PathBuf>,
+
+    /// PEM private key for HTTPS (requires `--tls-cert`).
+    #[arg(long)]
+    tls_key: Option<PathBuf>,
+
+    /// Generate/reuse self-signed cert under `<root>/http/` (Analyze-45).
+    #[arg(long, default_value_t = false)]
+    tls_self_signed: bool,
 }
 
 fn main() -> ExitCode {
@@ -94,7 +109,17 @@ fn run() -> Result<ExitCode> {
         if args.text.is_some() {
             bail!("--http and --text are mutually exclusive");
         }
-        return serve_http(args.root, &args.listen);
+        return serve_http(
+            args.root,
+            &args.listen,
+            args.tls_cert,
+            args.tls_key,
+            args.tls_self_signed,
+        );
+    }
+
+    if args.tls_cert.is_some() || args.tls_key.is_some() || args.tls_self_signed {
+        bail!("TLS flags require --http");
     }
 
     if let Some(text) = args.text {
@@ -128,24 +153,42 @@ fn run() -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
-fn serve_http(root: PathBuf, listen: &str) -> Result<ExitCode> {
+fn serve_http(
+    root: PathBuf,
+    listen: &str,
+    tls_cert: Option<PathBuf>,
+    tls_key: Option<PathBuf>,
+    tls_self_signed: bool,
+) -> Result<ExitCode> {
     let addr: SocketAddr = listen
         .parse()
         .map_err(|e| anyhow::anyhow!("invalid --listen {listen}: {e}"))?;
     if !addr.ip().is_loopback() {
         eprintln!("warning: listening on non-loopback {addr} — M11 assumes local-only trust");
     }
+    let tls = resolve_tls_paths(&root, tls_cert, tls_key, tls_self_signed)?;
     let state = AppState::open(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
     let app = router(state);
-    println!("http listening on http://{addr}");
+    println!(
+        "discovery {}",
+        DiscoveryRegistry::path(&root).display()
+    );
     println!("endpoints: /health /v1/problems /v1/results /v1/artifacts /v1/events /v1/capabilities /v1/csu /v1/conformance/run");
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
     rt.block_on(async move {
-        let listener = tokio::net::TcpListener::bind(addr).await?;
-        axum::serve(listener, app).await?;
+        if let Some((cert, key)) = tls {
+            println!("https listening on https://{addr}");
+            println!("tls_cert {}", cert.display());
+            println!("tls_key {}", key.display());
+            serve_https(addr, app, &cert, &key).await?;
+        } else {
+            println!("http listening on http://{addr}");
+            let listener = tokio::net::TcpListener::bind(addr).await?;
+            axum::serve(listener, app).await?;
+        }
         Ok::<_, anyhow::Error>(())
     })?;
     Ok(ExitCode::SUCCESS)

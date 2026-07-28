@@ -26,18 +26,25 @@ pub struct AppState {
 
 impl AppState {
     /// Open session and seed local capability descriptors from config autoload.
+    ///
+    /// Loads durable `.aira/discovery/registry.json` when present, seeds missing
+    /// autoload capabilities, then persists.
     pub fn open(root: impl AsRef<Path>) -> Result<Self, String> {
         let root = root.as_ref().to_path_buf();
         let session = LocalSession::open(&root).map_err(|e| e.to_string())?;
-        let mut discovery = DiscoveryRegistry::new();
+        let mut discovery = DiscoveryRegistry::load(&root).map_err(|e| e.to_string())?;
         for name in &session.config.csu.autoload {
             let cap_id = format!("aira:capability:local:{name}");
+            if discovery.contains(&cap_id) {
+                continue;
+            }
             let csu_id = format!("aira:csu:{name}");
             let cap_type = format!("local.{name}");
             if let Ok(cap) = DiscoveryRegistry::local_capability(&cap_id, &cap_type, &csu_id) {
                 let _ = discovery.register(cap);
             }
         }
+        discovery.save(&root).map_err(|e| e.to_string())?;
         Ok(Self {
             root,
             session: Arc::new(Mutex::new(session)),
@@ -508,9 +515,13 @@ mod tests {
     #[tokio::test]
     async fn http_capabilities() {
         let (_dir, state) = setup();
+        let root = state.root.clone();
         let (st, v) = json_req(router(state), "GET", "/v1/capabilities", None).await;
         assert_eq!(st, StatusCode::OK, "{v}");
         assert!(!v["capabilities"].as_array().unwrap().is_empty());
+        assert!(DiscoveryRegistry::path(&root).exists());
+        let loaded = DiscoveryRegistry::load(&root).unwrap();
+        assert!(!loaded.list_all().is_empty());
     }
 
     #[tokio::test]
