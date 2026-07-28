@@ -210,8 +210,10 @@ fn refuse_protected(id: &str, local_id: &str) -> Result<(), PeerError> {
 
 /// Apply a validated trust-delta into local `trust.json` (fail-closed).
 ///
-/// `issuer` must be the authenticated peer that signed the envelope. Does not
-/// re-check the envelope signature — caller must use [`crate::AuthenticatedPeer::recv_envelope`].
+/// `issuer` must be the originator that signed the envelope (direct peer or
+/// gossip). Does not re-check the envelope signature — caller must use
+/// [`crate::AuthenticatedPeer::recv_envelope`] or
+/// [`crate::AuthenticatedPeer::recv_envelope_allow_relayed_trust_delta`].
 pub fn apply_trust_delta(
     root: impl AsRef<Path>,
     issuer: &aira_object::AiraRef,

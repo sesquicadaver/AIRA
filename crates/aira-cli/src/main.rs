@@ -284,7 +284,12 @@ enum PeerCommands {
         /// When receiving `peer.trust.delta`, apply into local trust.json (fail-closed).
         #[arg(long, default_value_t = false)]
         apply_trust: bool,
+        /// After apply, fan out the original trust-delta to other address-book peers (Analyze-43).
+        #[arg(long, default_value_t = false)]
+        gossip: bool,
     },
+    /// List durable peer discovery journal (`peers/discovery.json`).
+    Discovery,
     /// Dial a trusted peer and complete hello.
     Dial {
         #[arg(long)]
@@ -1044,14 +1049,43 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             );
             Ok(ExitCode::SUCCESS)
         }
+        PeerCommands::Discovery => {
+            let store =
+                aira_peer::PeerDiscoveryStore::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+            if store.peers.is_empty() {
+                println!("(empty discovery)");
+            } else {
+                for e in &store.peers {
+                    let addr = e.addr.as_deref().unwrap_or("-");
+                    let from = e.learned_from.as_deref().unwrap_or("-");
+                    let src = match e.source {
+                        aira_peer::DiscoverySource::Direct => "direct",
+                        aira_peer::DiscoverySource::Gossip => "gossip",
+                    };
+                    println!(
+                        "{}\t{}\t{}\t{}\t{}",
+                        e.identity_id, addr, e.last_seen, from, src
+                    );
+                }
+            }
+            println!(
+                "discovery {}",
+                aira_peer::PeerDiscoveryStore::path(root).display()
+            );
+            Ok(ExitCode::SUCCESS)
+        }
         PeerCommands::Listen {
             bind,
             once,
             recv,
             apply_trust,
+            gossip,
         } => {
             if apply_trust && !recv {
                 bail!("--apply-trust requires --recv");
+            }
+            if gossip && !apply_trust {
+                bail!("--gossip requires --apply-trust");
             }
             let listener = aira_peer::listen(&bind)
                 .await
@@ -1069,6 +1103,9 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             if apply_trust {
                 println!("apply_trust enabled");
             }
+            if gossip {
+                println!("gossip enabled");
+            }
             let root_owned = root.to_path_buf();
             loop {
                 let mut peer = match aira_peer::accept(&listener, root).await {
@@ -1078,8 +1115,6 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                         if once {
                             return Err(anyhow::anyhow!("{e}"));
                         }
-                        // Avoid tight spin if the listener is wedged; admission errors
-                        // still return to waiting on the next TCP accept.
                         if matches!(e, aira_peer::PeerError::Io(_)) {
                             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                         }
@@ -1087,12 +1122,21 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                     }
                 };
                 println!("accepted {}", peer.peer_id.as_str());
+                let _ = aira_peer::PeerDiscoveryStore::record_and_save(
+                    root,
+                    peer.peer_id.as_str(),
+                    None,
+                    None,
+                    aira_peer::DiscoverySource::Direct,
+                );
                 if recv {
                     if once {
-                        let env = peer
-                            .recv_envelope()
-                            .await
-                            .map_err(|e| anyhow::anyhow!("{e}"))?;
+                        let env = if apply_trust {
+                            peer.recv_envelope_allow_relayed_trust_delta().await
+                        } else {
+                            peer.recv_envelope().await
+                        }
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
                         println!(
                             "received {}\t{}\t{}",
                             env.message_type,
@@ -1103,6 +1147,7 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                             println!("payload_ref {payload}");
                         }
                         if apply_trust && env.message_type == aira_peer::TRUST_DELTA_MESSAGE_TYPE {
+                            let from = peer.peer_id.as_str().to_string();
                             let delta = aira_peer::parse_trust_delta(&env)
                                 .map_err(|e| anyhow::anyhow!("{e}"))?;
                             aira_peer::apply_trust_delta(root, &env.issuer_identity, &delta)
@@ -1111,14 +1156,40 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                                 "applied trust-delta {:?}\tsubject {}",
                                 delta.op, delta.subject_id
                             );
+                            if gossip {
+                                let results = aira_peer::gossip_forward_trust_delta(
+                                    root, &env, &from,
+                                )
+                                .await
+                                .map_err(|e| anyhow::anyhow!("{e}"))?;
+                                for r in results {
+                                    if r.skipped {
+                                        println!("gossip skipped (duplicate)");
+                                    } else if r.ok {
+                                        println!("gossip -> {}", r.peer_id);
+                                    } else {
+                                        eprintln!(
+                                            "gossip failed {}\t{}",
+                                            r.peer_id,
+                                            r.error.unwrap_or_default()
+                                        );
+                                    }
+                                }
+                            }
                         }
                         break;
                     }
-                    // Daemon: recv off the accept path so the next hello is not blocked.
                     let root_bg = root_owned.clone();
                     let do_apply = apply_trust;
+                    let do_gossip = gossip;
                     tokio::spawn(async move {
-                        match peer.recv_envelope().await {
+                        let from = peer.peer_id.as_str().to_string();
+                        let recv = if do_apply {
+                            peer.recv_envelope_allow_relayed_trust_delta().await
+                        } else {
+                            peer.recv_envelope().await
+                        };
+                        match recv {
                             Ok(env) => {
                                 println!(
                                     "received {}\t{}\t{}",
@@ -1140,10 +1211,40 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                                         )
                                         .map(|_| d)
                                     }) {
-                                        Ok(delta) => println!(
-                                            "applied trust-delta {:?}\tsubject {}",
-                                            delta.op, delta.subject_id
-                                        ),
+                                        Ok(delta) => {
+                                            println!(
+                                                "applied trust-delta {:?}\tsubject {}",
+                                                delta.op, delta.subject_id
+                                            );
+                                            if do_gossip {
+                                                match aira_peer::gossip_forward_trust_delta(
+                                                    &root_bg, &env, &from,
+                                                )
+                                                .await
+                                                {
+                                                    Ok(results) => {
+                                                        for r in results {
+                                                            if r.skipped {
+                                                                println!(
+                                                                    "gossip skipped (duplicate)"
+                                                                );
+                                                            } else if r.ok {
+                                                                println!("gossip -> {}", r.peer_id);
+                                                            } else {
+                                                                eprintln!(
+                                                                    "gossip failed {}\t{}",
+                                                                    r.peer_id,
+                                                                    r.error.unwrap_or_default()
+                                                                );
+                                                            }
+                                                        }
+                                                    }
+                                                    Err(e) => {
+                                                        eprintln!("gossip error: {e}");
+                                                    }
+                                                }
+                                            }
+                                        }
                                         Err(e) => eprintln!(
                                             "apply_trust error from {}: {e}",
                                             env.issuer_identity.as_str()
@@ -1152,7 +1253,7 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                                 }
                             }
                             Err(e) => {
-                                eprintln!("recv error from {}: {e}", peer.peer_id.as_str());
+                                eprintln!("recv error from {}: {e}", from);
                             }
                         }
                     });

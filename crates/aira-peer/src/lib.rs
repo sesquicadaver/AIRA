@@ -1,13 +1,16 @@
-//! AIRA authenticated peer links (Analyze-32…38).
+//! AIRA authenticated peer links (Analyze-32…43).
 //!
 //! Framed TCP + mutual Ed25519 hello v1 + Noise XX + signed [`ProtocolEnvelope`].
 //! Admission is local [`TrustStore`] only — no controlling center, no DHT.
 //! Trust-delta (`peer.trust.delta`) can propagate CRL ops and same-id rekey over the encrypted link.
+//! Analyze-43: optional gossip fanout + durable `peers/discovery.json`.
 
 mod address_book;
+mod discovery;
 mod envelope;
 mod error;
 mod frame;
+mod gossip;
 mod handshake;
 mod noise;
 mod notify;
@@ -15,9 +18,13 @@ mod session;
 mod trust_delta;
 
 pub use address_book::{AddressBook, PeerEndpoint};
+pub use discovery::{DiscoveryEntry, DiscoverySource, PeerDiscoveryStore};
 pub use envelope::make_peer_ping;
 pub use error::PeerError;
 pub use frame::{read_frame, write_frame, MAX_FRAME_BYTES};
+pub use gossip::{
+    gossip_forward_trust_delta, gossip_mark_seen, GossipForwardResult, GossipSeenLog, GOSSIP_SEEN_CAP,
+};
 pub use handshake::{HelloMessage, HelloResult, HELLO_DOMAIN};
 pub use noise::{load_or_create_noise_static, x25519_public, NOISE_PATTERN};
 pub use notify::{
@@ -579,5 +586,112 @@ mod tests {
 
         // Now rotate; subsequent dials use the new key against updated trust.
         aira_object::rotate_node_signing_secret(root_a, new_sk, false, None).unwrap();
+    }
+
+    #[tokio::test]
+    async fn gossip_trust_delta_a_to_b_to_c() {
+        let dir_a = tempdir().unwrap();
+        let dir_b = tempdir().unwrap();
+        let dir_c = tempdir().unwrap();
+        let root_a = dir_a.path();
+        let root_b = dir_b.path();
+        let root_c = dir_c.path();
+        init_node(root_a).unwrap();
+        init_node(root_b).unwrap();
+        init_node(root_c).unwrap();
+        let (id_a, pub_a) = write_node_identity(root_a, "g-alice", [111u8; 32]);
+        let (id_b, pub_b) = write_node_identity(root_b, "g-bob", [113u8; 32]);
+        let (id_c, pub_c) = write_node_identity(root_c, "g-carol", [115u8; 32]);
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
+        mutual_trust(root_b, id_b.as_str(), &pub_b, root_c, id_c.as_str(), &pub_c);
+        // C must trust A (originator) to apply forwarded envelope.
+        let mut tc = TrustStore::load(root_c).unwrap();
+        tc.upsert(id_a.as_str(), &pub_a).unwrap();
+        tc.save(root_c).unwrap();
+        let mut ta = TrustStore::load(root_a).unwrap();
+        ta.upsert(id_c.as_str(), &pub_c).unwrap();
+        ta.save(root_a).unwrap();
+
+        let carol = "aira:identity:gossip-victim";
+        let carol_sk = SigningKey::from_bytes(&[117u8; 32]);
+        let carol_pub = hex::encode(carol_sk.verifying_key().to_bytes());
+        for root in [root_a, root_b, root_c] {
+            let mut t = TrustStore::load(root).unwrap();
+            t.upsert(carol, &carol_pub).unwrap();
+            t.save(root).unwrap();
+        }
+
+        // C listens for gossip from B.
+        let listener_c = listen("127.0.0.1:0").await.unwrap();
+        let addr_c = listener_c.local_addr().unwrap();
+        let mut book_b = AddressBook::default();
+        book_b.upsert(id_c.as_str(), addr_c.to_string());
+        book_b.save(root_b).unwrap();
+
+        let root_c2 = root_c.to_path_buf();
+        let c_task = tokio::spawn(async move {
+            let mut peer = accept(&listener_c, &root_c2).await.unwrap();
+            let env = peer
+                .recv_envelope_allow_relayed_trust_delta()
+                .await
+                .unwrap();
+            let delta = parse_trust_delta(&env).unwrap();
+            apply_trust_delta(&root_c2, &env.issuer_identity, &delta).unwrap();
+            let _ = PeerDiscoveryStore::record_and_save(
+                &root_c2,
+                env.issuer_identity.as_str(),
+                None,
+                Some(peer.peer_id.as_str().to_string()),
+                DiscoverySource::Gossip,
+            );
+            (env.message_id.as_str().to_string(), delta)
+        });
+
+        // B listens for A, applies, then gossips to C.
+        let listener_b = listen("127.0.0.1:0").await.unwrap();
+        let addr_b = listener_b.local_addr().unwrap();
+        let mut book_a = AddressBook::default();
+        book_a.upsert(id_b.as_str(), addr_b.to_string());
+        book_a.save(root_a).unwrap();
+
+        let root_b2 = root_b.to_path_buf();
+        let id_a_s = id_a.as_str().to_string();
+        let b_task = tokio::spawn(async move {
+            let mut peer = accept(&listener_b, &root_b2).await.unwrap();
+            let env = peer.recv_envelope().await.unwrap();
+            let delta = parse_trust_delta(&env).unwrap();
+            apply_trust_delta(&root_b2, &env.issuer_identity, &delta).unwrap();
+            let results = gossip_forward_trust_delta(&root_b2, &env, &id_a_s)
+                .await
+                .unwrap();
+            (delta, results)
+        });
+
+        let delta = TrustDelta::revoke(carol, Some("gossip-demo".into()));
+        let env = make_trust_delta_envelope(root_a, &delta).unwrap();
+        let mut client = dial(root_a, id_b.as_str()).await.unwrap();
+        client.send_envelope(&env).await.unwrap();
+
+        let (applied, results) = b_task.await.unwrap();
+        assert_eq!(applied.op, TrustDeltaOp::Revoke);
+        assert!(
+            results.iter().any(|r| r.peer_id == id_c.as_str() && r.ok),
+            "{results:?}"
+        );
+
+        let (msg_id, c_delta) = c_task.await.unwrap();
+        assert_eq!(c_delta.subject_id, carol);
+        assert_eq!(msg_id, env.message_id.as_str());
+        assert!(TrustStore::load(root_c).unwrap().is_revoked(carol));
+        assert!(TrustStore::load(root_b).unwrap().is_revoked(carol));
+
+        let disc = PeerDiscoveryStore::load(root_b).unwrap();
+        assert!(disc.peers.iter().any(|e| e.identity_id == id_c.as_str()));
+
+        // Second gossip of same message_id is skipped.
+        let again = gossip_forward_trust_delta(root_b, &env, id_a.as_str())
+            .await
+            .unwrap();
+        assert!(again.iter().any(|r| r.skipped));
     }
 }

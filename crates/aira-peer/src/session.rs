@@ -17,6 +17,7 @@ use crate::noise::{
     load_or_create_noise_static, noise_xx_initiator, noise_xx_responder, read_encrypted,
     write_encrypted,
 };
+use crate::trust_delta::TRUST_DELTA_MESSAGE_TYPE;
 
 /// Default I/O / handshake deadline for peer link operations.
 pub const DEFAULT_PEER_TIMEOUT: Duration = Duration::from_secs(15);
@@ -45,6 +46,9 @@ pub struct AuthenticatedPeer {
 
 impl AuthenticatedPeer {
     /// Send one signed protocol envelope (Noise-encrypted frame).
+    ///
+    /// Issuer must be the local node (direct send). For gossip relay use
+    /// [`Self::send_relayed_trust_delta`].
     pub async fn send_envelope(&mut self, envelope: &ProtocolEnvelope) -> Result<(), PeerError> {
         if envelope.issuer_identity != self.local_id {
             return Err(PeerError::IdentityMismatch);
@@ -52,6 +56,32 @@ impl AuthenticatedPeer {
         if envelope.signature.key_ref != self.local_id {
             return Err(PeerError::IdentityMismatch);
         }
+        self.write_envelope_bytes(envelope).await
+    }
+
+    /// Forward an original `peer.trust.delta` envelope whose issuer is not local.
+    ///
+    /// Does not re-sign. Signature/`key_ref` must still bind to `issuer_identity`.
+    pub async fn send_relayed_trust_delta(
+        &mut self,
+        envelope: &ProtocolEnvelope,
+    ) -> Result<(), PeerError> {
+        if envelope.message_type != TRUST_DELTA_MESSAGE_TYPE {
+            return Err(PeerError::Protocol(format!(
+                "relay expects {TRUST_DELTA_MESSAGE_TYPE}, got {}",
+                envelope.message_type
+            )));
+        }
+        if envelope.signature.key_ref != envelope.issuer_identity {
+            return Err(PeerError::IdentityMismatch);
+        }
+        self.write_envelope_bytes(envelope).await
+    }
+
+    async fn write_envelope_bytes(
+        &mut self,
+        envelope: &ProtocolEnvelope,
+    ) -> Result<(), PeerError> {
         let bytes = serde_json::to_vec(envelope)?;
         with_timeout(write_encrypted(
             &mut self.stream,
@@ -63,22 +93,54 @@ impl AuthenticatedPeer {
 
     /// Receive one envelope; fail closed unless issuer/sig bind to authenticated peer.
     pub async fn recv_envelope(&mut self) -> Result<ProtocolEnvelope, PeerError> {
+        self.recv_envelope_inner(false).await
+    }
+
+    /// Like [`Self::recv_envelope`], but also accepts relayed `peer.trust.delta`
+    /// signed by a trusted originator (issuer ≠ TCP peer). Used for gossip apply.
+    pub async fn recv_envelope_allow_relayed_trust_delta(
+        &mut self,
+    ) -> Result<ProtocolEnvelope, PeerError> {
+        self.recv_envelope_inner(true).await
+    }
+
+    async fn recv_envelope_inner(
+        &mut self,
+        allow_relayed_trust_delta: bool,
+    ) -> Result<ProtocolEnvelope, PeerError> {
         let bytes = with_timeout(read_encrypted(&mut self.stream, &mut self.transport)).await?;
         let env: ProtocolEnvelope = serde_json::from_slice(&bytes)?;
-        if env.issuer_identity != self.peer_id {
-            return Err(PeerError::IdentityMismatch);
-        }
-        if env.signature.key_ref != self.peer_id {
-            return Err(PeerError::IdentityMismatch);
-        }
         let trust = TrustStore::load(&self.local_root)?;
         if trust.is_revoked(self.peer_id.as_str()) {
             return Err(PeerError::Revoked(self.peer_id.as_str().into()));
         }
-        let ring = trust.to_keyring()?;
-        ring.verify(&env.signature, env.payload_hash.as_str().as_bytes())
-            .map_err(|_| PeerError::InvalidSignature)?;
-        Ok(env)
+
+        let direct = env.issuer_identity == self.peer_id && env.signature.key_ref == self.peer_id;
+        if direct {
+            let ring = trust.to_keyring()?;
+            ring.verify(&env.signature, env.payload_hash.as_str().as_bytes())
+                .map_err(|_| PeerError::InvalidSignature)?;
+            return Ok(env);
+        }
+
+        if allow_relayed_trust_delta
+            && env.message_type == TRUST_DELTA_MESSAGE_TYPE
+            && env.signature.key_ref == env.issuer_identity
+        {
+            let issuer = env.issuer_identity.as_str();
+            if trust.is_revoked(issuer) {
+                return Err(PeerError::Revoked(issuer.into()));
+            }
+            if !trust.entries.iter().any(|e| e.identity_id == issuer) {
+                return Err(PeerError::Untrusted(issuer.into()));
+            }
+            let ring = trust.to_keyring()?;
+            ring.verify(&env.signature, env.payload_hash.as_str().as_bytes())
+                .map_err(|_| PeerError::InvalidSignature)?;
+            return Ok(env);
+        }
+
+        Err(PeerError::IdentityMismatch)
     }
 }
 
