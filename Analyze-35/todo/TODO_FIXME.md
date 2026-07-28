@@ -2,7 +2,7 @@
 
 Канон: [`QUEUE.md`](../../QUEUE.md).
 
-- [x] Noise XX under same CLI — this cycle
+- [x] Noise XX under same CLI → **Analyze-35 DONE**
+- [x] Trust-delta over encrypted peer → **Analyze-36 DONE**
 - [ ] Rotate `local.x25519` together with Ed25519 node secret
-- [ ] Trust-delta over encrypted peer → QUEUE #3
 - [ ] Optional AES-GCM vs ChaCha (pattern already ChaChaPoly)

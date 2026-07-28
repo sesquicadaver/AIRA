@@ -1,7 +1,8 @@
-//! AIRA authenticated peer links (Analyze-32…35).
+//! AIRA authenticated peer links (Analyze-32…36).
 //!
 //! Framed TCP + mutual Ed25519 hello v1 + Noise XX + signed [`ProtocolEnvelope`].
 //! Admission is local [`TrustStore`] only — no controlling center, no DHT.
+//! Trust-delta (`peer.trust.delta`) can propagate CRL ops over the encrypted link.
 
 mod address_book;
 mod envelope;
@@ -10,6 +11,7 @@ mod frame;
 mod handshake;
 mod noise;
 mod session;
+mod trust_delta;
 
 pub use address_book::{AddressBook, PeerEndpoint};
 pub use envelope::make_peer_ping;
@@ -18,6 +20,10 @@ pub use frame::{read_frame, write_frame, MAX_FRAME_BYTES};
 pub use handshake::{HelloMessage, HelloResult, HELLO_DOMAIN};
 pub use noise::{load_or_create_noise_static, x25519_public, NOISE_PATTERN};
 pub use session::{accept, dial, listen, listen_explicit, AuthenticatedPeer, DEFAULT_PEER_TIMEOUT};
+pub use trust_delta::{
+    apply_trust_delta, make_trust_delta_envelope, parse_trust_delta, TrustDelta, TrustDeltaOp,
+    TRUST_DELTA_MESSAGE_TYPE, TRUST_DELTA_SCHEMA,
+};
 
 /// Crate version string.
 pub fn crate_version() -> &'static str {
@@ -370,5 +376,111 @@ mod tests {
         let ring = TrustStore::load(root).unwrap().to_keyring().unwrap();
         ring.verify(&env.signature, env.payload_hash.as_str().as_bytes())
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn trust_delta_revoke_roundtrip_applies() {
+        let dir_a = tempdir().unwrap();
+        let dir_b = tempdir().unwrap();
+        let root_a = dir_a.path();
+        let root_b = dir_b.path();
+        init_node(root_a).unwrap();
+        init_node(root_b).unwrap();
+        let (id_a, pub_a) = write_node_identity(root_a, "alice-td", [41u8; 32]);
+        let (id_b, pub_b) = write_node_identity(root_b, "bob-td", [43u8; 32]);
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
+
+        // Both trust carol; alice announces revoke of carol to bob.
+        let carol = "aira:identity:carol-td";
+        let carol_sk = SigningKey::from_bytes(&[71u8; 32]);
+        let carol_pub = hex::encode(carol_sk.verifying_key().to_bytes());
+        let mut ta = TrustStore::load(root_a).unwrap();
+        ta.upsert(carol, &carol_pub).unwrap();
+        ta.save(root_a).unwrap();
+        let mut tb = TrustStore::load(root_b).unwrap();
+        tb.upsert(carol, &carol_pub).unwrap();
+        tb.save(root_b).unwrap();
+
+        let listener = listen("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut book = AddressBook::default();
+        book.upsert(id_b.as_str(), addr.to_string());
+        book.save(root_a).unwrap();
+
+        let root_b2 = root_b.to_path_buf();
+        let accept_task = tokio::spawn(async move { accept(&listener, root_b2).await });
+
+        let delta = TrustDelta::revoke(carol, Some("compromised".into()));
+        let env = make_trust_delta_envelope(root_a, &delta).unwrap();
+        let mut client = dial(root_a, id_b.as_str()).await.unwrap();
+        client.send_envelope(&env).await.unwrap();
+        let mut server = accept_task.await.unwrap().unwrap();
+        let got = server.recv_envelope().await.unwrap();
+        let parsed = parse_trust_delta(&got).unwrap();
+        assert_eq!(parsed.op, TrustDeltaOp::Revoke);
+        apply_trust_delta(root_b, &got.issuer_identity, &parsed).unwrap();
+
+        let tb = TrustStore::load(root_b).unwrap();
+        assert!(tb.is_revoked(carol));
+        assert!(!tb.entries.iter().any(|e| e.identity_id == carol));
+    }
+
+    #[test]
+    fn trust_delta_refuses_local_test_and_local_node() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let (id, _) = write_node_identity(root, "solo-td", [51u8; 32]);
+        let peer = "aira:identity:peer-td";
+        let peer_sk = SigningKey::from_bytes(&[73u8; 32]);
+        let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
+        let mut t = TrustStore::load(root).unwrap();
+        t.upsert(peer, &peer_pub).unwrap();
+        t.save(root).unwrap();
+        let issuer = AiraRef::parse(peer).unwrap();
+
+        let bad = TrustDelta::revoke(aira_object::LOCAL_TEST_KEY_REF, None);
+        let err = apply_trust_delta(root, &issuer, &bad).unwrap_err();
+        assert!(matches!(err, PeerError::Protocol(_)));
+
+        let bad_local = TrustDelta::revoke(id.as_str(), None);
+        let err = apply_trust_delta(root, &issuer, &bad_local).unwrap_err();
+        assert!(matches!(err, PeerError::Protocol(_)));
+    }
+
+    #[test]
+    fn trust_delta_rotate_shape_and_apply() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let (_id, _) = write_node_identity(root, "rot-host", [53u8; 32]);
+        let peer = "aira:identity:peer-rot";
+        let old = "aira:identity:old-rot";
+        let new = "aira:identity:new-rot";
+        let peer_sk = SigningKey::from_bytes(&[77u8; 32]);
+        let old_sk = SigningKey::from_bytes(&[79u8; 32]);
+        let new_sk = SigningKey::from_bytes(&[81u8; 32]);
+        let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
+        let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
+        let new_pk = hex::encode(new_sk.verifying_key().to_bytes());
+        let mut t = TrustStore::load(root).unwrap();
+        t.upsert(peer, &peer_pub).unwrap();
+        t.upsert(old, &old_pub).unwrap();
+        t.save(root).unwrap();
+        let issuer = AiraRef::parse(peer).unwrap();
+
+        let delta = TrustDelta::rotate(old, new, &new_pk, Some("rollover".into()), None);
+        apply_trust_delta(root, &issuer, &delta).unwrap();
+        let t = TrustStore::load(root).unwrap();
+        assert!(t.is_revoked(old));
+        assert!(t.entries.iter().any(|e| e.identity_id == new));
+    }
+
+    #[test]
+    fn trust_delta_bad_schema_rejected() {
+        let mut d = TrustDelta::revoke("aira:identity:x", None);
+        d.schema = "nope".into();
+        assert!(d.validate_shape().is_err());
+        assert!(TrustDeltaOp::parse("nope").is_err());
     }
 }

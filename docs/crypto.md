@@ -117,4 +117,4 @@ Empty and `TESTSIG` are rejected on admission.
 
 Dual-key grace for the same node `key_ref`; TLS; multi-tenant per-CSU keyring; CRL audit log; auto peer notify of rotated pubkey; coordinated rotate of `local.x25519` with Ed25519.
 
-See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX).
+See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta).

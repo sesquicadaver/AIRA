@@ -266,6 +266,9 @@ enum PeerCommands {
         /// After hello, receive one envelope from the peer.
         #[arg(long, default_value_t = false)]
         recv: bool,
+        /// When receiving `peer.trust.delta`, apply into local trust.json (fail-closed).
+        #[arg(long, default_value_t = false)]
+        apply_trust: bool,
     },
     /// Dial a trusted peer and complete hello.
     Dial {
@@ -278,6 +281,28 @@ enum PeerCommands {
         key_ref: String,
         #[arg(long)]
         text: String,
+    },
+    /// Dial a peer and send one signed peer.trust.delta (Analyze-36).
+    TrustSend {
+        #[arg(long)]
+        key_ref: String,
+        /// revoke | rotate | unrevoke
+        #[arg(long)]
+        op: String,
+        /// Subject (revoke/unrevoke) or old identity (rotate).
+        #[arg(long)]
+        subject: String,
+        #[arg(long)]
+        reason: Option<String>,
+        /// Successor identity (rotate).
+        #[arg(long)]
+        new_id: Option<String>,
+        /// Successor pubkey hex (rotate).
+        #[arg(long)]
+        pubkey_hex: Option<String>,
+        /// Optional grace until RFC3339 UTC (rotate).
+        #[arg(long)]
+        until: Option<String>,
     },
 }
 
@@ -861,7 +886,15 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             );
             Ok(ExitCode::SUCCESS)
         }
-        PeerCommands::Listen { bind, once, recv } => {
+        PeerCommands::Listen {
+            bind,
+            once,
+            recv,
+            apply_trust,
+        } => {
+            if apply_trust && !recv {
+                bail!("--apply-trust requires --recv");
+            }
             let listener = aira_peer::listen(&bind)
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -875,6 +908,10 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             if recv {
                 println!("recv enabled");
             }
+            if apply_trust {
+                println!("apply_trust enabled");
+            }
+            let root_owned = root.to_path_buf();
             loop {
                 let mut peer = match aira_peer::accept(&listener, root).await {
                     Ok(p) => p,
@@ -907,9 +944,21 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                         if let Some(payload) = env.payload_ref.as_deref() {
                             println!("payload_ref {payload}");
                         }
+                        if apply_trust && env.message_type == aira_peer::TRUST_DELTA_MESSAGE_TYPE {
+                            let delta = aira_peer::parse_trust_delta(&env)
+                                .map_err(|e| anyhow::anyhow!("{e}"))?;
+                            aira_peer::apply_trust_delta(root, &env.issuer_identity, &delta)
+                                .map_err(|e| anyhow::anyhow!("{e}"))?;
+                            println!(
+                                "applied trust-delta {:?}\tsubject {}",
+                                delta.op, delta.subject_id
+                            );
+                        }
                         break;
                     }
                     // Daemon: recv off the accept path so the next hello is not blocked.
+                    let root_bg = root_owned.clone();
+                    let do_apply = apply_trust;
                     tokio::spawn(async move {
                         match peer.recv_envelope().await {
                             Ok(env) => {
@@ -921,6 +970,27 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                                 );
                                 if let Some(payload) = env.payload_ref.as_deref() {
                                     println!("payload_ref {payload}");
+                                }
+                                if do_apply
+                                    && env.message_type == aira_peer::TRUST_DELTA_MESSAGE_TYPE
+                                {
+                                    match aira_peer::parse_trust_delta(&env).and_then(|d| {
+                                        aira_peer::apply_trust_delta(
+                                            &root_bg,
+                                            &env.issuer_identity,
+                                            &d,
+                                        )
+                                        .map(|_| d)
+                                    }) {
+                                        Ok(delta) => println!(
+                                            "applied trust-delta {:?}\tsubject {}",
+                                            delta.op, delta.subject_id
+                                        ),
+                                        Err(e) => eprintln!(
+                                            "apply_trust error from {}: {e}",
+                                            env.issuer_identity.as_str()
+                                        ),
+                                    }
                                 }
                             }
                             Err(e) => {
@@ -958,6 +1028,45 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                 "sent {}\t{}\t-> {}",
                 env.message_type,
                 env.message_id.as_str(),
+                peer.peer_id.as_str()
+            );
+            Ok(ExitCode::SUCCESS)
+        }
+        PeerCommands::TrustSend {
+            key_ref,
+            op,
+            subject,
+            reason,
+            new_id,
+            pubkey_hex,
+            until,
+        } => {
+            require_trusted(root, &key_ref)?;
+            let op = aira_peer::TrustDeltaOp::parse(&op).map_err(|e| anyhow::anyhow!("{e}"))?;
+            let delta = match op {
+                aira_peer::TrustDeltaOp::Revoke => aira_peer::TrustDelta::revoke(subject, reason),
+                aira_peer::TrustDeltaOp::Unrevoke => aira_peer::TrustDelta::unrevoke(subject),
+                aira_peer::TrustDeltaOp::Rotate => {
+                    let new_id =
+                        new_id.ok_or_else(|| anyhow::anyhow!("rotate requires --new-id"))?;
+                    let pubkey_hex = pubkey_hex
+                        .ok_or_else(|| anyhow::anyhow!("rotate requires --pubkey-hex"))?;
+                    aira_peer::TrustDelta::rotate(subject, new_id, pubkey_hex, reason, until)
+                }
+            };
+            let env = aira_peer::make_trust_delta_envelope(root, &delta)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            let mut peer = aira_peer::dial(root, &key_ref)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            peer.send_envelope(&env)
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!(
+                "sent {}\t{:?}\t{}\t-> {}",
+                env.message_type,
+                delta.op,
+                delta.subject_id,
                 peer.peer_id.as_str()
             );
             Ok(ExitCode::SUCCESS)
