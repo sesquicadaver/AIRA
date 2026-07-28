@@ -145,9 +145,9 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Dual-key grace for peer TrustStore (remote same-id multi-key); mTLS / HTTP authn; on-disk per-CSU secret files; SQLite ceremony audit table (JSONL is Analyze-40); UDP discv5 / iterative FIND_NODE; coordinated rotate of `local.x25519` with Ed25519.
+Dual-key grace for peer TrustStore (remote same-id multi-key); mTLS; on-disk per-CSU secret files; SQLite ceremony audit table (JSONL is Analyze-40); UDP discv5 / iterative FIND_NODE; coordinated rotate of `local.x25519` with Ed25519.
 
-Local HTTP TLS (server PEM / self-signed) shipped in Analyze-45; trusted-mesh DHT-lite in Analyze-47; mTLS still deferred.
+Local HTTP TLS (server PEM / self-signed) shipped in Analyze-45; optional HTTP Bearer (`--http-token` / `AIRA_HTTP_TOKEN`) in Analyze-48; trusted-mesh DHT-lite in Analyze-47; mTLS still deferred.
 
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify).

@@ -55,6 +55,10 @@ struct Args {
     /// Generate/reuse self-signed cert under `<root>/http/` (Analyze-45).
     #[arg(long, default_value_t = false)]
     tls_self_signed: bool,
+
+    /// Shared secret for HTTP Bearer auth (Analyze-48). Also `AIRA_HTTP_TOKEN`.
+    #[arg(long, env = "AIRA_HTTP_TOKEN")]
+    http_token: Option<String>,
 }
 
 fn main() -> ExitCode {
@@ -115,11 +119,15 @@ fn run() -> Result<ExitCode> {
             args.tls_cert,
             args.tls_key,
             args.tls_self_signed,
+            args.http_token,
         );
     }
 
     if args.tls_cert.is_some() || args.tls_key.is_some() || args.tls_self_signed {
         bail!("TLS flags require --http");
+    }
+    if args.http_token.is_some() {
+        bail!("--http-token / AIRA_HTTP_TOKEN requires --http");
     }
 
     if let Some(text) = args.text {
@@ -159,6 +167,7 @@ fn serve_http(
     tls_cert: Option<PathBuf>,
     tls_key: Option<PathBuf>,
     tls_self_signed: bool,
+    http_token: Option<String>,
 ) -> Result<ExitCode> {
     let addr: SocketAddr = listen
         .parse()
@@ -166,14 +175,30 @@ fn serve_http(
     if !addr.ip().is_loopback() {
         eprintln!("warning: listening on non-loopback {addr} — M11 assumes local-only trust");
     }
+    if let Some(ref t) = http_token {
+        if t.trim().is_empty() {
+            bail!("--http-token / AIRA_HTTP_TOKEN must be non-empty when set");
+        }
+    }
     let tls = resolve_tls_paths(&root, tls_cert, tls_key, tls_self_signed)?;
-    let state = AppState::open(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let auth_enabled = http_token
+        .as_ref()
+        .map(|t| !t.trim().is_empty())
+        .unwrap_or(false);
+    let state = AppState::open(&root)
+        .map_err(|e| anyhow::anyhow!("{e}"))?
+        .with_http_token(http_token);
     let app = router(state);
     println!(
         "discovery {}",
         DiscoveryRegistry::path(&root).display()
     );
     println!("endpoints: /health /v1/problems /v1/results /v1/artifacts /v1/events /v1/capabilities /v1/csu /v1/conformance/run");
+    if auth_enabled {
+        println!("http_auth: bearer enabled (/health exempt)");
+    } else {
+        println!("http_auth: off (loopback trust)");
+    }
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

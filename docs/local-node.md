@@ -46,9 +46,9 @@ cargo run -p aira-node -- --root "$ROOT" --text "Calculate 2 + 2"
 
 Loads config, lists CSU registry entries, runs one local OperationalPlane submit.
 
-## Local HTTP API (Roadmap M11 + Analyze-45)
+## Local HTTP API (Roadmap M11 + Analyze-45/48)
 
-Default listen is loopback only (`127.0.0.1:8787`). Plain HTTP remains the default; TLS is opt-in.
+Default listen is loopback only (`127.0.0.1:8787`). Plain HTTP remains the default; TLS and Bearer auth are opt-in.
 
 ```bash
 cargo run -p aira-node -- --root "$ROOT" --init --http --listen 127.0.0.1:8787
@@ -57,11 +57,13 @@ cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 --tls-se
 # HTTPS with operator-provided PEM
 cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 \
   --tls-cert /path/cert.pem --tls-key /path/key.pem
+# Optional Bearer auth for /v1/* (`/health` stays open); also AIRA_HTTP_TOKEN
+cargo run -p aira-node -- --root "$ROOT" --http --http-token "$TOKEN"
 ```
 
 | Method | Path | Body / notes |
 |--------|------|----------------|
-| GET | `/health` | liveness |
+| GET | `/health` | liveness (no Bearer required) |
 | POST | `/v1/problems` | `{"text":"Calculate 2 + 2"}` |
 | GET | `/v1/problems/:id` | problem status JSON |
 | GET | `/v1/results/:id` | result payload |
@@ -80,9 +82,11 @@ curl -sS -X POST http://127.0.0.1:8787/v1/problems \
   -d '{"text":"Calculate 2 + 2"}'
 # with --tls-self-signed:
 curl -skS https://127.0.0.1:8787/health
+# with --http-token:
+curl -sS http://127.0.0.1:8787/v1/capabilities -H "Authorization: Bearer $TOKEN"
 ```
 
-Non-goals (still deferred): mTLS, bearer auth, multi-tenant HTTP, public bind by default, federation.
+Non-goals (still deferred): mTLS, multi-tenant HTTP authz, public bind by default, federation.
 
 Peer-to-peer authenticated links (Analyze-32+) are documented in [peer-link.md](peer-link.md); they are separate from this loopback HTTP API.
 

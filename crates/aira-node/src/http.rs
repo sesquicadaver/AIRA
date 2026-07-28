@@ -3,8 +3,10 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use axum::extract::{Path as AxumPath, Query, State};
+use axum::extract::{Path as AxumPath, Query, Request, State};
+use axum::http::header::AUTHORIZATION;
 use axum::http::StatusCode;
+use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -22,13 +24,16 @@ pub struct AppState {
     pub root: PathBuf,
     pub session: Arc<Mutex<LocalSession>>,
     pub discovery: Arc<Mutex<DiscoveryRegistry>>,
+    /// When set, `/v1/*` requires `Authorization: Bearer <token>` (Analyze-48).
+    pub http_token: Option<Arc<str>>,
 }
 
 impl AppState {
     /// Open session and seed local capability descriptors from config autoload.
     ///
     /// Loads durable `.aira/discovery/registry.json` when present, seeds missing
-    /// autoload capabilities, then persists.
+    /// autoload capabilities, then persists. Bearer auth is off until
+    /// [`Self::with_http_token`].
     pub fn open(root: impl AsRef<Path>) -> Result<Self, String> {
         let root = root.as_ref().to_path_buf();
         let session = LocalSession::open(&root).map_err(|e| e.to_string())?;
@@ -49,13 +54,27 @@ impl AppState {
             root,
             session: Arc::new(Mutex::new(session)),
             discovery: Arc::new(Mutex::new(discovery)),
+            http_token: None,
         })
+    }
+
+    /// Enable optional shared-secret bearer auth (empty string clears).
+    pub fn with_http_token(mut self, token: Option<String>) -> Self {
+        self.http_token = token
+            .map(|t| t.trim().to_string())
+            .filter(|t| !t.is_empty())
+            .map(Arc::from);
+        self
     }
 }
 
 /// Build the M11 router (also used by integration tests).
+///
+/// When `state.http_token` is set, all routes except `GET /health` require a
+/// matching `Authorization: Bearer` header.
 pub fn router(state: AppState) -> Router {
-    Router::new()
+    let expect = state.http_token.clone();
+    let app = Router::new()
         .route("/health", get(health))
         .route("/v1/problems", post(post_problem))
         .route("/v1/problems/:problem_id", get(get_problem))
@@ -66,7 +85,53 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/csu", get(get_csu_list))
         .route("/v1/csu/register", post(post_csu_register))
         .route("/v1/conformance/run", post(post_conformance_run))
-        .with_state(state)
+        .with_state(state);
+
+    match expect {
+        Some(token) => app.layer(middleware::from_fn(move |req, next| {
+            let token = token.clone();
+            async move { bearer_gate(req, next, token).await }
+        })),
+        None => app,
+    }
+}
+
+/// Reject unauthenticated `/v1/*` when a shared token is configured.
+async fn bearer_gate(req: Request, next: Next, expected: Arc<str>) -> Response {
+    if req.uri().path() == "/health" {
+        return next.run(req).await;
+    }
+    match bearer_credential(req.headers().get(AUTHORIZATION).and_then(|v| v.to_str().ok())) {
+        Some(got) if constant_time_eq(got.as_bytes(), expected.as_bytes()) => next.run(req).await,
+        _ => err(StatusCode::UNAUTHORIZED, "unauthorized"),
+    }
+}
+
+/// Parse `Bearer <token>` (case-insensitive scheme).
+fn bearer_credential(header: Option<&str>) -> Option<&str> {
+    let raw = header?.trim();
+    let (scheme, rest) = raw.split_once(char::is_whitespace)?;
+    if !scheme.eq_ignore_ascii_case("bearer") {
+        return None;
+    }
+    let token = rest.trim();
+    if token.is_empty() {
+        None
+    } else {
+        Some(token)
+    }
+}
+
+/// Constant-time equality for equal-length secrets.
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
 }
 
 #[derive(Serialize)]
@@ -397,7 +462,20 @@ mod tests {
         uri: &str,
         body: Option<Value>,
     ) -> (StatusCode, Value) {
-        let builder = axum::http::Request::builder().method(method).uri(uri);
+        json_req_auth(app, method, uri, body, None).await
+    }
+
+    async fn json_req_auth(
+        app: Router,
+        method: &str,
+        uri: &str,
+        body: Option<Value>,
+        bearer: Option<&str>,
+    ) -> (StatusCode, Value) {
+        let mut builder = axum::http::Request::builder().method(method).uri(uri);
+        if let Some(tok) = bearer {
+            builder = builder.header(AUTHORIZATION, format!("Bearer {tok}"));
+        }
         let req = if let Some(b) = body {
             builder
                 .header("content-type", "application/json")
@@ -564,5 +642,58 @@ mod tests {
         assert_eq!(v["profile"], "C2");
         assert_eq!(v["results"]["failed"], 0);
         assert_eq!(v["results"]["passed"], 5);
+    }
+
+    #[tokio::test]
+    async fn http_bearer_rejects_without_token() {
+        let (_dir, state) = setup();
+        let app = router(state.with_http_token(Some("secret-token".into())));
+        let (st, v) = json_req(app, "GET", "/v1/capabilities", None).await;
+        assert_eq!(st, StatusCode::UNAUTHORIZED, "{v}");
+        assert_eq!(v["error"], "unauthorized");
+    }
+
+    #[tokio::test]
+    async fn http_bearer_rejects_wrong_token() {
+        let (_dir, state) = setup();
+        let app = router(state.with_http_token(Some("secret-token".into())));
+        let (st, v) =
+            json_req_auth(app, "GET", "/v1/capabilities", None, Some("wrong")).await;
+        assert_eq!(st, StatusCode::UNAUTHORIZED, "{v}");
+    }
+
+    #[tokio::test]
+    async fn http_bearer_allows_with_token() {
+        let (_dir, state) = setup();
+        let app = router(state.with_http_token(Some("secret-token".into())));
+        let (st, v) =
+            json_req_auth(app, "GET", "/v1/capabilities", None, Some("secret-token")).await;
+        assert_eq!(st, StatusCode::OK, "{v}");
+        assert!(v["capabilities"].as_array().is_some());
+    }
+
+    #[tokio::test]
+    async fn http_bearer_health_exempt() {
+        let (_dir, state) = setup();
+        let app = router(state.with_http_token(Some("secret-token".into())));
+        let (st, v) = json_req(app, "GET", "/health", None).await;
+        assert_eq!(st, StatusCode::OK, "{v}");
+        assert_eq!(v["status"], "ok");
+    }
+
+    #[test]
+    fn bearer_credential_parses_case_insensitive() {
+        assert_eq!(bearer_credential(Some("Bearer abc")), Some("abc"));
+        assert_eq!(bearer_credential(Some("bearer abc")), Some("abc"));
+        assert_eq!(bearer_credential(Some("Basic abc")), None);
+        assert_eq!(bearer_credential(Some("Bearer")), None);
+        assert_eq!(bearer_credential(None), None);
+    }
+
+    #[test]
+    fn constant_time_eq_basic() {
+        assert!(constant_time_eq(b"abc", b"abc"));
+        assert!(!constant_time_eq(b"abc", b"abd"));
+        assert!(!constant_time_eq(b"abc", b"ab"));
     }
 }

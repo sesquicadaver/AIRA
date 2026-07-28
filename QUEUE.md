@@ -9,7 +9,7 @@
 | Гілка | Стан |
 |-------|------|
 | MVP Epic 0–11 + Alpha.2 / Keyring / Plane / Trust / Peer P0+CLI | **done** |
-| Відкритий Analyze-34+ | **Analyze-47 CLOSED** (DHT-lite); наступний = post-MVP (mTLS/authn, dual-key remote, x25519 rotate) |
+| Відкритий Analyze-34+ | **Analyze-48 CLOSED** (HTTP Bearer); наступний = post-MVP (mTLS, dual-key remote, x25519 rotate) |
 
 
 
@@ -45,13 +45,14 @@
 | 10 | **P2** | ~~Gossip + discovery~~ **DONE** (A-43); ~~relay-first hub~~ **DONE** (A-44); ~~DHT-lite~~ **DONE** (A-47) | #10 split | після #2–3 | STUN/discv5 |
 | 11 | **P2** | ~~HTTP TLS + persist discovery~~ **DONE** (Analyze-45) | A-19 deferred | окремий трек | mTLS/authn |
 | 12 | **P2** | ~~Partial C2 conformance (M13)~~ **DONE** (Analyze-46); M12 C0/C1 already shipped | harness + local protocols | окремий трек | network C2 |
-| 13 | **P2** | post-MVP: mTLS / HTTP authn | A-19 deferred | після #11 | — |
+| 13 | **P2** | ~~HTTP Bearer authn~~ **DONE** (Analyze-48); mTLS still open | A-19 deferred | після #11 | mTLS |
 | 14 | **P2** | post-MVP: dual-key remote TrustStore / coordinated x25519 rotate | crypto docs Out | після peer P0 | — |
+| 15 | **P2** | post-MVP: mTLS client-cert for `aira-node --http` | A-19 deferred | після #13 bearer | — |
 
 
 ### Рекомендований наступний цикл
 
-**Analyze-48 / #13 — mTLS або HTTP authn**, або #14 coordinated `local.x25519` rotate.
+**Analyze-49 / #14 або #15** — coordinated `local.x25519` rotate, або mTLS client-cert.
 
 ### Залежності (скорочено)
 
