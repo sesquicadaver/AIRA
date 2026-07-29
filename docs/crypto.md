@@ -149,9 +149,9 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-mTLS; on-disk per-CSU secret files; SQLite ceremony audit table (JSONL is Analyze-40); UDP discv5 / iterative FIND_NODE.
+On-disk per-CSU secret files; SQLite ceremony audit table (JSONL is Analyze-40); UDP discv5 / iterative FIND_NODE; optional (anonymous) client TLS auth; CN→TrustStore mapping.
 
-Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50).
+Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51).
 
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify).

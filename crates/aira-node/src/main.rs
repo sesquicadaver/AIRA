@@ -56,6 +56,10 @@ struct Args {
     #[arg(long, default_value_t = false)]
     tls_self_signed: bool,
 
+    /// Client CA PEM — require client cert (mTLS, Analyze-51). Requires HTTPS.
+    #[arg(long)]
+    tls_client_ca: Option<PathBuf>,
+
     /// Shared secret for HTTP Bearer auth (Analyze-48). Also `AIRA_HTTP_TOKEN`.
     #[arg(long, env = "AIRA_HTTP_TOKEN")]
     http_token: Option<String>,
@@ -119,12 +123,17 @@ fn run() -> Result<ExitCode> {
             args.tls_cert,
             args.tls_key,
             args.tls_self_signed,
+            args.tls_client_ca,
             args.http_token,
         );
     }
 
-    if args.tls_cert.is_some() || args.tls_key.is_some() || args.tls_self_signed {
-        bail!("TLS flags require --http");
+    if args.tls_cert.is_some()
+        || args.tls_key.is_some()
+        || args.tls_self_signed
+        || args.tls_client_ca.is_some()
+    {
+        bail!("TLS / mTLS flags require --http");
     }
     if args.http_token.is_some() {
         bail!("--http-token / AIRA_HTTP_TOKEN requires --http");
@@ -167,6 +176,7 @@ fn serve_http(
     tls_cert: Option<PathBuf>,
     tls_key: Option<PathBuf>,
     tls_self_signed: bool,
+    tls_client_ca: Option<PathBuf>,
     http_token: Option<String>,
 ) -> Result<ExitCode> {
     let addr: SocketAddr = listen
@@ -181,10 +191,18 @@ fn serve_http(
         }
     }
     let tls = resolve_tls_paths(&root, tls_cert, tls_key, tls_self_signed)?;
+    if tls_client_ca.is_some() && tls.is_none() {
+        bail!("--tls-client-ca requires HTTPS (--tls-cert/--tls-key or --tls-self-signed)");
+    }
+    if let Some(ref ca) = tls_client_ca {
+        // Fail closed early (also validated again when building ServerConfig).
+        let _ = crate::tls::load_client_ca_roots(ca)?;
+    }
     let auth_enabled = http_token
         .as_ref()
         .map(|t| !t.trim().is_empty())
         .unwrap_or(false);
+    let mtls = tls_client_ca.is_some();
     let state = AppState::open(&root)
         .map_err(|e| anyhow::anyhow!("{e}"))?
         .with_http_token(http_token);
@@ -195,9 +213,15 @@ fn serve_http(
     );
     println!("endpoints: /health /v1/problems /v1/results /v1/artifacts /v1/events /v1/capabilities /v1/csu /v1/conformance/run");
     if auth_enabled {
-        println!("http_auth: bearer enabled (/health exempt)");
+        println!("http_auth: bearer enabled (/health exempt at HTTP layer)");
     } else {
         println!("http_auth: off (loopback trust)");
+    }
+    if mtls {
+        eprintln!(
+            "warning: mTLS enabled — client certificate required for ALL routes including /health (unlike Bearer)"
+        );
+        println!("mtls: require client cert (CA configured)");
     }
 
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -208,7 +232,10 @@ fn serve_http(
             println!("https listening on https://{addr}");
             println!("tls_cert {}", cert.display());
             println!("tls_key {}", key.display());
-            serve_https(addr, app, &cert, &key).await?;
+            if let Some(ref ca) = tls_client_ca {
+                println!("tls_client_ca {}", ca.display());
+            }
+            serve_https(addr, app, &cert, &key, tls_client_ca.as_deref()).await?;
         } else {
             println!("http listening on http://{addr}");
             let listener = tokio::net::TcpListener::bind(addr).await?;

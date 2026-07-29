@@ -9,7 +9,7 @@
 | Гілка | Стан |
 |-------|------|
 | MVP Epic 0–11 + Alpha.2 / Keyring / Plane / Trust / Peer P0+CLI | **done** |
-| Відкритий Analyze-34+ | **Analyze-50 CLOSED** (remote dual-key TrustStore); наступний = post-MVP mTLS (#15) |
+| Відкритий Analyze-34+ | **Analyze-51 CLOSED** (mTLS require); post-MVP QUEUE #15 done |
 
 
 
@@ -45,15 +45,15 @@
 | 10 | **P2** | ~~Gossip + discovery~~ **DONE** (A-43); ~~relay-first hub~~ **DONE** (A-44); ~~DHT-lite~~ **DONE** (A-47) | #10 split | після #2–3 | STUN/discv5 |
 | 11 | **P2** | ~~HTTP TLS + persist discovery~~ **DONE** (Analyze-45) | A-19 deferred | окремий трек | mTLS/authn |
 | 12 | **P2** | ~~Partial C2 conformance (M13)~~ **DONE** (Analyze-46); M12 C0/C1 already shipped | harness + local protocols | окремий трек | network C2 |
-| 13 | **P2** | ~~HTTP Bearer authn~~ **DONE** (Analyze-48); mTLS still open | A-19 deferred | після #11 | mTLS |
+| 13 | **P2** | ~~HTTP Bearer authn~~ **DONE** (Analyze-48); ~~mTLS~~ **DONE** (A-51) | A-19 deferred | після #11 | — |
 | 14 | **P2** | ~~coordinated `local.x25519` rotate~~ **DONE** (Analyze-49) | crypto docs Out | після peer P0 | — |
-| 15 | **P2** | post-MVP: mTLS client-cert for `aira-node --http` | A-19 deferred | після #13 bearer | — |
+| 15 | **P2** | ~~mTLS client-cert for `aira-node --http`~~ **DONE** (Analyze-51) | A-19 deferred | після #13 bearer | optional client auth |
 | 16 | **P2** | ~~dual-key remote TrustStore (same-id multi-key)~~ **DONE** (Analyze-50) | crypto docs Out | після #14 x25519 | — |
 
 
 ### Рекомендований наступний цикл
 
-**Analyze-51 / #15** — mTLS client-cert for `aira-node --http`.
+Post-MVP QUEUE #1–16 closed for listed micros; next = backlog from `docs/*` Out / new Analyze from roadmap.
 
 ### Залежності (скорочено)
 

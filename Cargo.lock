@@ -273,6 +273,7 @@ dependencies = [
  "http-body-util",
  "rcgen",
  "rustls",
+ "rustls-pemfile",
  "serde",
  "serde_json",
  "tempfile",

@@ -20,6 +20,7 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net"] }
 axum = { workspace = true }
 axum-server = { workspace = true }
 rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
 rcgen = { workspace = true }
 aira-core = { path = "../aira-core" }
 aira-csu = { path = "../aira-csu" }

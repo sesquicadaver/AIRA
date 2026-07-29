@@ -681,6 +681,25 @@ mod tests {
         assert_eq!(v["status"], "ok");
     }
 
+    /// Bearer remains HTTP-layer independent of mTLS (Analyze-51 coexistence).
+    #[tokio::test]
+    async fn http_bearer_still_enforced_alongside_mtls_config() {
+        let (_dir, state) = setup();
+        // mTLS is transport-only; AppState bearer gate must still 401 without token.
+        let app = router(state.with_http_token(Some("mtls-and-bearer".into())));
+        let (st, v) = json_req(app.clone(), "GET", "/v1/capabilities", None).await;
+        assert_eq!(st, StatusCode::UNAUTHORIZED, "{v}");
+        let (st2, v2) = json_req_auth(
+            app,
+            "GET",
+            "/v1/capabilities",
+            None,
+            Some("mtls-and-bearer"),
+        )
+        .await;
+        assert_eq!(st2, StatusCode::OK, "{v2}");
+    }
+
     #[test]
     fn bearer_credential_parses_case_insensitive() {
         assert_eq!(bearer_credential(Some("Bearer abc")), Some("abc"));
