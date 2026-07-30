@@ -51,10 +51,12 @@ cargo run -p aira-cli -- --root "$B" peer dht list
 
 ## Out of scope (later)
 
-Канон черги: [`QUEUE.md`](../QUEUE.md) Phase B #19+.
+Канон черги: [`QUEUE.md`](../QUEUE.md) Phase B #20+.
 
-Заплановано атомарно: x25519 peer notify (#19); DHT→address_book (#22); durable relay (#23); STUN/ICE-lite (#31); discv5 announce (#32); FIND_NODE (#33); public HTTP bind (#34); federation (#35).
+Заплановано атомарно: DHT→address_book (#22); durable relay (#23); STUN/ICE-lite (#31); discv5 announce (#32); FIND_NODE (#33); public HTTP bind (#34); federation (#35).
 
 Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); relay hub (A-44); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18).
+
+**WONT-NEED:** dedicated x25519 peer-notify after rotate (Analyze-54 / QUEUE #19) — hello v1 already Ed25519-binds `x25519_pub_hex` each dial; Noise remote static is checked against that hello. No durable remote Noise-static cache.
 
 See `Analyze-43/provenance/ADR-connectivity-relay-first.md`.

@@ -105,6 +105,8 @@ Rewrites `.aira/identity/local.ed25519` and updates `local.identity.json` **with
 
 **Noise static rotate** (Analyze-49): the same `identity rotate` always regenerates `identity/local.x25519`. With `--backup`, the prior secret is written to `identity/local.x25519.prev` (prior `.prev` archived as `local.x25519.prev.<stamp>`).
 
+Peers learn the new Noise static from the next hello (`x25519_pub_hex` Ed25519-signed). Dedicated peer-notify for x25519 was evaluated in Analyze-54 and closed as **wont-need** (QUEUE #19).
+
 ```bash
 cargo run -p aira-cli -- --root "$ROOT" identity rotate
 # rotated aira:identity:local

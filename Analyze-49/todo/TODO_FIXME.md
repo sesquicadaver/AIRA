@@ -6,5 +6,5 @@
 - [x] Tests + docs
 
 ## Deferred
-- [ ] Dual-key remote TrustStore (QUEUE #16)
-- [ ] Notify peers of new x25519 static
+- [x] Dual-key remote TrustStore (QUEUE #16) → Analyze-50 DONE
+- [x] Notify peers of new x25519 static → **WONT-NEED** Analyze-54 / QUEUE #19 (hello binds x25519 each dial)

@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-53 CLOSED (`e8dec27` / `709bba7`); QUEUE #18 DONE |
+| `main` | Analyze-54 CLOSED (QUEUE #19 wont-need); next OPEN #20 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#19 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#20 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -34,8 +34,8 @@
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
 | 18 | **DONE** | ~~Analyze-53 — gossip drop non-self-sovereign~~ | Gossip: не форвардити `peer.trust.delta`, якщо `subject_id ≠ issuer` | тест + `docs/peer-link.md`; apply без змін політики A-52 | DHT book; relay persist |
-| 19 | **OPEN** | Analyze-54 | Notify peers про новий `local.x25519` після rotate (окреме повідомлення або розширення notify) | roundtrip + docs/crypto | Ed25519 rekey path; STUN |
-| 20 | OPEN | Analyze-55 | mTLS: CN/SAN клієнтського сертифіката → перевірка проти TrustStore | fail-closed mismatch; тести; docs/local-node | optional client auth; окремий health |
+| 19 | **DONE** | ~~Analyze-54 — x25519 peer notify~~ **WONT-NEED** | Hello already Ed25519-binds `x25519_pub_hex` each dial; no separate notify | docs + QUEUE rationale (no runtime notify) | pin cache; dual-static grace |
+| 20 | **OPEN** | Analyze-55 | mTLS: CN/SAN клієнтського сертифіката → перевірка проти TrustStore | fail-closed mismatch; тести; docs/local-node | optional client auth; окремий health |
 | 21 | OPEN | Analyze-56 | Окремий health listener **без** require client-cert (коли mTLS увімкнено на API) | `/health` reachable без клієнтського сертифіката; тести | CN map (вже #20); public bind |
 | 22 | OPEN | Analyze-57 | Opt-in: результат DHT find/announce → upsert у `address_book.json` | CLI flag + тест dial після upsert | discv5; auto без flag |
 | 23 | OPEN | Analyze-58 | Durable relay hub registry на диску (пережив рестарт процесу) | reload після restart у тесті | STUN; session crypto change |
@@ -54,7 +54,7 @@
 
 ### Наступний цикл
 
-**#19 → Analyze-54** (notify peers of new `local.x25519`).
+**#20 → Analyze-55** (mTLS CN/SAN → TrustStore).
 
 ---
 
@@ -63,7 +63,7 @@
 | Джерело | Рядки |
 |---------|-------|
 | A-52 architect WATCH (gossip doomed deltas) | #18 |
-| A-49 deferred x25519 notify | #19 |
+| A-49 deferred x25519 notify | #19 **WONT-NEED** (Analyze-54: hello-sufficient) |
 | A-51 / `docs/crypto.md` CN→TrustStore | #20 |
 | A-51 separate health | #21 |
 | `docs/peer-link.md` auto address-book from DHT | #22 |
