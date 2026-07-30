@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-53 (QUEUE #18) |
+| `main` | Analyze-53 CLOSED (`e8dec27` / `709bba7`); QUEUE #18 DONE |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Активна черга | **#19 → …** (перший OPEN = наступний цикл) |
 
