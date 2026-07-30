@@ -1,4 +1,4 @@
-# Peer links (Analyze-32…47)
+# Peer links (Analyze-32…52)
 
 Decentralized node-to-node messaging **without a controlling center**.
 
@@ -11,7 +11,8 @@ Decentralized node-to-node messaging **without a controlling center**.
 - **Noise** = `Noise_XX_25519_ChaChaPoly_BLAKE2s` (`snow`); remote static must match hello
 - **Payload** = Book II `ProtocolEnvelope` inside **Noise-encrypted** length-prefixed frames
 - **Trust-delta** = `peer.trust.delta` (`aira:peer:trust-delta:v1`) — revoke / rotate / unrevoke / **rekey**; apply only with `--apply-trust`
-- **Gossip** (Analyze-43, opt-in `--gossip`) = forward the **original** signed trust-delta once per `message_id` (`peers/gossip_seen.json`)
+- **Self-sovereign apply** (Analyze-52) = `subject_id` must equal envelope `issuer` for every op; third-party CRL stays on local CLI `trust revoke` / `trust rotate`
+- **Gossip** (Analyze-43, opt-in `--gossip`) = forward the **original** signed trust-delta once per `message_id` (`peers/gossip_seen.json`); apply still enforces issuer==subject
 - **Discovery journal** = observational `.aira/peers/discovery.json`; **not** the dial source
 - **Relay hub** (Analyze-44, `--relay`) = live session registry; `peer.relay.deliver` + address-book `via`
 - **DHT-lite** (Analyze-47) = durable `.aira/peers/dht.json` with XOR closest ranking; `peer.dht.announce` over authenticated links (trusted mesh only — not UDP/discv5)

@@ -463,17 +463,7 @@ mod tests {
         let (id_b, pub_b) = write_node_identity(root_b, "bob-td", [43u8; 32]);
         mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
-        // Both trust carol; alice announces revoke of carol to bob.
-        let carol = "aira:identity:carol-td";
-        let carol_sk = SigningKey::from_bytes(&[71u8; 32]);
-        let carol_pub = hex::encode(carol_sk.verifying_key().to_bytes());
-        let mut ta = TrustStore::load(root_a).unwrap();
-        ta.upsert(carol, &carol_pub).unwrap();
-        ta.save(root_a).unwrap();
-        let mut tb = TrustStore::load(root_b).unwrap();
-        tb.upsert(carol, &carol_pub).unwrap();
-        tb.save(root_b).unwrap();
-
+        // Alice self-announces revoke of her own identity (Analyze-52).
         let listener = listen("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
         let mut book = AddressBook::default();
@@ -483,7 +473,7 @@ mod tests {
         let root_b2 = root_b.to_path_buf();
         let accept_task = tokio::spawn(async move { accept(&listener, root_b2).await });
 
-        let delta = TrustDelta::revoke(carol, Some("compromised".into()));
+        let delta = TrustDelta::revoke(id_a.as_str(), Some("compromised".into()));
         let env = make_trust_delta_envelope(root_a, &delta).unwrap();
         let mut client = dial(root_a, id_b.as_str()).await.unwrap();
         client.send_envelope(&env).await.unwrap();
@@ -491,11 +481,12 @@ mod tests {
         let got = server.recv_envelope().await.unwrap();
         let parsed = parse_trust_delta(&got).unwrap();
         assert_eq!(parsed.op, TrustDeltaOp::Revoke);
+        assert_eq!(parsed.subject_id, id_a.as_str());
         apply_trust_delta(root_b, &got.issuer_identity, &parsed).unwrap();
 
         let tb = TrustStore::load(root_b).unwrap();
-        assert!(tb.is_revoked(carol));
-        assert!(!tb.entries.iter().any(|e| e.identity_id == carol));
+        assert!(tb.is_revoked(id_a.as_str()));
+        assert!(!tb.entries.iter().any(|e| e.identity_id == id_a.as_str()));
     }
 
     #[test]
@@ -503,21 +494,45 @@ mod tests {
         let dir = tempdir().unwrap();
         let root = dir.path();
         init_node(root).unwrap();
-        let (id, _) = write_node_identity(root, "solo-td", [51u8; 32]);
+        let (id, id_pub) = write_node_identity(root, "solo-td", [51u8; 32]);
         let peer = "aira:identity:peer-td";
         let peer_sk = SigningKey::from_bytes(&[73u8; 32]);
         let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
+        let lt_sk = SigningKey::from_bytes(&[74u8; 32]);
+        let lt_pub = hex::encode(lt_sk.verifying_key().to_bytes());
         let mut t = TrustStore::load(root).unwrap();
         t.upsert(peer, &peer_pub).unwrap();
+        t.upsert(aira_object::LOCAL_TEST_KEY_REF, &lt_pub).unwrap();
         t.save(root).unwrap();
-        let issuer = AiraRef::parse(peer).unwrap();
+        let _ = id_pub;
 
-        let bad = TrustDelta::revoke(aira_object::LOCAL_TEST_KEY_REF, None);
-        let err = apply_trust_delta(root, &issuer, &bad).unwrap_err();
+        // Third-party subject → IdentityMismatch (Analyze-52).
+        let peer_issuer = AiraRef::parse(peer).unwrap();
+        let err = apply_trust_delta(
+            root,
+            &peer_issuer,
+            &TrustDelta::revoke(aira_object::LOCAL_TEST_KEY_REF, None),
+        )
+        .unwrap_err();
+        assert!(matches!(err, PeerError::IdentityMismatch));
+        let err = apply_trust_delta(
+            root,
+            &peer_issuer,
+            &TrustDelta::revoke(id.as_str(), None),
+        )
+        .unwrap_err();
+        assert!(matches!(err, PeerError::IdentityMismatch));
+
+        // Self-sovereign local-test / local-node still refused as protected.
+        let lt_issuer = AiraRef::parse(aira_object::LOCAL_TEST_KEY_REF).unwrap();
+        let err = apply_trust_delta(
+            root,
+            &lt_issuer,
+            &TrustDelta::revoke(aira_object::LOCAL_TEST_KEY_REF, None),
+        )
+        .unwrap_err();
         assert!(matches!(err, PeerError::Protocol(_)));
-
-        let bad_local = TrustDelta::revoke(id.as_str(), None);
-        let err = apply_trust_delta(root, &issuer, &bad_local).unwrap_err();
+        let err = apply_trust_delta(root, &id, &TrustDelta::revoke(id.as_str(), None)).unwrap_err();
         assert!(matches!(err, PeerError::Protocol(_)));
     }
 
@@ -527,20 +542,32 @@ mod tests {
         let root = dir.path();
         init_node(root).unwrap();
         let (_id, _) = write_node_identity(root, "rot-host", [53u8; 32]);
-        let peer = "aira:identity:peer-rot";
         let old = "aira:identity:old-rot";
         let new = "aira:identity:new-rot";
-        let peer_sk = SigningKey::from_bytes(&[77u8; 32]);
         let old_sk = SigningKey::from_bytes(&[79u8; 32]);
         let new_sk = SigningKey::from_bytes(&[81u8; 32]);
-        let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
         let old_pub = hex::encode(old_sk.verifying_key().to_bytes());
         let new_pk = hex::encode(new_sk.verifying_key().to_bytes());
         let mut t = TrustStore::load(root).unwrap();
-        t.upsert(peer, &peer_pub).unwrap();
         t.upsert(old, &old_pub).unwrap();
         t.save(root).unwrap();
-        let issuer = AiraRef::parse(peer).unwrap();
+        let issuer = AiraRef::parse(old).unwrap();
+
+        // Third-party rotate rejected.
+        let stranger = "aira:identity:stranger-rot";
+        let stranger_sk = SigningKey::from_bytes(&[77u8; 32]);
+        let stranger_pub = hex::encode(stranger_sk.verifying_key().to_bytes());
+        let mut t = TrustStore::load(root).unwrap();
+        t.upsert(stranger, &stranger_pub).unwrap();
+        t.save(root).unwrap();
+        let stranger_issuer = AiraRef::parse(stranger).unwrap();
+        let err = apply_trust_delta(
+            root,
+            &stranger_issuer,
+            &TrustDelta::rotate(old, new, &new_pk, Some("rollover".into()), None),
+        )
+        .unwrap_err();
+        assert!(matches!(err, PeerError::IdentityMismatch));
 
         let delta = TrustDelta::rotate(old, new, &new_pk, Some("rollover".into()), None);
         apply_trust_delta(root, &issuer, &delta).unwrap();
@@ -553,7 +580,7 @@ mod tests {
                 && e.subject_id == old
                 && e.new_id.as_deref() == Some(new)
                 && e.source.as_deref() == Some("peer-delta")
-                && e.issuer_id.as_deref() == Some(peer)
+                && e.issuer_id.as_deref() == Some(old)
         }));
     }
 
@@ -566,7 +593,7 @@ mod tests {
     }
 
     #[test]
-    fn trust_delta_rekey_requires_issuer_subject_match() {
+    fn trust_delta_ops_require_issuer_subject_match() {
         let dir = tempdir().unwrap();
         let root = dir.path();
         init_node(root).unwrap();
@@ -585,10 +612,19 @@ mod tests {
         t.save(root).unwrap();
         let issuer = AiraRef::parse(peer).unwrap();
 
-        // Wrong subject (not issuer) → IdentityMismatch.
-        let bad = TrustDelta::rekey(other, &new_pk, None, None);
-        let err = apply_trust_delta(root, &issuer, &bad).unwrap_err();
-        assert!(matches!(err, PeerError::IdentityMismatch));
+        for bad in [
+            TrustDelta::revoke(other, Some("nope".into())),
+            TrustDelta::unrevoke(other),
+            TrustDelta::rotate(other, "aira:identity:new-rk", &new_pk, None, None),
+            TrustDelta::rekey(other, &new_pk, None, None),
+        ] {
+            let err = apply_trust_delta(root, &issuer, &bad).unwrap_err();
+            assert!(
+                matches!(err, PeerError::IdentityMismatch),
+                "op={:?} err={err:?}",
+                bad.op
+            );
+        }
 
         // Issuer rekeys self → upsert.
         let ok = TrustDelta::rekey(peer, &new_pk, Some("rotated".into()), None);
@@ -596,6 +632,23 @@ mod tests {
         let t = TrustStore::load(root).unwrap();
         let entry = t.entries.iter().find(|e| e.identity_id == peer).unwrap();
         assert_eq!(entry.public_key_hex, new_pk);
+    }
+
+    #[test]
+    fn make_trust_delta_envelope_rejects_foreign_subject() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let (id, _) = write_node_identity(root, "send-gate", [99u8; 32]);
+        let foreign = "aira:identity:foreign-sg";
+        let err = make_trust_delta_envelope(root, &TrustDelta::revoke(foreign, None)).unwrap_err();
+        assert!(matches!(err, PeerError::IdentityMismatch));
+        let ok = make_trust_delta_envelope(
+            root,
+            &TrustDelta::revoke(id.as_str(), Some("self".into())),
+        )
+        .unwrap();
+        assert_eq!(ok.issuer_identity.as_str(), id.as_str());
     }
 
     #[tokio::test]
@@ -734,15 +787,6 @@ mod tests {
         ta.upsert(id_c.as_str(), &pub_c).unwrap();
         ta.save(root_a).unwrap();
 
-        let carol = "aira:identity:gossip-victim";
-        let carol_sk = SigningKey::from_bytes(&[117u8; 32]);
-        let carol_pub = hex::encode(carol_sk.verifying_key().to_bytes());
-        for root in [root_a, root_b, root_c] {
-            let mut t = TrustStore::load(root).unwrap();
-            t.upsert(carol, &carol_pub).unwrap();
-            t.save(root).unwrap();
-        }
-
         // C listens for gossip from B.
         let listener_c = listen("127.0.0.1:0").await.unwrap();
         let addr_c = listener_c.local_addr().unwrap();
@@ -789,7 +833,8 @@ mod tests {
             (delta, results)
         });
 
-        let delta = TrustDelta::revoke(carol, Some("gossip-demo".into()));
+        // Alice self-announces revoke; gossip fans out original signed envelope.
+        let delta = TrustDelta::revoke(id_a.as_str(), Some("gossip-demo".into()));
         let env = make_trust_delta_envelope(root_a, &delta).unwrap();
         let mut client = dial(root_a, id_b.as_str()).await.unwrap();
         client.send_envelope(&env).await.unwrap();
@@ -802,10 +847,10 @@ mod tests {
         );
 
         let (msg_id, c_delta) = c_task.await.unwrap();
-        assert_eq!(c_delta.subject_id, carol);
+        assert_eq!(c_delta.subject_id, id_a.as_str());
         assert_eq!(msg_id, env.message_id.as_str());
-        assert!(TrustStore::load(root_c).unwrap().is_revoked(carol));
-        assert!(TrustStore::load(root_b).unwrap().is_revoked(carol));
+        assert!(TrustStore::load(root_c).unwrap().is_revoked(id_a.as_str()));
+        assert!(TrustStore::load(root_b).unwrap().is_revoked(id_a.as_str()));
 
         let disc = PeerDiscoveryStore::load(root_b).unwrap();
         assert!(disc.peers.iter().any(|e| e.identity_id == id_c.as_str()));
@@ -837,15 +882,6 @@ mod tests {
         let mut tc = TrustStore::load(root_c).unwrap();
         tc.upsert(id_a.as_str(), &pub_a).unwrap();
         tc.save(root_c).unwrap();
-
-        let victim = "aira:identity:relay-victim";
-        let victim_sk = SigningKey::from_bytes(&[127u8; 32]);
-        let victim_pub = hex::encode(victim_sk.verifying_key().to_bytes());
-        for root in [root_a, root_r, root_c] {
-            let mut t = TrustStore::load(root).unwrap();
-            t.upsert(victim, &victim_pub).unwrap();
-            t.save(root).unwrap();
-        }
 
         let hub = RelayHub::new();
         let listener = listen("127.0.0.1:0").await.unwrap();
@@ -900,15 +936,16 @@ mod tests {
             hub.registered()
         );
 
-        let delta = TrustDelta::revoke(victim, Some("via-relay".into()));
+        // Alice self-announces revoke via relay courier (Analyze-52).
+        let delta = TrustDelta::revoke(id_a.as_str(), Some("via-relay".into()));
         let env = make_trust_delta_envelope(root_a, &delta).unwrap();
         send_envelope_to_peer(root_a, id_c.as_str(), &env)
             .await
             .unwrap();
 
         let applied = hold.await.unwrap();
-        assert_eq!(applied.subject_id, victim);
-        assert!(TrustStore::load(root_c).unwrap().is_revoked(victim));
+        assert_eq!(applied.subject_id, id_a.as_str());
+        assert!(TrustStore::load(root_c).unwrap().is_revoked(id_a.as_str()));
         let _ = accept_task.await;
     }
 

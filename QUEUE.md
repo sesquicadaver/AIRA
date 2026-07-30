@@ -1,6 +1,6 @@
 # AIRA — оптимізована черга задач
 
-**Оновлено:** 2026-07-28  
+**Оновлено:** 2026-07-30  
 **База:** Analyze-20…33 CLOSED (APPROVE/CLEAR); `main` @ peer CLI  
 **Правило:** один активний Analyze-N slice за цикл; не чіпати `Manifesto etc/**`, `Meditation_About/**`.
 
@@ -9,7 +9,7 @@
 | Гілка | Стан |
 |-------|------|
 | MVP Epic 0–11 + Alpha.2 / Keyring / Plane / Trust / Peer P0+CLI | **done** |
-| Відкритий Analyze-34+ | **Analyze-51 CLOSED** (mTLS require); post-MVP QUEUE #15 done |
+| Відкритий Analyze-34+ | **Analyze-52 CLOSED** (self-sovereign trust-delta); QUEUE #17 done |
 
 
 
@@ -49,11 +49,12 @@
 | 14 | **P2** | ~~coordinated `local.x25519` rotate~~ **DONE** (Analyze-49) | crypto docs Out | після peer P0 | — |
 | 15 | **P2** | ~~mTLS client-cert for `aira-node --http`~~ **DONE** (Analyze-51) | A-19 deferred | після #13 bearer | optional client auth |
 | 16 | **P2** | ~~dual-key remote TrustStore (same-id multi-key)~~ **DONE** (Analyze-50) | crypto docs Out | після #14 x25519 | — |
+| 17 | **P2** | ~~Analyze-52 — self-sovereign trust-delta apply~~ **DONE** | `subject_id == issuer` for all peer-delta ops; local CLI third-party CRL unchanged | A-36 TODO / A-38 rekey | third-party mesh CRL apply |
 
 
 ### Рекомендований наступний цикл
 
-Post-MVP QUEUE #1–16 closed for listed micros; next = backlog from `docs/*` Out / new Analyze from roadmap.
+Post-MVP QUEUE #1–17 closed for listed micros; next = backlog from `docs/*` Out / roadmap.
 
 ### Залежності (скорочено)
 

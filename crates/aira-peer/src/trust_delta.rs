@@ -211,9 +211,11 @@ fn refuse_protected(id: &str, local_id: &str) -> Result<(), PeerError> {
 /// Apply a validated trust-delta into local `trust.json` (fail-closed).
 ///
 /// `issuer` must be the originator that signed the envelope (direct peer or
-/// gossip). Does not re-check the envelope signature — caller must use
-/// [`crate::AuthenticatedPeer::recv_envelope`] or
-/// [`crate::AuthenticatedPeer::recv_envelope_allow_relayed_trust_delta`].
+/// gossip). Self-sovereign only (Analyze-52): `subject_id` must equal
+/// `issuer` for every op (Revoke / Unrevoke / Rotate / Rekey). Third-party
+/// CRL stays on local CLI `trust revoke`. Does not re-check the envelope
+/// signature — caller must use [`crate::AuthenticatedPeer::recv_envelope`]
+/// or [`crate::AuthenticatedPeer::recv_envelope_allow_relayed_trust_delta`].
 pub fn apply_trust_delta(
     root: impl AsRef<Path>,
     issuer: &aira_object::AiraRef,
@@ -235,6 +237,11 @@ pub fn apply_trust_delta(
         .any(|e| e.identity_id == issuer.as_str())
     {
         return Err(PeerError::Untrusted(issuer.as_str().into()));
+    }
+
+    // Peer-applied trust mutations are self-sovereign only.
+    if delta.subject_id.trim() != issuer.as_str() {
+        return Err(PeerError::IdentityMismatch);
     }
 
     refuse_protected(delta.subject_id.trim(), local)?;
@@ -262,10 +269,6 @@ pub fn apply_trust_delta(
             )?;
         }
         TrustDeltaOp::Rekey => {
-            // Only the authenticated issuer may announce their own pubkey change.
-            if delta.subject_id.trim() != issuer.as_str() {
-                return Err(PeerError::IdentityMismatch);
-            }
             let pk = delta.new_pubkey_hex.as_deref().unwrap().trim();
             store.rekey(
                 delta.subject_id.trim(),
@@ -340,6 +343,8 @@ pub fn parse_trust_delta(env: &ProtocolEnvelope) -> Result<TrustDelta, PeerError
 }
 
 /// Build a signed `peer.trust.delta` envelope from the local node identity.
+///
+/// Subject must be the local identity (Analyze-52 self-sovereign send gate).
 pub fn make_trust_delta_envelope(
     root: impl AsRef<Path>,
     delta: &TrustDelta,
@@ -347,6 +352,9 @@ pub fn make_trust_delta_envelope(
     delta.validate_shape()?;
     let root = root.as_ref();
     let (local_id, ring) = Keyring::load_node_identity(root)?;
+    if delta.subject_id.trim() != local_id.as_str() {
+        return Err(PeerError::IdentityMismatch);
+    }
     let json = String::from_utf8(delta.canonical_bytes()?)
         .map_err(|e| PeerError::Protocol(e.to_string()))?;
     let hash = ContentHash::sha256_bytes(json.as_bytes());
