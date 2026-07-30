@@ -1,82 +1,80 @@
-# AIRA — оптимізована черга задач
+# AIRA — лінійна черга задач
 
 **Оновлено:** 2026-07-30  
-**База:** Analyze-20…33 CLOSED (APPROVE/CLEAR); `main` @ peer CLI  
-**Правило:** один активний Analyze-N slice за цикл; не чіпати `Manifesto etc/**`, `Meditation_About/**`.
+**Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
+**Канон:** цей файл. Старі `Analyze-*/todo/TODO_FIXME.md` — лише provenance.
 
-## Поточний стан
+## Стан
 
-| Гілка | Стан |
-|-------|------|
-| MVP Epic 0–11 + Alpha.2 / Keyring / Plane / Trust / Peer P0+CLI | **done** |
-| Відкритий Analyze-34+ | **Analyze-52 CLOSED** (self-sovereign trust-delta); QUEUE #17 done |
+| | |
+|--|--|
+| `main` | Analyze-53 (QUEUE #18) |
+| MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
+| Активна черга | **#19 → …** (перший OPEN = наступний цикл) |
 
+## Правила атомарності
 
+1. **Лінійність:** `#N` стартує лише після `#N-1` = DONE (APPROVE/CLEAR + UltraQA + push).
+2. **Один вихід:** кожен рядок має один measurable «Done when».
+3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
+4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку.
+5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
 
+---
 
+## Архів (закрито) — Phase A: #1–17
 
-| Канон наступних milestone | `specs/mvp-roadmap.md` M12–M13 + post-MVP |
+Коротко: A-34…A-52 (listen → Noise → trust-delta → dual-key → notify → CSU publisher → audit → `.prev` → tenant keyring → gossip/relay/DHT → HTTP TLS/Bearer/mTLS → x25519 rotate → remote rekey grace → self-sovereign trust-delta).  
+Деталі — у відповідних `Analyze-N/` і git history. **Не брати в роботу повторно.**
 
-Дубльовані пункти з `Analyze-*/todo/TODO_FIXME.md` зведено тут. Старі TODO у Analyze-N лишаються як provenance; **черга виконання = цей файл**.
+---
 
-## Stale (не брати в роботу)
+## Активна черга (лінійна) — Phase B
 
-| Пункт | Чому |
-|-------|------|
-| A-31 «Blocking: restore_previous after trust» | Виправлено в A-31 CODE_REVIEW + `rotate_node_signing_secret` |
-| A-30 «Optional durable backup of previous secret» | Зроблено в A-31 (`--backup` / `.prev`) |
-| A-32 «CLI peer add/dial/send» | Зроблено в A-33 |
+| # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
+|---|--------|---------|-----------------|-----------|------------------|
+| 18 | **DONE** | ~~Analyze-53 — gossip drop non-self-sovereign~~ | Gossip: не форвардити `peer.trust.delta`, якщо `subject_id ≠ issuer` | тест + `docs/peer-link.md`; apply без змін політики A-52 | DHT book; relay persist |
+| 19 | **OPEN** | Analyze-54 | Notify peers про новий `local.x25519` після rotate (окреме повідомлення або розширення notify) | roundtrip + docs/crypto | Ed25519 rekey path; STUN |
+| 20 | OPEN | Analyze-55 | mTLS: CN/SAN клієнтського сертифіката → перевірка проти TrustStore | fail-closed mismatch; тести; docs/local-node | optional client auth; окремий health |
+| 21 | OPEN | Analyze-56 | Окремий health listener **без** require client-cert (коли mTLS увімкнено на API) | `/health` reachable без клієнтського сертифіката; тести | CN map (вже #20); public bind |
+| 22 | OPEN | Analyze-57 | Opt-in: результат DHT find/announce → upsert у `address_book.json` | CLI flag + тест dial після upsert | discv5; auto без flag |
+| 23 | OPEN | Analyze-58 | Durable relay hub registry на диску (пережив рестарт процесу) | reload після restart у тесті | STUN; session crypto change |
+| 24 | OPEN | Analyze-59 | Concurrent per-connection recv tasks у `peer listen` | ≥2 паралельні сесії recv без блокування accept loop | systemd unit |
+| 25 | OPEN | Analyze-60 | Приклад systemd/supervisor unit для `aira-node` / `peer listen` | файл(и) + короткий runbook у docs | код runtime |
+| 26 | OPEN | Analyze-61 | Retention/prune для `.prev.<stamp>` слотів | CLI/policy + тести GC | per-CSU secrets |
+| 27 | OPEN | Analyze-62 | Durable on-disk per-CSU signing secrets | load/save + ізоляція tenant | tenant rotate ceremony |
+| 28 | OPEN | Analyze-63 | Tenant key rotate / revoke ceremony | CLI + audit + тести | HTTP authz |
+| 29 | OPEN | Analyze-64 | Multi-tenant HTTP authz (Bearer/mTLS → tenant scope) | відмова cross-tenant; тести | federation |
+| 30 | OPEN | Analyze-65 | YAML parity для `config.json` (читання `config.yaml`) | еквівалентний bootstrap; тест | SQLite audit rewrite |
+| 31 | OPEN | Analyze-66 | STUN/ICE-lite для peer dial (один механізм, без full ICE stack) | documented dial path + тест/harness у venv | discv5 UDP |
+| 32 | OPEN | Analyze-67 | UDP discv5-style announce (локальний) | announce+store; не iterative | FIND_NODE |
+| 33 | OPEN | Analyze-68 | Iterative FIND_NODE поверх #32 | closest lookup over UDP path | federation join |
+| 34 | OPEN | Analyze-69 | Public HTTP bind лише з **явним** opt-in + fail-closed default | docs + тест відмови без flag | federation |
+| 35 | OPEN | Analyze-70 | Federation join prototype (roadmap v0.3 micro) | мінімальний join+trust; Living Spec | settlement/CRP |
 
-## Активна черга (оптимізована)
+### Наступний цикл
 
-Порядок = залежності + demo value. Один рядок = один Analyze-цикл (або явно «micro»).
+**#19 → Analyze-54** (notify peers of new `local.x25519`).
 
-| # | Pri | Slice (пропозиція) | Scope | Залежить від | Не в scope |
-|---|-----|--------------------|-------|--------------|------------|
-| 1 | **P0** | ~~Analyze-34 — Peer listen daemon~~ **DONE** | Persistent multi-accept listen + CLI; dial smoke без recv | A-33 CLI | Noise, NAT, gossip |
-| 2 | **P0** | ~~Analyze-35 — Noise XX~~ **DONE** | Noise XX під тим самим frame/envelope + CLI `peer *` | #1 (стабільний listen для smoke) | Trust-delta, DHT |
-| 3 | **P1** | ~~Analyze-36 — Trust-delta over peer~~ **DONE** | CRL / trust-delta message по peer link | #2 (краще шифр. payload) або мінімум #1 | Auto-notify UX |
-| 4 | **P1** | ~~Analyze-37 — Dual-key node grace~~ **DONE** | Multi-pubkey Keyring для того ж node `key_ref` | crypto в `aira-object` (паралельно до #2–3) | Peer notify |
-| 5 | **P1** | ~~Analyze-38 — Peer pubkey notify~~ **DONE** | Auto-notify peers про новий node pubkey | #3 + #4 | Gossip fanout |
-| 6 | **P1** | ~~Analyze-39 — CSU emit_failed publisher~~ **DONE** | Довести publisher lifecycle (A-29 deferred) | незалежно | Peer |
-| 7 | **P2** | ~~CRL / ceremony audit log~~ **DONE** (Analyze-40) | rotate/revoke/unrevoke → durable audit | після #4 | — |
-| 8 | **P2** | ~~Timestamped `.prev` history~~ **DONE** (Analyze-41) | історія бекапів, не один слот | після #4 | — |
-| 9 | **P2** | ~~Multi-tenant per-CSU keyring~~ **DONE** (Analyze-42) | ізоляція keyring | після #6 | — |
-| 10 | **P2** | ~~Gossip + discovery~~ **DONE** (A-43); ~~relay-first hub~~ **DONE** (A-44); ~~DHT-lite~~ **DONE** (A-47) | #10 split | після #2–3 | STUN/discv5 |
-| 11 | **P2** | ~~HTTP TLS + persist discovery~~ **DONE** (Analyze-45) | A-19 deferred | окремий трек | mTLS/authn |
-| 12 | **P2** | ~~Partial C2 conformance (M13)~~ **DONE** (Analyze-46); M12 C0/C1 already shipped | harness + local protocols | окремий трек | network C2 |
-| 13 | **P2** | ~~HTTP Bearer authn~~ **DONE** (Analyze-48); ~~mTLS~~ **DONE** (A-51) | A-19 deferred | після #11 | — |
-| 14 | **P2** | ~~coordinated `local.x25519` rotate~~ **DONE** (Analyze-49) | crypto docs Out | після peer P0 | — |
-| 15 | **P2** | ~~mTLS client-cert for `aira-node --http`~~ **DONE** (Analyze-51) | A-19 deferred | після #13 bearer | optional client auth |
-| 16 | **P2** | ~~dual-key remote TrustStore (same-id multi-key)~~ **DONE** (Analyze-50) | crypto docs Out | після #14 x25519 | — |
-| 17 | **P2** | ~~Analyze-52 — self-sovereign trust-delta apply~~ **DONE** | `subject_id == issuer` for all peer-delta ops; local CLI third-party CRL unchanged | A-36 TODO / A-38 rekey | third-party mesh CRL apply |
+---
 
+## Джерела (мапінг Out → рядок)
 
-### Рекомендований наступний цикл
+| Джерело | Рядки |
+|---------|-------|
+| A-52 architect WATCH (gossip doomed deltas) | #18 |
+| A-49 deferred x25519 notify | #19 |
+| A-51 / `docs/crypto.md` CN→TrustStore | #20 |
+| A-51 separate health | #21 |
+| `docs/peer-link.md` auto address-book from DHT | #22 |
+| `docs/peer-link.md` durable relay store | #23 |
+| A-34 concurrent recv / systemd | #24–25 |
+| A-41 prune `.prev` | #26 |
+| A-42 / crypto Out per-CSU secrets + ceremony | #27–28 |
+| A-48 multi-tenant HTTP authz | #29 |
+| `docs/local-node.md` YAML deferred | #30 |
+| peer-link Out STUN / discv5 / FIND_NODE | #31–33 |
+| peer-link public HTTP bind | #34 |
+| `specs/mvp-roadmap.md` post-MVP federation | #35 |
 
-Post-MVP QUEUE #1–17 closed for listed micros; next = backlog from `docs/*` Out / roadmap.
-
-### Залежності (скорочено)
-
-```text
-34 daemon+dial-smoke
-  └─► 35 Noise XX
-        └─► 36 trust-delta
-              └─► 38 peer notify
-37 dual-key ── (паралельно з 35/36) ──► 38
-39 CSU publisher ── незалежно
-7–12 ── після стабілізації trust/peer або окремі треки
-```
-
-## Anti-patterns черги
-
-- Не змішувати Noise + NAT + DHT в одному Analyze.
-- Не стартувати dual-key і Noise в одному PR без жорсткого ADR split.
-- Не піднімати P2 (gossip/DHT) до закриття P0 peer encrypt.
-- Не відкривати новий Analyze, поки попередній без APPROVE/CLEAR.
-
-## Джерела
-
-- `Analyze-30…33/todo/TODO_FIXME.md`, README Follow-up
-- `docs/peer-link.md`, `docs/crypto.md` (Out of scope → черга)
-- `specs/mvp-roadmap.md` §18–20, post-MVP
+Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `Analyze-N/`.

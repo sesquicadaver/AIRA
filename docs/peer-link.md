@@ -1,4 +1,4 @@
-# Peer links (Analyze-32…52)
+# Peer links (Analyze-32…53)
 
 Decentralized node-to-node messaging **without a controlling center**.
 
@@ -12,7 +12,7 @@ Decentralized node-to-node messaging **without a controlling center**.
 - **Payload** = Book II `ProtocolEnvelope` inside **Noise-encrypted** length-prefixed frames
 - **Trust-delta** = `peer.trust.delta` (`aira:peer:trust-delta:v1`) — revoke / rotate / unrevoke / **rekey**; apply only with `--apply-trust`
 - **Self-sovereign apply** (Analyze-52) = `subject_id` must equal envelope `issuer` for every op; third-party CRL stays on local CLI `trust revoke` / `trust rotate`
-- **Gossip** (Analyze-43, opt-in `--gossip`) = forward the **original** signed trust-delta once per `message_id` (`peers/gossip_seen.json`); apply still enforces issuer==subject
+- **Gossip** (Analyze-43/53, opt-in `--gossip`) = forward the **original** signed trust-delta once per `message_id` (`peers/gossip_seen.json`); skip forward when `subject_id ≠ issuer` (mark-seen); apply still enforces issuer==subject
 - **Discovery journal** = observational `.aira/peers/discovery.json`; **not** the dial source
 - **Relay hub** (Analyze-44, `--relay`) = live session registry; `peer.relay.deliver` + address-book `via`
 - **DHT-lite** (Analyze-47) = durable `.aira/peers/dht.json` with XOR closest ranking; `peer.dht.announce` over authenticated links (trusted mesh only — not UDP/discv5)
@@ -51,6 +51,10 @@ cargo run -p aira-cli -- --root "$B" peer dht list
 
 ## Out of scope (later)
 
-STUN/ICE; UDP discv5 / iterative FIND_NODE; federation join; public HTTP bind; mTLS; durable relay session store; auto address-book mutation from DHT.
+Канон черги: [`QUEUE.md`](../QUEUE.md) Phase B #19+.
+
+Заплановано атомарно: x25519 peer notify (#19); DHT→address_book (#22); durable relay (#23); STUN/ICE-lite (#31); discv5 announce (#32); FIND_NODE (#33); public HTTP bind (#34); federation (#35).
+
+Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); relay hub (A-44); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18).
 
 See `Analyze-43/provenance/ADR-connectivity-relay-first.md`.

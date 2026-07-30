@@ -763,6 +763,79 @@ mod tests {
         ring.verify(&new_sig, msg).unwrap();
     }
 
+    /// Craft a signed trust-delta envelope **without** the send-side subject==local gate
+    /// (simulates legacy / hostile third-party CRL for Analyze-53 gossip filter).
+    fn craft_trust_delta_envelope_unchecked(
+        root: &std::path::Path,
+        delta: &TrustDelta,
+    ) -> ProtocolEnvelope {
+        use rand::rngs::OsRng;
+        use rand::RngCore;
+        delta.validate_shape().unwrap();
+        let (local_id, ring) = Keyring::load_node_identity(root).unwrap();
+        let json = String::from_utf8(delta.canonical_bytes().unwrap()).unwrap();
+        let hash = ContentHash::sha256_bytes(json.as_bytes());
+        let signature = ring.sign(&local_id, hash.as_str().as_bytes()).unwrap();
+        let mut nonce = [0u8; 8];
+        OsRng.fill_bytes(&mut nonce);
+        let message_id = AiraRef::parse(format!(
+            "aira:message:trust-delta-hostile-{}",
+            hex::encode(nonce)
+        ))
+        .unwrap();
+        let created = aira_object::utc_now_rfc3339().unwrap();
+        ProtocolEnvelope {
+            protocol_id: ProtocolId::Identity,
+            protocol_version: "0.1".into(),
+            message_type: TRUST_DELTA_MESSAGE_TYPE.into(),
+            message_id,
+            correlation_id: None,
+            causal_refs: vec![],
+            issuer_identity: local_id,
+            target_scope: ScopeDescriptor::local("peer-trust-delta"),
+            policy_refs: vec![],
+            payload_hash: hash,
+            payload_ref: Some(json),
+            created_at: Timestamp::parse(created).unwrap(),
+            expires_at: None,
+            signature,
+        }
+    }
+
+    #[tokio::test]
+    async fn gossip_skips_non_self_sovereign_trust_delta() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let (id_a, _) = write_node_identity(root, "g-hostile", [141u8; 32]);
+        let victim = "aira:identity:gossip-victim-53";
+        // Address-book peer that must NOT be dialed for doomed deltas.
+        let mut book = AddressBook::default();
+        book.upsert("aira:identity:would-dial", "127.0.0.1:1");
+        book.save(root).unwrap();
+
+        let delta = TrustDelta::revoke(victim, Some("hostile-crl".into()));
+        let env = craft_trust_delta_envelope_unchecked(root, &delta);
+        assert_ne!(delta.subject_id, env.issuer_identity.as_str());
+
+        let results = gossip_forward_trust_delta(root, &env, "aira:identity:upstream")
+            .await
+            .unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0].skipped);
+        assert_eq!(
+            results[0].error.as_deref(),
+            Some("non-self-sovereign trust-delta")
+        );
+        // Seen marked so a retry is duplicate-skip (no dial).
+        let again = gossip_forward_trust_delta(root, &env, "aira:identity:upstream")
+            .await
+            .unwrap();
+        assert!(again[0].skipped);
+        assert!(again[0].error.is_none());
+        let _ = id_a;
+    }
+
     #[tokio::test]
     async fn gossip_trust_delta_a_to_b_to_c() {
         let dir_a = tempdir().unwrap();

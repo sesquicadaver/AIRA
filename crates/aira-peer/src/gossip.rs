@@ -1,7 +1,8 @@
-//! Trust-delta gossip fanout (Analyze-43).
+//! Trust-delta gossip fanout (Analyze-43 / Analyze-53).
 //!
 //! Forwards the **original** signed envelope to address-book peers. Each local
 //! node relays a given `message_id` at most once (durable seen log).
+//! Analyze-53: never forward when `subject_id ≠ issuer` (self-sovereign only).
 
 use std::collections::VecDeque;
 use std::fs;
@@ -13,7 +14,7 @@ use crate::address_book::AddressBook;
 use crate::discovery::{DiscoverySource, PeerDiscoveryStore};
 use crate::error::PeerError;
 use crate::session::dial;
-use crate::trust_delta::TRUST_DELTA_MESSAGE_TYPE;
+use crate::trust_delta::{parse_trust_delta, TRUST_DELTA_MESSAGE_TYPE};
 
 /// Max retained message ids in the seen log.
 pub const GOSSIP_SEEN_CAP: usize = 512;
@@ -87,7 +88,8 @@ pub fn gossip_mark_seen(root: impl AsRef<Path>, message_id: &str) -> Result<bool
 
 /// Forward a trust-delta envelope to all address-book peers except `exclude_peer_id`.
 ///
-/// Best-effort. Does not re-sign. Skips when `message_id` already seen (after mark).
+/// Best-effort. Does not re-sign. Skips when `message_id` already seen (after mark),
+/// or when the delta is not self-sovereign (`subject_id ≠ issuer`, Analyze-53).
 /// Records discovery sightings for the envelope issuer as `source=gossip`.
 pub async fn gossip_forward_trust_delta(
     root: impl AsRef<Path>,
@@ -101,12 +103,24 @@ pub async fn gossip_forward_trust_delta(
             env.message_type
         )));
     }
+    // Fail-closed parse; refuse to fan out garbage or third-party CRL (A-52/A-53).
+    let delta = parse_trust_delta(env)?;
+    let self_sovereign = delta.subject_id.trim() == env.issuer_identity.as_str();
+
     let msg_id = env.message_id.as_str();
     if gossip_mark_seen(root, msg_id)? {
         return Ok(vec![GossipForwardResult {
             peer_id: "*".into(),
             ok: true,
             error: None,
+            skipped: true,
+        }]);
+    }
+    if !self_sovereign {
+        return Ok(vec![GossipForwardResult {
+            peer_id: "*".into(),
+            ok: true,
+            error: Some("non-self-sovereign trust-delta".into()),
             skipped: true,
         }]);
     }

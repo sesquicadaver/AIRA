@@ -1335,7 +1335,10 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                                 .map_err(|e| anyhow::anyhow!("{e}"))?;
                                 for r in results {
                                     if r.skipped {
-                                        println!("gossip skipped (duplicate)");
+                                        match r.error.as_deref() {
+                                            Some(why) => println!("gossip skipped ({why})"),
+                                            None => println!("gossip skipped (duplicate)"),
+                                        }
                                     } else if r.ok {
                                         println!("gossip -> {}", r.peer_id);
                                     } else {
@@ -1407,9 +1410,14 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                                                     Ok(results) => {
                                                         for r in results {
                                                             if r.skipped {
-                                                                println!(
-                                                                    "gossip skipped (duplicate)"
-                                                                );
+                                                                match r.error.as_deref() {
+                                                                    Some(why) => println!(
+                                                                        "gossip skipped ({why})"
+                                                                    ),
+                                                                    None => println!(
+                                                                        "gossip skipped (duplicate)"
+                                                                    ),
+                                                                }
                                                             } else if r.ok {
                                                                 println!("gossip -> {}", r.peer_id);
                                                             } else {
