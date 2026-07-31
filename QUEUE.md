@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-55 (QUEUE #20 CN→TrustStore) |
+| `main` | Analyze-55 CLOSED (`6811c23`); QUEUE #20 DONE; next OPEN #21 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Активна черга | **#21 → …** (перший OPEN = наступний цикл) |
 
