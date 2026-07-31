@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-54 CLOSED (QUEUE #19 wont-need); next OPEN #20 |
+| `main` | Analyze-55 (QUEUE #20 CN→TrustStore) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#20 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#21 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -35,8 +35,8 @@
 |---|--------|---------|-----------------|-----------|------------------|
 | 18 | **DONE** | ~~Analyze-53 — gossip drop non-self-sovereign~~ | Gossip: не форвардити `peer.trust.delta`, якщо `subject_id ≠ issuer` | тест + `docs/peer-link.md`; apply без змін політики A-52 | DHT book; relay persist |
 | 19 | **DONE** | ~~Analyze-54 — x25519 peer notify~~ **WONT-NEED** | Hello already Ed25519-binds `x25519_pub_hex` each dial; no separate notify | docs + QUEUE rationale (no runtime notify) | pin cache; dual-static grace |
-| 20 | **OPEN** | Analyze-55 | mTLS: CN/SAN клієнтського сертифіката → перевірка проти TrustStore | fail-closed mismatch; тести; docs/local-node | optional client auth; окремий health |
-| 21 | OPEN | Analyze-56 | Окремий health listener **без** require client-cert (коли mTLS увімкнено на API) | `/health` reachable без клієнтського сертифіката; тести | CN map (вже #20); public bind |
+| 20 | **DONE** | ~~Analyze-55 — mTLS CN→TrustStore~~ | CN = full AiraRef; TrustStore exists + not revoked after CA | fail-closed tests + docs/local-node | optional client auth; окремий health |
+| 21 | **OPEN** | Analyze-56 | Окремий health listener **без** require client-cert (коли mTLS увімкнено на API) | `/health` reachable без клієнтського сертифіката; тести | CN map (вже #20); public bind |
 | 22 | OPEN | Analyze-57 | Opt-in: результат DHT find/announce → upsert у `address_book.json` | CLI flag + тест dial після upsert | discv5; auto без flag |
 | 23 | OPEN | Analyze-58 | Durable relay hub registry на диску (пережив рестарт процесу) | reload після restart у тесті | STUN; session crypto change |
 | 24 | OPEN | Analyze-59 | Concurrent per-connection recv tasks у `peer listen` | ≥2 паралельні сесії recv без блокування accept loop | systemd unit |
@@ -54,7 +54,7 @@
 
 ### Наступний цикл
 
-**#20 → Analyze-55** (mTLS CN/SAN → TrustStore).
+**#21 → Analyze-56** (окремий health listener без client-cert).
 
 ---
 

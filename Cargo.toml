@@ -51,6 +51,7 @@ axum-server = { version = "0.7", default-features = false, features = ["tls-rust
 rustls = { version = "0.23", default-features = false, features = ["std", "ring", "logging"] }
 rustls-pemfile = "2"
 rcgen = "0.13"
+x509-parser = "0.16"
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 tempfile = "3"

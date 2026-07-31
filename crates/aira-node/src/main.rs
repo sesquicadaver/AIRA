@@ -221,7 +221,7 @@ fn serve_http(
         eprintln!(
             "warning: mTLS enabled — client certificate required for ALL routes including /health (unlike Bearer)"
         );
-        println!("mtls: require client cert (CA configured)");
+        println!("mtls: require client cert; CN must match TrustStore AiraRef");
     }
 
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -235,7 +235,15 @@ fn serve_http(
             if let Some(ref ca) = tls_client_ca {
                 println!("tls_client_ca {}", ca.display());
             }
-            serve_https(addr, app, &cert, &key, tls_client_ca.as_deref()).await?;
+            serve_https(
+                addr,
+                app,
+                &cert,
+                &key,
+                tls_client_ca.as_deref(),
+                &root,
+            )
+            .await?;
         } else {
             println!("http listening on http://{addr}");
             let listener = tokio::net::TcpListener::bind(addr).await?;

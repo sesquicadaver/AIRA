@@ -57,13 +57,15 @@ cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 --tls-se
 # HTTPS with operator-provided PEM
 cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 \
   --tls-cert /path/cert.pem --tls-key /path/key.pem
-# mTLS: require client cert signed by CA (Analyze-51). ALL routes incl. /health need client cert.
+# mTLS: require client cert signed by CA (Analyze-51). CN must be a full AiraRef
+# present in TrustStore and not revoked (Analyze-55). ALL routes incl. /health need client cert.
 cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 \
   --tls-self-signed --tls-client-ca /path/client-ca.pem
 # Optional Bearer auth for /v1/* (`/health` stays open at HTTP layer); also AIRA_HTTP_TOKEN
 cargo run -p aira-node -- --root "$ROOT" --http --http-token "$TOKEN"
 ```
 
+Client certificate **CN** = `aira:identity:…` that already exists in `$ROOT/identity/trust.json` (not on CRL). CA membership alone is not enough.
 | Method | Path | Body / notes |
 |--------|------|----------------|
 | GET | `/health` | liveness (no Bearer; under mTLS still needs client cert) |
@@ -91,7 +93,7 @@ curl -sS http://127.0.0.1:8787/v1/capabilities -H "Authorization: Bearer $TOKEN"
 curl -skS --cert client.pem --key client.key https://127.0.0.1:8787/health
 ```
 
-Non-goals (still deferred): multi-tenant HTTP authz, public bind by default, federation. mTLS client-cert require shipped in Analyze-51 (`--tls-client-ca`).
+Non-goals (still deferred): multi-tenant HTTP authz, public bind by default, federation, separate health without client cert (#21). mTLS require + CN→TrustStore shipped in Analyze-51/55 (`--tls-client-ca`).
 
 Peer-to-peer authenticated links (Analyze-32+) are documented in [peer-link.md](peer-link.md); they are separate from this loopback HTTP API.
 

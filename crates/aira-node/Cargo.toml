@@ -22,7 +22,9 @@ axum-server = { workspace = true }
 rustls = { workspace = true }
 rustls-pemfile = { workspace = true }
 rcgen = { workspace = true }
+x509-parser = { workspace = true }
 aira-core = { path = "../aira-core" }
+aira-object = { path = "../aira-object" }
 aira-csu = { path = "../aira-csu" }
 aira-flow = { path = "../aira-flow" }
 aira-conformance = { path = "../aira-conformance" }
@@ -32,3 +34,5 @@ aira-protocol = { path = "../aira-protocol" }
 tempfile = { workspace = true }
 tower = { workspace = true }
 http-body-util = { workspace = true }
+hex = { workspace = true }
+ed25519-dalek = { workspace = true }
