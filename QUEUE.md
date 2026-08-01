@@ -54,7 +54,7 @@
 
 ### Наступний цикл
 
-**#23 → Analyze-58** (durable relay hub registry).
+**#24 → Analyze-59** (concurrent per-connection recv).
 
 ---
 
