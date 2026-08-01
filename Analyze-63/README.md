@@ -1,7 +1,7 @@
 # Analyze-63 — Tenant rotate / revoke ceremony
 
 **QUEUE:** #28  
-**Status:** CLOSED (pending tip)  
+**Status:** CLOSED @ `1f560d8`  
 **Decision:** Option **A** — same `publisher_id`, new key; revoke = unload + delete dir
 
 ## Shipped
