@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-57 CLOSED; QUEUE #22 DONE; next OPEN #23 |
+| `main` | Analyze-57 CLOSED (`95b604e`); QUEUE #22 DONE; next OPEN #23 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Активна черга | **#23 → …** (перший OPEN = наступний цикл) |
 

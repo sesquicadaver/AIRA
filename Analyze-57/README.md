@@ -1,7 +1,7 @@
 # Analyze-57 — DHT → address_book (`--apply-book`)
 
 **QUEUE:** #22  
-**Status:** CLOSED (pending commit hash)  
+**Status:** CLOSED (`95b604e`)  
 **Decision:** both paths — find exact + inbound announce
 
 ## What shipped
