@@ -1,7 +1,7 @@
 # Analyze-64 — Multi-tenant HTTP authz
 
 **QUEUE:** #29  
-**Status:** CLOSED (pending tip)  
+**Status:** CLOSED @ `0aaa314`  
 **Decision:** Option **A** — Bearer map → `publisher_id`; CSU register/list authz
 
 ## Shipped
