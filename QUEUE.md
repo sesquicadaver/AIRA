@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-63 CLOSED @ `1f560d8`; QUEUE #28 DONE; next OPEN #29 |
+| `main` | Analyze-64 CLOSED (pending tip); QUEUE #29 DONE; next OPEN #30 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#29 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#30 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -44,7 +44,7 @@
 | 26 | **DONE** | ~~Analyze-61 — retention/prune `.prev.<stamp>`~~ | CLI/policy GC archived stamp slots (ed25519+x25519); never latest | `identity backups prune` + тести | per-CSU secrets |
 | 27 | **DONE** | ~~Analyze-62 — durable per-CSU secrets~~ | On-disk `identity/tenants/<hex>/` load/save + isolation + auto-load | тести + CLI `identity csu-tenant` | tenant rotate ceremony |
 | 28 | **DONE** | ~~Analyze-63 — tenant rotate/revoke ceremony~~ | Same-publisher rotate + revoke unload/delete + audit | CLI + audit + тести | HTTP authz |
-| 29 | OPEN | Analyze-64 | Multi-tenant HTTP authz (Bearer/mTLS → tenant scope) | відмова cross-tenant; тести | federation |
+| 29 | **DONE** | ~~Analyze-64 — multi-tenant HTTP authz~~ | Bearer map → publisher; CSU register/list cross-tenant 403 | тести + docs/local-node | federation; mTLS CN seam |
 | 30 | OPEN | Analyze-65 | YAML parity для `config.json` (читання `config.yaml`) | еквівалентний bootstrap; тест | SQLite audit rewrite |
 | 31 | OPEN | Analyze-66 | STUN/ICE-lite для peer dial (один механізм, без full ICE stack) | documented dial path + тест/harness у venv | discv5 UDP |
 | 32 | OPEN | Analyze-67 | UDP discv5-style announce (локальний) | announce+store; не iterative | FIND_NODE |
@@ -55,7 +55,7 @@
 
 ### Наступний цикл
 
-**#29 → Analyze-64** (multi-tenant HTTP authz).
+**#30 → Analyze-65** (YAML config parity).
 
 ---
 

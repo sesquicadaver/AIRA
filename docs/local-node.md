@@ -68,11 +68,24 @@ cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 \
   --health-listen 127.0.0.1:8788
 # Optional Bearer auth for /v1/* (`/health` stays open at HTTP layer); also AIRA_HTTP_TOKEN
 cargo run -p aira-node -- --root "$ROOT" --http --http-token "$TOKEN"
+# Multi-tenant CSU authz (Analyze-64): map Bearer → publisher_id
+# File mode must be 0600. Requires --http-token (admin). Map tokens also accepted.
+cat > "$ROOT/identity/http-tenant-auth.json" <<'EOF'
+{"version":1,"entries":[{"token":"tenant-secret","publisher_id":"aira:identity:worker-pub"}]}
+EOF
+chmod 600 "$ROOT/identity/http-tenant-auth.json"
+cargo run -p aira-node -- --root "$ROOT" --http --http-token "$ADMIN_TOKEN"
+# or explicit path:
+# cargo run -p aira-node -- --root "$ROOT" --http --http-token "$ADMIN_TOKEN" \
+#   --http-tenant-auth "$ROOT/identity/http-tenant-auth.json"
 ```
+
+`POST /v1/csu/register` with a tenant token → **403** if `manifest.publisher_identity` ≠ mapped publisher. `GET /v1/csu` returns only that publisher’s CSUs. Admin token (not in map) sees/registers all. mTLS CN→tenant principal is deferred (CN not yet in HTTP request extensions).
 
 Client certificate **CN** = `aira:identity:…` that already exists in `$ROOT/identity/trust.json` (not on CRL). CA membership alone is not enough.
 
 With `--health-listen`, probes use the separate bind; the API `--listen` surface stays mTLS-only.
+
 | Method | Path | Body / notes |
 |--------|------|----------------|
 | GET | `/health` | liveness (no Bearer; under mTLS on `--listen` still needs client cert; use `--health-listen` for plain probe) |
@@ -82,8 +95,8 @@ With `--health-listen`, probes use the separate bind; the API `--listen` surface
 | GET | `/v1/artifacts/:id` | descriptor + payload |
 | GET | `/v1/events?limit=50` | event tail |
 | GET | `/v1/capabilities` | local discovery (durable `discovery/registry.json`) |
-| GET | `/v1/csu` | registry list |
-| POST | `/v1/csu/register` | `{"manifest":{...},"activate":true}` |
+| GET | `/v1/csu` | registry list (tenant-filtered when map enabled) |
+| POST | `/v1/csu/register` | `{"manifest":{...},"activate":true}` (tenant publisher must match) |
 | POST | `/v1/conformance/run` | `{"profile":"C0\|C1\|C2"}` |
 
 Example:
@@ -102,9 +115,9 @@ curl -skS --cert client.pem --key client.key https://127.0.0.1:8787/health
 curl -sS http://127.0.0.1:8788/health
 ```
 
-Non-goals (див. [`QUEUE.md`](../QUEUE.md)): multi-tenant HTTP authz (#29); public bind opt-in (#34); federation (#35); YAML `config.yaml` parity (#30).
+Non-goals (див. [`QUEUE.md`](../QUEUE.md)): federation (#35); public bind opt-in (#34); YAML `config.yaml` parity (#30); tenant `.prev` prune (#36); mTLS CN principal seam.
 
-Shipped на HTTP: mTLS require + CN→TrustStore (A-51/55); plain `--health-listen` (A-56 / #21).
+Shipped на HTTP: mTLS require + CN→TrustStore (A-51/55); plain `--health-listen` (A-56 / #21); multi-tenant CSU authz Bearer map (A-64 / #29).
 
 Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.md); окремо від loopback HTTP API.
 

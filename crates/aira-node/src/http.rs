@@ -18,6 +18,11 @@ use aira_csu::{CsuLifecycleState, CsuManifest, CsuRegistry};
 use aira_flow::{LocalSession, SubmitOutcome};
 use aira_protocol::DiscoveryRegistry;
 
+use crate::tenant_auth::{
+    authorize_csu_register, bearer_token_accepted, filter_csu_list, resolve_principal, Principal,
+    TenantAuthMap,
+};
+
 /// Shared node state for HTTP handlers.
 #[derive(Clone)]
 pub struct AppState {
@@ -26,6 +31,8 @@ pub struct AppState {
     pub discovery: Arc<Mutex<DiscoveryRegistry>>,
     /// When set, `/v1/*` requires `Authorization: Bearer <token>` (Analyze-48).
     pub http_token: Option<Arc<str>>,
+    /// Optional tenant Bearer→publisher map (Analyze-64). Immutable for process lifetime.
+    pub tenant_auth: Option<Arc<TenantAuthMap>>,
 }
 
 impl AppState {
@@ -55,6 +62,7 @@ impl AppState {
             session: Arc::new(Mutex::new(session)),
             discovery: Arc::new(Mutex::new(discovery)),
             http_token: None,
+            tenant_auth: None,
         })
     }
 
@@ -66,14 +74,39 @@ impl AppState {
             .map(Arc::from);
         self
     }
+
+    /// Attach immutable tenant auth map (Analyze-64).
+    pub fn with_tenant_auth(mut self, map: Option<TenantAuthMap>) -> Self {
+        self.tenant_auth = map.map(Arc::new);
+        self
+    }
+
+    fn principal_from_auth_header(&self, header: Option<&str>) -> Principal {
+        if self.tenant_auth.is_none() {
+            return Principal::Unscoped;
+        }
+        match bearer_credential(header) {
+            Some(tok) => resolve_principal(
+                tok,
+                self.http_token.as_deref(),
+                self.tenant_auth.as_deref(),
+            ),
+            None => Principal::Unscoped,
+        }
+    }
 }
 
 /// Build the M11 router (also used by integration tests).
 ///
 /// When `state.http_token` is set, all routes except `GET /health` require a
-/// matching `Authorization: Bearer` header.
+/// matching `Authorization: Bearer` header (admin token or tenant-map token).
 pub fn router(state: AppState) -> Router {
-    let expect = state.http_token.clone();
+    debug_assert!(
+        state.http_token.is_some() || state.tenant_auth.is_none(),
+        "tenant_auth map requires http_token (boot helper enforces)"
+    );
+    let expect_token = state.http_token.clone();
+    let tenant_map = state.tenant_auth.clone();
     let app = Router::new()
         .route("/health", get(health))
         .route("/v1/problems", post(post_problem))
@@ -87,10 +120,11 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/conformance/run", post(post_conformance_run))
         .with_state(state);
 
-    match expect {
+    match expect_token {
         Some(token) => app.layer(middleware::from_fn(move |req, next| {
             let token = token.clone();
-            async move { bearer_gate(req, next, token).await }
+            let map = tenant_map.clone();
+            async move { bearer_gate(req, next, token, map).await }
         })),
         None => app,
     }
@@ -104,12 +138,21 @@ pub fn health_router() -> Router {
 }
 
 /// Reject unauthenticated `/v1/*` when a shared token is configured.
-async fn bearer_gate(req: Request, next: Next, expected: Arc<str>) -> Response {
+async fn bearer_gate(
+    req: Request,
+    next: Next,
+    admin: Arc<str>,
+    map: Option<Arc<TenantAuthMap>>,
+) -> Response {
     if req.uri().path() == "/health" {
         return next.run(req).await;
     }
     match bearer_credential(req.headers().get(AUTHORIZATION).and_then(|v| v.to_str().ok())) {
-        Some(got) if constant_time_eq(got.as_bytes(), expected.as_bytes()) => next.run(req).await,
+        Some(got)
+            if bearer_token_accepted(got, Some(admin.as_ref()), map.as_deref()) =>
+        {
+            next.run(req).await
+        }
         _ => err(StatusCode::UNAUTHORIZED, "unauthorized"),
     }
 }
@@ -127,18 +170,6 @@ fn bearer_credential(header: Option<&str>) -> Option<&str> {
     } else {
         Some(token)
     }
-}
-
-/// Constant-time equality for equal-length secrets.
-fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    let mut diff = 0u8;
-    for (x, y) in a.iter().zip(b.iter()) {
-        diff |= x ^ y;
-    }
-    diff == 0
 }
 
 #[derive(Serialize)]
@@ -286,21 +317,33 @@ async fn get_capabilities(State(state): State<AppState>) -> Response {
     Json(json!({ "capabilities": caps })).into_response()
 }
 
-async fn get_csu_list(State(state): State<AppState>) -> Response {
+async fn get_csu_list(
+    State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
+) -> Response {
+    let principal = state.principal_from_auth_header(
+        headers
+            .get(AUTHORIZATION)
+            .and_then(|v| v.to_str().ok()),
+    );
     let path = state.root.join("csu").join("registry.json");
     if !path.exists() {
         return Json(json!({ "csu": [] })).into_response();
     }
     match CsuRegistry::load(&path) {
         Ok(reg) => {
-            let list: Vec<_> = reg
-                .list()
+            let all = reg.list();
+            let filtered = filter_csu_list(&principal, &all, |e| {
+                e.manifest.publisher_identity.as_str()
+            });
+            let list: Vec<_> = filtered
                 .into_iter()
                 .map(|e| {
                     json!({
                         "csu_id": e.manifest.csu_id.as_str(),
                         "csu_name": e.manifest.csu_name,
                         "csu_type": format!("{:?}", e.manifest.csu_type),
+                        "publisher_identity": e.manifest.publisher_identity.as_str(),
                         "state": format!("{:?}", e.state),
                     })
                 })
@@ -320,8 +363,17 @@ struct CsuRegisterBody {
 
 async fn post_csu_register(
     State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
     Json(body): Json<CsuRegisterBody>,
 ) -> Response {
+    let principal = state.principal_from_auth_header(
+        headers
+            .get(AUTHORIZATION)
+            .and_then(|v| v.to_str().ok()),
+    );
+    if let Err(e) = authorize_csu_register(&principal, &body.manifest) {
+        return err(StatusCode::FORBIDDEN, &e.message);
+    }
     let path = state.root.join("csu").join("registry.json");
     let mut reg = if path.exists() {
         match CsuRegistry::load(&path) {
@@ -727,8 +779,170 @@ mod tests {
 
     #[test]
     fn constant_time_eq_basic() {
+        use crate::tenant_auth::constant_time_eq;
         assert!(constant_time_eq(b"abc", b"abc"));
         assert!(!constant_time_eq(b"abc", b"abd"));
         assert!(!constant_time_eq(b"abc", b"ab"));
+    }
+
+    #[tokio::test]
+    async fn tenant_register_ok_and_cross_forbidden() {
+        use crate::tenant_auth::{save_tenant_auth_map, TenantAuthEntry, TenantAuthMap};
+        use aira_csu::support::basic_manifest;
+        use aira_csu::CsuType;
+        use aira_object::AiraRef;
+
+        let (_dir, state) = setup();
+        let map_path = state.root.join("identity").join("http-tenant-auth.json");
+        save_tenant_auth_map(
+            &map_path,
+            &TenantAuthMap {
+                version: 1,
+                entries: vec![TenantAuthEntry {
+                    token: "tenant-tok".into(),
+                    publisher_id: "aira:identity:tenant-pub".into(),
+                }],
+            },
+        )
+        .unwrap();
+        let map = crate::tenant_auth::load_tenant_auth_map(&map_path).unwrap();
+        let app = router(
+            state
+                .with_http_token(Some("admin-tok".into()))
+                .with_tenant_auth(Some(map)),
+        );
+
+        let mut ok_manifest = basic_manifest(
+            "aira:csu:tenant.worker",
+            "tenant-worker",
+            CsuType::Execution,
+            &[],
+            &[],
+        );
+        ok_manifest.publisher_identity = AiraRef::parse("aira:identity:tenant-pub").unwrap();
+        let (st, v) = json_req_auth(
+            app.clone(),
+            "POST",
+            "/v1/csu/register",
+            Some(json!({"manifest": ok_manifest, "activate": false})),
+            Some("tenant-tok"),
+        )
+        .await;
+        assert_eq!(st, StatusCode::OK, "{v}");
+
+        let mut bad = basic_manifest(
+            "aira:csu:other.worker",
+            "other-worker",
+            CsuType::Execution,
+            &[],
+            &[],
+        );
+        bad.publisher_identity = AiraRef::parse("aira:identity:other-pub").unwrap();
+        let (st2, v2) = json_req_auth(
+            app,
+            "POST",
+            "/v1/csu/register",
+            Some(json!({"manifest": bad, "activate": false})),
+            Some("tenant-tok"),
+        )
+        .await;
+        assert_eq!(st2, StatusCode::FORBIDDEN, "{v2}");
+        assert!(v2["error"].as_str().unwrap().contains("forbidden"));
+    }
+
+    #[tokio::test]
+    async fn tenant_list_filtered_admin_sees_all() {
+        use crate::tenant_auth::{save_tenant_auth_map, TenantAuthEntry, TenantAuthMap};
+        use aira_csu::support::basic_manifest;
+        use aira_csu::{CsuRegistry, CsuType};
+        use aira_object::AiraRef;
+
+        let (_dir, state) = setup();
+        let reg_path = state.root.join("csu").join("registry.json");
+        let mut reg = CsuRegistry::new();
+        let mut m1 = basic_manifest(
+            "aira:csu:t1",
+            "t1",
+            CsuType::Execution,
+            &[],
+            &[],
+        );
+        m1.publisher_identity = AiraRef::parse("aira:identity:tenant-pub").unwrap();
+        let mut m2 = basic_manifest(
+            "aira:csu:t2",
+            "t2",
+            CsuType::Execution,
+            &[],
+            &[],
+        );
+        m2.publisher_identity = AiraRef::parse("aira:identity:other-pub").unwrap();
+        reg.register(m1, None).unwrap();
+        reg.register(m2, None).unwrap();
+        reg.save(&reg_path).unwrap();
+
+        let map_path = state.root.join("identity").join("http-tenant-auth.json");
+        save_tenant_auth_map(
+            &map_path,
+            &TenantAuthMap {
+                version: 1,
+                entries: vec![TenantAuthEntry {
+                    token: "tenant-tok".into(),
+                    publisher_id: "aira:identity:tenant-pub".into(),
+                }],
+            },
+        )
+        .unwrap();
+        let map = crate::tenant_auth::load_tenant_auth_map(&map_path).unwrap();
+        let app = router(
+            state
+                .with_http_token(Some("admin-tok".into()))
+                .with_tenant_auth(Some(map)),
+        );
+
+        let (st, v) = json_req_auth(app.clone(), "GET", "/v1/csu", None, Some("tenant-tok")).await;
+        assert_eq!(st, StatusCode::OK, "{v}");
+        let arr = v["csu"].as_array().unwrap();
+        assert_eq!(arr.len(), 1);
+        assert_eq!(arr[0]["csu_id"], "aira:csu:t1");
+
+        let (st2, v2) = json_req_auth(app, "GET", "/v1/csu", None, Some("admin-tok")).await;
+        assert_eq!(st2, StatusCode::OK, "{v2}");
+        assert_eq!(v2["csu"].as_array().unwrap().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn legacy_no_map_unscoped_ok() {
+        let (_dir, state) = setup();
+        let app = router(state.with_http_token(Some("only-admin".into())));
+        let (st, v) = json_req_auth(app, "GET", "/v1/csu", None, Some("only-admin")).await;
+        assert_eq!(st, StatusCode::OK, "{v}");
+    }
+
+    #[tokio::test]
+    async fn tenant_map_token_accepted_without_admin_secret_match() {
+        use crate::tenant_auth::{save_tenant_auth_map, TenantAuthEntry, TenantAuthMap};
+
+        let (_dir, state) = setup();
+        let map_path = state.root.join("identity").join("http-tenant-auth.json");
+        save_tenant_auth_map(
+            &map_path,
+            &TenantAuthMap {
+                version: 1,
+                entries: vec![TenantAuthEntry {
+                    token: "tenant-only".into(),
+                    publisher_id: "aira:identity:tenant-pub".into(),
+                }],
+            },
+        )
+        .unwrap();
+        let map = crate::tenant_auth::load_tenant_auth_map(&map_path).unwrap();
+        let app = router(
+            state
+                .with_http_token(Some("admin-tok".into()))
+                .with_tenant_auth(Some(map)),
+        );
+        let (st, v) =
+            json_req_auth(app, "GET", "/v1/capabilities", None, Some("tenant-only")).await;
+        assert_eq!(st, StatusCode::OK, "{v}");
     }
 }

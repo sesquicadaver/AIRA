@@ -36,9 +36,9 @@ Problem Statement
 
 **Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha**.
 **Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing; Trust; Peer P0–P2 + DHT/relay/gossip (`docs/crypto.md`, `docs/peer-link.md`, `docs/local-node.md`).
-**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase B; наступний OPEN: **#29 Analyze-64** (multi-tenant HTTP authz).
+**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase B; наступний OPEN: **#30 Analyze-65** (YAML config).
 
-Останні закриті slices: A-56…A-62; A-63 tenant rotate/revoke ceremony.
+Останні закриті slices: A-56…A-63; A-64 multi-tenant HTTP CSU authz.
 
 See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md` and `scripts/prepare-alpha.sh`.
 

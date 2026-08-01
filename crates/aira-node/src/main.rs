@@ -1,6 +1,7 @@
 //! AIRA local node binary — load config, CSU registry, process local events / HTTP.
 
 mod http;
+mod tenant_auth;
 mod tls;
 
 use std::net::SocketAddr;
@@ -15,6 +16,7 @@ use aira_flow::{init_node, load_config, LocalSession, SubmitOutcome, DEFAULT_AIR
 use aira_protocol::DiscoveryRegistry;
 
 use crate::http::{health_router, router, AppState};
+use crate::tenant_auth::{default_tenant_auth_path, validate_http_auth_boot};
 use crate::tls::{resolve_tls_paths, serve_https};
 
 #[derive(Parser, Debug)]
@@ -63,6 +65,10 @@ struct Args {
     /// Shared secret for HTTP Bearer auth (Analyze-48). Also `AIRA_HTTP_TOKEN`.
     #[arg(long, env = "AIRA_HTTP_TOKEN")]
     http_token: Option<String>,
+
+    /// Tenant Bearer→publisher map (Analyze-64). Default: `<root>/identity/http-tenant-auth.json` if present.
+    #[arg(long)]
+    http_tenant_auth: Option<PathBuf>,
 
     /// Plain-HTTP liveness bind (`GET /health` only). Requires mTLS on `--listen` (Analyze-56).
     #[arg(long)]
@@ -129,6 +135,7 @@ fn run() -> Result<ExitCode> {
             tls_self_signed: args.tls_self_signed,
             tls_client_ca: args.tls_client_ca,
             http_token: args.http_token,
+            http_tenant_auth: args.http_tenant_auth,
             health_listen: args.health_listen,
         });
     }
@@ -141,8 +148,8 @@ fn run() -> Result<ExitCode> {
     {
         bail!("TLS / mTLS / --health-listen flags require --http");
     }
-    if args.http_token.is_some() {
-        bail!("--http-token / AIRA_HTTP_TOKEN requires --http");
+    if args.http_token.is_some() || args.http_tenant_auth.is_some() {
+        bail!("--http-token / --http-tenant-auth require --http");
     }
 
     if let Some(text) = args.text {
@@ -208,6 +215,7 @@ struct HttpOpts {
     tls_self_signed: bool,
     tls_client_ca: Option<PathBuf>,
     http_token: Option<String>,
+    http_tenant_auth: Option<PathBuf>,
     health_listen: Option<String>,
 }
 
@@ -220,6 +228,7 @@ fn serve_http(opts: HttpOpts) -> Result<ExitCode> {
         tls_self_signed,
         tls_client_ca,
         http_token,
+        http_tenant_auth,
         health_listen,
     } = opts;
     let addr: SocketAddr = listen
@@ -233,6 +242,11 @@ fn serve_http(opts: HttpOpts) -> Result<ExitCode> {
             bail!("--http-token / AIRA_HTTP_TOKEN must be non-empty when set");
         }
     }
+    let explicit_map = http_tenant_auth.is_some();
+    let map_path = http_tenant_auth.unwrap_or_else(|| default_tenant_auth_path(&root));
+    let tenant_map = validate_http_auth_boot(http_token.as_deref(), &map_path, explicit_map)
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    let tenant_auth_on = tenant_map.is_some();
     let tls = resolve_tls_paths(&root, tls_cert, tls_key, tls_self_signed)?;
     if tls_client_ca.is_some() && tls.is_none() {
         bail!("--tls-client-ca requires HTTPS (--tls-cert/--tls-key or --tls-self-signed)");
@@ -249,7 +263,8 @@ fn serve_http(opts: HttpOpts) -> Result<ExitCode> {
     let health_addr = resolve_health_listen(mtls, health_listen.as_deref())?;
     let state = AppState::open(&root)
         .map_err(|e| anyhow::anyhow!("{e}"))?
-        .with_http_token(http_token);
+        .with_http_token(http_token)
+        .with_tenant_auth(tenant_map);
     let app = router(state);
     println!(
         "discovery {}",
@@ -260,6 +275,11 @@ fn serve_http(opts: HttpOpts) -> Result<ExitCode> {
         println!("http_auth: bearer enabled (/health exempt at HTTP layer)");
     } else {
         println!("http_auth: off (loopback trust)");
+    }
+    if tenant_auth_on {
+        println!("http_tenant_auth {}", map_path.display());
+    } else {
+        println!("http_tenant_auth: off");
     }
     if mtls {
         if health_addr.is_some() {
