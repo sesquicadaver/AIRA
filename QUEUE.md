@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-58 CLOSED (`f1e311f`); QUEUE #23 DONE; next OPEN #24 |
+| `main` | Analyze-59 CLOSED (pending tip); QUEUE #24 DONE; next OPEN #25 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#24 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#25 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -39,7 +39,7 @@
 | 21 | **DONE** | ~~Analyze-56 — separate health listener~~ | Окремий health listener **без** require client-cert (коли mTLS увімкнено на API) | `/health` reachable без клієнтського сертифіката; тести | CN map (вже #20); public bind |
 | 22 | **DONE** | ~~Analyze-57 — DHT→address_book~~ | Opt-in: результат DHT find/announce → upsert у `address_book.json` | CLI flag + тест dial після upsert | discv5; auto без flag |
 | 23 | **DONE** | ~~Analyze-58 — durable relay registry~~ | Durable relay hub registry на диску (пережив рестарт процесу) | reload після restart у тесті | STUN; session crypto change |
-| 24 | OPEN | Analyze-59 | Concurrent per-connection recv tasks у `peer listen` | ≥2 паралельні сесії recv без блокування accept loop | systemd unit |
+| 24 | **DONE** | ~~Analyze-59 — concurrent accept (handshake off loop)~~ | TCP `accept_tcp` на циклі; spawn `complete_accept` (+recv/relay) | ≥2 паралельні сесії; hung handshake не блокує accept; тести | systemd unit |
 | 25 | OPEN | Analyze-60 | Приклад systemd/supervisor unit для `aira-node` / `peer listen` | файл(и) + короткий runbook у docs | код runtime |
 | 26 | OPEN | Analyze-61 | Retention/prune для `.prev.<stamp>` слотів | CLI/policy + тести GC | per-CSU secrets |
 | 27 | OPEN | Analyze-62 | Durable on-disk per-CSU signing secrets | load/save + ізоляція tenant | tenant rotate ceremony |
@@ -54,7 +54,7 @@
 
 ### Наступний цикл
 
-**#24 → Analyze-59** (concurrent per-connection recv).
+**#25 → Analyze-60** (systemd/supervisor unit).
 
 ---
 

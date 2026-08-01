@@ -1,4 +1,4 @@
-//! AIRA authenticated peer links (Analyze-32…47).
+//! AIRA authenticated peer links (Analyze-32…59).
 //!
 //! Framed TCP + mutual Ed25519 hello v1 + Noise XX + signed [`ProtocolEnvelope`].
 //! Admission is local [`TrustStore`] only — no controlling center.
@@ -6,6 +6,7 @@
 //! Analyze-43: optional gossip fanout + durable `peers/discovery.json`.
 //! Analyze-44: relay-first hub (`peer.relay.deliver` + address-book `via`).
 //! Analyze-47: trusted-mesh DHT-lite (`peers/dht.json` + `peer.dht.announce`).
+//! Analyze-59: `accept_tcp` + `complete_accept` so daemon loops are not blocked by handshake.
 
 mod address_book;
 mod dht;
@@ -33,7 +34,8 @@ pub use envelope::make_peer_ping;
 pub use error::PeerError;
 pub use frame::{read_frame, write_frame, MAX_FRAME_BYTES};
 pub use gossip::{
-    gossip_forward_trust_delta, gossip_mark_seen, GossipForwardResult, GossipSeenLog, GOSSIP_SEEN_CAP,
+    gossip_forward_trust_delta, gossip_mark_seen, GossipForwardResult, GossipSeenLog,
+    GOSSIP_SEEN_CAP,
 };
 pub use handshake::{HelloMessage, HelloResult, HELLO_DOMAIN};
 pub use noise::{
@@ -49,7 +51,10 @@ pub use relay::{
     RELAY_DELIVER_MESSAGE_TYPE, RELAY_DELIVER_SCHEMA, RELAY_HUB_REGISTRY_SCHEMA,
     RELAY_HUB_TTL_DAYS_RECOMMENDED,
 };
-pub use session::{accept, dial, listen, listen_explicit, AuthenticatedPeer, DEFAULT_PEER_TIMEOUT};
+pub use session::{
+    accept, accept_tcp, complete_accept, dial, listen, listen_explicit, AuthenticatedPeer,
+    DEFAULT_PEER_TIMEOUT,
+};
 pub use trust_delta::{
     apply_trust_delta, local_rekey_delta, make_trust_delta_envelope, parse_trust_delta, TrustDelta,
     TrustDeltaOp, TRUST_DELTA_MESSAGE_TYPE, TRUST_DELTA_SCHEMA,
@@ -264,7 +269,7 @@ mod tests {
         let prev = root.join("identity").join(NODE_X25519_BACKUP_FILE);
         assert!(prev.is_file());
         assert_eq!(
-            r1.backup_path.as_ref().map(|p| p.as_path()),
+            r1.backup_path.as_deref(),
             Some(prev.as_path())
         );
         let prev_bytes = hex::decode(fs::read_to_string(&prev).unwrap().trim()).unwrap();
@@ -518,12 +523,8 @@ mod tests {
         )
         .unwrap_err();
         assert!(matches!(err, PeerError::IdentityMismatch));
-        let err = apply_trust_delta(
-            root,
-            &peer_issuer,
-            &TrustDelta::revoke(id.as_str(), None),
-        )
-        .unwrap_err();
+        let err = apply_trust_delta(root, &peer_issuer, &TrustDelta::revoke(id.as_str(), None))
+            .unwrap_err();
         assert!(matches!(err, PeerError::IdentityMismatch));
 
         // Self-sovereign local-test / local-node still refused as protected.
@@ -646,11 +647,9 @@ mod tests {
         let foreign = "aira:identity:foreign-sg";
         let err = make_trust_delta_envelope(root, &TrustDelta::revoke(foreign, None)).unwrap_err();
         assert!(matches!(err, PeerError::IdentityMismatch));
-        let ok = make_trust_delta_envelope(
-            root,
-            &TrustDelta::revoke(id.as_str(), Some("self".into())),
-        )
-        .unwrap();
+        let ok =
+            make_trust_delta_envelope(root, &TrustDelta::revoke(id.as_str(), Some("self".into())))
+                .unwrap();
         assert_eq!(ok.issuer_identity.as_str(), id.as_str());
     }
 
@@ -1107,13 +1106,7 @@ mod tests {
             let mut peer = accept(&listener, &root_b2).await.unwrap();
             let env = peer.recv_envelope().await.unwrap();
             let announce = parse_dht_announce(&env).unwrap();
-            apply_dht_announce_maybe_book(
-                &root_b2,
-                &env.issuer_identity,
-                &announce,
-                true,
-            )
-            .unwrap();
+            apply_dht_announce_maybe_book(&root_b2, &env.issuer_identity, &announce, true).unwrap();
             announce
         });
 
@@ -1170,7 +1163,11 @@ mod tests {
         assert_eq!(hit.0, "aira:identity:known");
         assert_eq!(hit.1, "127.0.0.1:9");
         assert_eq!(
-            AddressBook::load(root).unwrap().resolve("aira:identity:known").unwrap().to_string(),
+            AddressBook::load(root)
+                .unwrap()
+                .resolve("aira:identity:known")
+                .unwrap()
+                .to_string(),
             "127.0.0.1:9"
         );
     }
@@ -1185,5 +1182,267 @@ mod tests {
         assert_eq!(book.peers.len(), 1);
         assert_eq!(book.peers[0].addr, "127.0.0.1:55");
         assert!(book.peers[0].via.is_none());
+    }
+
+    /// Daemon-style accept: hung TCP (no hello) must not block a real dial (Analyze-59).
+    #[tokio::test]
+    async fn hung_tcp_does_not_block_accept_loop() {
+        let dir_a = tempdir().unwrap();
+        let dir_b = tempdir().unwrap();
+        let root_a = dir_a.path();
+        let root_b = dir_b.path();
+        init_node(root_a).unwrap();
+        init_node(root_b).unwrap();
+        let (id_a, pub_a) = write_node_identity(root_a, "a59-alice", [141u8; 32]);
+        let (id_b, pub_b) = write_node_identity(root_b, "a59-bob", [143u8; 32]);
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
+
+        let listener = listen("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut book = AddressBook::default();
+        book.upsert(id_b.as_str(), addr.to_string());
+        book.save(root_a).unwrap();
+
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<AuthenticatedPeer, PeerError>>(4);
+        let root_b2 = root_b.to_path_buf();
+        let accept_loop = tokio::spawn(async move {
+            loop {
+                let stream = match accept_tcp(&listener).await {
+                    Ok(s) => s,
+                    Err(_) => break,
+                };
+                let root = root_b2.clone();
+                let tx = tx.clone();
+                tokio::spawn(async move {
+                    let _ = tx.send(complete_accept(stream, &root).await).await;
+                });
+            }
+        });
+
+        // Hang without hello/Noise — would previously block composed `accept`.
+        let _hung = tokio::net::TcpStream::connect(addr).await.unwrap();
+
+        let started = std::time::Instant::now();
+        let client = dial(root_a, id_b.as_str()).await.unwrap();
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(3),
+            "dial blocked by hung handshake: {:?}",
+            started.elapsed()
+        );
+        assert_eq!(client.peer_id, id_b);
+
+        let mut got_ok = false;
+        for _ in 0..20 {
+            match tokio::time::timeout(std::time::Duration::from_millis(200), rx.recv()).await {
+                Ok(Some(Ok(peer))) => {
+                    assert_eq!(peer.peer_id, id_a);
+                    got_ok = true;
+                    break;
+                }
+                Ok(Some(Err(_))) => continue, // hung handshake may time out later
+                _ => continue,
+            }
+        }
+        assert!(got_ok, "authenticated peer from real dial missing");
+        accept_loop.abort();
+    }
+
+    /// Corrupt inbound bytes fail closed on that task; listener still accepts (Analyze-59).
+    #[tokio::test]
+    async fn broken_handshake_does_not_kill_listener() {
+        use tokio::io::AsyncWriteExt;
+
+        let dir_a = tempdir().unwrap();
+        let dir_b = tempdir().unwrap();
+        let root_a = dir_a.path();
+        let root_b = dir_b.path();
+        init_node(root_a).unwrap();
+        init_node(root_b).unwrap();
+        let (id_a, pub_a) = write_node_identity(root_a, "a59b-alice", [145u8; 32]);
+        let (id_b, pub_b) = write_node_identity(root_b, "a59b-bob", [147u8; 32]);
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
+
+        let listener = listen("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut book = AddressBook::default();
+        book.upsert(id_b.as_str(), addr.to_string());
+        book.save(root_a).unwrap();
+
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<AuthenticatedPeer, PeerError>>(4);
+        let root_b2 = root_b.to_path_buf();
+        let accept_loop = tokio::spawn(async move {
+            for _ in 0..2 {
+                let stream = accept_tcp(&listener).await.unwrap();
+                let root = root_b2.clone();
+                let tx = tx.clone();
+                tokio::spawn(async move {
+                    let _ = tx.send(complete_accept(stream, &root).await).await;
+                });
+            }
+        });
+
+        let mut bad = tokio::net::TcpStream::connect(addr).await.unwrap();
+        bad.write_all(b"not-a-peer-hello").await.unwrap();
+        let _ = bad.shutdown().await;
+
+        let mut saw_err = false;
+        let mut saw_ok = false;
+        // Real dial after garbage.
+        let client = dial(root_a, id_b.as_str()).await.unwrap();
+        assert_eq!(client.peer_id, id_b);
+        drop(client);
+
+        for _ in 0..20 {
+            match tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv()).await {
+                Ok(Some(Err(_))) => saw_err = true,
+                Ok(Some(Ok(peer))) => {
+                    assert_eq!(peer.peer_id, id_a);
+                    saw_ok = true;
+                }
+                _ => {}
+            }
+            if saw_err && saw_ok {
+                break;
+            }
+        }
+        assert!(saw_err, "corrupt handshake should fail closed");
+        assert!(saw_ok, "listener must accept after corrupt handshake");
+        let _ = accept_loop.await;
+    }
+
+    /// ≥2 parallel authenticated sessions both recv (Analyze-59 Done when).
+    #[tokio::test]
+    async fn two_parallel_sessions_recv() {
+        let dir_a = tempdir().unwrap();
+        let dir_b = tempdir().unwrap();
+        let dir_c = tempdir().unwrap();
+        let root_a = dir_a.path();
+        let root_b = dir_b.path();
+        let root_c = dir_c.path();
+        init_node(root_a).unwrap();
+        init_node(root_b).unwrap();
+        init_node(root_c).unwrap();
+        let (id_a, pub_a) = write_node_identity(root_a, "a59p-alice", [149u8; 32]);
+        let (id_b, pub_b) = write_node_identity(root_b, "a59p-bob", [151u8; 32]);
+        let (id_c, pub_c) = write_node_identity(root_c, "a59p-carol", [153u8; 32]);
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
+        mutual_trust(root_c, id_c.as_str(), &pub_c, root_b, id_b.as_str(), &pub_b);
+
+        let listener = listen("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut book_a = AddressBook::default();
+        book_a.upsert(id_b.as_str(), addr.to_string());
+        book_a.save(root_a).unwrap();
+        let mut book_c = AddressBook::default();
+        book_c.upsert(id_b.as_str(), addr.to_string());
+        book_c.save(root_c).unwrap();
+
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(4);
+        let root_b2 = root_b.to_path_buf();
+        let accept_loop = tokio::spawn(async move {
+            for _ in 0..2 {
+                let stream = accept_tcp(&listener).await.unwrap();
+                let root = root_b2.clone();
+                let tx = tx.clone();
+                tokio::spawn(async move {
+                    let mut peer = complete_accept(stream, &root).await.unwrap();
+                    let env = peer.recv_envelope().await.unwrap();
+                    let _ = tx.send(env.issuer_identity.as_str().to_string()).await;
+                });
+            }
+        });
+
+        let root_a2 = root_a.to_path_buf();
+        let id_b_a = id_b.as_str().to_string();
+        let id_a_clone = id_a.clone();
+        let send_a = tokio::spawn(async move {
+            let mut peer = dial(&root_a2, &id_b_a).await.unwrap();
+            let (_ida, ring) = Keyring::load_node_identity(&root_a2).unwrap();
+            let env = make_envelope(&id_a_clone, &ring, "from-a");
+            peer.send_envelope(&env).await.unwrap();
+        });
+
+        let root_c2 = root_c.to_path_buf();
+        let id_b_c = id_b.as_str().to_string();
+        let id_c_clone = id_c.clone();
+        let send_c = tokio::spawn(async move {
+            let mut peer = dial(&root_c2, &id_b_c).await.unwrap();
+            let (_idc, ring) = Keyring::load_node_identity(&root_c2).unwrap();
+            let env = make_envelope(&id_c_clone, &ring, "from-c");
+            peer.send_envelope(&env).await.unwrap();
+        });
+
+        let mut issuers = Vec::new();
+        for _ in 0..2 {
+            let id = tokio::time::timeout(std::time::Duration::from_secs(5), rx.recv())
+                .await
+                .expect("recv timeout")
+                .expect("channel closed");
+            issuers.push(id);
+        }
+        issuers.sort();
+        let mut expected = vec![id_a.as_str().to_string(), id_c.as_str().to_string()];
+        expected.sort();
+        assert_eq!(issuers, expected);
+        send_a.await.unwrap();
+        send_c.await.unwrap();
+        let _ = accept_loop.await;
+    }
+
+    /// Relay-hub style: accept_tcp + spawn complete_accept still registers under hung peer.
+    #[tokio::test]
+    async fn relay_accept_tcp_spawn_survives_hung_peer() {
+        let dir_a = tempdir().unwrap();
+        let dir_r = tempdir().unwrap();
+        let root_a = dir_a.path();
+        let root_r = dir_r.path();
+        init_node(root_a).unwrap();
+        init_node(root_r).unwrap();
+        let (id_a, pub_a) = write_node_identity(root_a, "a59r-alice", [155u8; 32]);
+        let (id_r, pub_r) = write_node_identity(root_r, "a59r-relay", [157u8; 32]);
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_r, id_r.as_str(), &pub_r);
+
+        let hub = RelayHub::new();
+        let listener = listen("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut book = AddressBook::default();
+        book.upsert(id_r.as_str(), addr.to_string());
+        book.save(root_a).unwrap();
+
+        let root_r2 = root_r.to_path_buf();
+        let hub_c = hub.clone();
+        let accept_loop = tokio::spawn(async move {
+            for _ in 0..2 {
+                let stream = accept_tcp(&listener).await.unwrap();
+                let root = root_r2.clone();
+                let hub = hub_c.clone();
+                tokio::spawn(async move {
+                    if let Ok(peer) = complete_accept(stream, &root).await {
+                        let _rx = hub.register(peer.peer_id.as_str());
+                        // Hold the session briefly so the test can observe registration.
+                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                        drop(peer);
+                    }
+                });
+            }
+        });
+
+        let _hung = tokio::net::TcpStream::connect(addr).await.unwrap();
+        let started = std::time::Instant::now();
+        let _client = dial(root_a, id_r.as_str()).await.unwrap();
+        assert!(started.elapsed() < std::time::Duration::from_secs(3));
+
+        for _ in 0..50 {
+            if hub.registered().iter().any(|id| id == id_a.as_str()) {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        }
+        assert!(
+            hub.registered().iter().any(|id| id == id_a.as_str()),
+            "alice not registered after hung peer: {:?}",
+            hub.registered()
+        );
+        accept_loop.abort();
     }
 }

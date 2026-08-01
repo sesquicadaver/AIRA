@@ -59,9 +59,7 @@ pub fn rotate_noise_static(
     } else {
         None
     };
-    let old_public_hex = old_secret
-        .as_ref()
-        .map(|s| hex::encode(x25519_public(s)));
+    let old_public_hex = old_secret.as_ref().map(|s| hex::encode(x25519_public(s)));
 
     let mut wrote_backup: Option<PathBuf> = None;
     if backup {

@@ -35,8 +35,10 @@ Problem Statement
 ## Status
 
 **Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha**.
-**Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing; Trust; Peer P0+CLI (`docs/crypto.md`, `docs/peer-link.md`).
-**Черга задач:** [`QUEUE.md`](QUEUE.md) (наступний slice: Analyze-39 CSU emit_failed publisher).
+**Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing; Trust; Peer P0–P2 + DHT/relay/gossip (`docs/crypto.md`, `docs/peer-link.md`, `docs/local-node.md`).
+**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase B; наступний OPEN: **#25 Analyze-60** (systemd/supervisor unit).
+
+Останні закриті slices: A-56 `--health-listen`; A-57 `--apply-book`; A-58 durable `peers/relay_hub.json`; A-59 concurrent `accept_tcp` / spawned handshake.
 
 See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md` and `scripts/prepare-alpha.sh`.
 

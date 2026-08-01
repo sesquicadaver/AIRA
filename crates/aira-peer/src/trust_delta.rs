@@ -270,11 +270,7 @@ pub fn apply_trust_delta(
         }
         TrustDeltaOp::Rekey => {
             let pk = delta.new_pubkey_hex.as_deref().unwrap().trim();
-            store.rekey(
-                delta.subject_id.trim(),
-                pk,
-                delta.grace_until.as_deref(),
-            )?;
+            store.rekey(delta.subject_id.trim(), pk, delta.grace_until.as_deref())?;
         }
     }
     store.save(root)?;

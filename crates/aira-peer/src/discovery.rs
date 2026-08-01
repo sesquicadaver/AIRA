@@ -75,11 +75,7 @@ impl PeerDiscoveryStore {
     ) -> Result<(), PeerError> {
         let identity_id = identity_id.into();
         let last_seen = utc_now_rfc3339().map_err(|e| PeerError::AddressBook(e.to_string()))?;
-        if let Some(e) = self
-            .peers
-            .iter_mut()
-            .find(|e| e.identity_id == identity_id)
-        {
+        if let Some(e) = self.peers.iter_mut().find(|e| e.identity_id == identity_id) {
             e.last_seen = last_seen;
             e.source = source;
             if addr.is_some() {

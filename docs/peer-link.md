@@ -1,4 +1,4 @@
-# Peer links (Analyze-32…53)
+# Peer links (Analyze-32…59)
 
 Decentralized node-to-node messaging **without a controlling center**.
 
@@ -19,6 +19,7 @@ Decentralized node-to-node messaging **without a controlling center**.
 - **Rekey notify** = announce upcoming same-id pubkey **before** local cutover
 - **Deadlines** = 15s on dial/handshake/Noise/frame I/O; TCP accept wait unbounded (daemon)
 - **Listen** = loopback-only via `listen`; non-loopback requires `listen_explicit`
+- **Daemon accept** (Analyze-59) = `accept_tcp` on the accept loop; hello+Noise (`complete_accept`) and optional `--recv` / `--relay` session work run on per-connection tasks so a hung handshake cannot block further TCP accepts. `--once` stays sequential. Discovery / “accepted” / relay register happen only after successful handshake.
 
 Static address book: `.aira/peers/address_book.json` — authoritative dial source. DHT is advisory lookup memory. Opt-in `--apply-book` (Analyze-57) promotes exact DHT hits / inbound announces into the book without changing the default.
 
@@ -27,7 +28,7 @@ Static address book: `.aira/peers/address_book.json` — authoritative dial sour
 `aira-peer`:
 
 - `AddressBook` / `PeerEndpoint` (`via` optional)
-- `listen` / `accept` / `dial`
+- `listen` / `accept_tcp` / `complete_accept` / `accept` (composed) / `dial`
 - `AuthenticatedPeer::{send_envelope, recv_envelope, send_relayed_envelope, recv_envelope_allow_relayed}`
 - `TrustDelta` / gossip / discovery / relay hub APIs
 - `PeerDhtStore` / `dht_announce_to_peers` / `apply_dht_announce`
@@ -54,11 +55,11 @@ cargo run -p aira-cli -- --root "$B" peer dht list
 
 ## Out of scope (later)
 
-Канон черги: [`QUEUE.md`](../QUEUE.md) Phase B #24+.
+Канон черги: [`QUEUE.md`](../QUEUE.md) Phase B #25+.
 
-Заплановано атомарно: concurrent recv (#24); systemd (#25); STUN/ICE-lite (#31); discv5 announce (#32); FIND_NODE (#33); public HTTP bind (#34); federation (#35).
+Заплановано атомарно: systemd (#25); STUN/ICE-lite (#31); discv5 announce (#32); FIND_NODE (#33); public HTTP bind (#34); federation (#35).
 
-Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); DHT→address_book `--apply-book` (A-57 / #22); relay hub (A-44); durable relay registry (A-58 / #23); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18).
+Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); DHT→address_book `--apply-book` (A-57 / #22); relay hub (A-44); durable relay registry (A-58 / #23); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18); concurrent accept (`accept_tcp` + spawned `complete_accept`, A-59 / #24).
 
 **WONT-NEED:** dedicated x25519 peer-notify after rotate (Analyze-54 / QUEUE #19) — hello v1 already Ed25519-binds `x25519_pub_hex` each dial; Noise remote static is checked against that hello. No durable remote Noise-static cache.
 

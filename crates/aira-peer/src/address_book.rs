@@ -138,9 +138,17 @@ mod tests {
     #[test]
     fn upsert_addr_preserve_via_keeps_courier() {
         let mut book = AddressBook::default();
-        book.upsert_via("aira:identity:a", "127.0.0.1:1", Some("aira:identity:relay".into()));
+        book.upsert_via(
+            "aira:identity:a",
+            "127.0.0.1:1",
+            Some("aira:identity:relay".into()),
+        );
         book.upsert_addr_preserve_via("aira:identity:a", "127.0.0.1:2");
-        let ep = book.peers.iter().find(|p| p.identity_id == "aira:identity:a").unwrap();
+        let ep = book
+            .peers
+            .iter()
+            .find(|p| p.identity_id == "aira:identity:a")
+            .unwrap();
         assert_eq!(ep.addr, "127.0.0.1:2");
         assert_eq!(ep.via.as_deref(), Some("aira:identity:relay"));
     }
@@ -148,7 +156,11 @@ mod tests {
     #[test]
     fn upsert_clears_via_unlike_preserve() {
         let mut book = AddressBook::default();
-        book.upsert_via("aira:identity:a", "127.0.0.1:1", Some("aira:identity:relay".into()));
+        book.upsert_via(
+            "aira:identity:a",
+            "127.0.0.1:1",
+            Some("aira:identity:relay".into()),
+        );
         book.upsert("aira:identity:a", "127.0.0.1:2");
         assert!(book.peers[0].via.is_none());
     }

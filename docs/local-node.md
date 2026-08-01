@@ -102,13 +102,15 @@ curl -skS --cert client.pem --key client.key https://127.0.0.1:8787/health
 curl -sS http://127.0.0.1:8788/health
 ```
 
-Non-goals (still deferred): multi-tenant HTTP authz, public bind by default, federation. mTLS require + CN→TrustStore (Analyze-51/55); plain `--health-listen` probe (Analyze-56 / #21).
+Non-goals (див. [`QUEUE.md`](../QUEUE.md)): multi-tenant HTTP authz (#29); public bind opt-in (#34); federation (#35); YAML `config.yaml` parity (#30).
 
-Peer-to-peer authenticated links (Analyze-32+) are documented in [peer-link.md](peer-link.md); they are separate from this loopback HTTP API.
+Shipped на HTTP: mTLS require + CN→TrustStore (A-51/55); plain `--health-listen` (A-56 / #21).
+
+Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.md); окремо від loopback HTTP API.
 
 ## Notes
 
-- Config is JSON MVP (`config.json`); YAML parity is deferred.
+- Config is JSON MVP (`config.json`); YAML parity — QUEUE #30.
 - Multi-submit uses `run_nonce` so artifact/event ids do not collide.
 - No network dependency is required for local MVP.
 - AiraRefs in path segments may include `:` (single URL path segment).

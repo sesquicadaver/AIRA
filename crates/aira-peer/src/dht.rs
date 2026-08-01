@@ -66,7 +66,9 @@ impl DhtAnnounce {
             )));
         }
         if self.identity_id.trim().is_empty() || self.addr.trim().is_empty() {
-            return Err(PeerError::Protocol("dht announce empty identity/addr".into()));
+            return Err(PeerError::Protocol(
+                "dht announce empty identity/addr".into(),
+            ));
         }
         self.addr
             .parse::<std::net::SocketAddr>()
@@ -171,7 +173,8 @@ impl PeerDhtStore {
                 source,
             });
         }
-        self.records.sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
+        self.records
+            .sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
         Ok(())
     }
 
@@ -278,7 +281,9 @@ pub fn promote_dht_to_address_book(
     addr.parse::<std::net::SocketAddr>()
         .map_err(|e| PeerError::Protocol(format!("dht book promote bad addr {addr}: {e}")))?;
     if identity_id.trim().is_empty() {
-        return Err(PeerError::Protocol("dht book promote empty identity".into()));
+        return Err(PeerError::Protocol(
+            "dht book promote empty identity".into(),
+        ));
     }
     let root = root.as_ref();
     let mut book = AddressBook::load(root)?;
@@ -338,7 +343,9 @@ pub fn parse_dht_announce(env: &ProtocolEnvelope) -> Result<DhtAnnounce, PeerErr
     announce.validate_shape()?;
     let expected = ContentHash::sha256_bytes(raw.as_bytes());
     if env.payload_hash != expected {
-        return Err(PeerError::Protocol("dht announce payload_hash mismatch".into()));
+        return Err(PeerError::Protocol(
+            "dht announce payload_hash mismatch".into(),
+        ));
     }
     Ok(announce)
 }
@@ -464,8 +471,8 @@ mod tests {
     #[test]
     fn promote_rejects_bad_addr() {
         let dir = tempdir().unwrap();
-        let err = promote_dht_to_address_book(dir.path(), "aira:identity:x", "not-an-addr")
-            .unwrap_err();
+        let err =
+            promote_dht_to_address_book(dir.path(), "aira:identity:x", "not-an-addr").unwrap_err();
         assert!(err.to_string().contains("bad addr"), "{err}");
     }
 }

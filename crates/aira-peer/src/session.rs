@@ -89,10 +89,7 @@ impl AuthenticatedPeer {
         self.send_relayed_envelope(envelope).await
     }
 
-    async fn write_envelope_bytes(
-        &mut self,
-        envelope: &ProtocolEnvelope,
-    ) -> Result<(), PeerError> {
+    async fn write_envelope_bytes(&mut self, envelope: &ProtocolEnvelope) -> Result<(), PeerError> {
         let bytes = serde_json::to_vec(envelope)?;
         with_timeout(write_encrypted(
             &mut self.stream,
@@ -117,9 +114,7 @@ impl AuthenticatedPeer {
     }
 
     /// Alias: accept any relayed signed envelope from a trusted issuer.
-    pub async fn recv_envelope_allow_relayed(
-        &mut self,
-    ) -> Result<ProtocolEnvelope, PeerError> {
+    pub async fn recv_envelope_allow_relayed(&mut self) -> Result<ProtocolEnvelope, PeerError> {
         self.recv_envelope_inner(true).await
     }
 
@@ -238,17 +233,39 @@ pub async fn dial(
     with_timeout(finish_initiator(stream, local_root, hello)).await
 }
 
-/// Accept one inbound connection and complete hello + Noise XX.
+/// Accept the next TCP connection only (no hello / Noise).
 ///
 /// Waiting for the next TCP connection is **not** bounded by [`DEFAULT_PEER_TIMEOUT`].
+/// Daemon listen loops should call this, then spawn [`complete_accept`] so a slow
+/// handshake cannot block further TCP accepts (Analyze-59).
+pub async fn accept_tcp(listener: &TcpListener) -> Result<TcpStream, PeerError> {
+    let (stream, _addr) = listener.accept().await.map_err(PeerError::from)?;
+    Ok(stream)
+}
+
+/// Complete hello + Noise XX on an already-accepted TCP stream (responder).
+///
+/// Handshake / Noise steps are bounded by [`DEFAULT_PEER_TIMEOUT`].
+pub async fn complete_accept(
+    stream: TcpStream,
+    local_root: impl AsRef<Path>,
+) -> Result<AuthenticatedPeer, PeerError> {
+    let local_root = local_root.as_ref().to_path_buf();
+    let mut stream = stream;
+    let hello = with_timeout(handshake_as_responder(&mut stream, &local_root)).await?;
+    with_timeout(finish_responder(stream, local_root, hello)).await
+}
+
+/// Accept one inbound connection and complete hello + Noise XX.
+///
+/// Composed helper: [`accept_tcp`] then [`complete_accept`]. Prefer the split
+/// APIs in daemon accept loops so handshake work can run off the accept path.
 pub async fn accept(
     listener: &TcpListener,
     local_root: impl AsRef<Path>,
 ) -> Result<AuthenticatedPeer, PeerError> {
-    let local_root = local_root.as_ref().to_path_buf();
-    let (mut stream, _addr) = listener.accept().await.map_err(PeerError::from)?;
-    let hello = with_timeout(handshake_as_responder(&mut stream, &local_root)).await?;
-    with_timeout(finish_responder(stream, local_root, hello)).await
+    let stream = accept_tcp(listener).await?;
+    complete_accept(stream, local_root).await
 }
 
 fn is_loopback_bind(bind: &str) -> bool {
