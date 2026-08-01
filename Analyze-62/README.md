@@ -1,7 +1,7 @@
 # Analyze-62 — Durable per-CSU signing secrets
 
 **QUEUE:** #27  
-**Status:** CLOSED (pending tip hash after push)  
+**Status:** CLOSED @ `0af8004`  
 **Decision:** Option **A** — `identity/tenants/<hex(csu_id)>/{ed25519,meta.json}`; auto-load after trust sync
 
 ## Shipped
