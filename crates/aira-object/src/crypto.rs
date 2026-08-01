@@ -1457,6 +1457,19 @@ pub fn reset_primary_signer() {
     set_primary_signer(AiraRef::parse(LOCAL_TEST_KEY_REF).expect("local-test ref"));
 }
 
+/// Remove verifying material for `key_ref` from the process keyring.
+///
+/// Returns `false` (no-op) for [`LOCAL_TEST_KEY_REF`] and the current [`primary_signer`].
+/// Never removes signing material.
+pub fn unregister_verifying(key_ref: &AiraRef) -> bool {
+    let id = key_ref.as_str();
+    if id == LOCAL_TEST_KEY_REF || id == primary_signer().as_str() {
+        return false;
+    }
+    let mut guard = process_keyring().write().unwrap_or_else(|e| e.into_inner());
+    guard.verifying.remove(id).is_some()
+}
+
 /// Current primary producer identity (node identity when registered, else local-test).
 pub fn primary_signer() -> AiraRef {
     primary_slot()

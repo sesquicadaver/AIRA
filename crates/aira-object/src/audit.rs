@@ -23,6 +23,10 @@ pub enum TrustAuditAction {
     Rotate,
     Rekey,
     NodeRotate,
+    /// Per-CSU tenant signing secret rotated (same publisher_id).
+    TenantRotate,
+    /// Per-CSU tenant signing secret revoked (dir removed).
+    TenantRevoke,
 }
 
 impl TrustAuditAction {
@@ -34,6 +38,8 @@ impl TrustAuditAction {
             Self::Rotate => "rotate",
             Self::Rekey => "rekey",
             Self::NodeRotate => "node_rotate",
+            Self::TenantRotate => "tenant_rotate",
+            Self::TenantRevoke => "tenant_revoke",
         }
     }
 }
@@ -52,7 +58,7 @@ pub struct TrustAuditEntry {
     pub public_key_hex: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub grace_until: Option<String>,
-    /// `cli` | `peer-delta` | `node-rotate` (extensible).
+    /// `cli` | `peer-delta` | `node-rotate` | `csu-tenant` (extensible).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
     /// Authenticated issuer when `source` is peer-delta.

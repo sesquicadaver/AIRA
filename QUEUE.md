@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-62 CLOSED @ `0af8004`; QUEUE #27 DONE; next OPEN #28 |
+| `main` | Analyze-63 CLOSED (pending tip); QUEUE #28 DONE; next OPEN #29 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#28 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#29 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -43,7 +43,7 @@
 | 25 | **DONE** | ~~Analyze-60 — systemd examples~~ | Приклад systemd units для `aira-node` / `peer listen` + runbook | `deploy/systemd/*.service` + `docs/runbook-systemd.md` | код runtime |
 | 26 | **DONE** | ~~Analyze-61 — retention/prune `.prev.<stamp>`~~ | CLI/policy GC archived stamp slots (ed25519+x25519); never latest | `identity backups prune` + тести | per-CSU secrets |
 | 27 | **DONE** | ~~Analyze-62 — durable per-CSU secrets~~ | On-disk `identity/tenants/<hex>/` load/save + isolation + auto-load | тести + CLI `identity csu-tenant` | tenant rotate ceremony |
-| 28 | OPEN | Analyze-63 | Tenant key rotate / revoke ceremony | CLI + audit + тести | HTTP authz |
+| 28 | **DONE** | ~~Analyze-63 — tenant rotate/revoke ceremony~~ | Same-publisher rotate + revoke unload/delete + audit | CLI + audit + тести | HTTP authz |
 | 29 | OPEN | Analyze-64 | Multi-tenant HTTP authz (Bearer/mTLS → tenant scope) | відмова cross-tenant; тести | federation |
 | 30 | OPEN | Analyze-65 | YAML parity для `config.json` (читання `config.yaml`) | еквівалентний bootstrap; тест | SQLite audit rewrite |
 | 31 | OPEN | Analyze-66 | STUN/ICE-lite для peer dial (один механізм, без full ICE stack) | documented dial path + тест/harness у venv | discv5 UDP |
@@ -51,10 +51,11 @@
 | 33 | OPEN | Analyze-68 | Iterative FIND_NODE поверх #32 | closest lookup over UDP path | federation join |
 | 34 | OPEN | Analyze-69 | Public HTTP bind лише з **явним** opt-in + fail-closed default | docs + тест відмови без flag | federation |
 | 35 | OPEN | Analyze-70 | Federation join prototype (roadmap v0.3 micro) | мінімальний join+trust; Living Spec | settlement/CRP |
+| 36 | OPEN | Analyze-71 | Tenant `ed25519.prev.<stamp>` prune (+ optional stdin secret) | prune CLI parity з node backups; тести | HTTP authz |
 
 ### Наступний цикл
 
-**#28 → Analyze-63** (tenant key rotate / revoke ceremony).
+**#29 → Analyze-64** (multi-tenant HTTP authz).
 
 ---
 
@@ -71,6 +72,7 @@
 | A-34 concurrent recv / systemd | #24–25 |
 | A-41 prune `.prev` | #26 |
 | A-42 / crypto Out per-CSU secrets + ceremony | #27–28 |
+| A-63 deferred tenant `.prev` prune / stdin secret | #36 |
 | A-48 multi-tenant HTTP authz | #29 |
 | `docs/local-node.md` YAML deferred | #30 |
 | peer-link Out STUN / discv5 / FIND_NODE | #31–33 |

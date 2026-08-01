@@ -147,13 +147,35 @@ enum CsuTenantCommands {
         #[arg(long)]
         publisher: String,
         /// Optional 64-hex Ed25519 seed; default: generate random.
+        /// Demo-only (visible in process list / shell history); prefer generated keys.
         #[arg(long)]
         secret_hex: Option<String>,
+        /// Overwrite an existing durable tenant dir (prefer `rotate`).
+        #[arg(long)]
+        force: bool,
     },
     /// List durable tenant dirs on disk.
     List,
     /// Load all durable tenants into process memory.
     Load,
+    /// Rotate tenant signing secret (same publisher_id).
+    Rotate {
+        #[arg(long)]
+        csu_id: String,
+        /// Keep previous secret as `ed25519.prev` (archives prior latest).
+        #[arg(long)]
+        backup: bool,
+        /// Optional 64-hex Ed25519 seed; default: generate random (demo-only if set).
+        #[arg(long)]
+        secret_hex: Option<String>,
+    },
+    /// Revoke tenant: unload + delete dir + audit (signing-side; not TrustStore CRL).
+    Revoke {
+        #[arg(long)]
+        csu_id: String,
+        #[arg(long)]
+        reason: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -888,6 +910,7 @@ fn run() -> Result<ExitCode> {
                     csu_id,
                     publisher,
                     secret_hex,
+                    force,
                 } => {
                     ensure_init(&root)?;
                     let csu = aira_object::AiraRef::parse(&csu_id)
@@ -905,8 +928,9 @@ fn run() -> Result<ExitCode> {
                         SigningKey::generate(&mut OsRng)
                     };
                     let pub_hex = hex::encode(sk.verifying_key().to_bytes());
-                    let dir = aira_object::save_csu_tenant_signing(&root, &csu, pub_id, sk)
-                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let dir =
+                        aira_object::save_csu_tenant_signing(&root, &csu, pub_id, sk, force)
+                            .map_err(|e| anyhow::anyhow!("{e}"))?;
                     println!("csu_tenant {}", csu.as_str());
                     println!("publisher {publisher}");
                     println!("public_key {pub_hex}");
@@ -937,6 +961,46 @@ fn run() -> Result<ExitCode> {
                     let n = aira_object::load_all_csu_tenant_signing(&root)
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
                     println!("loaded {n}");
+                    Ok(ExitCode::SUCCESS)
+                }
+                CsuTenantCommands::Rotate {
+                    csu_id,
+                    backup,
+                    secret_hex,
+                } => {
+                    ensure_init(&root)?;
+                    let csu = aira_object::AiraRef::parse(&csu_id)
+                        .map_err(|e| anyhow::anyhow!("invalid --csu-id: {e}"))?;
+                    let sk = if let Some(hex_s) = secret_hex {
+                        let bytes = hex::decode(hex_s.trim())
+                            .map_err(|e| anyhow::anyhow!("invalid --secret-hex: {e}"))?;
+                        let arr: [u8; 32] = bytes
+                            .try_into()
+                            .map_err(|_| anyhow::anyhow!("--secret-hex must be 32 bytes"))?;
+                        SigningKey::from_bytes(&arr)
+                    } else {
+                        SigningKey::generate(&mut OsRng)
+                    };
+                    let (publisher, new_pub, old_pub, backup_path) =
+                        aira_object::rotate_csu_tenant_signing(&root, &csu, sk, backup)
+                            .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    println!("rotated {}", csu.as_str());
+                    println!("publisher {}", publisher.as_str());
+                    println!("public_key {new_pub}");
+                    println!("old_public_key {old_pub}");
+                    if let Some(p) = backup_path {
+                        println!("backup {}", p.display());
+                    }
+                    Ok(ExitCode::SUCCESS)
+                }
+                CsuTenantCommands::Revoke { csu_id, reason } => {
+                    ensure_init(&root)?;
+                    let csu = aira_object::AiraRef::parse(&csu_id)
+                        .map_err(|e| anyhow::anyhow!("invalid --csu-id: {e}"))?;
+                    aira_object::revoke_csu_tenant_signing(&root, &csu, &reason)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    println!("revoked {}", csu.as_str());
+                    println!("reason {reason}");
                     Ok(ExitCode::SUCCESS)
                 }
             },

@@ -1,21 +1,25 @@
-//! Per-CSU tenant signing isolation (Analyze-42) + durable on-disk secrets (Analyze-62).
+//! Per-CSU tenant signing isolation (Analyze-42) + durable secrets (Analyze-62)
+//! + rotate/revoke ceremony (Analyze-63).
 //!
 //! Signing secrets for CSU publishers live in a process map keyed by `csu_id`.
 //! Only verifying keys are merged into the process [`Keyring`] (public material).
 //! Durable layout: `identity/tenants/<hex(csu_id)>/{ed25519,meta.json}` (mode `0600`).
+//! Invariant: one `publisher_id` maps to at most one CSU in the process tenant map.
 //! CSU emit helpers must use [`signature_for_tenant`].
 
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{OnceLock, RwLock};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 
+use crate::audit::{TrustAuditAction, TrustAuditEntry, TrustAuditLog};
 use crate::crypto::{
-    primary_signer, register_keyring, sign_with_key, signature_for, utc_now_rfc3339, CryptoError,
-    Keyring, LOCAL_TEST_KEY_REF,
+    primary_signer, register_keyring, sign_with_key, signature_for, unregister_verifying,
+    utc_now_rfc3339, CryptoError, Keyring, LOCAL_TEST_KEY_REF,
 };
 use crate::types::{AiraRef, Signature};
 
@@ -25,6 +29,10 @@ pub const CSU_TENANTS_DIR: &str = "tenants";
 pub const CSU_TENANT_SECRET_FILE: &str = "ed25519";
 /// Metadata sidecar (never contains the secret).
 pub const CSU_TENANT_META_FILE: &str = "meta.json";
+/// Latest previous secret after rotate `--backup`.
+pub const CSU_TENANT_SECRET_BACKUP_FILE: &str = "ed25519.prev";
+/// Sidecar for [`CSU_TENANT_SECRET_BACKUP_FILE`] (pubkey only).
+pub const CSU_TENANT_SECRET_BACKUP_META_FILE: &str = "ed25519.prev.meta.json";
 
 struct TenantEntry {
     publisher_id: String,
@@ -64,6 +72,21 @@ fn tenant_dir(root: &Path, csu_id: &str) -> PathBuf {
     tenants_root(root).join(encode_csu_dir_name(csu_id))
 }
 
+fn remove_path_quiet(path: &Path) {
+    if path.is_dir() {
+        let _ = fs::remove_dir_all(path);
+    } else if path.exists() {
+        let _ = fs::remove_file(path);
+    }
+}
+
+fn unix_stamp() -> String {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs().to_string())
+        .unwrap_or_else(|_| "0".into())
+}
+
 /// On-disk tenant metadata (no secret material).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CsuTenantMeta {
@@ -72,6 +95,8 @@ pub struct CsuTenantMeta {
     pub public_key_hex: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rotated_at: Option<String>,
 }
 
 /// Listed durable tenant entry.
@@ -83,10 +108,34 @@ pub struct CsuTenantInfo {
     pub dir: PathBuf,
 }
 
+fn publisher_owned_by_other_csu(publisher_id: &str, except_csu: &str) -> Option<String> {
+    let guard = tenants().read().unwrap_or_else(|e| e.into_inner());
+    for (csu, ent) in guard.iter() {
+        if csu != except_csu && ent.publisher_id == publisher_id {
+            return Some(csu.clone());
+        }
+    }
+    None
+}
+
+fn publisher_on_disk_other(
+    root: &Path,
+    publisher_id: &str,
+    except_csu: &str,
+) -> Result<Option<String>, CryptoError> {
+    for t in list_csu_tenant_signing(root)? {
+        if t.csu_id != except_csu && t.publisher_id == publisher_id {
+            return Ok(Some(t.csu_id));
+        }
+    }
+    Ok(None)
+}
+
 /// Register (or replace) signing material for a CSU tenant (in-memory).
 ///
 /// - Stores the **signing** key only in the tenant map (not in process Keyring signing).
 /// - Merges the **verifying** key into the process Keyring so `verify_ed25519` works.
+/// - Refuses if another CSU already owns the same `publisher_id`.
 pub fn register_csu_tenant_signing(
     csu_id: &AiraRef,
     publisher: AiraRef,
@@ -99,6 +148,12 @@ pub fn register_csu_tenant_signing(
     }
     AiraRef::parse(csu).map_err(|_| CryptoError::InvalidKey)?;
     AiraRef::parse(pub_id).map_err(|_| CryptoError::InvalidKey)?;
+
+    if let Some(other) = publisher_owned_by_other_csu(pub_id, csu) {
+        return Err(CryptoError::TenantIsolation(format!(
+            "publisher {pub_id} already bound to csu {other}"
+        )));
+    }
 
     let vk = signing.verifying_key();
     let mut ring = Keyring::new();
@@ -116,53 +171,13 @@ pub fn register_csu_tenant_signing(
     Ok(())
 }
 
-/// Persist tenant signing secret under `identity/tenants/<hex>/` and register in memory.
-pub fn save_csu_tenant_signing(
-    root: impl AsRef<Path>,
-    csu_id: &AiraRef,
-    publisher: AiraRef,
-    signing: SigningKey,
-) -> Result<PathBuf, CryptoError> {
-    let root = root.as_ref();
-    let csu = csu_id.as_str().trim();
-    let pub_id = publisher.as_str().trim();
-    AiraRef::parse(csu).map_err(|_| CryptoError::InvalidKey)?;
-    AiraRef::parse(pub_id).map_err(|_| CryptoError::InvalidKey)?;
-
-    let dir = tenant_dir(root, csu);
-    fs::create_dir_all(&dir).map_err(|e| CryptoError::Io(e.to_string()))?;
-
-    let secret_path = dir.join(CSU_TENANT_SECRET_FILE);
-    let meta_path = dir.join(CSU_TENANT_META_FILE);
-    let pub_hex = hex::encode(signing.verifying_key().to_bytes());
-    let secret_hex = hex::encode(signing.to_bytes());
-
-    let meta = CsuTenantMeta {
-        csu_id: csu.to_string(),
-        publisher_id: pub_id.to_string(),
-        public_key_hex: pub_hex,
-        created_at: utc_now_rfc3339().ok(),
-    };
-    let meta_tmp = dir.join("meta.json.tmp");
-    let secret_tmp = dir.join("ed25519.tmp");
-    let meta_out =
-        serde_json::to_string_pretty(&meta).map_err(|e| CryptoError::Io(e.to_string()))?;
-    fs::write(&meta_tmp, format!("{meta_out}\n")).map_err(|e| CryptoError::Io(e.to_string()))?;
-    write_secret_0600(&secret_tmp, format!("{secret_hex}\n").as_bytes())?;
-    fs::rename(&meta_tmp, &meta_path).map_err(|e| CryptoError::Io(e.to_string()))?;
-    fs::rename(&secret_tmp, &secret_path).map_err(|e| CryptoError::Io(e.to_string()))?;
-
-    register_csu_tenant_signing(csu_id, publisher, signing)?;
-    Ok(dir)
-}
-
 fn write_secret_0600(path: &Path, contents: &[u8]) -> Result<(), CryptoError> {
     #[cfg(unix)]
     {
+        use std::io::Write;
         use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
         let mut opts = fs::OpenOptions::new();
         opts.write(true).create(true).truncate(true).mode(0o600);
-        use std::io::Write;
         let mut file = opts
             .open(path)
             .map_err(|e| CryptoError::Io(e.to_string()))?;
@@ -177,12 +192,243 @@ fn write_secret_0600(path: &Path, contents: &[u8]) -> Result<(), CryptoError> {
     Ok(())
 }
 
+fn commit_secret_then_meta(
+    dir: &Path,
+    secret_hex: &str,
+    meta: &CsuTenantMeta,
+) -> Result<(), CryptoError> {
+    let secret_path = dir.join(CSU_TENANT_SECRET_FILE);
+    let meta_path = dir.join(CSU_TENANT_META_FILE);
+    let secret_tmp = dir.join("ed25519.tmp");
+    let meta_tmp = dir.join("meta.json.tmp");
+    let meta_out =
+        serde_json::to_string_pretty(meta).map_err(|e| CryptoError::Io(e.to_string()))?;
+    write_secret_0600(&secret_tmp, format!("{secret_hex}\n").as_bytes())?;
+    fs::write(&meta_tmp, format!("{meta_out}\n")).map_err(|e| CryptoError::Io(e.to_string()))?;
+    // Secret first (A-62 M2): meta is the durable marker that a complete tenant exists.
+    fs::rename(&secret_tmp, &secret_path).map_err(|e| CryptoError::Io(e.to_string()))?;
+    fs::rename(&meta_tmp, &meta_path).map_err(|e| CryptoError::Io(e.to_string()))?;
+    Ok(())
+}
+
 fn read_signing_hex(path: &Path) -> Result<SigningKey, CryptoError> {
     let raw = fs::read_to_string(path).map_err(|e| CryptoError::Io(e.to_string()))?;
     let hex_s = raw.trim();
     let bytes = hex::decode(hex_s).map_err(|_| CryptoError::InvalidKey)?;
     let arr: [u8; 32] = bytes.try_into().map_err(|_| CryptoError::InvalidKey)?;
     Ok(SigningKey::from_bytes(&arr))
+}
+
+fn read_meta(dir: &Path) -> Result<CsuTenantMeta, CryptoError> {
+    let meta_path = dir.join(CSU_TENANT_META_FILE);
+    let meta_raw = fs::read_to_string(&meta_path).map_err(|e| CryptoError::Io(e.to_string()))?;
+    serde_json::from_str(&meta_raw).map_err(|e| CryptoError::Io(e.to_string()))
+}
+
+/// Persist tenant signing secret under `identity/tenants/<hex>/` and register in memory.
+///
+/// When `force` is false, refuses if the tenant dir already exists (use rotate / `--force`).
+pub fn save_csu_tenant_signing(
+    root: impl AsRef<Path>,
+    csu_id: &AiraRef,
+    publisher: AiraRef,
+    signing: SigningKey,
+    force: bool,
+) -> Result<PathBuf, CryptoError> {
+    let root = root.as_ref();
+    let csu = csu_id.as_str().trim();
+    let pub_id = publisher.as_str().trim();
+    AiraRef::parse(csu).map_err(|_| CryptoError::InvalidKey)?;
+    AiraRef::parse(pub_id).map_err(|_| CryptoError::InvalidKey)?;
+
+    if let Some(other) = publisher_on_disk_other(root, pub_id, csu)? {
+        return Err(CryptoError::TenantIsolation(format!(
+            "publisher {pub_id} already bound on disk to csu {other}"
+        )));
+    }
+
+    let dir = tenant_dir(root, csu);
+    if dir.is_dir() && !force {
+        return Err(CryptoError::Io(format!(
+            "csu tenant already exists at {} — use `identity csu-tenant rotate` or `--force`",
+            dir.display()
+        )));
+    }
+    fs::create_dir_all(&dir).map_err(|e| CryptoError::Io(e.to_string()))?;
+
+    let pub_hex = hex::encode(signing.verifying_key().to_bytes());
+    let secret_hex = hex::encode(signing.to_bytes());
+    let meta = CsuTenantMeta {
+        csu_id: csu.to_string(),
+        publisher_id: pub_id.to_string(),
+        public_key_hex: pub_hex,
+        created_at: utc_now_rfc3339().ok(),
+        rotated_at: None,
+    };
+    commit_secret_then_meta(&dir, &secret_hex, &meta)?;
+    register_csu_tenant_signing(csu_id, publisher, signing)?;
+    Ok(dir)
+}
+
+fn archive_latest_tenant_prev(dir: &Path) -> Result<(), CryptoError> {
+    let latest = dir.join(CSU_TENANT_SECRET_BACKUP_FILE);
+    if !latest.exists() {
+        return Ok(());
+    }
+    let stamp = unix_stamp();
+    let archived = dir.join(format!("{CSU_TENANT_SECRET_BACKUP_FILE}.{stamp}"));
+    let meta = dir.join(CSU_TENANT_SECRET_BACKUP_META_FILE);
+    let archived_meta = dir.join(format!("{CSU_TENANT_SECRET_BACKUP_FILE}.{stamp}.meta.json"));
+    fs::rename(&latest, &archived).map_err(|e| CryptoError::Io(e.to_string()))?;
+    if meta.exists() {
+        let _ = fs::rename(&meta, &archived_meta);
+    }
+    Ok(())
+}
+
+/// Rotate durable tenant signing secret (same `publisher_id`).
+///
+/// Returns `(publisher, new_pub_hex, old_pub_hex, backup_path)`.
+pub fn rotate_csu_tenant_signing(
+    root: impl AsRef<Path>,
+    csu_id: &AiraRef,
+    new_signing: SigningKey,
+    backup: bool,
+) -> Result<(AiraRef, String, String, Option<PathBuf>), CryptoError> {
+    let root = root.as_ref();
+    let csu = csu_id.as_str().trim();
+    let dir = tenant_dir(root, csu);
+    if !dir.is_dir() {
+        return Err(CryptoError::Io(format!(
+            "csu tenant not found on disk: {}",
+            dir.display()
+        )));
+    }
+    let meta = read_meta(&dir)?;
+    if meta.csu_id.trim() != csu {
+        return Err(CryptoError::Io(format!(
+            "csu tenant meta csu_id mismatch: {} vs {csu}",
+            meta.csu_id
+        )));
+    }
+    let publisher =
+        AiraRef::parse(meta.publisher_id.trim()).map_err(|_| CryptoError::InvalidKey)?;
+    let old_pub = meta.public_key_hex.trim().to_string();
+    let old_secret_path = dir.join(CSU_TENANT_SECRET_FILE);
+    let old_secret_raw = if old_secret_path.exists() {
+        Some(fs::read_to_string(&old_secret_path).map_err(|e| CryptoError::Io(e.to_string()))?)
+    } else {
+        None
+    };
+
+    if let Some(other) = publisher_owned_by_other_csu(publisher.as_str(), csu) {
+        return Err(CryptoError::TenantIsolation(format!(
+            "publisher {} already bound to csu {other}",
+            publisher.as_str()
+        )));
+    }
+
+    let backup_path = dir.join(CSU_TENANT_SECRET_BACKUP_FILE);
+    let backup_meta_path = dir.join(CSU_TENANT_SECRET_BACKUP_META_FILE);
+    let backup_tmp = dir.join("ed25519.prev.tmp");
+    let backup_meta_tmp = dir.join("ed25519.prev.meta.json.tmp");
+    let mut wrote_backup: Option<PathBuf> = None;
+
+    if backup {
+        let secret = old_secret_raw.as_ref().ok_or_else(|| {
+            CryptoError::Io("cannot backup: missing ed25519 before rotate".into())
+        })?;
+        remove_path_quiet(&backup_tmp);
+        remove_path_quiet(&backup_meta_tmp);
+        write_secret_0600(&backup_tmp, secret.as_bytes())?;
+        let bmeta = serde_json::json!({
+            "csu_id": csu,
+            "publisher_id": publisher.as_str(),
+            "old_public_key_hex": old_pub,
+            "backed_up_at": utc_now_rfc3339()?,
+        });
+        let bmeta_out =
+            serde_json::to_string_pretty(&bmeta).map_err(|e| CryptoError::Io(e.to_string()))?;
+        fs::write(&backup_meta_tmp, format!("{bmeta_out}\n"))
+            .map_err(|e| CryptoError::Io(e.to_string()))?;
+        archive_latest_tenant_prev(&dir)?;
+        fs::rename(&backup_tmp, &backup_path).map_err(|e| CryptoError::Io(e.to_string()))?;
+        let _ = fs::rename(&backup_meta_tmp, &backup_meta_path);
+        wrote_backup = Some(backup_path);
+    }
+
+    let new_pub = hex::encode(new_signing.verifying_key().to_bytes());
+    let secret_hex = hex::encode(new_signing.to_bytes());
+    let new_meta = CsuTenantMeta {
+        csu_id: csu.to_string(),
+        publisher_id: publisher.as_str().to_string(),
+        public_key_hex: new_pub.clone(),
+        created_at: meta.created_at.clone(),
+        rotated_at: utc_now_rfc3339().ok(),
+    };
+    commit_secret_then_meta(&dir, &secret_hex, &new_meta)?;
+    register_csu_tenant_signing(csu_id, publisher.clone(), new_signing)?;
+
+    let audit = TrustAuditEntry::new(
+        TrustAuditAction::TenantRotate,
+        csu,
+        Some("csu-tenant"),
+    )?
+    .with_pubkey_hex(Some(new_pub.as_str()))
+    .with_reason(Some("csu tenant signing rotated"));
+    TrustAuditLog::append(root, &audit)?;
+
+    Ok((publisher, new_pub, old_pub, wrote_backup))
+}
+
+/// Revoke durable tenant: unload map, drop verifying (if unshared), delete dir, audit.
+///
+/// `reason` must be non-empty. Does **not** touch TrustStore CRL (signing-side only).
+pub fn revoke_csu_tenant_signing(
+    root: impl AsRef<Path>,
+    csu_id: &AiraRef,
+    reason: &str,
+) -> Result<(), CryptoError> {
+    let root = root.as_ref();
+    let reason = reason.trim();
+    if reason.is_empty() {
+        return Err(CryptoError::Io(
+            "csu tenant revoke requires a non-empty reason".into(),
+        ));
+    }
+    let csu = csu_id.as_str().trim();
+    let dir = tenant_dir(root, csu);
+    if !dir.is_dir() {
+        return Err(CryptoError::Io(format!(
+            "csu tenant not found on disk: {}",
+            dir.display()
+        )));
+    }
+    let meta = read_meta(&dir).unwrap_or(CsuTenantMeta {
+        csu_id: csu.to_string(),
+        publisher_id: String::new(),
+        public_key_hex: String::new(),
+        created_at: None,
+        rotated_at: None,
+    });
+    let publisher_id = meta.publisher_id.trim().to_string();
+
+    unregister_csu_tenant(csu_id);
+    if !publisher_id.is_empty() {
+        let shared = publisher_owned_by_other_csu(&publisher_id, csu).is_some();
+        if !shared {
+            if let Ok(pub_ref) = AiraRef::parse(&publisher_id) {
+                let _ = unregister_verifying(&pub_ref);
+            }
+        }
+    }
+    fs::remove_dir_all(&dir).map_err(|e| CryptoError::Io(e.to_string()))?;
+
+    let audit = TrustAuditEntry::new(TrustAuditAction::TenantRevoke, csu, Some("csu-tenant"))?
+        .with_reason(Some(reason))
+        .with_pubkey_hex(Some(meta.public_key_hex.trim()).filter(|s| !s.is_empty()));
+    TrustAuditLog::append(root, &audit)?;
+    Ok(())
 }
 
 /// Load one durable tenant from disk into memory. Missing dir → Err.
@@ -199,11 +445,7 @@ pub fn load_csu_tenant_signing(
             dir.display()
         )));
     }
-    let meta_path = dir.join(CSU_TENANT_META_FILE);
-    let secret_path = dir.join(CSU_TENANT_SECRET_FILE);
-    let meta_raw = fs::read_to_string(&meta_path).map_err(|e| CryptoError::Io(e.to_string()))?;
-    let meta: CsuTenantMeta =
-        serde_json::from_str(&meta_raw).map_err(|e| CryptoError::Io(e.to_string()))?;
+    let meta = read_meta(&dir)?;
     if meta.csu_id.trim() != csu {
         return Err(CryptoError::Io(format!(
             "csu tenant meta csu_id mismatch: {} vs {csu}",
@@ -212,7 +454,7 @@ pub fn load_csu_tenant_signing(
     }
     let publisher =
         AiraRef::parse(meta.publisher_id.trim()).map_err(|_| CryptoError::InvalidKey)?;
-    let signing = read_signing_hex(&secret_path)?;
+    let signing = read_signing_hex(&dir.join(CSU_TENANT_SECRET_FILE))?;
     let got = hex::encode(signing.verifying_key().to_bytes());
     if got != meta.public_key_hex.trim() {
         return Err(CryptoError::Io(
@@ -337,7 +579,7 @@ mod tests {
     use super::*;
     use crate::crypto::{
         ensure_trust_defaults, register_node_identity, reset_primary_signer, set_primary_signer,
-        signature_for, Keyring, LOCAL_TEST_KEY_REF,
+        signature_for, unregister_verifying, verify_ed25519, Keyring, LOCAL_TEST_KEY_REF,
     };
     use std::sync::Mutex;
     use tempfile::tempdir;
@@ -441,7 +683,7 @@ mod tests {
         let csu = AiraRef::parse("aira:csu:durable.a81").unwrap();
         let pub_id = AiraRef::parse("aira:identity:pub-durable-81").unwrap();
         let sk = SigningKey::from_bytes(&[81u8; 32]);
-        let path = save_csu_tenant_signing(root, &csu, pub_id.clone(), sk).unwrap();
+        let path = save_csu_tenant_signing(root, &csu, pub_id.clone(), sk, false).unwrap();
         assert!(path.join(CSU_TENANT_SECRET_FILE).is_file());
         #[cfg(unix)]
         {
@@ -479,6 +721,7 @@ mod tests {
             &csu_a,
             pub_a.clone(),
             SigningKey::from_bytes(&[83u8; 32]),
+            false,
         )
         .unwrap();
         save_csu_tenant_signing(
@@ -486,6 +729,7 @@ mod tests {
             &csu_b,
             pub_b.clone(),
             SigningKey::from_bytes(&[84u8; 32]),
+            false,
         )
         .unwrap();
         reset_csu_tenants();
@@ -505,7 +749,14 @@ mod tests {
         write_min_node(root, "node-bad85", [63u8; 32]);
         let csu = AiraRef::parse("aira:csu:bad.meta85").unwrap();
         let pub_id = AiraRef::parse("aira:identity:pub-bad85").unwrap();
-        save_csu_tenant_signing(root, &csu, pub_id, SigningKey::from_bytes(&[85u8; 32])).unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            pub_id,
+            SigningKey::from_bytes(&[85u8; 32]),
+            false,
+        )
+        .unwrap();
         let meta_path = tenant_dir(root, csu.as_str()).join(CSU_TENANT_META_FILE);
         let mut meta: CsuTenantMeta =
             serde_json::from_str(&fs::read_to_string(&meta_path).unwrap()).unwrap();
@@ -532,6 +783,7 @@ mod tests {
             &csu,
             pub_id.clone(),
             SigningKey::from_bytes(&[86u8; 32]),
+            false,
         )
         .unwrap();
         reset_csu_tenants();
@@ -548,5 +800,231 @@ mod tests {
         let id = "aira:csu:foo.bar";
         let enc = encode_csu_dir_name(id);
         assert_eq!(decode_csu_dir_name(&enc).unwrap(), id);
+    }
+
+    #[test]
+    fn register_refuses_duplicate_publisher() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let csu_a = AiraRef::parse("aira:csu:dup.a01").unwrap();
+        let csu_b = AiraRef::parse("aira:csu:dup.b01").unwrap();
+        let pub_id = AiraRef::parse("aira:identity:dup-pub-01").unwrap();
+        register_csu_tenant_signing(&csu_a, pub_id.clone(), SigningKey::from_bytes(&[11u8; 32]))
+            .unwrap();
+        let err = register_csu_tenant_signing(
+            &csu_b,
+            pub_id,
+            SigningKey::from_bytes(&[12u8; 32]),
+        )
+        .unwrap_err();
+        assert!(matches!(err, CryptoError::TenantIsolation(_)));
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn register_default_refuses_overwrite_and_force_allows() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-force01", [65u8; 32]);
+        let csu = AiraRef::parse("aira:csu:force.01").unwrap();
+        let pub_id = AiraRef::parse("aira:identity:force-pub-01").unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            pub_id.clone(),
+            SigningKey::from_bytes(&[91u8; 32]),
+            false,
+        )
+        .unwrap();
+        let err = save_csu_tenant_signing(
+            root,
+            &csu,
+            pub_id.clone(),
+            SigningKey::from_bytes(&[92u8; 32]),
+            false,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("--force") || err.to_string().contains("already exists"));
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            pub_id.clone(),
+            SigningKey::from_bytes(&[92u8; 32]),
+            true,
+        )
+        .unwrap();
+        let sig = signature_for_tenant(&csu, &pub_id, b"forced").unwrap();
+        verify_ed25519(&sig, b"forced").unwrap();
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn rotate_happy_path_and_audit() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-rot01", [66u8; 32]);
+        let csu = AiraRef::parse("aira:csu:rot.01").unwrap();
+        let pub_id = AiraRef::parse("aira:identity:rot-pub-01").unwrap();
+        let old_sk = SigningKey::from_bytes(&[93u8; 32]);
+        save_csu_tenant_signing(root, &csu, pub_id.clone(), old_sk, false).unwrap();
+        let old_sig = signature_for_tenant(&csu, &pub_id, b"before").unwrap();
+        verify_ed25519(&old_sig, b"before").unwrap();
+
+        let (publisher, new_pub, old_pub, backup) = rotate_csu_tenant_signing(
+            root,
+            &csu,
+            SigningKey::from_bytes(&[94u8; 32]),
+            false,
+        )
+        .unwrap();
+        assert_eq!(publisher.as_str(), pub_id.as_str());
+        assert_ne!(new_pub, old_pub);
+        assert!(backup.is_none());
+        assert!(verify_ed25519(&old_sig, b"before").is_err());
+        let new_sig = signature_for_tenant(&csu, &pub_id, b"after").unwrap();
+        verify_ed25519(&new_sig, b"after").unwrap();
+
+        let audit = TrustAuditLog::load(root).unwrap();
+        assert!(audit
+            .iter()
+            .any(|e| e.action == TrustAuditAction::TenantRotate && e.subject_id == csu.as_str()));
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn rotate_refuses_missing_and_backup_archives() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-rot02", [67u8; 32]);
+        let csu = AiraRef::parse("aira:csu:rot.02").unwrap();
+        let pub_id = AiraRef::parse("aira:identity:rot-pub-02").unwrap();
+        assert!(rotate_csu_tenant_signing(
+            root,
+            &csu,
+            SigningKey::from_bytes(&[95u8; 32]),
+            false
+        )
+        .is_err());
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            pub_id,
+            SigningKey::from_bytes(&[95u8; 32]),
+            false,
+        )
+        .unwrap();
+        let (_, _, _, b1) = rotate_csu_tenant_signing(
+            root,
+            &csu,
+            SigningKey::from_bytes(&[96u8; 32]),
+            true,
+        )
+        .unwrap();
+        assert!(b1.unwrap().ends_with(CSU_TENANT_SECRET_BACKUP_FILE));
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        let (_, _, _, b2) = rotate_csu_tenant_signing(
+            root,
+            &csu,
+            SigningKey::from_bytes(&[97u8; 32]),
+            true,
+        )
+        .unwrap();
+        assert!(b2.unwrap().ends_with(CSU_TENANT_SECRET_BACKUP_FILE));
+        let tdir = tenant_dir(root, csu.as_str());
+        let archived: Vec<_> = fs::read_dir(&tdir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|n| n.starts_with("ed25519.prev.") && !n.contains("meta"))
+            .collect();
+        assert!(!archived.is_empty(), "expected archived .prev.<stamp>");
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn revoke_removes_dir_map_and_audits() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-rev01", [68u8; 32]);
+        let csu = AiraRef::parse("aira:csu:rev.01").unwrap();
+        let pub_id = AiraRef::parse("aira:identity:rev-pub-01").unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            pub_id.clone(),
+            SigningKey::from_bytes(&[98u8; 32]),
+            false,
+        )
+        .unwrap();
+        assert!(csu_tenant_registered(&csu));
+        revoke_csu_tenant_signing(root, &csu, "compromised").unwrap();
+        assert!(!csu_tenant_registered(&csu));
+        assert!(!tenant_dir(root, csu.as_str()).exists());
+        assert!(signature_for_tenant(&csu, &pub_id, b"x").is_err());
+        let audit = TrustAuditLog::load(root).unwrap();
+        assert!(audit.iter().any(|e| {
+            e.action == TrustAuditAction::TenantRevoke
+                && e.reason.as_deref() == Some("compromised")
+        }));
+        assert!(revoke_csu_tenant_signing(root, &csu, "").is_err());
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn revoke_never_drops_primary_signer() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-prim01", [69u8; 32]);
+        register_node_identity(root).unwrap();
+        let primary = primary_signer();
+        assert!(!unregister_verifying(&primary));
+        assert!(!unregister_verifying(
+            &AiraRef::parse(LOCAL_TEST_KEY_REF).unwrap()
+        ));
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn save_secret_first_partial_commit_fail_closed() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-partial01", [70u8; 32]);
+        let csu = AiraRef::parse("aira:csu:partial.01").unwrap();
+        let pub_id = AiraRef::parse("aira:identity:partial-pub-01").unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            pub_id,
+            SigningKey::from_bytes(&[99u8; 32]),
+            false,
+        )
+        .unwrap();
+        let tdir = tenant_dir(root, csu.as_str());
+        // Simulate crash after secret rename, before meta: remove meta only.
+        fs::remove_file(tdir.join(CSU_TENANT_META_FILE)).unwrap();
+        reset_csu_tenants();
+        assert!(load_csu_tenant_signing(root, &csu).is_err());
+        // list skips dirs without meta
+        assert!(list_csu_tenant_signing(root).unwrap().is_empty());
+        reset_csu_tenants();
+        reset_primary_signer();
     }
 }

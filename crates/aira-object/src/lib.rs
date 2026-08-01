@@ -19,9 +19,9 @@ pub use crypto::{
     local_test_signing_key, local_test_verifying_key, primary_signer, process_keyring_snapshot,
     prune_node_secret_backups, register_keyring, register_node_identity, register_trust_store,
     reset_primary_signer, rotate_node_signing_secret, set_primary_signer, sign_with_key,
-    signature_for, sync_trust_verifiers, utc_now_rfc3339, verify_ed25519, CryptoError, Keyring,
-    NodeSecretBackupInfo, NodeSecretPruneReport, RevokedEntry, TrustEntry, TrustStore,
-    LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF, NODE_SECRET_BACKUP_FILE,
+    signature_for, sync_trust_verifiers, unregister_verifying, utc_now_rfc3339, verify_ed25519,
+    CryptoError, Keyring, NodeSecretBackupInfo, NodeSecretPruneReport, RevokedEntry, TrustEntry,
+    TrustStore, LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF, NODE_SECRET_BACKUP_FILE,
     NODE_SECRET_BACKUP_META_FILE,
 };
 pub use descriptor::{ObjectDescriptor, ObjectType};
@@ -29,9 +29,10 @@ pub use handle::Handle;
 pub use tenant::{
     csu_tenant_registered, encode_csu_dir_name, list_csu_tenant_signing,
     load_all_csu_tenant_signing, load_csu_tenant_signing, register_csu_tenant_signing,
-    reset_csu_tenants, save_csu_tenant_signing, signature_for_tenant, tenant_publisher_ids,
-    unregister_csu_tenant, CsuTenantInfo, CsuTenantMeta, CSU_TENANTS_DIR, CSU_TENANT_META_FILE,
-    CSU_TENANT_SECRET_FILE,
+    reset_csu_tenants, revoke_csu_tenant_signing, rotate_csu_tenant_signing,
+    save_csu_tenant_signing, signature_for_tenant, tenant_publisher_ids, unregister_csu_tenant,
+    CsuTenantInfo, CsuTenantMeta, CSU_TENANTS_DIR, CSU_TENANT_META_FILE,
+    CSU_TENANT_SECRET_BACKUP_FILE, CSU_TENANT_SECRET_BACKUP_META_FILE, CSU_TENANT_SECRET_FILE,
 };
 pub use types::{AiraRef, ContentHash, Signature, Timestamp};
 
