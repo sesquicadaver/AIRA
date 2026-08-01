@@ -1,7 +1,7 @@
 # Analyze-59 — Concurrent accept (handshake off accept loop)
 
 **QUEUE:** #24  
-**Status:** CLOSED  
+**Status:** CLOSED (`fd0aae8`)  
 **Decision:** Option **C** — `accept_tcp` on the accept loop; spawn `complete_accept` (+ recv/relay)
 
 ## Shipped
