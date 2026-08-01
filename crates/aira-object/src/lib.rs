@@ -27,8 +27,11 @@ pub use crypto::{
 pub use descriptor::{ObjectDescriptor, ObjectType};
 pub use handle::Handle;
 pub use tenant::{
-    csu_tenant_registered, register_csu_tenant_signing, reset_csu_tenants, signature_for_tenant,
-    unregister_csu_tenant,
+    csu_tenant_registered, encode_csu_dir_name, list_csu_tenant_signing,
+    load_all_csu_tenant_signing, load_csu_tenant_signing, register_csu_tenant_signing,
+    reset_csu_tenants, save_csu_tenant_signing, signature_for_tenant, tenant_publisher_ids,
+    unregister_csu_tenant, CsuTenantInfo, CsuTenantMeta, CSU_TENANTS_DIR, CSU_TENANT_META_FILE,
+    CSU_TENANT_SECRET_FILE,
 };
 pub use types::{AiraRef, ContentHash, Signature, Timestamp};
 

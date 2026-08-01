@@ -131,6 +131,29 @@ enum IdentityCommands {
         #[command(subcommand)]
         command: TrustCommands,
     },
+    /// Durable per-CSU signing secrets (Analyze-62).
+    CsuTenant {
+        #[command(subcommand)]
+        command: CsuTenantCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum CsuTenantCommands {
+    /// Generate (or import) a tenant signing key, save under identity/tenants/, register.
+    Register {
+        #[arg(long)]
+        csu_id: String,
+        #[arg(long)]
+        publisher: String,
+        /// Optional 64-hex Ed25519 seed; default: generate random.
+        #[arg(long)]
+        secret_hex: Option<String>,
+    },
+    /// List durable tenant dirs on disk.
+    List,
+    /// Load all durable tenants into process memory.
+    Load,
 }
 
 #[derive(Subcommand, Debug)]
@@ -857,6 +880,63 @@ fn run() -> Result<ExitCode> {
                         "audit {}",
                         NodePaths::new(&root).trust_audit_jsonl().display()
                     );
+                    Ok(ExitCode::SUCCESS)
+                }
+            },
+            IdentityCommands::CsuTenant { command } => match command {
+                CsuTenantCommands::Register {
+                    csu_id,
+                    publisher,
+                    secret_hex,
+                } => {
+                    ensure_init(&root)?;
+                    let csu = aira_object::AiraRef::parse(&csu_id)
+                        .map_err(|e| anyhow::anyhow!("invalid --csu-id: {e}"))?;
+                    let pub_id = aira_object::AiraRef::parse(&publisher)
+                        .map_err(|e| anyhow::anyhow!("invalid --publisher: {e}"))?;
+                    let sk = if let Some(hex_s) = secret_hex {
+                        let bytes = hex::decode(hex_s.trim())
+                            .map_err(|e| anyhow::anyhow!("invalid --secret-hex: {e}"))?;
+                        let arr: [u8; 32] = bytes
+                            .try_into()
+                            .map_err(|_| anyhow::anyhow!("--secret-hex must be 32 bytes"))?;
+                        SigningKey::from_bytes(&arr)
+                    } else {
+                        SigningKey::generate(&mut OsRng)
+                    };
+                    let pub_hex = hex::encode(sk.verifying_key().to_bytes());
+                    let dir = aira_object::save_csu_tenant_signing(&root, &csu, pub_id, sk)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    println!("csu_tenant {}", csu.as_str());
+                    println!("publisher {publisher}");
+                    println!("public_key {pub_hex}");
+                    println!("path {}", dir.display());
+                    Ok(ExitCode::SUCCESS)
+                }
+                CsuTenantCommands::List => {
+                    ensure_init(&root)?;
+                    let list = aira_object::list_csu_tenant_signing(&root)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    if list.is_empty() {
+                        println!("(no csu tenants — use `identity csu-tenant register`)");
+                    } else {
+                        for t in &list {
+                            println!(
+                                "{}\t{}\t{}\t{}",
+                                t.csu_id,
+                                t.publisher_id,
+                                t.public_key_hex,
+                                t.dir.display()
+                            );
+                        }
+                    }
+                    Ok(ExitCode::SUCCESS)
+                }
+                CsuTenantCommands::Load => {
+                    ensure_init(&root)?;
+                    let n = aira_object::load_all_csu_tenant_signing(&root)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    println!("loaded {n}");
                     Ok(ExitCode::SUCCESS)
                 }
             },

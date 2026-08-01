@@ -15,7 +15,16 @@ API: `aira_object::{local_test_signature, verify_ed25519, Keyring, active_signat
 
 **Primary signer** (Analyze-22): `aira_csu::support::{local_identity, local_signature, local_signature_over}` use `active_identity` / `active_signature`. When a node identity is registered, OperationalPlane + basic CSU emits carry that `key_ref`.
 
-**Per-CSU publisher** (Analyze-29 / Analyze-39 / Analyze-42): CSU business emits, `CSUFailed`, and CSU registry lifecycle events use `CsuManifest.publisher_identity` via `make_event_as` / `make_artifact_as` + `signature_for_tenant` (fail closed). Default `publisher_identity == identity_ref == primary` signs through the process keyring. A distinct publisher requires `register_csu_tenant_signing(csu_id, publisher, sk)` — the **signing** secret stays in the tenant map (CSU-A cannot use CSU-B’s key); only the verifying pubkey merges into the process Keyring. Override helpers: `ContextBasicCsu::with_publisher` (and siblings). OperationalPlane ProblemStatement / plane lifecycle remain on primary.
+**Per-CSU publisher** (Analyze-29 / Analyze-39 / Analyze-42 / Analyze-62): CSU business emits, `CSUFailed`, and CSU registry lifecycle events use `CsuManifest.publisher_identity` via `make_event_as` / `make_artifact_as` + `signature_for_tenant` (fail closed). Default `publisher_identity == identity_ref == primary` signs through the process keyring. A distinct publisher requires `register_csu_tenant_signing` / durable `save_csu_tenant_signing` — the **signing** secret stays in the tenant map (CSU-A cannot use CSU-B’s key); only the verifying pubkey merges into the process Keyring. Durable layout: `identity/tenants/<hex(csu_id)>/{ed25519,meta.json}` (mode `0600`). `LocalSession::open` / `submit_problem` call `load_all_csu_tenant_signing` **after** trust sync. Override helpers: `ContextBasicCsu::with_publisher` (and siblings). OperationalPlane ProblemStatement / plane lifecycle remain on primary.
+
+```bash
+cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant register \
+  --csu-id aira:csu:example.worker --publisher aira:identity:worker-pub
+cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant list
+cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant load
+```
+
+Rotate/revoke ceremony for tenant keys is QUEUE #28.
 
 On `LocalSession::open` / `submit_problem` / `aira identity create`:
 
@@ -44,7 +53,7 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust remove \
 
 `register_trust_store` merges entries into the process keyring so `verify_ed25519` / `aira identity verify` succeed for trusted peers without their signing keys on disk.
 
-**Unload / sync** (Analyze-24): `sync_trust_verifiers` prunes process verifying keys absent from `trust.json` (never unloads `local-test`; signing identities keep derived verifying keys unless revoked). `identity trust remove` and `ensure_trust_defaults` call sync so unload takes effect in-process immediately.
+**Unload / sync** (Analyze-24 / Analyze-62): `sync_trust_verifiers` prunes process verifying keys absent from `trust.json` (never unloads `local-test`; signing identities keep derived verifying keys unless revoked; **in-memory CSU tenant publishers are preserved** until tenant unload — trust CRL alone does not drop them; ceremony = QUEUE #28). `identity trust remove` and `ensure_trust_defaults` call sync so unload takes effect in-process immediately.
 
 **CRL** (Analyze-25): `trust.json` field `revoked[]` is a durable deny list. `identity trust revoke --key-ref … [--reason …]` moves an id out of `entries` onto the CRL; `trust add` / `upsert` of a revoked id fails with `RevokedKey`. `remove` is still non-durable (re-add allowed). `local-test` cannot be revoked.
 
@@ -163,14 +172,14 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Канон: [`QUEUE.md`](../QUEUE.md) Phase B (наступний OPEN: #27 per-CSU secrets).
+Канон: [`QUEUE.md`](../QUEUE.md) Phase B (наступний OPEN: #28 tenant ceremony).
 
 | Було Out | Рядок |
 |----------|-------|
 | CN→TrustStore mapping | #20 **DONE** (Analyze-55) |
 | Separate health listener without client cert | #21 **DONE** (Analyze-56 `--health-listen`) |
 | Optional (anonymous) client TLS auth | deferred (A-51 TODO; не в QUEUE) |
-| On-disk per-CSU secret files | #27 |
+| On-disk per-CSU secret files | #27 **DONE** (Analyze-62) |
 | Tenant ceremony | #28 |
 | Multi-tenant HTTP authz | #29 |
 | YAML config parity | #30 |
@@ -178,6 +187,6 @@ Empty and `TESTSIG` are rejected on admission.
 | SQLite ceremony audit table | після #26 (не окремий рядок поки JSONL достатньо; додати в кінець за потреби) |
 | UDP discv5 / FIND_NODE | #32–33 |
 
-Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51); CN→TrustStore (A-55); self-sovereign trust-delta (A-52); plain `--health-listen` when mTLS (A-56); DHT→address_book `--apply-book` (A-57); durable relay registry (A-58); concurrent peer accept (`accept_tcp` + spawned handshake, A-59); systemd examples (A-60); `.prev.<stamp>` prune CLI (A-61).
+Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51); CN→TrustStore (A-55); self-sovereign trust-delta (A-52); plain `--health-listen` when mTLS (A-56); DHT→address_book `--apply-book` (A-57); durable relay registry (A-58); concurrent peer accept (`accept_tcp` + spawned handshake, A-59); systemd examples (A-60); `.prev.<stamp>` prune CLI (A-61); durable per-CSU secrets (A-62).
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify + relay/DHT).

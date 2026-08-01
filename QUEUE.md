@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-61 CLOSED (`eeaed25`); QUEUE #26 DONE; next OPEN #27 |
+| `main` | Analyze-62 CLOSED (pending tip); QUEUE #27 DONE; next OPEN #28 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#27 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#28 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -42,7 +42,7 @@
 | 24 | **DONE** | ~~Analyze-59 — concurrent accept (handshake off loop)~~ | TCP `accept_tcp` на циклі; spawn `complete_accept` (+recv/relay) | ≥2 паралельні сесії; hung handshake не блокує accept; тести | systemd unit |
 | 25 | **DONE** | ~~Analyze-60 — systemd examples~~ | Приклад systemd units для `aira-node` / `peer listen` + runbook | `deploy/systemd/*.service` + `docs/runbook-systemd.md` | код runtime |
 | 26 | **DONE** | ~~Analyze-61 — retention/prune `.prev.<stamp>`~~ | CLI/policy GC archived stamp slots (ed25519+x25519); never latest | `identity backups prune` + тести | per-CSU secrets |
-| 27 | OPEN | Analyze-62 | Durable on-disk per-CSU signing secrets | load/save + ізоляція tenant | tenant rotate ceremony |
+| 27 | **DONE** | ~~Analyze-62 — durable per-CSU secrets~~ | On-disk `identity/tenants/<hex>/` load/save + isolation + auto-load | тести + CLI `identity csu-tenant` | tenant rotate ceremony |
 | 28 | OPEN | Analyze-63 | Tenant key rotate / revoke ceremony | CLI + audit + тести | HTTP authz |
 | 29 | OPEN | Analyze-64 | Multi-tenant HTTP authz (Bearer/mTLS → tenant scope) | відмова cross-tenant; тести | federation |
 | 30 | OPEN | Analyze-65 | YAML parity для `config.json` (читання `config.yaml`) | еквівалентний bootstrap; тест | SQLite audit rewrite |
@@ -54,7 +54,7 @@
 
 ### Наступний цикл
 
-**#27 → Analyze-62** (durable per-CSU signing secrets).
+**#28 → Analyze-63** (tenant key rotate / revoke ceremony).
 
 ---
 

@@ -676,9 +676,15 @@ pub fn sync_trust_verifiers(root: impl AsRef<Path>) -> Result<usize, CryptoError
 
     {
         let mut guard = process_keyring().write().unwrap_or_else(|e| e.into_inner());
+        let tenant_pubs: HashSet<String> =
+            crate::tenant::tenant_publisher_ids().into_iter().collect();
         let ids: Vec<String> = guard.verifying.keys().cloned().collect();
         for id in ids {
-            if id == LOCAL_TEST_KEY_REF || trusted.contains(&id) || grace.contains(&id) {
+            if id == LOCAL_TEST_KEY_REF
+                || trusted.contains(&id)
+                || grace.contains(&id)
+                || tenant_pubs.contains(&id)
+            {
                 continue;
             }
             if revoked.contains(&id) {

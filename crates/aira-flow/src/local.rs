@@ -241,6 +241,8 @@ impl LocalSession {
         // Register node identity + trust store BEFORE plane construction.
         let _ = aira_object::register_node_identity(&paths.root);
         let _ = aira_object::ensure_trust_defaults(&paths.root);
+        // Analyze-62: rehydrate durable CSU tenants AFTER trust sync.
+        let _ = aira_object::load_all_csu_tenant_signing(&paths.root);
         let nonce = peek_run_nonce(&paths)?;
         let plane = OperationalPlane::open_with_ready_nonce(paths.artifacts(), vec![], nonce)?;
         Ok(Self {
@@ -263,6 +265,7 @@ impl LocalSession {
         // Ensure primary signer + trust store reflect node identity for rebuilt plane.
         let _ = aira_object::register_node_identity(&self.paths.root);
         let _ = aira_object::ensure_trust_defaults(&self.paths.root);
+        let _ = aira_object::load_all_csu_tenant_signing(&self.paths.root);
         // Allocate a fresh nonce and rebuild plane so ids never collide with prior runs.
         let nonce = alloc_run_nonce(&self.paths)?;
         self.plane =
