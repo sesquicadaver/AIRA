@@ -1,0 +1,46 @@
+# Example systemd unit — AIRA peer listen daemon (Analyze-60 / QUEUE #25)
+#
+# Operator MUST replace:
+#   - User= / Group=
+#   - WorkingDirectory= and --root path
+#   - ExecStart= binary path (`aira` from aira-cli)
+#   - --bind PORT (operator-owned; pick a free loopback port, e.g. 7900)
+#
+# Default bind is loopback only. Public bind is QUEUE #34.
+# Type=simple: no readiness protocol. After=network.target is ordering only.
+# Handshake/recv run off the accept loop (Analyze-59); Restart= restarts the whole daemon.
+
+[Unit]
+Description=AIRA peer listen daemon (loopback)
+# See docs/runbook-systemd.md in the AIRA repository.
+After=network.target
+
+[Service]
+Type=simple
+User=aira
+Group=aira
+WorkingDirectory=/var/lib/aira/peer
+# Optional: EnvironmentFile=-/etc/aira/aira-peer-listen.env
+# PORT is operator-owned — change 7900 if it collides on the host.
+ExecStart=/usr/local/bin/aira --root /var/lib/aira/peer peer listen --bind 127.0.0.1:7900 --recv
+Restart=on-failure
+RestartSec=2
+
+# --- must (baseline for example) ---
+NoNewPrivileges=true
+PrivateTmp=true
+
+# --- optional hardening ---
+# ProtectSystem=strict
+# ProtectHome=true
+# ReadWritePaths=/var/lib/aira/peer
+# RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# MemoryMax=512M
+
+# Optional modes (mutually exclusive constraints apply in CLI — see docs/peer-link.md):
+# ExecStart=... peer listen --bind 127.0.0.1:7900 --recv --apply-trust
+# ExecStart=... peer listen --bind 127.0.0.1:7900 --recv --dht --apply-book
+# ExecStart=... peer listen --bind 127.0.0.1:7900 --relay --relay-ttl-days 31
+
+[Install]
+WantedBy=multi-user.target

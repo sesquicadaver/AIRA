@@ -151,7 +151,7 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Канон: [`QUEUE.md`](../QUEUE.md) Phase B (наступний OPEN: #25 systemd unit).
+Канон: [`QUEUE.md`](../QUEUE.md) Phase B (наступний OPEN: #26 retention `.prev`).
 
 | Було Out | Рядок |
 |----------|-------|

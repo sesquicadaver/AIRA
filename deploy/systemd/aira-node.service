@@ -1,0 +1,44 @@
+# Example systemd unit — AIRA local HTTP node (Analyze-60 / QUEUE #25)
+#
+# Operator MUST replace:
+#   - User= / Group=
+#   - WorkingDirectory= and --root path (node data dir)
+#   - ExecStart= binary path (cargo install / package / build target)
+#
+# Default bind is loopback only. Public bind is QUEUE #34 (not this example).
+# Type=simple: process is the main service; no readiness protocol claimed.
+# After=network.target orders start relative to network.target — not a readiness guarantee.
+
+[Unit]
+Description=AIRA local HTTP node (loopback)
+# See docs/runbook-systemd.md in the AIRA repository.
+After=network.target
+
+[Service]
+Type=simple
+User=aira
+Group=aira
+WorkingDirectory=/var/lib/aira/node
+# Optional: EnvironmentFile=-/etc/aira/aira-node.env
+ExecStart=/usr/local/bin/aira-node --root /var/lib/aira/node --http --listen 127.0.0.1:8787
+Restart=on-failure
+RestartSec=2
+
+# --- must (baseline for example) ---
+NoNewPrivileges=true
+PrivateTmp=true
+
+# --- optional hardening (enable after verifying ReadWritePaths covers --root) ---
+# ProtectSystem=strict
+# ProtectHome=true
+# ReadWritePaths=/var/lib/aira/node
+# RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# MemoryMax=512M
+
+# Optional TLS / mTLS / health (requires operator PEMs; not enabled by default):
+# ExecStart=/usr/local/bin/aira-node --root /var/lib/aira/node --http --listen 127.0.0.1:8787 \
+#   --tls-self-signed --tls-client-ca /etc/aira/client-ca.pem --health-listen 127.0.0.1:8788
+# Optional Bearer: Environment=AIRA_HTTP_TOKEN=...
+
+[Install]
+WantedBy=multi-user.target

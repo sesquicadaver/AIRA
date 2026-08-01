@@ -114,3 +114,4 @@ Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.
 - Multi-submit uses `run_nonce` so artifact/event ids do not collide.
 - No network dependency is required for local MVP.
 - AiraRefs in path segments may include `:` (single URL path segment).
+- Long-running under systemd: [runbook-systemd.md](runbook-systemd.md) (`aira-node.service`).

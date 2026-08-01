@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-59 CLOSED (`fd0aae8`); QUEUE #24 DONE; next OPEN #25 |
+| `main` | Analyze-60 CLOSED (pending tip); QUEUE #25 DONE; next OPEN #26 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#25 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#26 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -40,7 +40,7 @@
 | 22 | **DONE** | ~~Analyze-57 — DHT→address_book~~ | Opt-in: результат DHT find/announce → upsert у `address_book.json` | CLI flag + тест dial після upsert | discv5; auto без flag |
 | 23 | **DONE** | ~~Analyze-58 — durable relay registry~~ | Durable relay hub registry на диску (пережив рестарт процесу) | reload після restart у тесті | STUN; session crypto change |
 | 24 | **DONE** | ~~Analyze-59 — concurrent accept (handshake off loop)~~ | TCP `accept_tcp` на циклі; spawn `complete_accept` (+recv/relay) | ≥2 паралельні сесії; hung handshake не блокує accept; тести | systemd unit |
-| 25 | OPEN | Analyze-60 | Приклад systemd/supervisor unit для `aira-node` / `peer listen` | файл(и) + короткий runbook у docs | код runtime |
+| 25 | **DONE** | ~~Analyze-60 — systemd examples~~ | Приклад systemd units для `aira-node` / `peer listen` + runbook | `deploy/systemd/*.service` + `docs/runbook-systemd.md` | код runtime |
 | 26 | OPEN | Analyze-61 | Retention/prune для `.prev.<stamp>` слотів | CLI/policy + тести GC | per-CSU secrets |
 | 27 | OPEN | Analyze-62 | Durable on-disk per-CSU signing secrets | load/save + ізоляція tenant | tenant rotate ceremony |
 | 28 | OPEN | Analyze-63 | Tenant key rotate / revoke ceremony | CLI + audit + тести | HTTP authz |
@@ -54,7 +54,7 @@
 
 ### Наступний цикл
 
-**#25 → Analyze-60** (systemd/supervisor unit).
+**#26 → Analyze-61** (retention/prune `.prev`).
 
 ---
 
