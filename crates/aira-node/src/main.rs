@@ -14,7 +14,7 @@ use aira_csu::CsuRegistry;
 use aira_flow::{init_node, load_config, LocalSession, SubmitOutcome, DEFAULT_AIRA_ROOT};
 use aira_protocol::DiscoveryRegistry;
 
-use crate::http::{router, AppState};
+use crate::http::{health_router, router, AppState};
 use crate::tls::{resolve_tls_paths, serve_https};
 
 #[derive(Parser, Debug)]
@@ -63,6 +63,10 @@ struct Args {
     /// Shared secret for HTTP Bearer auth (Analyze-48). Also `AIRA_HTTP_TOKEN`.
     #[arg(long, env = "AIRA_HTTP_TOKEN")]
     http_token: Option<String>,
+
+    /// Plain-HTTP liveness bind (`GET /health` only). Requires mTLS on `--listen` (Analyze-56).
+    #[arg(long)]
+    health_listen: Option<String>,
 }
 
 fn main() -> ExitCode {
@@ -117,23 +121,25 @@ fn run() -> Result<ExitCode> {
         if args.text.is_some() {
             bail!("--http and --text are mutually exclusive");
         }
-        return serve_http(
-            args.root,
-            &args.listen,
-            args.tls_cert,
-            args.tls_key,
-            args.tls_self_signed,
-            args.tls_client_ca,
-            args.http_token,
-        );
+        return serve_http(HttpOpts {
+            root: args.root,
+            listen: args.listen,
+            tls_cert: args.tls_cert,
+            tls_key: args.tls_key,
+            tls_self_signed: args.tls_self_signed,
+            tls_client_ca: args.tls_client_ca,
+            http_token: args.http_token,
+            health_listen: args.health_listen,
+        });
     }
 
     if args.tls_cert.is_some()
         || args.tls_key.is_some()
         || args.tls_self_signed
         || args.tls_client_ca.is_some()
+        || args.health_listen.is_some()
     {
-        bail!("TLS / mTLS flags require --http");
+        bail!("TLS / mTLS / --health-listen flags require --http");
     }
     if args.http_token.is_some() {
         bail!("--http-token / AIRA_HTTP_TOKEN requires --http");
@@ -170,15 +176,52 @@ fn run() -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
-fn serve_http(
+/// Parse optional `--health-listen` (Analyze-56). Requires mTLS on the API listener.
+fn resolve_health_listen(
+    mtls: bool,
+    health_listen: Option<&str>,
+) -> Result<Option<SocketAddr>> {
+    let Some(raw) = health_listen.map(str::trim).filter(|s| !s.is_empty()) else {
+        return Ok(None);
+    };
+    if !mtls {
+        bail!("--health-listen requires --tls-client-ca (mTLS on --listen)");
+    }
+    let addr: SocketAddr = raw
+        .parse()
+        .map_err(|e| anyhow::anyhow!("invalid --health-listen {raw}: {e}"))?;
+    // Fail closed until QUEUE #34 (public bind opt-in). Plain health has no client cert.
+    if !addr.ip().is_loopback() {
+        bail!(
+            "--health-listen must be loopback until QUEUE #34 (got {addr}); use 127.0.0.1"
+        );
+    }
+    Ok(Some(addr))
+}
+
+/// Bundled `--http` options (avoids clippy `too_many_arguments`).
+struct HttpOpts {
     root: PathBuf,
-    listen: &str,
+    listen: String,
     tls_cert: Option<PathBuf>,
     tls_key: Option<PathBuf>,
     tls_self_signed: bool,
     tls_client_ca: Option<PathBuf>,
     http_token: Option<String>,
-) -> Result<ExitCode> {
+    health_listen: Option<String>,
+}
+
+fn serve_http(opts: HttpOpts) -> Result<ExitCode> {
+    let HttpOpts {
+        root,
+        listen,
+        tls_cert,
+        tls_key,
+        tls_self_signed,
+        tls_client_ca,
+        http_token,
+        health_listen,
+    } = opts;
     let addr: SocketAddr = listen
         .parse()
         .map_err(|e| anyhow::anyhow!("invalid --listen {listen}: {e}"))?;
@@ -203,6 +246,7 @@ fn serve_http(
         .map(|t| !t.trim().is_empty())
         .unwrap_or(false);
     let mtls = tls_client_ca.is_some();
+    let health_addr = resolve_health_listen(mtls, health_listen.as_deref())?;
     let state = AppState::open(&root)
         .map_err(|e| anyhow::anyhow!("{e}"))?
         .with_http_token(http_token);
@@ -218,9 +262,15 @@ fn serve_http(
         println!("http_auth: off (loopback trust)");
     }
     if mtls {
-        eprintln!(
-            "warning: mTLS enabled — client certificate required for ALL routes including /health (unlike Bearer)"
-        );
+        if health_addr.is_some() {
+            eprintln!(
+                "warning: mTLS on API — client cert still required on --listen; plain probe is only on --health-listen"
+            );
+        } else {
+            eprintln!(
+                "warning: mTLS enabled — client certificate required for ALL routes including /health (unlike Bearer); set --health-listen for a plain probe"
+            );
+        }
         println!("mtls: require client cert; CN must match TrustStore AiraRef");
     }
 
@@ -228,28 +278,85 @@ fn serve_http(
         .enable_all()
         .build()?;
     rt.block_on(async move {
-        if let Some((cert, key)) = tls {
-            println!("https listening on https://{addr}");
-            println!("tls_cert {}", cert.display());
-            println!("tls_key {}", key.display());
-            if let Some(ref ca) = tls_client_ca {
-                println!("tls_client_ca {}", ca.display());
-            }
-            serve_https(
-                addr,
-                app,
-                &cert,
-                &key,
-                tls_client_ca.as_deref(),
-                &root,
-            )
-            .await?;
+        let health_task = if let Some(haddr) = health_addr {
+            println!("health listening on http://{haddr} (GET /health only, no client cert)");
+            let hr = health_router();
+            Some(tokio::spawn(async move {
+                let listener = tokio::net::TcpListener::bind(haddr).await?;
+                axum::serve(listener, hr).await?;
+                Ok::<_, anyhow::Error>(())
+            }))
         } else {
-            println!("http listening on http://{addr}");
-            let listener = tokio::net::TcpListener::bind(addr).await?;
-            axum::serve(listener, app).await?;
+            None
+        };
+
+        let api = async {
+            if let Some((cert, key)) = tls {
+                println!("https listening on https://{addr}");
+                println!("tls_cert {}", cert.display());
+                println!("tls_key {}", key.display());
+                if let Some(ref ca) = tls_client_ca {
+                    println!("tls_client_ca {}", ca.display());
+                }
+                serve_https(
+                    addr,
+                    app,
+                    &cert,
+                    &key,
+                    tls_client_ca.as_deref(),
+                    &root,
+                )
+                .await
+            } else {
+                println!("http listening on http://{addr}");
+                let listener = tokio::net::TcpListener::bind(addr).await?;
+                axum::serve(listener, app).await?;
+                Ok(())
+            }
+        };
+
+        match health_task {
+            Some(ht) => {
+                tokio::select! {
+                    r = api => r?,
+                    r = ht => r.map_err(|e| anyhow::anyhow!("health task join: {e}"))??,
+                }
+            }
+            None => api.await?,
         }
         Ok::<_, anyhow::Error>(())
     })?;
     Ok(ExitCode::SUCCESS)
+}
+
+#[cfg(test)]
+mod resolve_health_tests {
+    use super::resolve_health_listen;
+
+    #[test]
+    fn health_listen_none_ok() {
+        assert!(resolve_health_listen(true, None).unwrap().is_none());
+        assert!(resolve_health_listen(false, None).unwrap().is_none());
+    }
+
+    #[test]
+    fn health_listen_requires_mtls() {
+        let err = resolve_health_listen(false, Some("127.0.0.1:8788")).unwrap_err();
+        assert!(err.to_string().contains("requires --tls-client-ca"), "{err}");
+    }
+
+    #[test]
+    fn health_listen_parses_loopback() {
+        let addr = resolve_health_listen(true, Some("127.0.0.1:8788"))
+            .unwrap()
+            .unwrap();
+        assert_eq!(addr.port(), 8788);
+        assert!(addr.ip().is_loopback());
+    }
+
+    #[test]
+    fn health_listen_rejects_non_loopback() {
+        let err = resolve_health_listen(true, Some("0.0.0.0:8788")).unwrap_err();
+        assert!(err.to_string().contains("loopback"), "{err}");
+    }
 }

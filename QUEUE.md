@@ -1,6 +1,6 @@
 # AIRA — лінійна черга задач
 
-**Оновлено:** 2026-07-30  
+**Оновлено:** 2026-07-31  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `Analyze-*/todo/TODO_FIXME.md` — лише provenance.
 
@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-55 CLOSED (`6811c23`); QUEUE #20 DONE; next OPEN #21 |
+| `main` | Analyze-56 CLOSED; QUEUE #21 DONE; next OPEN #22 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#21 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#22 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -36,7 +36,7 @@
 | 18 | **DONE** | ~~Analyze-53 — gossip drop non-self-sovereign~~ | Gossip: не форвардити `peer.trust.delta`, якщо `subject_id ≠ issuer` | тест + `docs/peer-link.md`; apply без змін політики A-52 | DHT book; relay persist |
 | 19 | **DONE** | ~~Analyze-54 — x25519 peer notify~~ **WONT-NEED** | Hello already Ed25519-binds `x25519_pub_hex` each dial; no separate notify | docs + QUEUE rationale (no runtime notify) | pin cache; dual-static grace |
 | 20 | **DONE** | ~~Analyze-55 — mTLS CN→TrustStore~~ | CN = full AiraRef; TrustStore exists + not revoked after CA | fail-closed tests + docs/local-node | optional client auth; окремий health |
-| 21 | **OPEN** | Analyze-56 | Окремий health listener **без** require client-cert (коли mTLS увімкнено на API) | `/health` reachable без клієнтського сертифіката; тести | CN map (вже #20); public bind |
+| 21 | **DONE** | ~~Analyze-56 — separate health listener~~ | Окремий health listener **без** require client-cert (коли mTLS увімкнено на API) | `/health` reachable без клієнтського сертифіката; тести | CN map (вже #20); public bind |
 | 22 | OPEN | Analyze-57 | Opt-in: результат DHT find/announce → upsert у `address_book.json` | CLI flag + тест dial після upsert | discv5; auto без flag |
 | 23 | OPEN | Analyze-58 | Durable relay hub registry на диску (пережив рестарт процесу) | reload після restart у тесті | STUN; session crypto change |
 | 24 | OPEN | Analyze-59 | Concurrent per-connection recv tasks у `peer listen` | ≥2 паралельні сесії recv без блокування accept loop | systemd unit |
@@ -54,7 +54,7 @@
 
 ### Наступний цикл
 
-**#21 → Analyze-56** (окремий health listener без client-cert).
+**#22 → Analyze-57** (DHT find/announce → address_book upsert).
 
 ---
 

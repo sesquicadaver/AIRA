@@ -5,5 +5,5 @@
 
 ## Deferred
 - [ ] Optional client auth
-- [ ] Separate health listener → QUEUE #21
+- [x] Separate health listener → QUEUE #21 / Analyze-56 DONE
 - [x] CN → TrustStore mapping → Analyze-55 DONE

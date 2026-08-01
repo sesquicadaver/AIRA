@@ -156,13 +156,14 @@ Empty and `TESTSIG` are rejected on admission.
 | Було Out | Рядок |
 |----------|-------|
 | CN→TrustStore mapping | #20 **DONE** (Analyze-55) |
-| Optional (anonymous) client TLS auth / separate health | #21 (+ optional polish у A-51 TODO) |
+| Optional (anonymous) client TLS auth | deferred (A-51 TODO) |
+| Separate health listener without client cert | #21 DONE (Analyze-56 `--health-listen`) |
 | On-disk per-CSU secret files | #27 |
 | Tenant ceremony | #28 |
 | SQLite ceremony audit table | після #26 (не окремий рядок поки JSONL достатньо; додати в кінець за потреби) |
 | UDP discv5 / FIND_NODE | #32–33 |
 
-Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51); CN→TrustStore (A-55); self-sovereign trust-delta (A-52).
+Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51); CN→TrustStore (A-55); self-sovereign trust-delta (A-52); plain `--health-listen` when mTLS (A-56).
 
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify).

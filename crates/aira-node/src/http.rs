@@ -96,6 +96,13 @@ pub fn router(state: AppState) -> Router {
     }
 }
 
+/// Plain-HTTP probe router: **only** `GET /health` (Analyze-56).
+///
+/// Used on `--health-listen` so liveness does not require an mTLS client cert.
+pub fn health_router() -> Router {
+    Router::new().route("/health", get(health))
+}
+
 /// Reject unauthenticated `/v1/*` when a shared token is configured.
 async fn bearer_gate(req: Request, next: Next, expected: Arc<str>) -> Response {
     if req.uri().path() == "/health" {
@@ -698,6 +705,15 @@ mod tests {
         )
         .await;
         assert_eq!(st2, StatusCode::OK, "{v2}");
+    }
+
+    #[tokio::test]
+    async fn health_router_only_health() {
+        let (st, v) = json_req(health_router(), "GET", "/health", None).await;
+        assert_eq!(st, StatusCode::OK, "{v}");
+        assert_eq!(v["status"], "ok");
+        let (st2, _) = json_req(health_router(), "GET", "/v1/capabilities", None).await;
+        assert_eq!(st2, StatusCode::NOT_FOUND);
     }
 
     #[test]

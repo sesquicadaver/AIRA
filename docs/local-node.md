@@ -58,17 +58,24 @@ cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 --tls-se
 cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 \
   --tls-cert /path/cert.pem --tls-key /path/key.pem
 # mTLS: require client cert signed by CA (Analyze-51). CN must be a full AiraRef
-# present in TrustStore and not revoked (Analyze-55). ALL routes incl. /health need client cert.
+# present in TrustStore and not revoked (Analyze-55). ALL routes on --listen need client cert.
 cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 \
   --tls-self-signed --tls-client-ca /path/client-ca.pem
+# Optional plain-HTTP liveness (Analyze-56): only GET /health, no client cert.
+# Requires --tls-client-ca. Loopback only until QUEUE #34.
+cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 \
+  --tls-self-signed --tls-client-ca /path/client-ca.pem \
+  --health-listen 127.0.0.1:8788
 # Optional Bearer auth for /v1/* (`/health` stays open at HTTP layer); also AIRA_HTTP_TOKEN
 cargo run -p aira-node -- --root "$ROOT" --http --http-token "$TOKEN"
 ```
 
 Client certificate **CN** = `aira:identity:…` that already exists in `$ROOT/identity/trust.json` (not on CRL). CA membership alone is not enough.
+
+With `--health-listen`, probes use the separate bind; the API `--listen` surface stays mTLS-only.
 | Method | Path | Body / notes |
 |--------|------|----------------|
-| GET | `/health` | liveness (no Bearer; under mTLS still needs client cert) |
+| GET | `/health` | liveness (no Bearer; under mTLS on `--listen` still needs client cert; use `--health-listen` for plain probe) |
 | POST | `/v1/problems` | `{"text":"Calculate 2 + 2"}` |
 | GET | `/v1/problems/:id` | problem status JSON |
 | GET | `/v1/results/:id` | result payload |
@@ -89,11 +96,13 @@ curl -sS -X POST http://127.0.0.1:8787/v1/problems \
 curl -skS https://127.0.0.1:8787/health
 # with --http-token:
 curl -sS http://127.0.0.1:8787/v1/capabilities -H "Authorization: Bearer $TOKEN"
-# with --tls-client-ca (mTLS):
+# with --tls-client-ca (mTLS) on API listen:
 curl -skS --cert client.pem --key client.key https://127.0.0.1:8787/health
+# with --health-listen (plain probe, no client cert):
+curl -sS http://127.0.0.1:8788/health
 ```
 
-Non-goals (still deferred): multi-tenant HTTP authz, public bind by default, federation, separate health without client cert (#21). mTLS require + CN→TrustStore shipped in Analyze-51/55 (`--tls-client-ca`).
+Non-goals (still deferred): multi-tenant HTTP authz, public bind by default, federation. mTLS require + CN→TrustStore (Analyze-51/55); plain `--health-listen` probe (Analyze-56 / #21).
 
 Peer-to-peer authenticated links (Analyze-32+) are documented in [peer-link.md](peer-link.md); they are separate from this loopback HTTP API.
 
