@@ -2,7 +2,7 @@
 
 **QUEUE:** #21  
 **Decision:** **A** (`--health-listen` plain HTTP `/health` when mTLS)  
-**Status:** CLOSED (implementation)
+**Status:** CLOSED (`6a956b5`)
 
 ## What shipped
 
