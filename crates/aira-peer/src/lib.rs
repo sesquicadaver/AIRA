@@ -23,9 +23,10 @@ mod trust_delta;
 
 pub use address_book::{AddressBook, PeerEndpoint};
 pub use dht::{
-    apply_dht_announce, dht_announce_to_peers, dht_key_hex, make_dht_announce_envelope,
-    parse_dht_announce, xor_distance, DhtAnnounce, DhtRecord, PeerDhtStore, DHT_ANNOUNCE_MESSAGE_TYPE,
-    DHT_DEFAULT_K, DHT_SCHEMA,
+    apply_book_exact_from_dht_find, apply_dht_announce, apply_dht_announce_maybe_book,
+    dht_announce_to_peers, dht_key_hex, make_dht_announce_envelope, parse_dht_announce,
+    promote_dht_to_address_book, xor_distance, DhtAnnounce, DhtRecord, PeerDhtStore,
+    DHT_ANNOUNCE_MESSAGE_TYPE, DHT_DEFAULT_K, DHT_SCHEMA,
 };
 pub use discovery::{DiscoveryEntry, DiscoverySource, PeerDiscoveryStore};
 pub use envelope::make_peer_ping;
@@ -1068,5 +1069,118 @@ mod tests {
 
         let store_a = PeerDhtStore::load(root_a).unwrap();
         assert_eq!(store_a.get(id_a.as_str()).unwrap().addr, announce_addr);
+    }
+
+    #[tokio::test]
+    async fn dht_announce_apply_book_then_dial() {
+        let dir_a = tempdir().unwrap();
+        let dir_b = tempdir().unwrap();
+        let root_a = dir_a.path();
+        let root_b = dir_b.path();
+        init_node(root_a).unwrap();
+        init_node(root_b).unwrap();
+        let (id_a, pub_a) = write_node_identity(root_a, "dht-book-alice", [141u8; 32]);
+        let (id_b, pub_b) = write_node_identity(root_b, "dht-book-bob", [143u8; 32]);
+        mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
+
+        // B listens for announce; A has B in book for fan-out.
+        let listener = listen("127.0.0.1:0").await.unwrap();
+        let addr_b = listener.local_addr().unwrap();
+        let mut book_a = AddressBook::default();
+        book_a.upsert(id_b.as_str(), addr_b.to_string());
+        book_a.save(root_a).unwrap();
+
+        // B already has a via entry for A that must survive promote.
+        let mut book_b = AddressBook::default();
+        book_b.upsert_via(
+            id_a.as_str(),
+            "127.0.0.1:1",
+            Some("aira:identity:relay-keep".into()),
+        );
+        book_b.save(root_b).unwrap();
+
+        let root_b2 = root_b.to_path_buf();
+        let b_task = tokio::spawn(async move {
+            let mut peer = accept(&listener, &root_b2).await.unwrap();
+            let env = peer.recv_envelope().await.unwrap();
+            let announce = parse_dht_announce(&env).unwrap();
+            apply_dht_announce_maybe_book(
+                &root_b2,
+                &env.issuer_identity,
+                &announce,
+                true,
+            )
+            .unwrap();
+            announce
+        });
+
+        // Announce A's real listen addr so B can dial A after promote.
+        let listener_a = listen("127.0.0.1:0").await.unwrap();
+        let announce_addr = listener_a.local_addr().unwrap().to_string();
+        let results = dht_announce_to_peers(root_a, &announce_addr).await.unwrap();
+        assert!(
+            results.iter().any(|(id, ok, _)| id == id_b.as_str() && *ok),
+            "{results:?}"
+        );
+        let got = b_task.await.unwrap();
+        assert_eq!(got.identity_id, id_a.as_str());
+        assert_eq!(got.addr, announce_addr);
+
+        let book_b = AddressBook::load(root_b).unwrap();
+        let ep = book_b
+            .peers
+            .iter()
+            .find(|p| p.identity_id == id_a.as_str())
+            .unwrap();
+        assert_eq!(ep.addr, announce_addr);
+        assert_eq!(ep.via.as_deref(), Some("aira:identity:relay-keep"));
+
+        let accept_a = {
+            let root_a2 = root_a.to_path_buf();
+            tokio::spawn(async move {
+                let _peer = accept(&listener_a, &root_a2).await.unwrap();
+            })
+        };
+        let session = dial(root_b, id_a.as_str()).await.unwrap();
+        assert_eq!(session.peer_id.as_str(), id_a.as_str());
+        let _ = accept_a.await;
+    }
+
+    #[test]
+    fn apply_book_exact_from_find_skips_closest_only() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let mut store = PeerDhtStore::default();
+        store
+            .upsert("aira:identity:known", "127.0.0.1:9", Some("local".into()))
+            .unwrap();
+        store.save(root).unwrap();
+        // Production find --apply-book path: no exact → Ok(None), book untouched.
+        let promoted = apply_book_exact_from_dht_find(root, "aira:identity:missing").unwrap();
+        assert!(promoted.is_none());
+        assert!(AddressBook::load(root).unwrap().peers.is_empty());
+        // Exact hit does promote.
+        let hit = apply_book_exact_from_dht_find(root, "aira:identity:known")
+            .unwrap()
+            .expect("exact");
+        assert_eq!(hit.0, "aira:identity:known");
+        assert_eq!(hit.1, "127.0.0.1:9");
+        assert_eq!(
+            AddressBook::load(root).unwrap().resolve("aira:identity:known").unwrap().to_string(),
+            "127.0.0.1:9"
+        );
+    }
+
+    #[test]
+    fn promote_without_prior_book_inserts() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        promote_dht_to_address_book(root, "aira:identity:x", "127.0.0.1:55").unwrap();
+        let book = AddressBook::load(root).unwrap();
+        assert_eq!(book.peers.len(), 1);
+        assert_eq!(book.peers[0].addr, "127.0.0.1:55");
+        assert!(book.peers[0].via.is_none());
     }
 }

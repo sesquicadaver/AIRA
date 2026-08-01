@@ -266,6 +266,62 @@ pub fn apply_dht_announce(
     store.save(root)
 }
 
+/// Promote a DHT identity/addr into the authoritative address book (Analyze-57).
+///
+/// Preserves existing `via`. Callers must be opt-in (`--apply-book`); this never runs from
+/// default DHT apply/find paths.
+pub fn promote_dht_to_address_book(
+    root: impl AsRef<Path>,
+    identity_id: &str,
+    addr: &str,
+) -> Result<(), PeerError> {
+    addr.parse::<std::net::SocketAddr>()
+        .map_err(|e| PeerError::Protocol(format!("dht book promote bad addr {addr}: {e}")))?;
+    if identity_id.trim().is_empty() {
+        return Err(PeerError::Protocol("dht book promote empty identity".into()));
+    }
+    let root = root.as_ref();
+    let mut book = AddressBook::load(root)?;
+    book.upsert_addr_preserve_via(identity_id, addr);
+    book.save(root)
+}
+
+/// Opt-in exact-hit promote from local DHT into address book (Analyze-57 find `--apply-book`).
+///
+/// Returns `Ok(None)` when there is no exact record (closest must not be promoted).
+pub fn apply_book_exact_from_dht_find(
+    root: impl AsRef<Path>,
+    key_ref: &str,
+) -> Result<Option<(String, String)>, PeerError> {
+    let root = root.as_ref();
+    let store = PeerDhtStore::load(root)?;
+    let Some(exact) = store.get(key_ref) else {
+        return Ok(None);
+    };
+    let id = exact.identity_id.clone();
+    let addr = exact.addr.clone();
+    promote_dht_to_address_book(root, &id, &addr)?;
+    Ok(Some((id, addr)))
+}
+
+/// Apply verified announce into DHT; when `apply_book`, promote to address book **first**
+/// so a book failure leaves DHT unchanged (Analyze-57).
+pub fn apply_dht_announce_maybe_book(
+    root: impl AsRef<Path>,
+    issuer: &aira_object::AiraRef,
+    announce: &DhtAnnounce,
+    apply_book: bool,
+) -> Result<(), PeerError> {
+    announce.validate_shape()?;
+    if announce.identity_id != issuer.as_str() {
+        return Err(PeerError::IdentityMismatch);
+    }
+    if apply_book {
+        promote_dht_to_address_book(root.as_ref(), &announce.identity_id, &announce.addr)?;
+    }
+    apply_dht_announce(root, issuer, announce)
+}
+
 /// Parse `peer.dht.announce` from a verified envelope.
 pub fn parse_dht_announce(env: &ProtocolEnvelope) -> Result<DhtAnnounce, PeerError> {
     if env.message_type != DHT_ANNOUNCE_MESSAGE_TYPE {
@@ -403,5 +459,13 @@ mod tests {
         let bad = DhtAnnounce::new("aira:identity:bob", "127.0.0.1:9");
         let err = apply_dht_announce(root, &issuer, &bad).unwrap_err();
         assert!(matches!(err, PeerError::IdentityMismatch));
+    }
+
+    #[test]
+    fn promote_rejects_bad_addr() {
+        let dir = tempdir().unwrap();
+        let err = promote_dht_to_address_book(dir.path(), "aira:identity:x", "not-an-addr")
+            .unwrap_err();
+        assert!(err.to_string().contains("bad addr"), "{err}");
     }
 }

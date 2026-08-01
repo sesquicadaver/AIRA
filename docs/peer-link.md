@@ -20,7 +20,7 @@ Decentralized node-to-node messaging **without a controlling center**.
 - **Deadlines** = 15s on dial/handshake/Noise/frame I/O; TCP accept wait unbounded (daemon)
 - **Listen** = loopback-only via `listen`; non-loopback requires `listen_explicit`
 
-Static address book: `.aira/peers/address_book.json` — authoritative dial source. DHT is advisory lookup memory.
+Static address book: `.aira/peers/address_book.json` — authoritative dial source. DHT is advisory lookup memory. Opt-in `--apply-book` (Analyze-57) promotes exact DHT hits / inbound announces into the book without changing the default.
 
 ## Crate
 
@@ -36,26 +36,28 @@ Static address book: `.aira/peers/address_book.json` — authoritative dial sour
 ## CLI
 
 ```bash
-cargo run -p aira-cli -- --root "$B" peer listen --bind 127.0.0.1:0 --recv --dht
+cargo run -p aira-cli -- --root "$B" peer listen --bind 127.0.0.1:0 --recv --dht --apply-book
 cargo run -p aira-cli -- --root "$A" peer dht announce --addr 127.0.0.1:7900
-cargo run -p aira-cli -- --root "$B" peer dht find --key-ref aira:identity:alice
+cargo run -p aira-cli -- --root "$B" peer dht find --key-ref aira:identity:alice --apply-book
 cargo run -p aira-cli -- --root "$B" peer dht list
 ```
 
 | Flag / command | Meaning |
 |----------------|---------|
 | `--dht` on listen | Apply inbound `peer.dht.announce` |
+| `--apply-book` on listen | Requires `--dht`; also upsert announce into address book (preserves `via`) |
 | `peer dht announce` | Put local addr + fan out to address book |
 | `peer dht find` | Exact + XOR-closest local lookup |
+| `peer dht find --apply-book` | Upsert **exact** hit into address book (closest print-only) |
 | `--via` / `--relay` / `--gossip` | See Analyze-43/44 |
 
 ## Out of scope (later)
 
-Канон черги: [`QUEUE.md`](../QUEUE.md) Phase B #20+.
+Канон черги: [`QUEUE.md`](../QUEUE.md) Phase B #23+.
 
-Заплановано атомарно: DHT→address_book (#22); durable relay (#23); STUN/ICE-lite (#31); discv5 announce (#32); FIND_NODE (#33); public HTTP bind (#34); federation (#35).
+Заплановано атомарно: durable relay (#23); STUN/ICE-lite (#31); discv5 announce (#32); FIND_NODE (#33); public HTTP bind (#34); federation (#35).
 
-Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); relay hub (A-44); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18).
+Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); DHT→address_book `--apply-book` (A-57 / #22); relay hub (A-44); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18).
 
 **WONT-NEED:** dedicated x25519 peer-notify after rotate (Analyze-54 / QUEUE #19) — hello v1 already Ed25519-binds `x25519_pub_hex` each dial; Noise remote static is checked against that hello. No durable remote Noise-static cache.
 

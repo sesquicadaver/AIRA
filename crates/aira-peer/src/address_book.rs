@@ -80,6 +80,28 @@ impl AddressBook {
         self.peers.sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
     }
 
+    /// Update/insert dial addr while preserving an existing `via` (Analyze-57 DHT promote).
+    ///
+    /// New peers get `via = None`. Unlike [`Self::upsert`], this never clears courier routing.
+    pub fn upsert_addr_preserve_via(
+        &mut self,
+        identity_id: impl Into<String>,
+        addr: impl Into<String>,
+    ) {
+        let identity_id = identity_id.into();
+        let addr = addr.into();
+        if let Some(p) = self.peers.iter_mut().find(|p| p.identity_id == identity_id) {
+            p.addr = addr;
+        } else {
+            self.peers.push(PeerEndpoint {
+                identity_id,
+                addr,
+                via: None,
+            });
+        }
+        self.peers.sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
+    }
+
     /// Lookup socket address for identity.
     pub fn resolve(&self, identity_id: &str) -> Result<SocketAddr, PeerError> {
         let ep = self
@@ -106,5 +128,36 @@ impl AddressBook {
             .iter()
             .map(|p| (p.identity_id.clone(), p.addr.clone()))
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn upsert_addr_preserve_via_keeps_courier() {
+        let mut book = AddressBook::default();
+        book.upsert_via("aira:identity:a", "127.0.0.1:1", Some("aira:identity:relay".into()));
+        book.upsert_addr_preserve_via("aira:identity:a", "127.0.0.1:2");
+        let ep = book.peers.iter().find(|p| p.identity_id == "aira:identity:a").unwrap();
+        assert_eq!(ep.addr, "127.0.0.1:2");
+        assert_eq!(ep.via.as_deref(), Some("aira:identity:relay"));
+    }
+
+    #[test]
+    fn upsert_clears_via_unlike_preserve() {
+        let mut book = AddressBook::default();
+        book.upsert_via("aira:identity:a", "127.0.0.1:1", Some("aira:identity:relay".into()));
+        book.upsert("aira:identity:a", "127.0.0.1:2");
+        assert!(book.peers[0].via.is_none());
+    }
+
+    #[test]
+    fn upsert_addr_preserve_via_inserts_new() {
+        let mut book = AddressBook::default();
+        book.upsert_addr_preserve_via("aira:identity:b", "127.0.0.1:9");
+        assert_eq!(book.peers.len(), 1);
+        assert!(book.peers[0].via.is_none());
     }
 }

@@ -296,6 +296,10 @@ enum PeerCommands {
         /// Apply inbound `peer.dht.announce` into local DHT table (Analyze-47).
         #[arg(long, default_value_t = false)]
         dht: bool,
+        /// After DHT announce apply, also upsert identity/addr into address book (Analyze-57).
+        /// Requires `--dht`. Preserves existing `via`.
+        #[arg(long, default_value_t = false)]
+        apply_book: bool,
     },
     /// List durable peer discovery journal (`peers/discovery.json`).
     Discovery,
@@ -377,6 +381,9 @@ enum PeerDhtCommands {
         key_ref: String,
         #[arg(long, default_value_t = aira_peer::DHT_DEFAULT_K)]
         k: usize,
+        /// Upsert exact DHT hit into address book (Analyze-57). Preserves existing `via`.
+        #[arg(long, default_value_t = false)]
+        apply_book: bool,
     },
     /// List local DHT records.
     List,
@@ -1155,10 +1162,15 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                 }
                 Ok(ExitCode::SUCCESS)
             }
-            PeerDhtCommands::Find { key_ref, k } => {
+            PeerDhtCommands::Find {
+                key_ref,
+                k,
+                apply_book,
+            } => {
                 let store =
                     aira_peer::PeerDhtStore::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
-                if let Some(exact) = store.get(&key_ref) {
+                let exact = store.get(&key_ref).cloned();
+                if let Some(ref exact) = exact {
                     println!(
                         "exact\t{}\t{}\t{}",
                         exact.identity_id, exact.addr, exact.key_hex
@@ -1170,6 +1182,20 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                 } else {
                     for r in closest {
                         println!("{}\t{}\t{}", r.identity_id, r.addr, r.key_hex);
+                    }
+                }
+                if apply_book {
+                    match aira_peer::apply_book_exact_from_dht_find(root, &key_ref)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?
+                    {
+                        Some((id, addr)) => {
+                            println!("apply_book {id}\t{addr}");
+                            println!(
+                                "address_book {}",
+                                aira_peer::AddressBook::path(root).display()
+                            );
+                        }
+                        None => println!("apply_book skipped (no exact hit)"),
                     }
                 }
                 println!("dht {}", aira_peer::PeerDhtStore::path(root).display());
@@ -1201,12 +1227,16 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             gossip,
             relay,
             dht,
+            apply_book,
         } => {
             if apply_trust && !recv && !relay {
                 bail!("--apply-trust requires --recv (or use --relay)");
             }
             if dht && !recv && !relay {
                 bail!("--dht requires --recv (or use with --relay separately)");
+            }
+            if apply_book && !dht {
+                bail!("--apply-book requires --dht");
             }
             if gossip && !apply_trust {
                 bail!("--gossip requires --apply-trust");
@@ -1244,6 +1274,9 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             }
             if dht {
                 println!("dht apply enabled");
+            }
+            if apply_book {
+                println!("apply_book enabled");
             }
             let root_owned = root.to_path_buf();
             if relay {
@@ -1354,12 +1387,23 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                         if dht && env.message_type == aira_peer::DHT_ANNOUNCE_MESSAGE_TYPE {
                             let announce = aira_peer::parse_dht_announce(&env)
                                 .map_err(|e| anyhow::anyhow!("{e}"))?;
-                            aira_peer::apply_dht_announce(root, &env.issuer_identity, &announce)
-                                .map_err(|e| anyhow::anyhow!("{e}"))?;
+                            aira_peer::apply_dht_announce_maybe_book(
+                                root,
+                                &env.issuer_identity,
+                                &announce,
+                                apply_book,
+                            )
+                            .map_err(|e| anyhow::anyhow!("{e}"))?;
                             println!(
                                 "applied dht-announce {}\t{}",
                                 announce.identity_id, announce.addr
                             );
+                            if apply_book {
+                                println!(
+                                    "apply_book {}\t{}",
+                                    announce.identity_id, announce.addr
+                                );
+                            }
                         }
                         break;
                     }
@@ -1367,6 +1411,7 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                     let do_apply = apply_trust;
                     let do_gossip = gossip;
                     let do_dht = dht;
+                    let do_apply_book = apply_book;
                     tokio::spawn(async move {
                         let from = peer.peer_id.as_str().to_string();
                         let recv = if do_apply {
@@ -1445,17 +1490,26 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                                     && env.message_type == aira_peer::DHT_ANNOUNCE_MESSAGE_TYPE
                                 {
                                     match aira_peer::parse_dht_announce(&env).and_then(|a| {
-                                        aira_peer::apply_dht_announce(
+                                        aira_peer::apply_dht_announce_maybe_book(
                                             &root_bg,
                                             &env.issuer_identity,
                                             &a,
+                                            do_apply_book,
                                         )
                                         .map(|_| a)
                                     }) {
-                                        Ok(announce) => println!(
-                                            "applied dht-announce {}\t{}",
-                                            announce.identity_id, announce.addr
-                                        ),
+                                        Ok(announce) => {
+                                            println!(
+                                                "applied dht-announce {}\t{}",
+                                                announce.identity_id, announce.addr
+                                            );
+                                            if do_apply_book {
+                                                println!(
+                                                    "apply_book {}\t{}",
+                                                    announce.identity_id, announce.addr
+                                                );
+                                            }
+                                        }
                                         Err(e) => eprintln!("dht apply error: {e}"),
                                     }
                                 }
