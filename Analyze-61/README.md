@@ -1,7 +1,7 @@
 # Analyze-61 — Retention/prune `.prev.<stamp>`
 
 **QUEUE:** #26  
-**Status:** CLOSED (pending tip)  
+**Status:** CLOSED (`eeaed25`)  
 **Decision:** Option **C** — `--keep` and/or `--older-than-days`; ed25519 + x25519; never latest
 
 ## Shipped
