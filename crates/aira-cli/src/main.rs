@@ -103,7 +103,11 @@ enum IdentityCommands {
         notify_peers: bool,
     },
     /// List durable node signing-secret backups (latest + timestamped history).
-    Backups,
+    /// Subcommand `prune` GCs archived `.prev.<stamp>` slots (Analyze-61).
+    Backups {
+        #[command(subcommand)]
+        command: Option<BackupsCommands>,
+    },
     /// Sign a message with the node identity key.
     Sign {
         /// Message bytes as UTF-8 text.
@@ -126,6 +130,22 @@ enum IdentityCommands {
     Trust {
         #[command(subcommand)]
         command: TrustCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum BackupsCommands {
+    /// Prune archived `.prev.<stamp>` slots for ed25519 + x25519 (never latest `.prev`).
+    Prune {
+        /// Keep at most N newest archived slots per family.
+        #[arg(long)]
+        keep: Option<u64>,
+        /// Drop archives older than D days (per family age rules).
+        #[arg(long)]
+        older_than_days: Option<u64>,
+        /// Report deletes without removing files.
+        #[arg(long, default_value_t = false)]
+        dry_run: bool,
     },
 }
 
@@ -567,20 +587,63 @@ fn run() -> Result<ExitCode> {
                 );
                 Ok(ExitCode::SUCCESS)
             }
-            IdentityCommands::Backups => {
+            IdentityCommands::Backups { command: None } => {
                 ensure_init(&root)?;
                 let list = aira_object::list_node_secret_backups(&root)
                     .map_err(|e| anyhow::anyhow!("{e}"))?;
-                if list.is_empty() {
+                let xlist = aira_peer::list_noise_static_backups(&root)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                if list.is_empty() && xlist.is_empty() {
                     println!("(no backups — use `identity rotate --backup`)");
                 } else {
                     for b in &list {
                         let pk = b.old_public_key_hex.as_deref().unwrap_or("-");
                         let at = b.backed_up_at.as_deref().unwrap_or("-");
-                        println!("{}\t{}\t{}\t{}", b.stamp, pk, at, b.secret_path.display());
+                        println!(
+                            "ed25519\t{}\t{}\t{}\t{}",
+                            b.stamp,
+                            pk,
+                            at,
+                            b.secret_path.display()
+                        );
+                    }
+                    for b in &xlist {
+                        println!("x25519\t{}\t-\t-\t{}", b.stamp, b.secret_path.display());
                     }
                 }
                 println!("backups {}", NodePaths::new(&root).identity_dir().display());
+                Ok(ExitCode::SUCCESS)
+            }
+            IdentityCommands::Backups {
+                command:
+                    Some(BackupsCommands::Prune {
+                        keep,
+                        older_than_days,
+                        dry_run,
+                    }),
+            } => {
+                ensure_init(&root)?;
+                if keep.is_none() && older_than_days.is_none() {
+                    bail!("backups prune requires --keep and/or --older-than-days");
+                }
+                let ed =
+                    aira_object::prune_node_secret_backups(&root, keep, older_than_days, dry_run)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                let x =
+                    aira_peer::prune_noise_static_backups(&root, keep, older_than_days, dry_run)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                for (path, why) in ed.skipped.iter().chain(x.skipped.iter()) {
+                    eprintln!("skip {}\t{why}", path.display());
+                }
+                let tag = if dry_run { "would_delete" } else { "deleted" };
+                for p in ed.deleted.iter().chain(x.deleted.iter()) {
+                    println!("{tag}\t{}", p.display());
+                }
+                println!(
+                    "prune ed25519_deleted={} x25519_deleted={} dry_run={dry_run}",
+                    ed.deleted.len(),
+                    x.deleted.len()
+                );
                 Ok(ExitCode::SUCCESS)
             }
             IdentityCommands::Sign { text } => {

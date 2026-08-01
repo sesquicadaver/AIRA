@@ -39,8 +39,9 @@ pub use gossip::{
 };
 pub use handshake::{HelloMessage, HelloResult, HELLO_DOMAIN};
 pub use noise::{
-    load_or_create_noise_static, rotate_noise_static, x25519_public, NoiseStaticRotate,
-    NODE_X25519_BACKUP_FILE, NOISE_PATTERN,
+    list_noise_static_backups, load_or_create_noise_static, prune_noise_static_backups,
+    rotate_noise_static, x25519_public, NoiseStaticBackupInfo, NoiseStaticPruneReport,
+    NoiseStaticRotate, NODE_X25519_BACKUP_FILE, NOISE_PATTERN,
 };
 pub use notify::{
     notify_peer_of_rekey, notify_peers_of_rekey, upcoming_rekey_delta, NotifyPeerResult,
@@ -268,10 +269,7 @@ mod tests {
         assert_eq!(r1.new_public_hex, hex::encode(x25519_public(&after)));
         let prev = root.join("identity").join(NODE_X25519_BACKUP_FILE);
         assert!(prev.is_file());
-        assert_eq!(
-            r1.backup_path.as_deref(),
-            Some(prev.as_path())
-        );
+        assert_eq!(r1.backup_path.as_deref(), Some(prev.as_path()));
         let prev_bytes = hex::decode(fs::read_to_string(&prev).unwrap().trim()).unwrap();
         assert_eq!(prev_bytes, before);
 
@@ -286,6 +284,63 @@ mod tests {
             .collect();
         assert_eq!(archived.len(), 1, "{archived:?}");
         assert!(r2.backup_path.is_some());
+    }
+
+    #[test]
+    fn prune_noise_static_keep_zero_drops_archives_keeps_latest() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let idir = root.join("identity");
+        fs::write(idir.join(NODE_X25519_BACKUP_FILE), b"aa\n").unwrap();
+        fs::write(idir.join("local.x25519.prev.1000Z"), b"old\n").unwrap();
+        fs::write(idir.join("local.x25519.prev.2000Z"), b"newer\n").unwrap();
+        let r = prune_noise_static_backups(root, Some(0), None, false).unwrap();
+        assert!(idir.join(NODE_X25519_BACKUP_FILE).is_file());
+        assert!(!idir.join("local.x25519.prev.1000Z").is_file());
+        assert!(!idir.join("local.x25519.prev.2000Z").is_file());
+        assert_eq!(r.deleted.len(), 2);
+    }
+
+    #[test]
+    fn prune_noise_static_older_than_days_and_dry_run() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let idir = root.join("identity");
+        fs::write(idir.join(NODE_X25519_BACKUP_FILE), b"latest\n").unwrap();
+        // Very old unix stamp.
+        fs::write(idir.join("local.x25519.prev.1Z"), b"ancient\n").unwrap();
+        let dry = prune_noise_static_backups(root, None, Some(1), true).unwrap();
+        assert!(dry.dry_run);
+        assert!(idir.join("local.x25519.prev.1Z").is_file());
+        assert!(!dry.deleted.is_empty());
+        let r = prune_noise_static_backups(root, None, Some(1), false).unwrap();
+        assert!(!idir.join("local.x25519.prev.1Z").is_file());
+        assert!(idir.join(NODE_X25519_BACKUP_FILE).is_file());
+        assert!(!r.deleted.is_empty());
+    }
+
+    #[test]
+    fn prune_noise_static_unparseable_age_skipped() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let idir = root.join("identity");
+        fs::write(idir.join(NODE_X25519_BACKUP_FILE), b"latest\n").unwrap();
+        fs::write(idir.join("local.x25519.prev.notdigitsZ"), b"bad\n").unwrap();
+        let r = prune_noise_static_backups(root, None, Some(1), false).unwrap();
+        assert!(idir.join("local.x25519.prev.notdigitsZ").is_file());
+        assert!(r.skipped.iter().any(|(_, w)| w.contains("unparseable")));
+    }
+
+    #[test]
+    fn prune_noise_static_requires_policy() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        init_node(root).unwrap();
+        let err = prune_noise_static_backups(root, None, None, false).unwrap_err();
+        assert!(err.to_string().contains("requires"));
     }
 
     #[test]

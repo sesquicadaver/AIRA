@@ -129,6 +129,18 @@ Default rotate still leaves no durable old secret. With `--backup`, the previous
 
 **Timestamped history** (Analyze-41): each new `--backup` archives the prior latest slot to `local.ed25519.prev.<YYYYMMDDTHHMMSSZ>` (+ matching `.meta.json`) so earlier secrets remain recoverable. Canonical `.prev` is always the most recent backup.
 
+**Retention / prune** (Analyze-61): GC archived stamp slots only (never the canonical latest `.prev`). Same CLI also prunes `local.x25519.prev.<stamp>`.
+
+```bash
+cargo run -p aira-cli -- --root "$ROOT" identity backups
+# ed25519|x25519  stamp  old_pubkey|-  backed_up_at|-  path
+cargo run -p aira-cli -- --root "$ROOT" identity backups prune --keep 3
+cargo run -p aira-cli -- --root "$ROOT" identity backups prune --older-than-days 31
+cargo run -p aira-cli -- --root "$ROOT" identity backups prune --keep 3 --older-than-days 31 --dry-run
+```
+
+Recommended starting points: `--keep 3` or `--older-than-days 31`. At least one flag is required. Retain = intersection of supplied policies per key family. Unparseable ages under `--older-than-days` are skipped (not deleted); orphan `.meta.json` without a secret is never deleted.
+
 ```bash
 cargo run -p aira-cli -- --root "$ROOT" identity rotate --backup
 cargo run -p aira-cli -- --root "$ROOT" identity rotate --backup
@@ -151,7 +163,7 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Канон: [`QUEUE.md`](../QUEUE.md) Phase B (наступний OPEN: #26 retention `.prev`).
+Канон: [`QUEUE.md`](../QUEUE.md) Phase B (наступний OPEN: #27 per-CSU secrets).
 
 | Було Out | Рядок |
 |----------|-------|
@@ -162,9 +174,10 @@ Empty and `TESTSIG` are rejected on admission.
 | Tenant ceremony | #28 |
 | Multi-tenant HTTP authz | #29 |
 | YAML config parity | #30 |
+| Retention/prune `.prev.<stamp>` | #26 **DONE** (Analyze-61) |
 | SQLite ceremony audit table | після #26 (не окремий рядок поки JSONL достатньо; додати в кінець за потреби) |
 | UDP discv5 / FIND_NODE | #32–33 |
 
-Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51); CN→TrustStore (A-55); self-sovereign trust-delta (A-52); plain `--health-listen` when mTLS (A-56); DHT→address_book `--apply-book` (A-57); durable relay registry (A-58); concurrent peer accept (`accept_tcp` + spawned handshake, A-59).
+Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51); CN→TrustStore (A-55); self-sovereign trust-delta (A-52); plain `--health-listen` when mTLS (A-56); DHT→address_book `--apply-book` (A-57); durable relay registry (A-58); concurrent peer accept (`accept_tcp` + spawned handshake, A-59); systemd examples (A-60); `.prev.<stamp>` prune CLI (A-61).
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify + relay/DHT).

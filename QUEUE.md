@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-60 CLOSED (`b28f54a`); QUEUE #25 DONE; next OPEN #26 |
+| `main` | Analyze-61 CLOSED (pending tip); QUEUE #26 DONE; next OPEN #27 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#26 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#27 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -41,7 +41,7 @@
 | 23 | **DONE** | ~~Analyze-58 — durable relay registry~~ | Durable relay hub registry на диску (пережив рестарт процесу) | reload після restart у тесті | STUN; session crypto change |
 | 24 | **DONE** | ~~Analyze-59 — concurrent accept (handshake off loop)~~ | TCP `accept_tcp` на циклі; spawn `complete_accept` (+recv/relay) | ≥2 паралельні сесії; hung handshake не блокує accept; тести | systemd unit |
 | 25 | **DONE** | ~~Analyze-60 — systemd examples~~ | Приклад systemd units для `aira-node` / `peer listen` + runbook | `deploy/systemd/*.service` + `docs/runbook-systemd.md` | код runtime |
-| 26 | OPEN | Analyze-61 | Retention/prune для `.prev.<stamp>` слотів | CLI/policy + тести GC | per-CSU secrets |
+| 26 | **DONE** | ~~Analyze-61 — retention/prune `.prev.<stamp>`~~ | CLI/policy GC archived stamp slots (ed25519+x25519); never latest | `identity backups prune` + тести | per-CSU secrets |
 | 27 | OPEN | Analyze-62 | Durable on-disk per-CSU signing secrets | load/save + ізоляція tenant | tenant rotate ceremony |
 | 28 | OPEN | Analyze-63 | Tenant key rotate / revoke ceremony | CLI + audit + тести | HTTP authz |
 | 29 | OPEN | Analyze-64 | Multi-tenant HTTP authz (Bearer/mTLS → tenant scope) | відмова cross-tenant; тести | federation |
@@ -54,7 +54,7 @@
 
 ### Наступний цикл
 
-**#26 → Analyze-61** (retention/prune `.prev`).
+**#27 → Analyze-62** (durable per-CSU signing secrets).
 
 ---
 

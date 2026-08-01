@@ -36,9 +36,9 @@ Problem Statement
 
 **Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha**.
 **Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing; Trust; Peer P0–P2 + DHT/relay/gossip (`docs/crypto.md`, `docs/peer-link.md`, `docs/local-node.md`).
-**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase B; наступний OPEN: **#26 Analyze-61** (retention/prune `.prev`).
+**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase B; наступний OPEN: **#27 Analyze-62** (per-CSU secrets).
 
-Останні закриті slices: A-56…A-59; A-60 systemd examples (`deploy/systemd/`, `docs/runbook-systemd.md`).
+Останні закриті slices: A-56…A-60; A-61 `.prev.<stamp>` prune (`identity backups prune`).
 
 See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md` and `scripts/prepare-alpha.sh`.
 

@@ -75,7 +75,9 @@ impl TrustAuditEntry {
             reason: None,
             public_key_hex: None,
             grace_until: None,
-            source: source.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+            source: source
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
             issuer_id: None,
         })
     }
@@ -162,12 +164,8 @@ impl TrustAuditLog {
             if trimmed.is_empty() {
                 continue;
             }
-            let entry: TrustAuditEntry = serde_json::from_str(trimmed).map_err(|e| {
-                CryptoError::Io(format!(
-                    "trust-audit.jsonl line {}: {e}",
-                    idx + 1
-                ))
-            })?;
+            let entry: TrustAuditEntry = serde_json::from_str(trimmed)
+                .map_err(|e| CryptoError::Io(format!("trust-audit.jsonl line {}: {e}", idx + 1)))?;
             out.push(entry);
         }
         Ok(out)
@@ -191,9 +189,13 @@ mod tests {
     fn append_and_load_roundtrip() {
         let dir = tempdir().unwrap();
         let root = dir.path();
-        let e1 = TrustAuditEntry::new(TrustAuditAction::Revoke, "aira:identity:peer-a", Some("cli"))
-            .unwrap()
-            .with_reason(Some("compromised"));
+        let e1 = TrustAuditEntry::new(
+            TrustAuditAction::Revoke,
+            "aira:identity:peer-a",
+            Some("cli"),
+        )
+        .unwrap()
+        .with_reason(Some("compromised"));
         let e2 = TrustAuditEntry::new(
             TrustAuditAction::Rotate,
             "aira:identity:peer-a",
@@ -210,10 +212,7 @@ mod tests {
         assert_eq!(loaded[0].action, TrustAuditAction::Revoke);
         assert_eq!(loaded[0].reason.as_deref(), Some("compromised"));
         assert_eq!(loaded[1].action, TrustAuditAction::Rotate);
-        assert_eq!(
-            loaded[1].new_id.as_deref(),
-            Some("aira:identity:peer-a-v2")
-        );
+        assert_eq!(loaded[1].new_id.as_deref(), Some("aira:identity:peer-a-v2"));
         assert_eq!(loaded[1].public_key_hex.as_ref().unwrap().len(), 64);
         assert!(loaded[0].public_key_hex.is_none());
     }

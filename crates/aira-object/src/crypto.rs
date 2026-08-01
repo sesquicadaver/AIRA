@@ -565,9 +565,10 @@ impl TrustStore {
             let id = AiraRef::parse(&e.identity_id).map_err(|_| CryptoError::InvalidKey)?;
             let vk = parse_public_hex(e.public_key_hex.trim())?;
             ring.insert_verifying(id.clone(), vk);
-            if let (Some(prev), Some(until)) =
-                (e.previous_public_key_hex.as_deref(), e.previous_grace_until.as_deref())
-            {
+            if let (Some(prev), Some(until)) = (
+                e.previous_public_key_hex.as_deref(),
+                e.previous_grace_until.as_deref(),
+            ) {
                 let until_dt = parse_rfc3339(until)?;
                 if now <= until_dt {
                     let prev_vk = parse_public_hex(prev.trim())?;
@@ -600,9 +601,10 @@ impl TrustStore {
             }
         }
         for e in &self.entries {
-            if let (Some(_), Some(until)) =
-                (e.previous_public_key_hex.as_deref(), e.previous_grace_until.as_deref())
-            {
+            if let (Some(_), Some(until)) = (
+                e.previous_public_key_hex.as_deref(),
+                e.previous_grace_until.as_deref(),
+            ) {
                 let until_dt = parse_rfc3339(until)?;
                 if now <= until_dt {
                     out.insert(e.identity_id.clone());
@@ -856,7 +858,8 @@ fn archive_latest_prev_slot(identity_dir: &Path) -> Result<Option<PathBuf>, Cryp
             obj.insert("archive_stamp".into(), serde_json::json!(stamp));
         }
         let out = serde_json::to_string_pretty(&v).map_err(|e| CryptoError::Io(e.to_string()))?;
-        fs::write(&archived_meta, format!("{out}\n")).map_err(|e| CryptoError::Io(e.to_string()))?;
+        fs::write(&archived_meta, format!("{out}\n"))
+            .map_err(|e| CryptoError::Io(e.to_string()))?;
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
@@ -927,7 +930,9 @@ pub fn list_node_secret_backups(
         if !name.starts_with(&prefix) {
             continue;
         }
-        if name.ends_with(".meta.json") || name.ends_with(".tmp") || name == NODE_SECRET_BACKUP_META_FILE
+        if name.ends_with(".meta.json")
+            || name.ends_with(".tmp")
+            || name == NODE_SECRET_BACKUP_META_FILE
         {
             continue;
         }
@@ -966,6 +971,164 @@ pub fn list_node_secret_backups(
         }
     });
     Ok(out)
+}
+
+/// Result of pruning archived node signing-secret stamp slots (Analyze-61).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct NodeSecretPruneReport {
+    pub deleted: Vec<PathBuf>,
+    /// Paths skipped with a human reason (unparseable age, orphan meta, …).
+    pub skipped: Vec<(PathBuf, String)>,
+    pub dry_run: bool,
+}
+
+fn unix_now_secs() -> i64 {
+    OffsetDateTime::now_utc().unix_timestamp()
+}
+
+/// Parse compact stamp `YYYYMMDDTHHMMSSZ` or `…-N` collision suffix → unix seconds.
+fn compact_stamp_unix(stamp: &str) -> Option<i64> {
+    let base = stamp.split('-').next().unwrap_or(stamp);
+    if base.len() != 16 || !base.ends_with('Z') {
+        return None;
+    }
+    let y: i32 = base.get(0..4)?.parse().ok()?;
+    let mo: u8 = base.get(4..6)?.parse().ok()?;
+    let d: u8 = base.get(6..8)?.parse().ok()?;
+    let h: u8 = base.get(9..11)?.parse().ok()?;
+    let mi: u8 = base.get(11..13)?.parse().ok()?;
+    let s: u8 = base.get(13..15)?.parse().ok()?;
+    if base.as_bytes().get(8) != Some(&b'T') {
+        return None;
+    }
+    let date = time::Date::from_calendar_date(y, time::Month::try_from(mo).ok()?, d).ok()?;
+    let time_ = time::Time::from_hms(h, mi, s).ok()?;
+    Some(OffsetDateTime::new_utc(date, time_).unix_timestamp())
+}
+
+fn ed25519_archive_age_unix(info: &NodeSecretBackupInfo) -> Option<i64> {
+    if let Some(ref at) = info.backed_up_at {
+        if let Ok(dt) = parse_rfc3339(at) {
+            return Some(dt.unix_timestamp());
+        }
+    }
+    compact_stamp_unix(&info.stamp)
+}
+
+fn should_retain_archived(
+    rank: u64,
+    age_unix: Option<i64>,
+    keep: Option<u64>,
+    older_than_days: Option<u64>,
+    now: i64,
+) -> Result<bool, String> {
+    let keep_ok = match keep {
+        None => true,
+        Some(n) => rank < n,
+    };
+    let age_ok = match older_than_days {
+        None => true,
+        Some(days) => {
+            let age = age_unix.ok_or_else(|| "unparseable age".to_string())?;
+            let limit = i64::try_from(days)
+                .unwrap_or(i64::MAX)
+                .saturating_mul(86_400);
+            now.saturating_sub(age) <= limit
+        }
+    };
+    Ok(keep_ok && age_ok)
+}
+
+/// Prune archived `local.ed25519.prev.<stamp>` slots (Analyze-61).
+///
+/// Never deletes the canonical latest `.prev` / `.prev.meta.json`.
+/// Requires at least one of `keep` / `older_than_days`.
+/// Retain = intersection of supplied policies among archived slots (newest rank 0).
+pub fn prune_node_secret_backups(
+    root: impl AsRef<Path>,
+    keep: Option<u64>,
+    older_than_days: Option<u64>,
+    dry_run: bool,
+) -> Result<NodeSecretPruneReport, CryptoError> {
+    if keep.is_none() && older_than_days.is_none() {
+        return Err(CryptoError::Io(
+            "prune requires --keep and/or --older-than-days".into(),
+        ));
+    }
+    let identity_dir = root.as_ref().join("identity");
+    let mut report = NodeSecretPruneReport {
+        dry_run,
+        ..Default::default()
+    };
+
+    // Orphan meta: never delete.
+    if identity_dir.is_dir() {
+        let prefix = format!("{NODE_SECRET_BACKUP_FILE}.");
+        let rd = fs::read_dir(&identity_dir).map_err(|e| CryptoError::Io(e.to_string()))?;
+        for ent in rd {
+            let ent = ent.map_err(|e| CryptoError::Io(e.to_string()))?;
+            let name = ent.file_name();
+            let name = name.to_string_lossy();
+            if !name.starts_with(&prefix) || !name.ends_with(".meta.json") {
+                continue;
+            }
+            // Canonical latest meta is `local.ed25519.prev.meta.json` (not a stamp archive).
+            if name.as_ref() == NODE_SECRET_BACKUP_META_FILE {
+                continue;
+            }
+            let end = name.len().saturating_sub(".meta.json".len());
+            if prefix.len() >= end {
+                continue;
+            }
+            // local.ed25519.prev.<stamp>.meta.json
+            let mid = &name[prefix.len()..end];
+            if mid.is_empty() || mid.contains('.') {
+                continue;
+            }
+            let secret = identity_dir.join(format!("{NODE_SECRET_BACKUP_FILE}.{mid}"));
+            if !secret.is_file() {
+                report.skipped.push((ent.path(), "orphan-meta".into()));
+            }
+        }
+    }
+
+    let list = list_node_secret_backups(&root)?;
+    let mut archived: Vec<_> = list.into_iter().filter(|b| !b.is_latest).collect();
+    archived.sort_by(|a, b| b.stamp.cmp(&a.stamp));
+    let now = unix_now_secs();
+
+    for (rank, info) in archived.into_iter().enumerate() {
+        let rank = rank as u64;
+        let age = ed25519_archive_age_unix(&info);
+        match should_retain_archived(rank, age, keep, older_than_days, now) {
+            Ok(true) => {}
+            Ok(false) => {
+                if dry_run {
+                    report.deleted.push(info.secret_path.clone());
+                    if let Some(ref m) = info.meta_path {
+                        report.deleted.push(m.clone());
+                    }
+                } else {
+                    fs::remove_file(&info.secret_path).map_err(|e| {
+                        CryptoError::Io(format!("prune {}: {e}", info.secret_path.display()))
+                    })?;
+                    report.deleted.push(info.secret_path.clone());
+                    if let Some(ref m) = info.meta_path {
+                        if m.is_file() {
+                            fs::remove_file(m).map_err(|e| {
+                                CryptoError::Io(format!("prune meta {}: {e}", m.display()))
+                            })?;
+                            report.deleted.push(m.clone());
+                        }
+                    }
+                }
+            }
+            Err(reason) => {
+                report.skipped.push((info.secret_path.clone(), reason));
+            }
+        }
+    }
+    Ok(report)
 }
 
 fn remove_path_quiet(path: &Path) {
@@ -1732,13 +1895,12 @@ mod tests {
             .unwrap();
         store.save(root).unwrap();
 
-        let entry = store
-            .entries
-            .iter()
-            .find(|e| e.identity_id == id)
-            .unwrap();
+        let entry = store.entries.iter().find(|e| e.identity_id == id).unwrap();
         assert_eq!(entry.public_key_hex, new_pub);
-        assert_eq!(entry.previous_public_key_hex.as_deref(), Some(old_pub.as_str()));
+        assert_eq!(
+            entry.previous_public_key_hex.as_deref(),
+            Some(old_pub.as_str())
+        );
         assert_eq!(
             entry.previous_grace_until.as_deref(),
             Some("2099-06-01T00:00:00Z")
@@ -1967,13 +2129,14 @@ mod tests {
         .unwrap();
 
         rotate_node_signing_secret(root, sk2.clone(), true, None).unwrap();
-        let first_prev = fs::read_to_string(root.join("identity").join(NODE_SECRET_BACKUP_FILE))
-            .unwrap();
+        let first_prev =
+            fs::read_to_string(root.join("identity").join(NODE_SECRET_BACKUP_FILE)).unwrap();
         assert_eq!(first_prev, secret1);
 
         let secret2 = format!("{}\n", hex::encode(sk2.to_bytes()));
         rotate_node_signing_secret(root, sk3.clone(), true, None).unwrap();
-        let latest = fs::read_to_string(root.join("identity").join(NODE_SECRET_BACKUP_FILE)).unwrap();
+        let latest =
+            fs::read_to_string(root.join("identity").join(NODE_SECRET_BACKUP_FILE)).unwrap();
         assert_eq!(latest, secret2);
         assert_ne!(latest, secret1);
 
@@ -1985,10 +2148,7 @@ mod tests {
         );
         let archived = list.iter().find(|b| !b.is_latest).unwrap();
         assert_eq!(fs::read_to_string(&archived.secret_path).unwrap(), secret1);
-        assert_eq!(
-            archived.old_public_key_hex.as_deref(),
-            Some(pub1.as_str())
-        );
+        assert_eq!(archived.old_public_key_hex.as_deref(), Some(pub1.as_str()));
         // Both secrets still recoverable.
         let secrets: Vec<_> = list
             .iter()
@@ -2228,5 +2388,100 @@ mod tests {
         let err = rotate_node_signing_secret(root, new_sk, false, Some("not-a-time")).unwrap_err();
         assert!(matches!(err, CryptoError::InvalidTimestamp(_)));
         reset_primary_signer();
+    }
+
+    #[test]
+    fn prune_keep_one_retains_newest_archive_and_latest() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let idir = root.join("identity");
+        fs::create_dir_all(&idir).unwrap();
+        fs::write(idir.join(NODE_SECRET_BACKUP_FILE), b"latest-secret\n").unwrap();
+        fs::write(
+            idir.join(NODE_SECRET_BACKUP_META_FILE),
+            serde_json::json!({"backed_up_at":"2026-08-01T12:00:00Z"}).to_string(),
+        )
+        .unwrap();
+        fs::write(idir.join("local.ed25519.prev.20260101T000000Z"), b"old\n").unwrap();
+        fs::write(
+            idir.join("local.ed25519.prev.20260101T000000Z.meta.json"),
+            serde_json::json!({"backed_up_at":"2026-01-01T00:00:00Z"}).to_string(),
+        )
+        .unwrap();
+        fs::write(idir.join("local.ed25519.prev.20260701T000000Z"), b"mid\n").unwrap();
+        fs::write(
+            idir.join("local.ed25519.prev.20260701T000000Z.meta.json"),
+            serde_json::json!({"backed_up_at":"2026-07-01T00:00:00Z"}).to_string(),
+        )
+        .unwrap();
+
+        let r = prune_node_secret_backups(root, Some(1), None, false).unwrap();
+        assert!(idir.join(NODE_SECRET_BACKUP_FILE).is_file());
+        assert!(idir.join("local.ed25519.prev.20260701T000000Z").is_file());
+        assert!(!idir.join("local.ed25519.prev.20260101T000000Z").is_file());
+        assert!(!idir
+            .join("local.ed25519.prev.20260101T000000Z.meta.json")
+            .is_file());
+        assert!(r
+            .deleted
+            .iter()
+            .any(|p| p.ends_with("local.ed25519.prev.20260101T000000Z")));
+    }
+
+    #[test]
+    fn prune_older_than_days_skips_unparseable_when_ttl_set() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let idir = root.join("identity");
+        fs::create_dir_all(&idir).unwrap();
+        fs::write(idir.join(NODE_SECRET_BACKUP_FILE), b"latest\n").unwrap();
+        fs::write(idir.join("local.ed25519.prev.notastamp"), b"bad\n").unwrap();
+        // stamp with dot is ignored by list; use valid-looking but unparseable age via no meta
+        // and stamp that fails compact parse: use letters in stamp after filtering — list requires
+        // no '.' in stamp. "ABCDEFGHIJKLMNZ" length wrong. Use 16-char invalid month.
+        fs::write(
+            idir.join("local.ed25519.prev.20261301T000000Z"),
+            b"bad-month\n",
+        )
+        .unwrap();
+
+        let r = prune_node_secret_backups(root, None, Some(31), false).unwrap();
+        assert!(idir.join("local.ed25519.prev.20261301T000000Z").is_file());
+        assert!(r.skipped.iter().any(|(_, w)| w.contains("unparseable")));
+        assert!(idir.join(NODE_SECRET_BACKUP_FILE).is_file());
+    }
+
+    #[test]
+    fn prune_dry_run_deletes_nothing() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let idir = root.join("identity");
+        fs::create_dir_all(&idir).unwrap();
+        fs::write(idir.join(NODE_SECRET_BACKUP_FILE), b"latest\n").unwrap();
+        fs::write(idir.join("local.ed25519.prev.20260101T000000Z"), b"old\n").unwrap();
+        let r = prune_node_secret_backups(root, Some(0), None, true).unwrap();
+        assert!(r.dry_run);
+        assert!(idir.join("local.ed25519.prev.20260101T000000Z").is_file());
+        assert!(!r.deleted.is_empty());
+    }
+
+    #[test]
+    fn prune_requires_policy_flag() {
+        let dir = tempdir().unwrap();
+        let err = prune_node_secret_backups(dir.path(), None, None, false).unwrap_err();
+        assert!(err.to_string().contains("requires"));
+    }
+
+    #[test]
+    fn prune_never_deletes_orphan_meta() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let idir = root.join("identity");
+        fs::create_dir_all(&idir).unwrap();
+        let orphan = idir.join("local.ed25519.prev.20260101T000000Z.meta.json");
+        fs::write(&orphan, "{}").unwrap();
+        let r = prune_node_secret_backups(root, Some(0), None, false).unwrap();
+        assert!(orphan.is_file());
+        assert!(r.skipped.iter().any(|(_, w)| w == "orphan-meta"));
     }
 }

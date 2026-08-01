@@ -137,7 +137,10 @@ mod tests {
         assert_eq!(sig_a.key_ref.as_str(), pub_a.as_str());
         // Verify with a local ring (process keyring is shared across parallel tests).
         let mut check = Keyring::new();
-        check.insert_verifying(pub_a.clone(), SigningKey::from_bytes(&[71u8; 32]).verifying_key());
+        check.insert_verifying(
+            pub_a.clone(),
+            SigningKey::from_bytes(&[71u8; 32]).verifying_key(),
+        );
         check.verify(&sig_a, msg).unwrap();
 
         // A cannot sign as B's publisher.
