@@ -45,7 +45,9 @@ pub use notify::{
 };
 pub use relay::{
     make_relay_deliver_envelope, parse_relay_deliver, send_envelope_to_peer, serve_relay_peer,
-    RelayDeliver, RelayHub, RELAY_DELIVER_MESSAGE_TYPE, RELAY_DELIVER_SCHEMA,
+    with_relay_hub_registry, RelayDeliver, RelayHub, RelayHubEntry, RelayHubRegistry,
+    RELAY_DELIVER_MESSAGE_TYPE, RELAY_DELIVER_SCHEMA, RELAY_HUB_REGISTRY_SCHEMA,
+    RELAY_HUB_TTL_DAYS_RECOMMENDED,
 };
 pub use session::{accept, dial, listen, listen_explicit, AuthenticatedPeer, DEFAULT_PEER_TIMEOUT};
 pub use trust_delta::{
@@ -967,8 +969,9 @@ mod tests {
             for _ in 0..2 {
                 let peer = accept(&listener, &root_r2).await.unwrap();
                 let hub_c = hub_accept.clone();
+                let root_peer = root_r2.clone();
                 tokio::spawn(async move {
-                    let _ = serve_relay_peer(hub_c, peer).await;
+                    let _ = serve_relay_peer(hub_c, peer, &root_peer, None).await;
                 });
             }
         });

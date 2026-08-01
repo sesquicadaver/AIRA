@@ -293,6 +293,10 @@ enum PeerCommands {
         /// Run as relay hub: register live sessions and forward `peer.relay.deliver` (Analyze-44).
         #[arg(long, default_value_t = false)]
         relay: bool,
+        /// Optional TTL days for durable offline registry prune (Analyze-58). Requires `--relay`.
+        /// Recommended: 31. Omit = keep offline history forever.
+        #[arg(long)]
+        relay_ttl_days: Option<u64>,
         /// Apply inbound `peer.dht.announce` into local DHT table (Analyze-47).
         #[arg(long, default_value_t = false)]
         dht: bool,
@@ -1226,6 +1230,7 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             apply_trust,
             gossip,
             relay,
+            relay_ttl_days,
             dht,
             apply_book,
         } => {
@@ -1237,6 +1242,9 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             }
             if apply_book && !dht {
                 bail!("--apply-book requires --dht");
+            }
+            if relay_ttl_days.is_some() && !relay {
+                bail!("--relay-ttl-days requires --relay");
             }
             if gossip && !apply_trust {
                 bail!("--gossip requires --apply-trust");
@@ -1250,6 +1258,11 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             if relay && recv {
                 bail!("--relay implies hub mode; omit --recv");
             }
+            if relay {
+                // Fail closed before bind: load + prove registry is writable (Analyze-58).
+                aira_peer::with_relay_hub_registry(root, relay_ttl_days, |_| Ok(()))
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+            }
             let listener = aira_peer::listen(&bind)
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -1262,6 +1275,11 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             }
             if relay {
                 println!("relay hub enabled");
+                if let Some(days) = relay_ttl_days {
+                    println!("relay_ttl_days {days}");
+                } else {
+                    println!("relay_ttl_days off (offline history retained)");
+                }
             }
             if recv {
                 println!("recv enabled");
@@ -1297,14 +1315,17 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                     };
                     println!("relay registered {}", peer.peer_id.as_str());
                     let hub_c = hub.clone();
+                    let root_c = root_owned.clone();
+                    let ttl = relay_ttl_days;
                     if once {
-                        aira_peer::serve_relay_peer(hub_c, peer)
+                        aira_peer::serve_relay_peer(hub_c, peer, &root_c, ttl)
                             .await
                             .map_err(|e| anyhow::anyhow!("{e}"))?;
                         break;
                     }
                     tokio::spawn(async move {
-                        if let Err(e) = aira_peer::serve_relay_peer(hub_c, peer).await {
+                        if let Err(e) = aira_peer::serve_relay_peer(hub_c, peer, &root_c, ttl).await
+                        {
                             eprintln!("relay session ended: {e}");
                         }
                     });
