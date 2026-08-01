@@ -1,7 +1,7 @@
 # Analyze-60 — systemd examples
 
 **QUEUE:** #25  
-**Status:** CLOSED  
+**Status:** CLOSED (`b28f54a`)  
 **Decision:** Option **A** — systemd only; `aira-node` + `aira-peer-listen` + runbook
 
 ## Shipped
