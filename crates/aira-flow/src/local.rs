@@ -98,8 +98,19 @@ impl NodePaths {
         }
     }
 
-    pub fn config(&self) -> PathBuf {
+    /// Canonical JSON config path (`aira init` writer).
+    pub fn config_json(&self) -> PathBuf {
         self.root.join("config.json")
+    }
+
+    /// Optional YAML config path (read parity with JSON).
+    pub fn config_yaml(&self) -> PathBuf {
+        self.root.join("config.yaml")
+    }
+
+    /// Alias for [`Self::config_json`] (writers / display).
+    pub fn config(&self) -> PathBuf {
+        self.config_json()
     }
     pub fn identity_dir(&self) -> PathBuf {
         self.root.join("identity")
@@ -188,9 +199,10 @@ pub fn init_node(root: impl AsRef<Path>) -> Result<NodePaths, FlowError> {
         fs::create_dir_all(&dir).map_err(|e| FlowError::Other(e.to_string()))?;
     }
 
-    if !paths.config().exists() {
+    // JSON writer only when neither config.json nor config.yaml exists (YAML-only stays untouched).
+    if !node_config_present(&paths.root) {
         let cfg = NodeConfig::default();
-        write_json(&paths.config(), &cfg)?;
+        write_json(&paths.config_json(), &cfg)?;
     }
 
     // Initialize SQLite object store schema.
@@ -214,10 +226,35 @@ pub fn init_node(root: impl AsRef<Path>) -> Result<NodePaths, FlowError> {
     Ok(paths)
 }
 
-/// Load node config from disk.
+/// True if `config.json` and/or `config.yaml` exists under `root`.
+///
+/// Presence means the node is considered initialized; [`load_config`] still
+/// fails closed when **both** files are present.
+pub fn node_config_present(root: impl AsRef<Path>) -> bool {
+    let paths = NodePaths::new(root);
+    paths.config_json().exists() || paths.config_yaml().exists()
+}
+
+/// Load node config from disk (`config.json` **xor** `config.yaml`).
 pub fn load_config(root: impl AsRef<Path>) -> Result<NodeConfig, FlowError> {
     let paths = NodePaths::new(root);
-    read_json(&paths.config())
+    let json_path = paths.config_json();
+    let yaml_path = paths.config_yaml();
+    match (json_path.exists(), yaml_path.exists()) {
+        (true, true) => Err(FlowError::Other(
+            "both config.json and config.yaml present — remove one (fail-closed)".into(),
+        )),
+        (true, false) => read_json(&json_path),
+        (false, true) => {
+            let raw =
+                fs::read_to_string(&yaml_path).map_err(|e| FlowError::Other(e.to_string()))?;
+            serde_norway::from_str(&raw).map_err(|e| FlowError::Other(e.to_string()))
+        }
+        (false, false) => Err(FlowError::Other(format!(
+            "node not initialized at {} (missing config.json / config.yaml)",
+            paths.root.display()
+        ))),
+    }
 }
 
 /// Local session: operational plane + disk persistence.
@@ -231,7 +268,7 @@ impl LocalSession {
     /// Open an existing initialized node root.
     pub fn open(root: impl AsRef<Path>) -> Result<Self, FlowError> {
         let paths = NodePaths::new(root);
-        if !paths.config().exists() {
+        if !node_config_present(&paths.root) {
             return Err(FlowError::Other(format!(
                 "node not initialized at {} (run `aira init`)",
                 paths.root.display()

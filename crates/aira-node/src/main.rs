@@ -12,7 +12,9 @@ use anyhow::{bail, Result};
 use clap::Parser;
 
 use aira_csu::CsuRegistry;
-use aira_flow::{init_node, load_config, LocalSession, SubmitOutcome, DEFAULT_AIRA_ROOT};
+use aira_flow::{
+    init_node, load_config, node_config_present, LocalSession, SubmitOutcome, DEFAULT_AIRA_ROOT,
+};
 use aira_protocol::DiscoveryRegistry;
 
 use crate::http::{health_router, router, AppState};
@@ -87,7 +89,7 @@ fn main() -> ExitCode {
 
 fn run() -> Result<ExitCode> {
     let args = Args::parse();
-    if args.init || !args.root.join("config.json").exists() {
+    if args.init || !node_config_present(&args.root) {
         if args.init {
             let paths = init_node(&args.root).map_err(|e| anyhow::anyhow!("{e}"))?;
             println!("initialized {}", paths.root.display());

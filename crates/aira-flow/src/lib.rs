@@ -7,7 +7,8 @@ mod local;
 mod plane;
 
 pub use local::{
-    init_node, load_config, LocalSession, NodeConfig, NodePaths, ProblemRecord, DEFAULT_AIRA_ROOT,
+    init_node, load_config, node_config_present, LocalSession, NodeConfig, NodePaths, ProblemRecord,
+    DEFAULT_AIRA_ROOT,
 };
 pub use plane::{FlowError, OperationalPlane, SubmitOutcome};
 
@@ -274,5 +275,98 @@ mod tests {
         assert_eq!(ev.producer_identity.as_str(), id);
         assert_eq!(ev.signature.key_ref.as_str(), id);
         aira_object::reset_primary_signer();
+    }
+
+    fn write_default_yaml(root: &std::path::Path) {
+        let yaml = serde_norway::to_string(&NodeConfig::default()).unwrap();
+        std::fs::write(root.join("config.yaml"), yaml).unwrap();
+    }
+
+    #[test]
+    fn load_config_yaml_matches_json() {
+        let dir = tempfile::tempdir().unwrap();
+        let root_json = dir.path().join("json");
+        let root_yaml = dir.path().join("yaml");
+        init_node(&root_json).unwrap();
+        std::fs::create_dir_all(&root_yaml).unwrap();
+        write_default_yaml(&root_yaml);
+        let a = load_config(&root_json).unwrap();
+        let b = load_config(&root_yaml).unwrap();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn load_config_both_fail_closed() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        write_default_yaml(&root);
+        let err = load_config(&root).unwrap_err().to_string();
+        assert!(err.contains("both config.json and config.yaml"), "{err}");
+    }
+
+    #[test]
+    fn load_config_json_only_ok() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        assert!(!root.join("config.yaml").exists());
+        let cfg = load_config(&root).unwrap();
+        assert_eq!(cfg.node.mode, "local");
+    }
+
+    #[test]
+    fn open_accepts_yaml_only_node() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        // Layout without config.json: dirs + yaml.
+        for d in ["identity", "db", "artifacts", "csu", "events", "problems"] {
+            std::fs::create_dir_all(root.join(d)).unwrap();
+        }
+        write_default_yaml(&root);
+        assert!(node_config_present(&root));
+        assert!(!root.join("config.json").exists());
+        let session = LocalSession::open(&root).unwrap();
+        assert_eq!(session.config.node.profile, "C1");
+    }
+
+    #[test]
+    fn init_writes_json_not_yaml() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        assert!(root.join("config.json").exists());
+        assert!(!root.join("config.yaml").exists());
+    }
+
+    #[test]
+    fn init_idempotent_on_yaml_only_node() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        std::fs::create_dir_all(&root).unwrap();
+        write_default_yaml(&root);
+        init_node(&root).unwrap();
+        assert!(root.join("config.yaml").exists());
+        assert!(
+            !root.join("config.json").exists(),
+            "YAML-only node must not gain config.json from init"
+        );
+        let cfg = load_config(&root).unwrap();
+        assert_eq!(cfg, NodeConfig::default());
+    }
+
+    #[test]
+    fn status_accepts_yaml_only_node() {
+        // `aira status` uses node_config_present + LocalSession::open.
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        for d in ["identity", "db", "artifacts", "csu", "events", "problems"] {
+            std::fs::create_dir_all(root.join(d)).unwrap();
+        }
+        write_default_yaml(&root);
+        assert!(node_config_present(&root));
+        let session = LocalSession::open(&root).unwrap();
+        assert_eq!(session.config.node.mode, "local");
+        assert_eq!(session.config.node.profile, "C1");
     }
 }

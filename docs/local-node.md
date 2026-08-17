@@ -4,7 +4,8 @@
 
 ```text
 .aira/
-  config.json
+  config.json        # written by `aira init` (canonical)
+  # config.yaml      # optional read-equivalent alternative (xor with config.json)
   identity/          # aira identity create + trust.json + trust-audit.jsonl
   db/aira.sqlite
   artifacts/         # CAS + index.json
@@ -115,7 +116,7 @@ curl -skS --cert client.pem --key client.key https://127.0.0.1:8787/health
 curl -sS http://127.0.0.1:8788/health
 ```
 
-Non-goals (див. [`QUEUE.md`](../QUEUE.md)): federation (#35); public bind opt-in (#34); YAML `config.yaml` parity (#30); tenant `.prev` prune (#36); mTLS CN principal seam.
+Non-goals (див. [`QUEUE.md`](../QUEUE.md)): federation (#35); public bind opt-in (#34); tenant `.prev` prune (#36); mTLS CN principal seam; YAML **write**/convert CLI; SQLite audit rewrite.
 
 Shipped на HTTP: mTLS require + CN→TrustStore (A-51/55); plain `--health-listen` (A-56 / #21); multi-tenant CSU authz Bearer map (A-64 / #29).
 
@@ -123,7 +124,7 @@ Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.
 
 ## Notes
 
-- Config is JSON MVP (`config.json`); YAML parity — QUEUE #30.
+- Config: `config.json` (from `aira init`) **or** `config.yaml` (same `NodeConfig` schema). Both present → fail-closed. Init never writes YAML.
 - Multi-submit uses `run_nonce` so artifact/event ids do not collide.
 - No network dependency is required for local MVP.
 - AiraRefs in path segments may include `:` (single URL path segment).

@@ -10,7 +10,9 @@ use rand::rngs::OsRng;
 
 use aira_conformance::{run_profile, ConformanceProfile};
 use aira_csu::{CsuLifecycleState, CsuManifest, CsuRegistry};
-use aira_flow::{init_node, LocalSession, NodePaths, SubmitOutcome, DEFAULT_AIRA_ROOT};
+use aira_flow::{
+    init_node, node_config_present, LocalSession, NodePaths, SubmitOutcome, DEFAULT_AIRA_ROOT,
+};
 use aira_schema::{find_repo_root, SchemaRegistry};
 
 #[derive(Parser, Debug)]
@@ -498,7 +500,7 @@ fn run() -> Result<ExitCode> {
         Commands::Status => {
             println!("aira {}", env!("CARGO_PKG_VERSION"));
             println!("status: C1 Conformance ready (Epic 9)");
-            if root.join("config.json").exists() {
+            if node_config_present(&root) {
                 let session = LocalSession::open(&root).map_err(|e| anyhow::anyhow!("{e}"))?;
                 println!(
                     "node: mode={} profile={}",
@@ -1254,7 +1256,7 @@ fn run() -> Result<ExitCode> {
 }
 
 fn ensure_init(root: &Path) -> Result<()> {
-    if !root.join("config.json").exists() {
+    if !node_config_present(root) {
         bail!(
             "node not initialized at {} — run `aira init --root {}`",
             root.display(),

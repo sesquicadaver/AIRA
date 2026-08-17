@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-64 CLOSED @ `0aaa314`; QUEUE #29 DONE; next OPEN #30 |
+| `main` | Analyze-65 CLOSED; QUEUE #30 DONE; next OPEN #31 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#30 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#31 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -45,7 +45,7 @@
 | 27 | **DONE** | ~~Analyze-62 — durable per-CSU secrets~~ | On-disk `identity/tenants/<hex>/` load/save + isolation + auto-load | тести + CLI `identity csu-tenant` | tenant rotate ceremony |
 | 28 | **DONE** | ~~Analyze-63 — tenant rotate/revoke ceremony~~ | Same-publisher rotate + revoke unload/delete + audit | CLI + audit + тести | HTTP authz |
 | 29 | **DONE** | ~~Analyze-64 — multi-tenant HTTP authz~~ | Bearer map → publisher; CSU register/list cross-tenant 403 | тести + docs/local-node | federation; mTLS CN seam |
-| 30 | OPEN | Analyze-65 | YAML parity для `config.json` (читання `config.yaml`) | еквівалентний bootstrap; тест | SQLite audit rewrite |
+| 30 | **DONE** | ~~Analyze-65 — YAML config read parity~~ | `config.yaml` xor `config.json` → `NodeConfig`; init JSON-only | тести + docs/local-node | SQLite audit rewrite |
 | 31 | OPEN | Analyze-66 | STUN/ICE-lite для peer dial (один механізм, без full ICE stack) | documented dial path + тест/harness у venv | discv5 UDP |
 | 32 | OPEN | Analyze-67 | UDP discv5-style announce (локальний) | announce+store; не iterative | FIND_NODE |
 | 33 | OPEN | Analyze-68 | Iterative FIND_NODE поверх #32 | closest lookup over UDP path | federation join |
@@ -55,7 +55,7 @@
 
 ### Наступний цикл
 
-**#30 → Analyze-65** (YAML config parity).
+**#31 → Analyze-66** (STUN/ICE-lite).
 
 ---
 
