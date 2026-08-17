@@ -27,6 +27,8 @@ pub enum PeerError {
     Crypto(String),
     #[error("protocol: {0}")]
     Protocol(String),
+    #[error("stun: {0}")]
+    Stun(String),
 }
 
 impl From<std::io::Error> for PeerError {

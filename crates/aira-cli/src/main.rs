@@ -381,6 +381,11 @@ enum PeerCommands {
         #[command(subcommand)]
         command: PeerDhtCommands,
     },
+    /// STUN Binding reflexive discovery (Analyze-66). Does not change `dial`.
+    Stun {
+        #[command(subcommand)]
+        command: PeerStunCommands,
+    },
     /// Hold an outbound session to a relay (register for inbound delivers).
     RelayHold {
         #[arg(long)]
@@ -446,7 +451,10 @@ enum PeerDhtCommands {
     Announce {
         /// Dialable socket addr to advertise (e.g. 127.0.0.1:7900).
         #[arg(long)]
-        addr: String,
+        addr: Option<String>,
+        /// Use addr from `peers/stun_reflexive.json` (Analyze-66). Mutually exclusive with `--addr`.
+        #[arg(long, default_value_t = false)]
+        from_stun: bool,
     },
     /// Find closest DHT records for an identity (local table).
     Find {
@@ -460,6 +468,16 @@ enum PeerDhtCommands {
     },
     /// List local DHT records.
     List,
+}
+
+#[derive(Subcommand, Debug)]
+enum PeerStunCommands {
+    /// RFC 5389 Binding query → print + write `peers/stun_reflexive.json`.
+    Query {
+        /// STUN server `host:port` (required; also `AIRA_STUN_SERVER`). No public default.
+        #[arg(long, env = "AIRA_STUN_SERVER")]
+        stun_server: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -930,9 +948,8 @@ fn run() -> Result<ExitCode> {
                         SigningKey::generate(&mut OsRng)
                     };
                     let pub_hex = hex::encode(sk.verifying_key().to_bytes());
-                    let dir =
-                        aira_object::save_csu_tenant_signing(&root, &csu, pub_id, sk, force)
-                            .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let dir = aira_object::save_csu_tenant_signing(&root, &csu, pub_id, sk, force)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
                     println!("csu_tenant {}", csu.as_str());
                     println!("publisher {publisher}");
                     println!("public_key {pub_hex}");
@@ -1348,9 +1365,9 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
             Ok(ExitCode::SUCCESS)
         }
         PeerCommands::Dht { command } => match command {
-            PeerDhtCommands::Announce { addr } => {
-                addr.parse::<std::net::SocketAddr>()
-                    .with_context(|| format!("invalid addr {addr}"))?;
+            PeerDhtCommands::Announce { addr, from_stun } => {
+                let addr = aira_peer::resolve_dht_announce_addr(root, addr.as_deref(), from_stun)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
                 let results = aira_peer::dht_announce_to_peers(root, &addr)
                     .await
                     .map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -1419,6 +1436,28 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                     }
                 }
                 println!("dht {}", aira_peer::PeerDhtStore::path(root).display());
+                Ok(ExitCode::SUCCESS)
+            }
+        },
+        PeerCommands::Stun { command } => match command {
+            PeerStunCommands::Query { stun_server } => {
+                let server = stun_server.ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "stun server required — pass --stun-server host:port or set AIRA_STUN_SERVER"
+                    )
+                })?;
+                let rec = aira_peer::query_and_save_stun_reflexive(
+                    root,
+                    &server,
+                    aira_peer::STUN_QUERY_TIMEOUT,
+                )
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+                println!("stun reflexive {}", rec.addr);
+                println!("stun_server {}", rec.stun_server);
+                println!(
+                    "stun_reflexive {}",
+                    aira_peer::StunReflexiveRecord::path(root).display()
+                );
                 Ok(ExitCode::SUCCESS)
             }
         },

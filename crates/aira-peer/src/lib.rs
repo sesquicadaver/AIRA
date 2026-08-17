@@ -7,6 +7,7 @@
 //! Analyze-44: relay-first hub (`peer.relay.deliver` + address-book `via`).
 //! Analyze-47: trusted-mesh DHT-lite (`peers/dht.json` + `peer.dht.announce`).
 //! Analyze-59: `accept_tcp` + `complete_accept` so daemon loops are not blocked by handshake.
+//! Analyze-66: STUN Binding client + `peers/stun_reflexive.json` (no ICE; dial stays TCP/book).
 
 mod address_book;
 mod dht;
@@ -20,6 +21,7 @@ mod noise;
 mod notify;
 mod relay;
 mod session;
+mod stun;
 mod trust_delta;
 
 pub use address_book::{AddressBook, PeerEndpoint};
@@ -55,6 +57,11 @@ pub use relay::{
 pub use session::{
     accept, accept_tcp, complete_accept, dial, listen, listen_explicit, AuthenticatedPeer,
     DEFAULT_PEER_TIMEOUT,
+};
+pub use stun::{
+    build_binding_request, parse_binding_success, query_and_save_stun_reflexive,
+    query_stun_reflexive, resolve_dht_announce_addr, MockStunServer, StunReflexiveRecord,
+    STUN_MAGIC_COOKIE, STUN_QUERY_TIMEOUT,
 };
 pub use trust_delta::{
     apply_trust_delta, local_rekey_delta, make_trust_delta_envelope, parse_trust_delta, TrustDelta,

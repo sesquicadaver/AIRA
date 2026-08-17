@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-65 CLOSED @ 1216838; QUEUE #30 DONE; next OPEN #31 |
+| `main` | Analyze-66 CLOSED; QUEUE #31 DONE; next OPEN #32 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#31 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#32 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -46,7 +46,7 @@
 | 28 | **DONE** | ~~Analyze-63 — tenant rotate/revoke ceremony~~ | Same-publisher rotate + revoke unload/delete + audit | CLI + audit + тести | HTTP authz |
 | 29 | **DONE** | ~~Analyze-64 — multi-tenant HTTP authz~~ | Bearer map → publisher; CSU register/list cross-tenant 403 | тести + docs/local-node | federation; mTLS CN seam |
 | 30 | **DONE** | ~~Analyze-65 — YAML config read parity~~ | `config.yaml` xor `config.json` → `NodeConfig`; init JSON-only | тести + docs/local-node | SQLite audit rewrite |
-| 31 | OPEN | Analyze-66 | STUN/ICE-lite для peer dial (один механізм, без full ICE stack) | documented dial path + тест/harness у venv | discv5 UDP |
+| 31 | **DONE** | ~~Analyze-66 — STUN Binding reflexive~~ | Binding → `stun_reflexive.json` → `dht announce --from-stun`; dial unchanged | mock STUN + docs/peer-link | discv5 UDP |
 | 32 | OPEN | Analyze-67 | UDP discv5-style announce (локальний) | announce+store; не iterative | FIND_NODE |
 | 33 | OPEN | Analyze-68 | Iterative FIND_NODE поверх #32 | closest lookup over UDP path | federation join |
 | 34 | OPEN | Analyze-69 | Public HTTP bind лише з **явним** opt-in + fail-closed default | docs + тест відмови без flag | federation |
@@ -55,7 +55,7 @@
 
 ### Наступний цикл
 
-**#31 → Analyze-66** (STUN/ICE-lite).
+**#32 → Analyze-67** (UDP discv5-style announce).
 
 ---
 
