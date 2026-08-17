@@ -369,13 +369,9 @@ pub fn rotate_csu_tenant_signing(
     commit_secret_then_meta(&dir, &secret_hex, &new_meta)?;
     register_csu_tenant_signing(csu_id, publisher.clone(), new_signing)?;
 
-    let audit = TrustAuditEntry::new(
-        TrustAuditAction::TenantRotate,
-        csu,
-        Some("csu-tenant"),
-    )?
-    .with_pubkey_hex(Some(new_pub.as_str()))
-    .with_reason(Some("csu tenant signing rotated"));
+    let audit = TrustAuditEntry::new(TrustAuditAction::TenantRotate, csu, Some("csu-tenant"))?
+        .with_pubkey_hex(Some(new_pub.as_str()))
+        .with_reason(Some("csu tenant signing rotated"));
     TrustAuditLog::append(root, &audit)?;
 
     Ok((publisher, new_pub, old_pub, wrote_backup))
@@ -811,12 +807,8 @@ mod tests {
         let pub_id = AiraRef::parse("aira:identity:dup-pub-01").unwrap();
         register_csu_tenant_signing(&csu_a, pub_id.clone(), SigningKey::from_bytes(&[11u8; 32]))
             .unwrap();
-        let err = register_csu_tenant_signing(
-            &csu_b,
-            pub_id,
-            SigningKey::from_bytes(&[12u8; 32]),
-        )
-        .unwrap_err();
+        let err = register_csu_tenant_signing(&csu_b, pub_id, SigningKey::from_bytes(&[12u8; 32]))
+            .unwrap_err();
         assert!(matches!(err, CryptoError::TenantIsolation(_)));
         reset_csu_tenants();
         reset_primary_signer();
@@ -876,13 +868,9 @@ mod tests {
         let old_sig = signature_for_tenant(&csu, &pub_id, b"before").unwrap();
         verify_ed25519(&old_sig, b"before").unwrap();
 
-        let (publisher, new_pub, old_pub, backup) = rotate_csu_tenant_signing(
-            root,
-            &csu,
-            SigningKey::from_bytes(&[94u8; 32]),
-            false,
-        )
-        .unwrap();
+        let (publisher, new_pub, old_pub, backup) =
+            rotate_csu_tenant_signing(root, &csu, SigningKey::from_bytes(&[94u8; 32]), false)
+                .unwrap();
         assert_eq!(publisher.as_str(), pub_id.as_str());
         assert_ne!(new_pub, old_pub);
         assert!(backup.is_none());
@@ -907,13 +895,10 @@ mod tests {
         write_min_node(root, "node-rot02", [67u8; 32]);
         let csu = AiraRef::parse("aira:csu:rot.02").unwrap();
         let pub_id = AiraRef::parse("aira:identity:rot-pub-02").unwrap();
-        assert!(rotate_csu_tenant_signing(
-            root,
-            &csu,
-            SigningKey::from_bytes(&[95u8; 32]),
-            false
-        )
-        .is_err());
+        assert!(
+            rotate_csu_tenant_signing(root, &csu, SigningKey::from_bytes(&[95u8; 32]), false)
+                .is_err()
+        );
         save_csu_tenant_signing(
             root,
             &csu,
@@ -922,22 +907,14 @@ mod tests {
             false,
         )
         .unwrap();
-        let (_, _, _, b1) = rotate_csu_tenant_signing(
-            root,
-            &csu,
-            SigningKey::from_bytes(&[96u8; 32]),
-            true,
-        )
-        .unwrap();
+        let (_, _, _, b1) =
+            rotate_csu_tenant_signing(root, &csu, SigningKey::from_bytes(&[96u8; 32]), true)
+                .unwrap();
         assert!(b1.unwrap().ends_with(CSU_TENANT_SECRET_BACKUP_FILE));
         std::thread::sleep(std::time::Duration::from_millis(1100));
-        let (_, _, _, b2) = rotate_csu_tenant_signing(
-            root,
-            &csu,
-            SigningKey::from_bytes(&[97u8; 32]),
-            true,
-        )
-        .unwrap();
+        let (_, _, _, b2) =
+            rotate_csu_tenant_signing(root, &csu, SigningKey::from_bytes(&[97u8; 32]), true)
+                .unwrap();
         assert!(b2.unwrap().ends_with(CSU_TENANT_SECRET_BACKUP_FILE));
         let tdir = tenant_dir(root, csu.as_str());
         let archived: Vec<_> = fs::read_dir(&tdir)
@@ -975,8 +952,7 @@ mod tests {
         assert!(signature_for_tenant(&csu, &pub_id, b"x").is_err());
         let audit = TrustAuditLog::load(root).unwrap();
         assert!(audit.iter().any(|e| {
-            e.action == TrustAuditAction::TenantRevoke
-                && e.reason.as_deref() == Some("compromised")
+            e.action == TrustAuditAction::TenantRevoke && e.reason.as_deref() == Some("compromised")
         }));
         assert!(revoke_csu_tenant_signing(root, &csu, "").is_err());
         reset_csu_tenants();
