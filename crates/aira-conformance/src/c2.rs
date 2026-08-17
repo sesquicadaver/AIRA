@@ -5,9 +5,7 @@ use std::path::Path;
 
 use aira_csu::support::make_event;
 use aira_event::EventType;
-use aira_protocol::{
-    DiscoveryRegistry, EventProtocolAdapter, ProtocolStatus, EP_VERSION,
-};
+use aira_protocol::{DiscoveryRegistry, EventProtocolAdapter, ProtocolStatus, EP_VERSION};
 use aira_schema::SchemaRegistry;
 use serde_json::Value;
 

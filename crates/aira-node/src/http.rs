@@ -86,11 +86,9 @@ impl AppState {
             return Principal::Unscoped;
         }
         match bearer_credential(header) {
-            Some(tok) => resolve_principal(
-                tok,
-                self.http_token.as_deref(),
-                self.tenant_auth.as_deref(),
-            ),
+            Some(tok) => {
+                resolve_principal(tok, self.http_token.as_deref(), self.tenant_auth.as_deref())
+            }
             None => Principal::Unscoped,
         }
     }
@@ -147,10 +145,12 @@ async fn bearer_gate(
     if req.uri().path() == "/health" {
         return next.run(req).await;
     }
-    match bearer_credential(req.headers().get(AUTHORIZATION).and_then(|v| v.to_str().ok())) {
-        Some(got)
-            if bearer_token_accepted(got, Some(admin.as_ref()), map.as_deref()) =>
-        {
+    match bearer_credential(
+        req.headers()
+            .get(AUTHORIZATION)
+            .and_then(|v| v.to_str().ok()),
+    ) {
+        Some(got) if bearer_token_accepted(got, Some(admin.as_ref()), map.as_deref()) => {
             next.run(req).await
         }
         _ => err(StatusCode::UNAUTHORIZED, "unauthorized"),
@@ -317,15 +317,9 @@ async fn get_capabilities(State(state): State<AppState>) -> Response {
     Json(json!({ "capabilities": caps })).into_response()
 }
 
-async fn get_csu_list(
-    State(state): State<AppState>,
-    headers: axum::http::HeaderMap,
-) -> Response {
-    let principal = state.principal_from_auth_header(
-        headers
-            .get(AUTHORIZATION)
-            .and_then(|v| v.to_str().ok()),
-    );
+async fn get_csu_list(State(state): State<AppState>, headers: axum::http::HeaderMap) -> Response {
+    let principal =
+        state.principal_from_auth_header(headers.get(AUTHORIZATION).and_then(|v| v.to_str().ok()));
     let path = state.root.join("csu").join("registry.json");
     if !path.exists() {
         return Json(json!({ "csu": [] })).into_response();
@@ -333,9 +327,8 @@ async fn get_csu_list(
     match CsuRegistry::load(&path) {
         Ok(reg) => {
             let all = reg.list();
-            let filtered = filter_csu_list(&principal, &all, |e| {
-                e.manifest.publisher_identity.as_str()
-            });
+            let filtered =
+                filter_csu_list(&principal, &all, |e| e.manifest.publisher_identity.as_str());
             let list: Vec<_> = filtered
                 .into_iter()
                 .map(|e| {
@@ -366,11 +359,8 @@ async fn post_csu_register(
     headers: axum::http::HeaderMap,
     Json(body): Json<CsuRegisterBody>,
 ) -> Response {
-    let principal = state.principal_from_auth_header(
-        headers
-            .get(AUTHORIZATION)
-            .and_then(|v| v.to_str().ok()),
-    );
+    let principal =
+        state.principal_from_auth_header(headers.get(AUTHORIZATION).and_then(|v| v.to_str().ok()));
     if let Err(e) = authorize_csu_register(&principal, &body.manifest) {
         return err(StatusCode::FORBIDDEN, &e.message);
     }
@@ -716,8 +706,7 @@ mod tests {
     async fn http_bearer_rejects_wrong_token() {
         let (_dir, state) = setup();
         let app = router(state.with_http_token(Some("secret-token".into())));
-        let (st, v) =
-            json_req_auth(app, "GET", "/v1/capabilities", None, Some("wrong")).await;
+        let (st, v) = json_req_auth(app, "GET", "/v1/capabilities", None, Some("wrong")).await;
         assert_eq!(st, StatusCode::UNAUTHORIZED, "{v}");
     }
 
@@ -860,21 +849,9 @@ mod tests {
         let (_dir, state) = setup();
         let reg_path = state.root.join("csu").join("registry.json");
         let mut reg = CsuRegistry::new();
-        let mut m1 = basic_manifest(
-            "aira:csu:t1",
-            "t1",
-            CsuType::Execution,
-            &[],
-            &[],
-        );
+        let mut m1 = basic_manifest("aira:csu:t1", "t1", CsuType::Execution, &[], &[]);
         m1.publisher_identity = AiraRef::parse("aira:identity:tenant-pub").unwrap();
-        let mut m2 = basic_manifest(
-            "aira:csu:t2",
-            "t2",
-            CsuType::Execution,
-            &[],
-            &[],
-        );
+        let mut m2 = basic_manifest("aira:csu:t2", "t2", CsuType::Execution, &[], &[]);
         m2.publisher_identity = AiraRef::parse("aira:identity:other-pub").unwrap();
         reg.register(m1, None).unwrap();
         reg.register(m2, None).unwrap();

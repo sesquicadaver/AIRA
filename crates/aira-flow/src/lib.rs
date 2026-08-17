@@ -7,8 +7,8 @@ mod local;
 mod plane;
 
 pub use local::{
-    init_node, load_config, node_config_present, LocalSession, NodeConfig, NodePaths, ProblemRecord,
-    DEFAULT_AIRA_ROOT,
+    init_node, load_config, node_config_present, LocalSession, NodeConfig, NodePaths,
+    ProblemRecord, DEFAULT_AIRA_ROOT,
 };
 pub use plane::{FlowError, OperationalPlane, SubmitOutcome};
 

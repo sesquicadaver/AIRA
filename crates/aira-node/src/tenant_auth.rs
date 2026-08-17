@@ -14,9 +14,7 @@ pub const HTTP_TENANT_AUTH_FILE: &str = "http-tenant-auth.json";
 
 /// Default map path: `<root>/identity/http-tenant-auth.json`.
 pub fn default_tenant_auth_path(root: impl AsRef<Path>) -> PathBuf {
-    root.as_ref()
-        .join("identity")
-        .join(HTTP_TENANT_AUTH_FILE)
+    root.as_ref().join("identity").join(HTTP_TENANT_AUTH_FILE)
 }
 
 /// Authenticated principal after Bearer authn.
@@ -111,7 +109,10 @@ pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 pub fn load_tenant_auth_map(path: impl AsRef<Path>) -> Result<TenantAuthMap, String> {
     let path = path.as_ref();
     if !path.is_file() {
-        return Err(format!("http-tenant-auth map not found: {}", path.display()));
+        return Err(format!(
+            "http-tenant-auth map not found: {}",
+            path.display()
+        ));
     }
     #[cfg(unix)]
     {
@@ -177,8 +178,7 @@ pub fn validate_http_auth_boot(
         }
         if !token_set {
             return Err(
-                "http-tenant-auth map requires --http-token / AIRA_HTTP_TOKEN (fail closed)"
-                    .into(),
+                "http-tenant-auth map requires --http-token / AIRA_HTTP_TOKEN (fail closed)".into(),
             );
         }
         return Ok(Some(load_tenant_auth_map(map_path)?));
@@ -196,11 +196,7 @@ pub fn validate_http_auth_boot(
 }
 
 /// Whether `got` matches admin token and/or any map entry (full scan, no early exit).
-pub fn bearer_token_accepted(
-    got: &str,
-    admin: Option<&str>,
-    map: Option<&TenantAuthMap>,
-) -> bool {
+pub fn bearer_token_accepted(got: &str, admin: Option<&str>, map: Option<&TenantAuthMap>) -> bool {
     let mut ok = false;
     if let Some(a) = admin {
         ok |= constant_time_eq(got.as_bytes(), a.as_bytes());
@@ -216,11 +212,7 @@ pub fn bearer_token_accepted(
 /// Resolve principal after successful Bearer authn.
 ///
 /// Map match wins over admin when the same secret appears in both.
-pub fn resolve_principal(
-    got: &str,
-    admin: Option<&str>,
-    map: Option<&TenantAuthMap>,
-) -> Principal {
+pub fn resolve_principal(got: &str, admin: Option<&str>, map: Option<&TenantAuthMap>) -> Principal {
     let Some(m) = map else {
         return Principal::Unscoped;
     };
@@ -404,21 +396,13 @@ mod tests {
 
     #[test]
     fn unscoped_without_map() {
-        assert_eq!(
-            resolve_principal("x", Some("x"), None),
-            Principal::Unscoped
-        );
+        assert_eq!(resolve_principal("x", Some("x"), None), Principal::Unscoped);
     }
 
     #[test]
     fn authorize_and_filter() {
-        let mut manifest = basic_manifest(
-            "aira:csu:worker",
-            "worker",
-            CsuType::Execution,
-            &[],
-            &[],
-        );
+        let mut manifest =
+            basic_manifest("aira:csu:worker", "worker", CsuType::Execution, &[], &[]);
         manifest.publisher_identity = AiraRef::parse("aira:identity:tenant-pub").unwrap();
         let tenant = Principal::Tenant {
             publisher_id: "aira:identity:tenant-pub".into(),
@@ -463,7 +447,10 @@ mod tests {
         )
         .unwrap();
         let err = validate_http_auth_boot(None, &path, false).unwrap_err();
-        assert!(err.contains("fail closed") || err.contains("http-token"), "{err}");
+        assert!(
+            err.contains("fail closed") || err.contains("http-token"),
+            "{err}"
+        );
         let err2 = validate_http_auth_boot(None, &path, true).unwrap_err();
         assert!(err2.contains("http-token"), "{err2}");
     }

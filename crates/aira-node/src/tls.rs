@@ -4,8 +4,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
 use aira_object::{AiraRef, TrustStore};
+use anyhow::{bail, Context, Result};
 use axum::Router;
 use axum_server::tls_rustls::RustlsConfig;
 use rcgen::{CertificateParams, KeyPair, SanType};
@@ -13,8 +13,8 @@ use rustls::pki_types::{CertificateDer, PrivateKeyDer, UnixTime};
 use rustls::server::danger::{ClientCertVerified, ClientCertVerifier};
 use rustls::server::WebPkiClientVerifier;
 use rustls::{
-    CertificateError, DigitallySignedStruct, DistinguishedName, Error as RustlsError, RootCertStore,
-    ServerConfig, SignatureScheme,
+    CertificateError, DigitallySignedStruct, DistinguishedName, Error as RustlsError,
+    RootCertStore, ServerConfig, SignatureScheme,
 };
 use x509_parser::prelude::*;
 
@@ -41,12 +41,9 @@ pub fn ensure_self_signed(root: impl AsRef<Path>) -> Result<(PathBuf, PathBuf)> 
         fs::create_dir_all(parent).with_context(|| format!("mkdir {}", parent.display()))?;
     }
 
-    let mut params = CertificateParams::new(vec![
-        "localhost".into(),
-        "127.0.0.1".into(),
-        "::1".into(),
-    ])
-    .context("certificate params")?;
+    let mut params =
+        CertificateParams::new(vec!["localhost".into(), "127.0.0.1".into(), "::1".into()])
+            .context("certificate params")?;
     params
         .subject_alt_names
         .push(SanType::IpAddress(std::net::IpAddr::V4(
@@ -256,9 +253,8 @@ pub fn build_server_config(
 
     let builder = ServerConfig::builder();
     let mut config = if let Some(ca) = client_ca {
-        let root = node_root.ok_or_else(|| {
-            anyhow::anyhow!("mTLS requires node root for TrustStore CN mapping")
-        })?;
+        let root = node_root
+            .ok_or_else(|| anyhow::anyhow!("mTLS requires node root for TrustStore CN mapping"))?;
         let roots = Arc::new(load_client_ca_roots(ca)?);
         let inner = WebPkiClientVerifier::builder(roots)
             .build()
@@ -305,8 +301,8 @@ mod tests {
     use aira_flow::init_node;
     use ed25519_dalek::SigningKey;
     use rcgen::{BasicConstraints, DnType, IsCa, KeyUsagePurpose};
-    use rustls::ClientConfig;
     use rustls::pki_types::ServerName;
+    use rustls::ClientConfig;
     use tempfile::tempdir;
 
     fn write_pair(dir: &Path, name: &str, cert_pem: &str, key_pem: &str) -> (PathBuf, PathBuf) {
@@ -364,9 +360,7 @@ mod tests {
                 std::net::Ipv4Addr::LOCALHOST,
             )));
         let srv_key = KeyPair::generate().unwrap();
-        let srv_cert = srv_params
-            .signed_by(&srv_key, &ca_cert, &ca_key)
-            .unwrap();
+        let srv_cert = srv_params.signed_by(&srv_key, &ca_cert, &ca_key).unwrap();
 
         let mut client_params = CertificateParams::default();
         set_cn(&mut client_params, client_identity_id());
@@ -513,8 +507,8 @@ mod tests {
     #[test]
     fn resolve_requires_pair() {
         let dir = tempdir().unwrap();
-        let err = resolve_tls_paths(dir.path(), Some(dir.path().join("c.pem")), None, false)
-            .unwrap_err();
+        let err =
+            resolve_tls_paths(dir.path(), Some(dir.path().join("c.pem")), None, false).unwrap_err();
         assert!(err.to_string().contains("together"));
     }
 
@@ -542,10 +536,7 @@ mod tests {
             )
             .unwrap(),
         );
-        let client = client_config(
-            &f.ca_path,
-            Some((&f.client_cert_pem, &f.client_key_pem)),
-        );
+        let client = client_config(&f.ca_path, Some((&f.client_cert_pem, &f.client_key_pem)));
         handshake_mem(server, client).expect("valid mTLS + TrustStore CN");
     }
 
@@ -585,10 +576,7 @@ mod tests {
             )
             .unwrap(),
         );
-        let client = client_config(
-            &f.ca_path,
-            Some((&f.client_cert_pem, &f.client_key_pem)),
-        );
+        let client = client_config(&f.ca_path, Some((&f.client_cert_pem, &f.client_key_pem)));
         let err = handshake_mem(server, client).expect_err("must reject revoked CN");
         assert!(!err.is_empty(), "{err}");
     }

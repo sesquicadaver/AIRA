@@ -168,7 +168,8 @@ impl CsuRegistry {
             )
             .map_err(|e| CsuError::Dispatch(e.to_string()))?
         } else {
-            let (Some(producer), Some(signer)) = (self.producer.clone(), self.signer.clone()) else {
+            let (Some(producer), Some(signer)) = (self.producer.clone(), self.signer.clone())
+            else {
                 return Ok(());
             };
             EventDescriptor {

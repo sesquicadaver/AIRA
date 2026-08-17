@@ -186,10 +186,7 @@ fn run() -> Result<ExitCode> {
 }
 
 /// Parse optional `--health-listen` (Analyze-56). Requires mTLS on the API listener.
-fn resolve_health_listen(
-    mtls: bool,
-    health_listen: Option<&str>,
-) -> Result<Option<SocketAddr>> {
+fn resolve_health_listen(mtls: bool, health_listen: Option<&str>) -> Result<Option<SocketAddr>> {
     let Some(raw) = health_listen.map(str::trim).filter(|s| !s.is_empty()) else {
         return Ok(None);
     };
@@ -201,9 +198,7 @@ fn resolve_health_listen(
         .map_err(|e| anyhow::anyhow!("invalid --health-listen {raw}: {e}"))?;
     // Fail closed until QUEUE #34 (public bind opt-in). Plain health has no client cert.
     if !addr.ip().is_loopback() {
-        bail!(
-            "--health-listen must be loopback until QUEUE #34 (got {addr}); use 127.0.0.1"
-        );
+        bail!("--health-listen must be loopback until QUEUE #34 (got {addr}); use 127.0.0.1");
     }
     Ok(Some(addr))
 }
@@ -268,10 +263,7 @@ fn serve_http(opts: HttpOpts) -> Result<ExitCode> {
         .with_http_token(http_token)
         .with_tenant_auth(tenant_map);
     let app = router(state);
-    println!(
-        "discovery {}",
-        DiscoveryRegistry::path(&root).display()
-    );
+    println!("discovery {}", DiscoveryRegistry::path(&root).display());
     println!("endpoints: /health /v1/problems /v1/results /v1/artifacts /v1/events /v1/capabilities /v1/csu /v1/conformance/run");
     if auth_enabled {
         println!("http_auth: bearer enabled (/health exempt at HTTP layer)");
@@ -320,15 +312,7 @@ fn serve_http(opts: HttpOpts) -> Result<ExitCode> {
                 if let Some(ref ca) = tls_client_ca {
                     println!("tls_client_ca {}", ca.display());
                 }
-                serve_https(
-                    addr,
-                    app,
-                    &cert,
-                    &key,
-                    tls_client_ca.as_deref(),
-                    &root,
-                )
-                .await
+                serve_https(addr, app, &cert, &key, tls_client_ca.as_deref(), &root).await
             } else {
                 println!("http listening on http://{addr}");
                 let listener = tokio::net::TcpListener::bind(addr).await?;
@@ -364,7 +348,10 @@ mod resolve_health_tests {
     #[test]
     fn health_listen_requires_mtls() {
         let err = resolve_health_listen(false, Some("127.0.0.1:8788")).unwrap_err();
-        assert!(err.to_string().contains("requires --tls-client-ca"), "{err}");
+        assert!(
+            err.to_string().contains("requires --tls-client-ca"),
+            "{err}"
+        );
     }
 
     #[test]
