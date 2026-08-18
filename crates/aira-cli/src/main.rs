@@ -386,6 +386,11 @@ enum PeerCommands {
         #[command(subcommand)]
         command: PeerStunCommands,
     },
+    /// UDP discv5-style announce (Analyze-67). Store only; no FIND_NODE / apply-book.
+    Discv {
+        #[command(subcommand)]
+        command: PeerDiscvCommands,
+    },
     /// Hold an outbound session to a relay (register for inbound delivers).
     RelayHold {
         #[arg(long)]
@@ -477,6 +482,33 @@ enum PeerStunCommands {
         /// STUN server `host:port` (required; also `AIRA_STUN_SERVER`). No public default.
         #[arg(long, env = "AIRA_STUN_SERVER")]
         stun_server: Option<String>,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum PeerDiscvCommands {
+    /// Bind UDP and apply inbound signed announces into `peers/dht.json` (`source=udp`).
+    Listen {
+        #[arg(long, default_value = "127.0.0.1:0")]
+        bind: String,
+        /// Exit after one successful store.
+        #[arg(long, default_value_t = false)]
+        once: bool,
+        /// Allow non-loopback bind (operator).
+        #[arg(long, default_value_t = false)]
+        explicit: bool,
+    },
+    /// Send one signed UDP announce to a discv listener.
+    Announce {
+        /// Destination UDP `host:port`.
+        #[arg(long)]
+        to: String,
+        /// Dialable TCP addr to advertise (xor `--from-stun`).
+        #[arg(long)]
+        addr: Option<String>,
+        /// Use `peers/stun_reflexive.json` (Analyze-66).
+        #[arg(long, default_value_t = false)]
+        from_stun: bool,
     },
 }
 
@@ -1458,6 +1490,53 @@ async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitCode> {
                     "stun_reflexive {}",
                     aira_peer::StunReflexiveRecord::path(root).display()
                 );
+                Ok(ExitCode::SUCCESS)
+            }
+        },
+        PeerCommands::Discv { command } => match command {
+            PeerDiscvCommands::Listen {
+                bind,
+                once,
+                explicit,
+            } => {
+                let sock = if explicit {
+                    aira_peer::bind_udp_explicit(&bind)
+                } else {
+                    aira_peer::bind_udp(&bind)
+                }
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+                println!("discv listening {}", sock.local_addr()?);
+                loop {
+                    match aira_peer::recv_one_and_store(&sock, root) {
+                        Ok(a) => {
+                            println!("discv stored {}\t{}", a.identity_id, a.addr);
+                            println!("dht {}", aira_peer::PeerDhtStore::path(root).display());
+                            if once {
+                                return Ok(ExitCode::SUCCESS);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("discv drop: {e}");
+                            if once {
+                                return Err(anyhow::anyhow!("{e}"));
+                            }
+                        }
+                    }
+                }
+            }
+            PeerDiscvCommands::Announce {
+                to,
+                addr,
+                from_stun,
+            } => {
+                let to: std::net::SocketAddr =
+                    to.parse().with_context(|| format!("invalid --to {to}"))?;
+                let advertised =
+                    aira_peer::resolve_dht_announce_addr(root, addr.as_deref(), from_stun)
+                        .map_err(|e| anyhow::anyhow!("{e}"))?;
+                aira_peer::send_discv_announce(root, &advertised, to)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                println!("discv announced {advertised} -> {to}");
                 Ok(ExitCode::SUCCESS)
             }
         },

@@ -29,6 +29,8 @@ pub enum PeerError {
     Protocol(String),
     #[error("stun: {0}")]
     Stun(String),
+    #[error("discv: {0}")]
+    Discv(String),
 }
 
 impl From<std::io::Error> for PeerError {

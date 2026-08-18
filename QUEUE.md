@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-66 CLOSED @ 1856055; QUEUE #31 DONE; next OPEN #32 |
+| `main` | Analyze-67 CLOSED; QUEUE #32 DONE; next OPEN #33 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#32 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#33 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -47,7 +47,7 @@
 | 29 | **DONE** | ~~Analyze-64 — multi-tenant HTTP authz~~ | Bearer map → publisher; CSU register/list cross-tenant 403 | тести + docs/local-node | federation; mTLS CN seam |
 | 30 | **DONE** | ~~Analyze-65 — YAML config read parity~~ | `config.yaml` xor `config.json` → `NodeConfig`; init JSON-only | тести + docs/local-node | SQLite audit rewrite |
 | 31 | **DONE** | ~~Analyze-66 — STUN Binding reflexive~~ | Binding → `stun_reflexive.json` → `dht announce --from-stun`; dial unchanged | mock STUN + docs/peer-link | discv5 UDP |
-| 32 | OPEN | Analyze-67 | UDP discv5-style announce (локальний) | announce+store; не iterative | FIND_NODE |
+| 32 | **DONE** | ~~Analyze-67 — UDP discv5-style announce~~ | Signed UDP announce → local `dht.json` (`source=udp`); no FIND_NODE | тести + docs/peer-link | FIND_NODE |
 | 33 | OPEN | Analyze-68 | Iterative FIND_NODE поверх #32 | closest lookup over UDP path | federation join |
 | 34 | OPEN | Analyze-69 | Public HTTP bind лише з **явним** opt-in + fail-closed default | docs + тест відмови без flag | federation |
 | 35 | OPEN | Analyze-70 | Federation join prototype (roadmap v0.3 micro) | мінімальний join+trust; Living Spec | settlement/CRP |
@@ -55,7 +55,7 @@
 
 ### Наступний цикл
 
-**#32 → Analyze-67** (UDP discv5-style announce).
+**#33 → Analyze-68** (Iterative FIND_NODE).
 
 ---
 

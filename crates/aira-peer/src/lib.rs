@@ -8,10 +8,12 @@
 //! Analyze-47: trusted-mesh DHT-lite (`peers/dht.json` + `peer.dht.announce`).
 //! Analyze-59: `accept_tcp` + `complete_accept` so daemon loops are not blocked by handshake.
 //! Analyze-66: STUN Binding client + `peers/stun_reflexive.json` (no ICE; dial stays TCP/book).
+//! Analyze-67: UDP discv5-style announce (signed datagram → local DHT store; no FIND_NODE).
 
 mod address_book;
 mod dht;
 mod discovery;
+mod discv;
 mod envelope;
 mod error;
 mod frame;
@@ -32,6 +34,11 @@ pub use dht::{
     DHT_ANNOUNCE_MESSAGE_TYPE, DHT_DEFAULT_K, DHT_SCHEMA,
 };
 pub use discovery::{DiscoveryEntry, DiscoverySource, PeerDiscoveryStore};
+pub use discv::{
+    apply_discv_announce, apply_discv_datagram, bind_udp, bind_udp_explicit, recv_one_and_store,
+    send_discv_announce, set_udp_timeout, sign_discv_announce, DiscvAnnounce,
+    DISCV_ANNOUNCE_DOMAIN, DISCV_SCHEMA,
+};
 pub use envelope::make_peer_ping;
 pub use error::PeerError;
 pub use frame::{read_frame, write_frame, MAX_FRAME_BYTES};

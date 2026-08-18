@@ -32,6 +32,7 @@ Static address book: `.aira/peers/address_book.json` — authoritative dial sour
 - `AuthenticatedPeer::{send_envelope, recv_envelope, send_relayed_envelope, recv_envelope_allow_relayed}`
 - `TrustDelta` / gossip / discovery / relay hub APIs
 - `PeerDhtStore` / `dht_announce_to_peers` / `apply_dht_announce`
+- `bind_udp` / `send_discv_announce` / `apply_discv_announce` (Analyze-67)
 - `notify_peers_of_rekey` / `notify_peer_of_rekey`
 
 ## CLI
@@ -57,9 +58,9 @@ cargo run -p aira-cli -- --root "$B" peer dht list
 
 Канон черги: [`QUEUE.md`](../QUEUE.md) Phase B #26+.
 
-Заплановано атомарно: discv5 announce (#32); FIND_NODE (#33); public HTTP bind (#34); federation (#35).
+Заплановано атомарно: FIND_NODE (#33); public HTTP bind (#34); federation (#35).
 
-Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); DHT→address_book `--apply-book` (A-57 / #22); relay hub (A-44); durable relay registry (A-58 / #23); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18); concurrent accept (`accept_tcp` + spawned `complete_accept`, A-59 / #24); systemd examples (`deploy/systemd/`, [runbook-systemd.md](runbook-systemd.md), A-60 / #25); **STUN Binding reflexive** (A-66 / #31).
+Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); DHT→address_book `--apply-book` (A-57 / #22); relay hub (A-44); durable relay registry (A-58 / #23); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18); concurrent accept (`accept_tcp` + spawned `complete_accept`, A-59 / #24); systemd examples (`deploy/systemd/`, [runbook-systemd.md](runbook-systemd.md), A-60 / #25); **STUN Binding reflexive** (A-66 / #31); **UDP discv announce** (A-67 / #32).
 
 ## STUN Binding (Analyze-66)
 
@@ -76,7 +77,20 @@ cargo run -p aira-cli -- --root "$A" peer dht announce --from-stun
 
 Path: `stun query` → `stun_reflexive.json` → `dht announce --from-stun` → remote `--apply-book` / static book → `peer dial`.
 
-**Out of this slice:** ICE connectivity-check; UDP peer sessions; TURN; STUN-per-dial; default public STUN; upsert into address book; discv5.
+**Out of this slice:** ICE connectivity-check; UDP peer sessions; TURN; STUN-per-dial; default public STUN; upsert into address book.
+
+## UDP discv announce (Analyze-67)
+
+Local one-hop signed UDP datagram (not Ethereum discv5/ENR). Receiver upserts `peers/dht.json` with `source=udp` if the issuer is trusted and not revoked. **Does not** change `dial` or auto-promote the address book. Iterative FIND_NODE is #33.
+
+```bash
+cargo run -p aira-cli -- --root "$B" peer discv listen --bind 127.0.0.1:0 --once
+cargo run -p aira-cli -- --root "$A" peer discv announce --to 127.0.0.1:PORT --addr 127.0.0.1:7900
+# or --from-stun after `peer stun query`
+cargo run -p aira-cli -- --root "$B" peer dht find --key-ref aira:identity:alice --apply-book
+```
+
+Non-loopback UDP bind requires `--explicit`. Untrusted / revoked / bad signature → drop, no store.
 
 **WONT-NEED:** dedicated x25519 peer-notify after rotate (Analyze-54 / QUEUE #19) — hello v1 already Ed25519-binds `x25519_pub_hex` each dial; Noise remote static is checked against that hello. No durable remote Noise-static cache.
 
