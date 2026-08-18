@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-72 (QUEUE #37) tenant stdin secret |
+| `main` | Analyze-72 CLOSED @ 5c9824b; QUEUE #37 DONE; немає OPEN |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Активна черга | **немає OPEN** (Phase B #18–#37 DONE) |
 
