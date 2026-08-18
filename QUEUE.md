@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-69 (QUEUE #34) public HTTP bind opt-in |
+| `main` | Analyze-69 CLOSED @ e877569; QUEUE #34 DONE; next OPEN #35 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Активна черга | **#35 → …** (перший OPEN = наступний цикл) |
 
