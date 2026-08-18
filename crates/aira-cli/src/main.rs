@@ -15,6 +15,8 @@ use aira_flow::{
 };
 use aira_schema::{find_repo_root, SchemaRegistry};
 
+mod tenant_secret;
+
 #[derive(Parser, Debug)]
 #[command(
     name = "aira",
@@ -154,9 +156,13 @@ enum CsuTenantCommands {
         #[arg(long)]
         publisher: String,
         /// Optional 64-hex Ed25519 seed; default: generate random.
-        /// Demo-only (visible in process list / shell history); prefer generated keys.
+        /// Demo-only (visible in process list / shell history); prefer `--secret-hex-file`.
         #[arg(long)]
         secret_hex: Option<String>,
+        /// 64-hex Ed25519 seed from a file (`-` = stdin, not a TTY). Prefer over `--secret-hex`.
+        /// A file named `-` must be passed as `./-`. Mutually exclusive with `--secret-hex`.
+        #[arg(long, conflicts_with = "secret_hex")]
+        secret_hex_file: Option<String>,
         /// Overwrite an existing durable tenant dir (prefer `rotate`).
         #[arg(long)]
         force: bool,
@@ -173,8 +179,13 @@ enum CsuTenantCommands {
         #[arg(long)]
         backup: bool,
         /// Optional 64-hex Ed25519 seed; default: generate random (demo-only if set).
+        /// Prefer `--secret-hex-file`.
         #[arg(long)]
         secret_hex: Option<String>,
+        /// 64-hex Ed25519 seed from a file (`-` = stdin, not a TTY). Prefer over `--secret-hex`.
+        /// A file named `-` must be passed as `./-`. Mutually exclusive with `--secret-hex`.
+        #[arg(long, conflicts_with = "secret_hex")]
+        secret_hex_file: Option<String>,
     },
     /// Revoke tenant: unload + delete dir + audit (signing-side; not TrustStore CRL).
     Revoke {
@@ -1008,6 +1019,7 @@ fn run() -> Result<ExitCode> {
                     csu_id,
                     publisher,
                     secret_hex,
+                    secret_hex_file,
                     force,
                 } => {
                     ensure_init(&root)?;
@@ -1015,16 +1027,10 @@ fn run() -> Result<ExitCode> {
                         .map_err(|e| anyhow::anyhow!("invalid --csu-id: {e}"))?;
                     let pub_id = aira_object::AiraRef::parse(&publisher)
                         .map_err(|e| anyhow::anyhow!("invalid --publisher: {e}"))?;
-                    let sk = if let Some(hex_s) = secret_hex {
-                        let bytes = hex::decode(hex_s.trim())
-                            .map_err(|e| anyhow::anyhow!("invalid --secret-hex: {e}"))?;
-                        let arr: [u8; 32] = bytes
-                            .try_into()
-                            .map_err(|_| anyhow::anyhow!("--secret-hex must be 32 bytes"))?;
-                        SigningKey::from_bytes(&arr)
-                    } else {
-                        SigningKey::generate(&mut OsRng)
-                    };
+                    let sk = tenant_secret::resolve_tenant_signing(
+                        secret_hex.as_deref(),
+                        secret_hex_file.as_deref(),
+                    )?;
                     let pub_hex = hex::encode(sk.verifying_key().to_bytes());
                     let dir = aira_object::save_csu_tenant_signing(&root, &csu, pub_id, sk, force)
                         .map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -1064,20 +1070,15 @@ fn run() -> Result<ExitCode> {
                     csu_id,
                     backup,
                     secret_hex,
+                    secret_hex_file,
                 } => {
                     ensure_init(&root)?;
                     let csu = aira_object::AiraRef::parse(&csu_id)
                         .map_err(|e| anyhow::anyhow!("invalid --csu-id: {e}"))?;
-                    let sk = if let Some(hex_s) = secret_hex {
-                        let bytes = hex::decode(hex_s.trim())
-                            .map_err(|e| anyhow::anyhow!("invalid --secret-hex: {e}"))?;
-                        let arr: [u8; 32] = bytes
-                            .try_into()
-                            .map_err(|_| anyhow::anyhow!("--secret-hex must be 32 bytes"))?;
-                        SigningKey::from_bytes(&arr)
-                    } else {
-                        SigningKey::generate(&mut OsRng)
-                    };
+                    let sk = tenant_secret::resolve_tenant_signing(
+                        secret_hex.as_deref(),
+                        secret_hex_file.as_deref(),
+                    )?;
                     let (publisher, new_pub, old_pub, backup_path) =
                         aira_object::rotate_csu_tenant_signing(&root, &csu, sk, backup)
                             .map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -2235,4 +2236,52 @@ fn load_schema_registry(schemas_dir: Option<PathBuf>) -> Result<SchemaRegistry> 
         bail!("schemas dir not found: {}", dir.display());
     }
     SchemaRegistry::load(dir)
+}
+
+#[cfg(test)]
+mod clap_secret_hex_file {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn register_xor_secret_flags() {
+        let err = Cli::try_parse_from([
+            "aira",
+            "identity",
+            "csu-tenant",
+            "register",
+            "--csu-id",
+            "aira:csu:x",
+            "--publisher",
+            "aira:identity:y",
+            "--secret-hex",
+            "aa",
+            "--secret-hex-file",
+            "seed.hex",
+        ])
+        .unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("cannot be used with") || msg.contains("conflict"));
+        assert!(!msg.contains("abababab"));
+    }
+
+    #[test]
+    fn rotate_xor_secret_flags() {
+        let err = Cli::try_parse_from([
+            "aira",
+            "identity",
+            "csu-tenant",
+            "rotate",
+            "--csu-id",
+            "aira:csu:x",
+            "--secret-hex",
+            "aa",
+            "--secret-hex-file",
+            "seed.hex",
+        ])
+        .unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("cannot be used with") || msg.contains("conflict"));
+        assert!(!msg.contains("abababab"));
+    }
 }

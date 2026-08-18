@@ -10,7 +10,7 @@
 |--|--|
 | `main` | Analyze-72 (QUEUE #37) tenant stdin secret |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#37 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **немає OPEN** (Phase B #18–#37 DONE) |
 
 ## Правила атомарності
 
@@ -52,11 +52,11 @@
 | 34 | **DONE** | ~~Analyze-69 — public HTTP bind opt-in~~ | Public HTTP bind лише з **явним** opt-in + fail-closed default | docs + тест відмови без flag | Federation |
 | 35 | **DONE** | ~~Analyze-70 — federation join prototype~~ | Federation join prototype (roadmap v0.3 micro) | мінімальний join+trust; Living Spec | settlement/CRP |
 | 36 | **DONE** | ~~Analyze-71 — tenant `.prev` prune~~ | Tenant `ed25519.prev.<stamp>` prune | prune CLI parity з node backups; тести | HTTP authz; stdin secret |
-| 37 | OPEN | Analyze-72 | Tenant `--secret-hex-file` / stdin | register/rotate читає secret з file або stdin, не argv | HTTP authz |
+| 37 | **DONE** | ~~Analyze-72 — tenant `--secret-hex-file` / stdin~~ | Tenant `--secret-hex-file` / stdin | register/rotate читає secret з file або stdin, не argv | HTTP authz |
 
 ### Наступний цикл
 
-**#37 → Analyze-72** (Tenant stdin / `--secret-hex-file`).
+**немає OPEN.** Нові рядки лише в кінець черги за рішенням розробника.
 
 ---
 
@@ -74,7 +74,7 @@
 | A-41 prune `.prev` | #26 |
 | A-42 / crypto Out per-CSU secrets + ceremony | #27–28 |
 | A-63 deferred tenant `.prev` prune | #36 |
-| A-62/A-63 deferred tenant stdin/`--secret-hex-file` | #37 |
+| A-62/A-63 deferred tenant stdin/`--secret-hex-file` | #37 **DONE** (Analyze-72) |
 | A-48 multi-tenant HTTP authz | #29 |
 | `docs/local-node.md` YAML deferred | #30 |
 | peer-link Out STUN / discv5 / FIND_NODE | #31–33 |

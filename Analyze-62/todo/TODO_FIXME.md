@@ -4,4 +4,4 @@
 - [ ] Ceremony: revoke = `unregister_csu_tenant` + delete `identity/tenants/<hex>/` (trust CRL alone insufficient)
 - [ ] Rename order: secret before meta; optional `--force` on register overwrite
 - [ ] Per-tenant load errors: log-and-continue (avoid silent partial + fail-fast clash with `let _`)
-- [ ] Optional: `--secret-hex-file` / stdin; dir mode `0700`
+- [x] Optional: `--secret-hex-file` / stdin (Analyze-72 / QUEUE #37); dir mode `0700` still optional

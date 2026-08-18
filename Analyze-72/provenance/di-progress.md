@@ -14,5 +14,11 @@
 ## Settled (cont.)
 - **Normalize (Q3=B1):** trim лише кінців (пробіли/один newline). Далі рівно 64 `[0-9a-fA-F]`. Без `0x`, без внутрішніх пробілів.
 
+## Settled (cont.)
+- **Out/In (Q4=C1):** Out — `identity create`/`identity rotate` secret-file; env; прибрати `--secret-hex`; HTTP; зміна tenant layout; друк секрету. In — `csu-tenant register` і `rotate`, один helper.
+
+## Settled (cont.)
+- **Boundaries (Q5=F1):** агент сам — спільний CLI helper; `PATH=-` + TTY fail-closed; clap conflicts_with; ліміт 4KiB; секрет не друкувати. Питати лише знімати `--secret-hex` / `identity create` / raw bytes.
+
 ## Open
-- Q4: non-goals / які команди.
+- (none — crystallize)

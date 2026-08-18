@@ -58,9 +58,7 @@ cargo run -p aira-cli -- --root "$B" peer dht list
 
 Канон черги: [`QUEUE.md`](../QUEUE.md) Phase B #26+.
 
-Заплановано атомарно: tenant `--secret-hex-file` / stdin (#37).
-
-Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); DHT→address_book `--apply-book` (A-57 / #22); relay hub (A-44); durable relay registry (A-58 / #23); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18); concurrent accept (`accept_tcp` + spawned `complete_accept`, A-59 / #24); systemd examples (`deploy/systemd/`, [runbook-systemd.md](runbook-systemd.md), A-60 / #25); **STUN Binding reflexive** (A-66 / #31); **UDP discv announce** (A-67 / #32); **iterative FIND_NODE** (A-68 / #33); **federation join pin** (A-70 / #35); **tenant `.prev` prune** (A-71 / #36).
+Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); DHT→address_book `--apply-book` (A-57 / #22); relay hub (A-44); durable relay registry (A-58 / #23); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18); concurrent accept (`accept_tcp` + spawned `complete_accept`, A-59 / #24); systemd examples (`deploy/systemd/`, [runbook-systemd.md](runbook-systemd.md), A-60 / #25); **STUN Binding reflexive** (A-66 / #31); **UDP discv announce** (A-67 / #32); **iterative FIND_NODE** (A-68 / #33); **federation join pin** (A-70 / #35); **tenant `.prev` prune** (A-71 / #36); **tenant `--secret-hex-file`** (A-72 / #37).
 
 ## Federation join (Analyze-70)
 

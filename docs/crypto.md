@@ -19,7 +19,10 @@ API: `aira_object::{local_test_signature, verify_ed25519, Keyring, active_signat
 
 ```bash
 cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant register \
-  --csu-id aira:csu:example.worker --publisher aira:identity:worker-pub
+  --csu-id aira:csu:example.worker --publisher aira:identity:worker-pub \
+  --secret-hex-file ./worker.seed
+# stdin (non-TTY): --secret-hex-file -
+# demo-only (argv): --secret-hex <64-hex>
 cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant list
 cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant load
 cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant rotate \
@@ -31,7 +34,9 @@ cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant revoke \
   --csu-id aira:csu:example.worker --reason compromised
 ```
 
-**Tenant ceremony** (Analyze-63): `rotate` keeps the same `publisher_id`, writes a new `ed25519` (optional `ed25519.prev` + archive prior latest), audits `tenant_rotate`. `revoke` unloads the map, drops the publisher verifying key when unshared (never primary / local-test), deletes `identity/tenants/<hex>/`, audits `tenant_revoke`. Signing-side only — TrustStore CRL is not updated; historical verify may still succeed if the pubkey remains trusted. `register` refuses overwrite unless `--force` (prefer `rotate`). One `publisher_id` may bind to at most one CSU.
+**Tenant ceremony** (Analyze-63 / Analyze-72): `rotate` keeps the same `publisher_id`, writes a new `ed25519` (optional `ed25519.prev` + archive prior latest), audits `tenant_rotate`. `revoke` unloads the map, drops the publisher verifying key when unshared (never primary / local-test), deletes `identity/tenants/<hex>/`, audits `tenant_revoke`. Signing-side only — TrustStore CRL is not updated; historical verify may still succeed if the pubkey remains trusted. `register` refuses overwrite unless `--force` (prefer `rotate`). One `publisher_id` may bind to at most one CSU.
+
+Import a known seed with `--secret-hex-file PATH` (file body: exactly 64 hex digits after trimming ends; `-` = stdin, refused on a TTY; a file named `-` is `./-`). `--secret-hex` remains demo-only (visible in argv). The two flags are mutually exclusive. Node `identity create` / `identity rotate` do not take a secret file.
 
 **Tenant backup retention** (Analyze-71): GC archived `ed25519.prev.<stamp>` only (never latest `.prev` or live `ed25519`). Per-tenant `--keep` / `--older-than-days` (same intersection rule as node `identity backups prune`). `identity backups prune` does **not** touch tenant dirs.
 
@@ -189,7 +194,7 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Канон: [`QUEUE.md`](../QUEUE.md) Phase B (наступний OPEN: #37 stdin secret).
+Канон: [`QUEUE.md`](../QUEUE.md) Phase B.
 
 | Було Out | Рядок |
 |----------|-------|
@@ -203,13 +208,13 @@ Empty and `TESTSIG` are rejected on admission.
 | STUN / ICE-lite dial path | #31 **DONE** (Analyze-66 Binding reflexive) |
 | Retention/prune `.prev.<stamp>` | #26 **DONE** (Analyze-61) |
 | Tenant `.prev.<stamp>` prune | #36 **DONE** (Analyze-71) |
-| Tenant `--secret-hex-file` / stdin | #37 |
+| Tenant `--secret-hex-file` / stdin | #37 **DONE** (Analyze-72) |
 | SQLite ceremony audit table | після #26 (не окремий рядок поки JSONL достатньо; додати в кінець за потреби) |
 | UDP discv5-style announce | #32 **DONE** (Analyze-67) |
 | Iterative FIND_NODE | #33 **DONE** (Analyze-68) |
 | Public HTTP bind opt-in | #34 **DONE** (Analyze-69 `--allow-public-bind`) |
 | Federation join prototype | #35 **DONE** (Analyze-70 local pin) |
 
-Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51); CN→TrustStore (A-55); self-sovereign trust-delta (A-52); plain `--health-listen` when mTLS (A-56); DHT→address_book `--apply-book` (A-57); durable relay registry (A-58); concurrent peer accept (`accept_tcp` + spawned handshake, A-59); systemd examples (A-60); `.prev.<stamp>` prune CLI (A-61); durable per-CSU secrets (A-62); tenant rotate/revoke ceremony (A-63); multi-tenant HTTP CSU authz Bearer map (A-64); YAML∨JSON config read parity (A-65); STUN Binding reflexive + `dht announce --from-stun` (A-66); UDP discv announce → local DHT store (A-67); iterative UDP FIND_NODE (A-68); public HTTP bind opt-in `--allow-public-bind` (A-69); local federation join pin (A-70); tenant `ed25519.prev.<stamp>` prune (A-71).
+Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51); CN→TrustStore (A-55); self-sovereign trust-delta (A-52); plain `--health-listen` when mTLS (A-56); DHT→address_book `--apply-book` (A-57); durable relay registry (A-58); concurrent peer accept (`accept_tcp` + spawned handshake, A-59); systemd examples (A-60); `.prev.<stamp>` prune CLI (A-61); durable per-CSU secrets (A-62); tenant rotate/revoke ceremony (A-63); multi-tenant HTTP CSU authz Bearer map (A-64); YAML∨JSON config read parity (A-65); STUN Binding reflexive + `dht announce --from-stun` (A-66); UDP discv announce → local DHT store (A-67); iterative UDP FIND_NODE (A-68); public HTTP bind opt-in `--allow-public-bind` (A-69); local federation join pin (A-70); tenant `ed25519.prev.<stamp>` prune (A-71); tenant `--secret-hex-file` (A-72).
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify + relay/DHT).
