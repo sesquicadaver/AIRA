@@ -9,6 +9,7 @@
   identity/          # aira identity create + trust.json + trust-audit.jsonl
   db/aira.sqlite
   artifacts/         # CAS + index.json
+  federation/membership.json  # optional local join pin (Analyze-70)
   csu/registry.json
   discovery/registry.json  # local capability discovery (Analyze-45)
   http/              # optional self-signed TLS PEM (`--tls-self-signed`)
@@ -120,7 +121,7 @@ curl -skS --cert client.pem --key client.key https://127.0.0.1:8787/health
 curl -sS http://127.0.0.1:8788/health
 ```
 
-Non-goals (див. [`QUEUE.md`](../QUEUE.md)): federation (#35); tenant `.prev` prune (#36); mTLS CN principal seam; YAML **write**/convert CLI; SQLite audit rewrite.
+Non-goals (див. [`QUEUE.md`](../QUEUE.md)): tenant `.prev` prune (#36); mTLS CN principal seam; YAML **write**/convert CLI; SQLite audit rewrite.
 
 Shipped на HTTP: mTLS require + CN→TrustStore (A-51/55); plain `--health-listen` (A-56 / #21); multi-tenant CSU authz Bearer map (A-64 / #29); public bind opt-in `--allow-public-bind` (A-69 / #34).
 
@@ -133,3 +134,4 @@ Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.
 - No network dependency is required for local MVP.
 - AiraRefs in path segments may include `:` (single URL path segment).
 - Long-running under systemd: [runbook-systemd.md](runbook-systemd.md) (`aira-node.service`).
+- Federation join (local pin): `aira federation join --descriptor` — [peer-link.md](peer-link.md).

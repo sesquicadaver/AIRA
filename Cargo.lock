@@ -342,6 +342,8 @@ dependencies = [
  "aira-event",
  "aira-object",
  "aira-schema",
+ "ed25519-dalek",
+ "hex",
  "serde",
  "serde_json",
  "tempfile",

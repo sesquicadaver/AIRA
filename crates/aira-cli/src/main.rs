@@ -76,6 +76,11 @@ enum Commands {
         #[command(subcommand)]
         command: PeerCommands,
     },
+    /// Local federation join (Analyze-70) — operator ceremony, not a network handshake.
+    Federation {
+        #[command(subcommand)]
+        command: FederationCommands,
+    },
     /// Conformance suite runners (C0/C1).
     Conformance {
         #[command(subcommand)]
@@ -519,6 +524,16 @@ enum PeerDiscvCommands {
         to: Option<String>,
         #[arg(long, default_value_t = aira_peer::DHT_DEFAULT_K)]
         k: usize,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum FederationCommands {
+    /// Pin a self-signed federation descriptor (local membership + TrustStore).
+    Join {
+        /// Path to signed descriptor JSON.
+        #[arg(long)]
+        descriptor: PathBuf,
     },
 }
 
@@ -1281,6 +1296,33 @@ fn run() -> Result<ExitCode> {
                 .context("tokio runtime")?;
             rt.block_on(run_peer(&root, command))
         }
+        Commands::Federation { command } => match command {
+            FederationCommands::Join { descriptor } => {
+                ensure_init(&root)?;
+                let raw = std::fs::read_to_string(&descriptor)
+                    .with_context(|| format!("read {}", descriptor.display()))?;
+                let desc: aira_protocol::FederationDescriptor = serde_json::from_str(&raw)
+                    .with_context(|| format!("parse {}", descriptor.display()))?;
+                let out = aira_protocol::join_federation(&root, &desc)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                if out.already_member {
+                    println!(
+                        "already joined {}\t{}",
+                        out.membership.federation_id, out.membership.identity_ref
+                    );
+                } else {
+                    println!(
+                        "joined {}\ttrusted {}",
+                        out.membership.federation_id, out.membership.identity_ref
+                    );
+                }
+                println!(
+                    "membership {}",
+                    aira_protocol::membership_path(&root).display()
+                );
+                Ok(ExitCode::SUCCESS)
+            }
+        },
         Commands::Conformance { command } => match command {
             ConformanceCommands::Run { profile, out } => {
                 let profile = match profile.to_uppercase().as_str() {

@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-69 CLOSED @ e877569; QUEUE #34 DONE; next OPEN #35 |
+| `main` | Analyze-70 (QUEUE #35) federation join |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#35 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#36 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -50,12 +50,12 @@
 | 32 | **DONE** | ~~Analyze-67 — UDP discv5-style announce~~ | Signed UDP announce → local `dht.json` (`source=udp`); no FIND_NODE | тести + docs/peer-link | FIND_NODE |
 | 33 | **DONE** | ~~Analyze-68 — iterative FIND_NODE~~ | Signed UDP FIND/NODES; XOR iterate; merge trusted hints | тести + docs/peer-link | federation join |
 | 34 | **DONE** | ~~Analyze-69 — public HTTP bind opt-in~~ | Public HTTP bind лише з **явним** opt-in + fail-closed default | docs + тест відмови без flag | Federation |
-| 35 | OPEN | Analyze-70 | Federation join prototype (roadmap v0.3 micro) | мінімальний join+trust; Living Spec | settlement/CRP |
+| 35 | **DONE** | ~~Analyze-70 — federation join prototype~~ | Federation join prototype (roadmap v0.3 micro) | мінімальний join+trust; Living Spec | settlement/CRP |
 | 36 | OPEN | Analyze-71 | Tenant `ed25519.prev.<stamp>` prune (+ optional stdin secret) | prune CLI parity з node backups; тести | HTTP authz |
 
 ### Наступний цикл
 
-**#35 → Analyze-70** (Federation join prototype).
+**#36 → Analyze-71** (Tenant `.prev` prune).
 
 ---
 
@@ -77,6 +77,6 @@
 | `docs/local-node.md` YAML deferred | #30 |
 | peer-link Out STUN / discv5 / FIND_NODE | #31–33 |
 | peer-link public HTTP bind | #34 **DONE** (Analyze-69) |
-| `specs/mvp-roadmap.md` post-MVP federation | #35 |
+| `specs/mvp-roadmap.md` post-MVP federation | #35 **DONE** (Analyze-70) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `Analyze-N/`.

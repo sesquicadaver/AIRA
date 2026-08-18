@@ -6,6 +6,7 @@ mod artifact_adapter;
 mod discovery;
 mod envelope;
 mod event_adapter;
+mod federation;
 mod identity;
 
 pub use artifact_adapter::{ArtifactOpResult, ArtifactProtocolAdapter, AP_VERSION};
@@ -17,6 +18,11 @@ pub use envelope::{
     ProtocolResponse, ProtocolStatus, ScopeDescriptor,
 };
 pub use event_adapter::{EventProtocolAdapter, EP_VERSION};
+pub use federation::{
+    descriptor_canonical_bytes, join_federation, membership_path, verify_federation_descriptor,
+    FederationDescriptor, FederationError, FederationMembership, JoinOutcome,
+    FEDERATION_DESCRIPTOR_DOMAIN, FEDERATION_MEMBERSHIP_SCHEMA,
+};
 pub use identity::{IdentityDescriptor, IdentityType, PublicKeyEntry};
 
 /// Crate version string.

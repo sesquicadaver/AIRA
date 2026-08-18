@@ -19,3 +19,5 @@ thiserror = { workspace = true }
 tempfile = "3"
 aira-schema = { path = "../aira-schema" }
 aira-csu = { path = "../aira-csu" }
+ed25519-dalek = { workspace = true }
+hex = { workspace = true }

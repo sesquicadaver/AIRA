@@ -58,9 +58,20 @@ cargo run -p aira-cli -- --root "$B" peer dht list
 
 Канон черги: [`QUEUE.md`](../QUEUE.md) Phase B #26+.
 
-Заплановано атомарно: federation join (#35).
+Заплановано атомарно: tenant `.prev` prune (#36).
 
-Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); DHT→address_book `--apply-book` (A-57 / #22); relay hub (A-44); durable relay registry (A-58 / #23); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18); concurrent accept (`accept_tcp` + spawned `complete_accept`, A-59 / #24); systemd examples (`deploy/systemd/`, [runbook-systemd.md](runbook-systemd.md), A-60 / #25); **STUN Binding reflexive** (A-66 / #31); **UDP discv announce** (A-67 / #32); **iterative FIND_NODE** (A-68 / #33).
+Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); DHT→address_book `--apply-book` (A-57 / #22); relay hub (A-44); durable relay registry (A-58 / #23); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18); concurrent accept (`accept_tcp` + spawned `complete_accept`, A-59 / #24); systemd examples (`deploy/systemd/`, [runbook-systemd.md](runbook-systemd.md), A-60 / #25); **STUN Binding reflexive** (A-66 / #31); **UDP discv announce** (A-67 / #32); **iterative FIND_NODE** (A-68 / #33); **federation join pin** (A-70 / #35).
+
+## Federation join (Analyze-70)
+
+Local operator ceremony — **not** Book II Join Request/Response and **not** a peer handshake. A self-signed descriptor is verified against its embedded pubkey, then `identity_ref` is pinned in `trust.json` and `.aira/federation/membership.json` is written. Other federation members stay Untrusted until separately `identity trust add`. One membership; a different `federation_id` is fail-closed (`leave` is later).
+
+```bash
+cargo run -p aira-cli -- --root "$ROOT" federation join --descriptor ./fed.json
+```
+
+Descriptor `schema` = `aira:federation:descriptor:v1`. Canonical bytes (no signature):
+`aira:federation:descriptor:v1|{schema}|{federation_id}|{federation_type}|{identity_ref}|{public_key_hex}`.
 
 ## STUN Binding (Analyze-66)
 

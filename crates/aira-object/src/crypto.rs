@@ -89,6 +89,16 @@ impl Keyring {
             .insert(key_ref.as_str().to_string(), vec![verifying]);
     }
 
+    /// Empty ring with one verifying key from hex (detached verify; no local-test).
+    pub fn with_verifying_hex(
+        key_ref: &AiraRef,
+        public_key_hex: &str,
+    ) -> Result<Self, CryptoError> {
+        let mut k = Self::new();
+        k.insert_verifying(key_ref.clone(), parse_public_hex(public_key_hex)?);
+        Ok(k)
+    }
+
     /// Append a verifying key for `key_ref` if not already present (dual-key grace).
     pub fn add_verifying(&mut self, key_ref: AiraRef, verifying: VerifyingKey) {
         let id = key_ref.as_str().to_string();
@@ -1587,6 +1597,24 @@ mod tests {
         let hex = local_test_public_key_hex();
         assert_eq!(hex.len(), 64);
         assert_eq!(hex, local_test_public_key_hex());
+    }
+
+    #[test]
+    fn with_verifying_hex_detached_roundtrip_and_no_local_test() {
+        let sk = SigningKey::from_bytes(&[9u8; 32]);
+        let id = AiraRef::parse("aira:identity:fed-signer").unwrap();
+        let pub_hex = hex::encode(sk.verifying_key().to_bytes());
+        let msg = b"aira:federation:descriptor:v1|detached";
+        let sig = sign_with_key(id.clone(), &sk, msg);
+        let ring = Keyring::with_verifying_hex(&id, &pub_hex).unwrap();
+        ring.verify(&sig, msg).unwrap();
+        assert!(ring.verifying_key(LOCAL_TEST_KEY_REF).is_none());
+        let local_sig = local_test_signature(msg);
+        assert_eq!(
+            ring.verify(&local_sig, msg),
+            Err(CryptoError::UnknownKey(LOCAL_TEST_KEY_REF.into()))
+        );
+        assert!(Keyring::with_verifying_hex(&id, "zz").is_err());
     }
 
     #[test]
