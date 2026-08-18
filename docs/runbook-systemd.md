@@ -66,4 +66,4 @@ Commented TLS/mTLS lines in the unit files are **examples only** — they requir
 
 ## Out of scope
 
-Runtime changes; supervisord configs; public bind (QUEUE #34); packaging/install scripts; SELinux policy.
+Runtime changes; supervisord configs; packaging/install scripts; SELinux policy. Public HTTP bind is opt-in (`aira-node --allow-public-bind`); this unit stays loopback.

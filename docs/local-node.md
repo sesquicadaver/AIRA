@@ -49,7 +49,7 @@ Loads config, lists CSU registry entries, runs one local OperationalPlane submit
 
 ## Local HTTP API (Roadmap M11 + Analyze-45/48)
 
-Default listen is loopback only (`127.0.0.1:8787`). Plain HTTP remains the default; TLS and Bearer auth are opt-in.
+Default listen is loopback only (`127.0.0.1:8787`). Non-loopback `--listen` / `--health-listen` (`0.0.0.0`, `::`, LAN, public) require `--allow-public-bind`; without it the process exits before bind. Plain HTTP remains the default; TLS and Bearer auth are independent opt-in (public + no TLS prints a warning).
 
 ```bash
 cargo run -p aira-node -- --root "$ROOT" --init --http --listen 127.0.0.1:8787
@@ -63,10 +63,14 @@ cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 \
 cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 \
   --tls-self-signed --tls-client-ca /path/client-ca.pem
 # Optional plain-HTTP liveness (Analyze-56): only GET /health, no client cert.
-# Requires --tls-client-ca. Loopback only until QUEUE #34.
+# Requires --tls-client-ca. Non-loopback needs --allow-public-bind (Analyze-69).
 cargo run -p aira-node -- --root "$ROOT" --http --listen 127.0.0.1:8787 \
   --tls-self-signed --tls-client-ca /path/client-ca.pem \
   --health-listen 127.0.0.1:8788
+# Public bind is fail-closed without the flag:
+# cargo run -p aira-node -- --root "$ROOT" --http --listen 0.0.0.0:8787
+#   → error: pass --allow-public-bind
+# cargo run -p aira-node -- --root "$ROOT" --http --listen 0.0.0.0:8787 --allow-public-bind
 # Optional Bearer auth for /v1/* (`/health` stays open at HTTP layer); also AIRA_HTTP_TOKEN
 cargo run -p aira-node -- --root "$ROOT" --http --http-token "$TOKEN"
 # Multi-tenant CSU authz (Analyze-64): map Bearer → publisher_id
@@ -116,11 +120,11 @@ curl -skS --cert client.pem --key client.key https://127.0.0.1:8787/health
 curl -sS http://127.0.0.1:8788/health
 ```
 
-Non-goals (див. [`QUEUE.md`](../QUEUE.md)): federation (#35); public bind opt-in (#34); tenant `.prev` prune (#36); mTLS CN principal seam; YAML **write**/convert CLI; SQLite audit rewrite.
+Non-goals (див. [`QUEUE.md`](../QUEUE.md)): federation (#35); tenant `.prev` prune (#36); mTLS CN principal seam; YAML **write**/convert CLI; SQLite audit rewrite.
 
-Shipped на HTTP: mTLS require + CN→TrustStore (A-51/55); plain `--health-listen` (A-56 / #21); multi-tenant CSU authz Bearer map (A-64 / #29).
+Shipped на HTTP: mTLS require + CN→TrustStore (A-51/55); plain `--health-listen` (A-56 / #21); multi-tenant CSU authz Bearer map (A-64 / #29); public bind opt-in `--allow-public-bind` (A-69 / #34).
 
-Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.md); окремо від loopback HTTP API.
+Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.md); окремо від HTTP API.
 
 ## Notes
 

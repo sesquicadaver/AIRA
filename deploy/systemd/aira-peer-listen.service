@@ -6,7 +6,7 @@
 #   - ExecStart= binary path (`aira` from aira-cli)
 #   - --bind PORT (operator-owned; pick a free loopback port, e.g. 7900)
 #
-# Default bind is loopback only. Public bind is QUEUE #34.
+# Default bind is loopback only. This example stays loopback (peer TCP listen has no public-bind CLI flag).
 # Type=simple: no readiness protocol. After=network.target is ordering only.
 # Handshake/recv run off the accept loop (Analyze-59); Restart= restarts the whole daemon.
 

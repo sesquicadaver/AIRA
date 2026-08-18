@@ -25,7 +25,8 @@ use crate::tls::{resolve_tls_paths, serve_https};
 #[command(
     name = "aira-node",
     version,
-    about = "AIRA local node — load config/CSU and process local events"
+    about = "AIRA local node — load config/CSU and process local events",
+    after_help = "Examples:\n  aira-node --http --listen 127.0.0.1:8787\n  aira-node --http --allow-public-bind --listen 0.0.0.0:8787 --http-token \"$TOKEN\"\n\nNon-loopback bind is fail-closed without --allow-public-bind. TLS/Bearer stay opt-in."
 )]
 struct Args {
     /// Local node root (default: .aira).
@@ -75,6 +76,10 @@ struct Args {
     /// Plain-HTTP liveness bind (`GET /health` only). Requires mTLS on `--listen` (Analyze-56).
     #[arg(long)]
     health_listen: Option<String>,
+
+    /// Allow non-loopback `--listen` / `--health-listen` (Analyze-69). Default: fail-closed.
+    #[arg(long, default_value_t = false)]
+    allow_public_bind: bool,
 }
 
 fn main() -> ExitCode {
@@ -139,6 +144,7 @@ fn run() -> Result<ExitCode> {
             http_token: args.http_token,
             http_tenant_auth: args.http_tenant_auth,
             health_listen: args.health_listen,
+            allow_public_bind: args.allow_public_bind,
         });
     }
 
@@ -147,8 +153,9 @@ fn run() -> Result<ExitCode> {
         || args.tls_self_signed
         || args.tls_client_ca.is_some()
         || args.health_listen.is_some()
+        || args.allow_public_bind
     {
-        bail!("TLS / mTLS / --health-listen flags require --http");
+        bail!("TLS / mTLS / --health-listen / --allow-public-bind flags require --http");
     }
     if args.http_token.is_some() || args.http_tenant_auth.is_some() {
         bail!("--http-token / --http-tenant-auth require --http");
@@ -185,8 +192,23 @@ fn run() -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+/// Fail-closed unless `addr` is loopback or `--allow-public-bind` was set.
+fn assert_bind_allowed(addr: SocketAddr, allow_public: bool, flag: &str) -> Result<()> {
+    if addr.ip().is_loopback() {
+        return Ok(());
+    }
+    if !allow_public {
+        bail!("{flag} {addr} is not loopback — pass --allow-public-bind (fail-closed default)");
+    }
+    Ok(())
+}
+
 /// Parse optional `--health-listen` (Analyze-56). Requires mTLS on the API listener.
-fn resolve_health_listen(mtls: bool, health_listen: Option<&str>) -> Result<Option<SocketAddr>> {
+fn resolve_health_listen(
+    mtls: bool,
+    health_listen: Option<&str>,
+    allow_public: bool,
+) -> Result<Option<SocketAddr>> {
     let Some(raw) = health_listen.map(str::trim).filter(|s| !s.is_empty()) else {
         return Ok(None);
     };
@@ -196,10 +218,7 @@ fn resolve_health_listen(mtls: bool, health_listen: Option<&str>) -> Result<Opti
     let addr: SocketAddr = raw
         .parse()
         .map_err(|e| anyhow::anyhow!("invalid --health-listen {raw}: {e}"))?;
-    // Fail closed until QUEUE #34 (public bind opt-in). Plain health has no client cert.
-    if !addr.ip().is_loopback() {
-        bail!("--health-listen must be loopback until QUEUE #34 (got {addr}); use 127.0.0.1");
-    }
+    assert_bind_allowed(addr, allow_public, "--health-listen")?;
     Ok(Some(addr))
 }
 
@@ -214,6 +233,7 @@ struct HttpOpts {
     http_token: Option<String>,
     http_tenant_auth: Option<PathBuf>,
     health_listen: Option<String>,
+    allow_public_bind: bool,
 }
 
 fn serve_http(opts: HttpOpts) -> Result<ExitCode> {
@@ -227,12 +247,16 @@ fn serve_http(opts: HttpOpts) -> Result<ExitCode> {
         http_token,
         http_tenant_auth,
         health_listen,
+        allow_public_bind,
     } = opts;
     let addr: SocketAddr = listen
         .parse()
         .map_err(|e| anyhow::anyhow!("invalid --listen {listen}: {e}"))?;
-    if !addr.ip().is_loopback() {
-        eprintln!("warning: listening on non-loopback {addr} — M11 assumes local-only trust");
+    assert_bind_allowed(addr, allow_public_bind, "--listen")?;
+    if !addr.ip().is_loopback() && tls_cert.is_none() && tls_key.is_none() && !tls_self_signed {
+        eprintln!(
+            "warning: public bind {addr} without TLS — operator choice (TLS/Bearer remain opt-in)"
+        );
     }
     if let Some(ref t) = http_token {
         if t.trim().is_empty() {
@@ -257,7 +281,12 @@ fn serve_http(opts: HttpOpts) -> Result<ExitCode> {
         .map(|t| !t.trim().is_empty())
         .unwrap_or(false);
     let mtls = tls_client_ca.is_some();
-    let health_addr = resolve_health_listen(mtls, health_listen.as_deref())?;
+    let health_addr = resolve_health_listen(mtls, health_listen.as_deref(), allow_public_bind)?;
+    if let Some(haddr) = health_addr {
+        if !haddr.ip().is_loopback() {
+            eprintln!("warning: public --health-listen {haddr} is plaintext GET /health");
+        }
+    }
     let state = AppState::open(&root)
         .map_err(|e| anyhow::anyhow!("{e}"))?
         .with_http_token(http_token)
@@ -267,8 +296,10 @@ fn serve_http(opts: HttpOpts) -> Result<ExitCode> {
     println!("endpoints: /health /v1/problems /v1/results /v1/artifacts /v1/events /v1/capabilities /v1/csu /v1/conformance/run");
     if auth_enabled {
         println!("http_auth: bearer enabled (/health exempt at HTTP layer)");
-    } else {
+    } else if addr.ip().is_loopback() {
         println!("http_auth: off (loopback trust)");
+    } else {
+        println!("http_auth: off (public bind; TLS/Bearer remain opt-in)");
     }
     if tenant_auth_on {
         println!("http_tenant_auth {}", map_path.display());
@@ -336,18 +367,19 @@ fn serve_http(opts: HttpOpts) -> Result<ExitCode> {
 }
 
 #[cfg(test)]
-mod resolve_health_tests {
-    use super::resolve_health_listen;
+mod bind_policy_tests {
+    use super::{assert_bind_allowed, resolve_health_listen};
+    use std::net::SocketAddr;
 
     #[test]
     fn health_listen_none_ok() {
-        assert!(resolve_health_listen(true, None).unwrap().is_none());
-        assert!(resolve_health_listen(false, None).unwrap().is_none());
+        assert!(resolve_health_listen(true, None, false).unwrap().is_none());
+        assert!(resolve_health_listen(false, None, false).unwrap().is_none());
     }
 
     #[test]
     fn health_listen_requires_mtls() {
-        let err = resolve_health_listen(false, Some("127.0.0.1:8788")).unwrap_err();
+        let err = resolve_health_listen(false, Some("127.0.0.1:8788"), false).unwrap_err();
         assert!(
             err.to_string().contains("requires --tls-client-ca"),
             "{err}"
@@ -356,7 +388,7 @@ mod resolve_health_tests {
 
     #[test]
     fn health_listen_parses_loopback() {
-        let addr = resolve_health_listen(true, Some("127.0.0.1:8788"))
+        let addr = resolve_health_listen(true, Some("127.0.0.1:8788"), false)
             .unwrap()
             .unwrap();
         assert_eq!(addr.port(), 8788);
@@ -364,8 +396,54 @@ mod resolve_health_tests {
     }
 
     #[test]
-    fn health_listen_rejects_non_loopback() {
-        let err = resolve_health_listen(true, Some("0.0.0.0:8788")).unwrap_err();
-        assert!(err.to_string().contains("loopback"), "{err}");
+    fn health_listen_rejects_non_loopback_without_flag() {
+        let err = resolve_health_listen(true, Some("0.0.0.0:8788"), false).unwrap_err();
+        assert!(err.to_string().contains("--allow-public-bind"), "{err}");
+    }
+
+    #[test]
+    fn health_listen_allows_non_loopback_with_flag() {
+        let addr = resolve_health_listen(true, Some("0.0.0.0:8788"), true)
+            .unwrap()
+            .unwrap();
+        assert!(!addr.ip().is_loopback());
+        assert_eq!(addr.port(), 8788);
+    }
+
+    #[test]
+    fn listen_rejects_public_without_flag() {
+        let addr: SocketAddr = "0.0.0.0:8787".parse().unwrap();
+        let err = assert_bind_allowed(addr, false, "--listen").unwrap_err();
+        assert!(err.to_string().contains("--allow-public-bind"), "{err}");
+        assert!(err.to_string().contains("fail-closed"), "{err}");
+    }
+
+    #[test]
+    fn listen_allows_loopback_without_flag() {
+        let addr: SocketAddr = "127.0.0.1:8787".parse().unwrap();
+        assert_bind_allowed(addr, false, "--listen").unwrap();
+        let v6: SocketAddr = "[::1]:8787".parse().unwrap();
+        assert_bind_allowed(v6, false, "--listen").unwrap();
+    }
+
+    #[test]
+    fn listen_allows_public_with_flag() {
+        let addr: SocketAddr = "0.0.0.0:8787".parse().unwrap();
+        assert_bind_allowed(addr, true, "--listen").unwrap();
+        let v6: SocketAddr = "[::]:8787".parse().unwrap();
+        assert_bind_allowed(v6, true, "--listen").unwrap();
+    }
+
+    #[test]
+    fn listen_rejects_unspecified_v6_without_flag() {
+        let addr: SocketAddr = "[::]:8787".parse().unwrap();
+        let err = assert_bind_allowed(addr, false, "--listen").unwrap_err();
+        assert!(err.to_string().contains("--allow-public-bind"), "{err}");
+    }
+
+    #[test]
+    fn health_listen_rejects_unspecified_v6_without_flag() {
+        let err = resolve_health_listen(true, Some("[::]:8788"), false).unwrap_err();
+        assert!(err.to_string().contains("--allow-public-bind"), "{err}");
     }
 }

@@ -5,7 +5,7 @@
 #   - WorkingDirectory= and --root path (node data dir)
 #   - ExecStart= binary path (cargo install / package / build target)
 #
-# Default bind is loopback only. Public bind is QUEUE #34 (not this example).
+# Default bind is loopback only. Public bind needs --allow-public-bind (not this example).
 # Type=simple: process is the main service; no readiness protocol claimed.
 # After=network.target orders start relative to network.target — not a readiness guarantee.
 

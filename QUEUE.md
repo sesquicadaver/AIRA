@@ -1,6 +1,6 @@
 # AIRA — лінійна черга задач
 
-**Оновлено:** 2026-08-01  
+**Оновлено:** 2026-08-18  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `Analyze-*/todo/TODO_FIXME.md` — лише provenance.
 
@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-68 CLOSED @ 6c76b1d; QUEUE #33 DONE; next OPEN #34 |
+| `main` | Analyze-69 (QUEUE #34) public HTTP bind opt-in |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#34 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#35 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -49,13 +49,13 @@
 | 31 | **DONE** | ~~Analyze-66 — STUN Binding reflexive~~ | Binding → `stun_reflexive.json` → `dht announce --from-stun`; dial unchanged | mock STUN + docs/peer-link | discv5 UDP |
 | 32 | **DONE** | ~~Analyze-67 — UDP discv5-style announce~~ | Signed UDP announce → local `dht.json` (`source=udp`); no FIND_NODE | тести + docs/peer-link | FIND_NODE |
 | 33 | **DONE** | ~~Analyze-68 — iterative FIND_NODE~~ | Signed UDP FIND/NODES; XOR iterate; merge trusted hints | тести + docs/peer-link | federation join |
-| 34 | OPEN | Analyze-69 | Public HTTP bind лише з **явним** opt-in + fail-closed default | docs + тест відмови без flag | federation |
+| 34 | **DONE** | ~~Analyze-69 — public HTTP bind opt-in~~ | Public HTTP bind лише з **явним** opt-in + fail-closed default | docs + тест відмови без flag | Federation |
 | 35 | OPEN | Analyze-70 | Federation join prototype (roadmap v0.3 micro) | мінімальний join+trust; Living Spec | settlement/CRP |
 | 36 | OPEN | Analyze-71 | Tenant `ed25519.prev.<stamp>` prune (+ optional stdin secret) | prune CLI parity з node backups; тести | HTTP authz |
 
 ### Наступний цикл
 
-**#34 → Analyze-69** (Public HTTP bind opt-in).
+**#35 → Analyze-70** (Federation join prototype).
 
 ---
 
@@ -76,7 +76,7 @@
 | A-48 multi-tenant HTTP authz | #29 |
 | `docs/local-node.md` YAML deferred | #30 |
 | peer-link Out STUN / discv5 / FIND_NODE | #31–33 |
-| peer-link public HTTP bind | #34 |
+| peer-link public HTTP bind | #34 **DONE** (Analyze-69) |
 | `specs/mvp-roadmap.md` post-MVP federation | #35 |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `Analyze-N/`.
