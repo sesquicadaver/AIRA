@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-71 CLOSED @ 3191d55; QUEUE #36 DONE; next OPEN #37 |
+| `main` | Analyze-72 (QUEUE #37) tenant stdin secret |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Активна черга | **#37 → …** (перший OPEN = наступний цикл) |
 
