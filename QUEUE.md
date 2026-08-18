@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-70 (QUEUE #35) federation join |
+| `main` | Analyze-70 CLOSED @ 50dd134; QUEUE #35 DONE; next OPEN #36 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Активна черга | **#36 → …** (перший OPEN = наступний цикл) |
 
