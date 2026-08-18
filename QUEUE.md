@@ -8,9 +8,9 @@
 
 | | |
 |--|--|
-| `main` | Analyze-67 CLOSED @ 8beb0d6; QUEUE #32 DONE; next OPEN #33 |
+| `main` | Analyze-68 CLOSED; QUEUE #33 DONE; next OPEN #34 |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **#33 → …** (перший OPEN = наступний цикл) |
+| Активна черга | **#34 → …** (перший OPEN = наступний цикл) |
 
 ## Правила атомарності
 
@@ -48,14 +48,14 @@
 | 30 | **DONE** | ~~Analyze-65 — YAML config read parity~~ | `config.yaml` xor `config.json` → `NodeConfig`; init JSON-only | тести + docs/local-node | SQLite audit rewrite |
 | 31 | **DONE** | ~~Analyze-66 — STUN Binding reflexive~~ | Binding → `stun_reflexive.json` → `dht announce --from-stun`; dial unchanged | mock STUN + docs/peer-link | discv5 UDP |
 | 32 | **DONE** | ~~Analyze-67 — UDP discv5-style announce~~ | Signed UDP announce → local `dht.json` (`source=udp`); no FIND_NODE | тести + docs/peer-link | FIND_NODE |
-| 33 | OPEN | Analyze-68 | Iterative FIND_NODE поверх #32 | closest lookup over UDP path | federation join |
+| 33 | **DONE** | ~~Analyze-68 — iterative FIND_NODE~~ | Signed UDP FIND/NODES; XOR iterate; merge trusted hints | тести + docs/peer-link | federation join |
 | 34 | OPEN | Analyze-69 | Public HTTP bind лише з **явним** opt-in + fail-closed default | docs + тест відмови без flag | federation |
 | 35 | OPEN | Analyze-70 | Federation join prototype (roadmap v0.3 micro) | мінімальний join+trust; Living Spec | settlement/CRP |
 | 36 | OPEN | Analyze-71 | Tenant `ed25519.prev.<stamp>` prune (+ optional stdin secret) | prune CLI parity з node backups; тести | HTTP authz |
 
 ### Наступний цикл
 
-**#33 → Analyze-68** (Iterative FIND_NODE).
+**#34 → Analyze-69** (Public HTTP bind opt-in).
 
 ---
 

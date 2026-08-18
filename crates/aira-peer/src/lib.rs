@@ -8,7 +8,8 @@
 //! Analyze-47: trusted-mesh DHT-lite (`peers/dht.json` + `peer.dht.announce`).
 //! Analyze-59: `accept_tcp` + `complete_accept` so daemon loops are not blocked by handshake.
 //! Analyze-66: STUN Binding client + `peers/stun_reflexive.json` (no ICE; dial stays TCP/book).
-//! Analyze-67: UDP discv5-style announce (signed datagram → local DHT store; no FIND_NODE).
+//! Analyze-67: UDP discv5-style announce (signed datagram → local DHT store).
+//! Analyze-68: iterative FIND_NODE over UDP discv (XOR closest; no apply-book).
 
 mod address_book;
 mod dht;
@@ -35,9 +36,11 @@ pub use dht::{
 };
 pub use discovery::{DiscoveryEntry, DiscoverySource, PeerDiscoveryStore};
 pub use discv::{
-    apply_discv_announce, apply_discv_datagram, bind_udp, bind_udp_explicit, recv_one_and_store,
-    send_discv_announce, set_udp_timeout, sign_discv_announce, DiscvAnnounce,
-    DISCV_ANNOUNCE_DOMAIN, DISCV_SCHEMA,
+    apply_discv_announce, apply_discv_datagram, bind_udp, bind_udp_explicit, handle_discv_datagram,
+    iterative_discv_find, recv_one_and_handle, recv_one_and_store, send_discv_announce,
+    set_udp_timeout, sign_discv_announce, DiscvAnnounce, DiscvFindReport, DiscvHandleResult,
+    DISCV_ANNOUNCE_DOMAIN, DISCV_FIND_ALPHA, DISCV_FIND_MAX_HOPS, DISCV_FIND_SCHEMA,
+    DISCV_NODES_SCHEMA, DISCV_SCHEMA,
 };
 pub use envelope::make_peer_ping;
 pub use error::PeerError;

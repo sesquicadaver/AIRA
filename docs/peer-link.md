@@ -58,9 +58,9 @@ cargo run -p aira-cli -- --root "$B" peer dht list
 
 Канон черги: [`QUEUE.md`](../QUEUE.md) Phase B #26+.
 
-Заплановано атомарно: FIND_NODE (#33); public HTTP bind (#34); federation (#35).
+Заплановано атомарно: public HTTP bind (#34); federation (#35).
 
-Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); DHT→address_book `--apply-book` (A-57 / #22); relay hub (A-44); durable relay registry (A-58 / #23); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18); concurrent accept (`accept_tcp` + spawned `complete_accept`, A-59 / #24); systemd examples (`deploy/systemd/`, [runbook-systemd.md](runbook-systemd.md), A-60 / #25); **STUN Binding reflexive** (A-66 / #31); **UDP discv announce** (A-67 / #32).
+Shipped (не Out): mTLS require (`--tls-client-ca`, A-51); DHT-lite (A-47); DHT→address_book `--apply-book` (A-57 / #22); relay hub (A-44); durable relay registry (A-58 / #23); gossip (A-43); gossip self-sovereign forward filter (A-53 / #18); concurrent accept (`accept_tcp` + spawned `complete_accept`, A-59 / #24); systemd examples (`deploy/systemd/`, [runbook-systemd.md](runbook-systemd.md), A-60 / #25); **STUN Binding reflexive** (A-66 / #31); **UDP discv announce** (A-67 / #32); **iterative FIND_NODE** (A-68 / #33).
 
 ## STUN Binding (Analyze-66)
 
@@ -81,7 +81,18 @@ Path: `stun query` → `stun_reflexive.json` → `dht announce --from-stun` → 
 
 ## UDP discv announce (Analyze-67)
 
-Local one-hop signed UDP datagram (not Ethereum discv5/ENR). Receiver upserts `peers/dht.json` with `source=udp` if the issuer is trusted and not revoked. **Does not** change `dial` or auto-promote the address book. Iterative FIND_NODE is #33.
+Local one-hop signed UDP datagram (not Ethereum discv5/ENR). Receiver upserts `peers/dht.json` with `source=udp` if the issuer is trusted and not revoked. **Does not** change `dial` or auto-promote the address book.
+
+## Iterative FIND_NODE (Analyze-68)
+
+`peer discv listen` multiplexes announce + FIND. FIND is a signed UDP query; responder replies NODES = local XOR-closest `k` from `dht.json`. Client iterates α=3 / hop cap 8. FIND is sent to the **same host:port** as advertised `addr` (UDP). Returned hints merge only if the identity is already in TrustStore (not revoked); `source=udp:nodes:<responder>`. No apply-book — still `peer dht find --apply-book` for exact hits.
+
+```bash
+cargo run -p aira-cli -- --root "$B" peer discv listen --bind 127.0.0.1:PORT
+cargo run -p aira-cli -- --root "$A" peer discv find --key-ref aira:identity:carol --to 127.0.0.1:PORT
+```
+
+Untrusted requester / bad signature → no NODES. TCP `dial` unchanged.
 
 ```bash
 cargo run -p aira-cli -- --root "$B" peer discv listen --bind 127.0.0.1:0 --once

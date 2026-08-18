@@ -176,7 +176,7 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Канон: [`QUEUE.md`](../QUEUE.md) Phase B (наступний OPEN: #33 FIND_NODE).
+Канон: [`QUEUE.md`](../QUEUE.md) Phase B (наступний OPEN: #34 public HTTP bind).
 
 | Було Out | Рядок |
 |----------|-------|
@@ -192,8 +192,8 @@ Empty and `TESTSIG` are rejected on admission.
 | Tenant `.prev.<stamp>` prune / stdin secret | #36 |
 | SQLite ceremony audit table | після #26 (не окремий рядок поки JSONL достатньо; додати в кінець за потреби) |
 | UDP discv5-style announce | #32 **DONE** (Analyze-67) |
-| Iterative FIND_NODE | #33 |
+| Iterative FIND_NODE | #33 **DONE** (Analyze-68) |
 
-Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51); CN→TrustStore (A-55); self-sovereign trust-delta (A-52); plain `--health-listen` when mTLS (A-56); DHT→address_book `--apply-book` (A-57); durable relay registry (A-58); concurrent peer accept (`accept_tcp` + spawned handshake, A-59); systemd examples (A-60); `.prev.<stamp>` prune CLI (A-61); durable per-CSU secrets (A-62); tenant rotate/revoke ceremony (A-63); multi-tenant HTTP CSU authz Bearer map (A-64); YAML∨JSON config read parity (A-65); STUN Binding reflexive + `dht announce --from-stun` (A-66); UDP discv announce → local DHT store (A-67).
+Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51); CN→TrustStore (A-55); self-sovereign trust-delta (A-52); plain `--health-listen` when mTLS (A-56); DHT→address_book `--apply-book` (A-57); durable relay registry (A-58); concurrent peer accept (`accept_tcp` + spawned handshake, A-59); systemd examples (A-60); `.prev.<stamp>` prune CLI (A-61); durable per-CSU secrets (A-62); tenant rotate/revoke ceremony (A-63); multi-tenant HTTP CSU authz Bearer map (A-64); YAML∨JSON config read parity (A-65); STUN Binding reflexive + `dht announce --from-stun` (A-66); UDP discv announce → local DHT store (A-67); iterative UDP FIND_NODE (A-68).
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify + relay/DHT).
