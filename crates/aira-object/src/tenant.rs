@@ -1,5 +1,5 @@
 //! Per-CSU tenant signing isolation (Analyze-42) + durable secrets (Analyze-62)
-//! + rotate/revoke ceremony (Analyze-63).
+//! + rotate/revoke ceremony (Analyze-63) + backup prune (Analyze-71).
 //!
 //! Signing secrets for CSU publishers live in a process map keyed by `csu_id`.
 //! Only verifying keys are merged into the process [`Keyring`] (public material).
@@ -17,9 +17,12 @@ use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 
 use crate::audit::{TrustAuditAction, TrustAuditEntry, TrustAuditLog};
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
+
 use crate::crypto::{
     primary_signer, register_keyring, sign_with_key, signature_for, unregister_verifying,
-    utc_now_rfc3339, CryptoError, Keyring, LOCAL_TEST_KEY_REF,
+    utc_now_rfc3339, CryptoError, Keyring, NodeSecretPruneReport, LOCAL_TEST_KEY_REF,
 };
 use crate::types::{AiraRef, Signature};
 
@@ -570,6 +573,295 @@ pub fn csu_tenant_registered(csu_id: &AiraRef) -> bool {
     guard.contains_key(csu_id.as_str())
 }
 
+/// One listed tenant signing-secret backup (latest slot or archived stamp).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CsuTenantBackupInfo {
+    pub csu_id: String,
+    /// `latest` or filename stamp (`<unix-secs>` optional `-<n>`).
+    pub stamp: String,
+    pub secret_path: PathBuf,
+    pub meta_path: Option<PathBuf>,
+    pub old_public_key_hex: Option<String>,
+    pub backed_up_at: Option<String>,
+    pub is_latest: bool,
+}
+
+fn unix_now_secs() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+fn read_tenant_backup_meta(meta_path: &Path) -> (Option<String>, Option<String>) {
+    let Ok(raw) = fs::read_to_string(meta_path) else {
+        return (None, None);
+    };
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(&raw) else {
+        return (None, None);
+    };
+    (
+        v.get("old_public_key_hex")
+            .and_then(|x| x.as_str())
+            .map(str::to_string),
+        v.get("backed_up_at")
+            .and_then(|x| x.as_str())
+            .map(str::to_string),
+    )
+}
+
+/// Larger key = newer. Numeric unix stamps outrank non-numeric (non-numeric sort oldest).
+fn stamp_sort_key(stamp: &str) -> (u8, u64, u32) {
+    let mut parts = stamp.split('-');
+    let base = parts.next().unwrap_or(stamp);
+    let suffix: u32 = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+    match base.parse::<u64>() {
+        Ok(n) => (1, n, suffix),
+        Err(_) => (0, 0, suffix),
+    }
+}
+
+fn tenant_stamp_unix(stamp: &str) -> Option<i64> {
+    let base = stamp.split('-').next().unwrap_or(stamp);
+    base.parse::<i64>().ok().filter(|&n| n >= 0)
+}
+
+fn tenant_archive_age(info: &CsuTenantBackupInfo) -> Option<i64> {
+    if let Some(ref at) = info.backed_up_at {
+        if let Ok(dt) = OffsetDateTime::parse(at.trim(), &Rfc3339) {
+            return Some(dt.unix_timestamp());
+        }
+    }
+    tenant_stamp_unix(&info.stamp)
+}
+
+/// Archived secret `ed25519.prev.<stamp>` (not latest, not meta/tmp).
+fn archived_prev_stamp(name: &str) -> Option<&str> {
+    let prefix = format!("{CSU_TENANT_SECRET_BACKUP_FILE}.");
+    if !name.starts_with(&prefix) {
+        return None;
+    }
+    if name.ends_with(".meta.json") || name.ends_with(".tmp") {
+        return None;
+    }
+    if name == CSU_TENANT_SECRET_BACKUP_META_FILE {
+        return None;
+    }
+    let stamp = name.get(prefix.len()..)?;
+    if stamp.is_empty() || stamp.contains('.') {
+        return None;
+    }
+    Some(stamp)
+}
+
+fn list_one_tenant_backups(
+    csu_id: &str,
+    dir: &Path,
+) -> Result<Vec<CsuTenantBackupInfo>, CryptoError> {
+    let mut out = Vec::new();
+    let latest = dir.join(CSU_TENANT_SECRET_BACKUP_FILE);
+    if latest.is_file() {
+        let meta = dir.join(CSU_TENANT_SECRET_BACKUP_META_FILE);
+        let (old_public_key_hex, backed_up_at) = if meta.is_file() {
+            read_tenant_backup_meta(&meta)
+        } else {
+            (None, None)
+        };
+        out.push(CsuTenantBackupInfo {
+            csu_id: csu_id.to_string(),
+            stamp: "latest".into(),
+            secret_path: latest,
+            meta_path: meta.is_file().then_some(meta),
+            old_public_key_hex,
+            backed_up_at,
+            is_latest: true,
+        });
+    }
+
+    if dir.is_dir() {
+        let rd = fs::read_dir(dir).map_err(|e| CryptoError::Io(e.to_string()))?;
+        for ent in rd {
+            let ent = ent.map_err(|e| CryptoError::Io(e.to_string()))?;
+            let name = ent.file_name();
+            let name = name.to_string_lossy();
+            let Some(stamp) = archived_prev_stamp(name.as_ref()) else {
+                continue;
+            };
+            let path = ent.path();
+            if !path.is_file() {
+                continue;
+            }
+            let meta = dir.join(format!("{CSU_TENANT_SECRET_BACKUP_FILE}.{stamp}.meta.json"));
+            let (old_public_key_hex, backed_up_at) = if meta.is_file() {
+                read_tenant_backup_meta(&meta)
+            } else {
+                (None, None)
+            };
+            out.push(CsuTenantBackupInfo {
+                csu_id: csu_id.to_string(),
+                stamp: stamp.to_string(),
+                secret_path: path,
+                meta_path: meta.is_file().then_some(meta),
+                old_public_key_hex,
+                backed_up_at,
+                is_latest: false,
+            });
+        }
+    }
+
+    out.sort_by(|a, b| match (a.is_latest, b.is_latest) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => stamp_sort_key(&b.stamp).cmp(&stamp_sort_key(&a.stamp)),
+    });
+    Ok(out)
+}
+
+/// List durable tenant backups (latest + archived stamps). Newest first per tenant.
+///
+/// `csu_id` comes from the directory name, not `meta.json`. Does not read secrets.
+pub fn list_csu_tenant_secret_backups(
+    root: impl AsRef<Path>,
+) -> Result<Vec<CsuTenantBackupInfo>, CryptoError> {
+    let base = tenants_root(root.as_ref());
+    if !base.is_dir() {
+        return Ok(Vec::new());
+    }
+    let mut dirs = Vec::new();
+    let rd = fs::read_dir(&base).map_err(|e| CryptoError::Io(e.to_string()))?;
+    for ent in rd {
+        let ent = ent.map_err(|e| CryptoError::Io(e.to_string()))?;
+        let dir = ent.path();
+        if !dir.is_dir() {
+            continue;
+        }
+        let enc = ent.file_name();
+        let Ok(csu_id) = decode_csu_dir_name(&enc.to_string_lossy()) else {
+            continue;
+        };
+        dirs.push((csu_id, dir));
+    }
+    dirs.sort_by(|a, b| a.0.cmp(&b.0));
+    let mut out = Vec::new();
+    for (csu_id, dir) in dirs {
+        out.extend(list_one_tenant_backups(&csu_id, &dir)?);
+    }
+    Ok(out)
+}
+
+fn scan_orphan_tenant_meta(
+    dir: &Path,
+    report: &mut NodeSecretPruneReport,
+) -> Result<(), CryptoError> {
+    let prefix = format!("{CSU_TENANT_SECRET_BACKUP_FILE}.");
+    let rd = fs::read_dir(dir).map_err(|e| CryptoError::Io(e.to_string()))?;
+    for ent in rd {
+        let ent = ent.map_err(|e| CryptoError::Io(e.to_string()))?;
+        let name = ent.file_name();
+        let name = name.to_string_lossy();
+        if !name.starts_with(&prefix) || !name.ends_with(".meta.json") {
+            continue;
+        }
+        if name.as_ref() == CSU_TENANT_SECRET_BACKUP_META_FILE {
+            continue;
+        }
+        let end = name.len().saturating_sub(".meta.json".len());
+        if prefix.len() >= end {
+            continue;
+        }
+        let mid = &name[prefix.len()..end];
+        if mid.is_empty() || mid.contains('.') {
+            continue;
+        }
+        let secret = dir.join(format!("{CSU_TENANT_SECRET_BACKUP_FILE}.{mid}"));
+        if !secret.is_file() {
+            report.skipped.push((ent.path(), "orphan-meta".into()));
+        }
+    }
+    Ok(())
+}
+
+/// Prune archived `ed25519.prev.<stamp>` slots per tenant (Analyze-71).
+///
+/// Never deletes latest `.prev` / live `ed25519`. Requires `--keep` and/or `--older-than-days`.
+/// Retain = intersection of policies **per tenant dir** (newest archived rank 0).
+pub fn prune_csu_tenant_secret_backups(
+    root: impl AsRef<Path>,
+    keep: Option<u64>,
+    older_than_days: Option<u64>,
+    dry_run: bool,
+) -> Result<NodeSecretPruneReport, CryptoError> {
+    if keep.is_none() && older_than_days.is_none() {
+        return Err(CryptoError::Io(
+            "prune requires --keep and/or --older-than-days".into(),
+        ));
+    }
+    let root = root.as_ref();
+    let base = tenants_root(root);
+    let mut report = NodeSecretPruneReport {
+        dry_run,
+        ..Default::default()
+    };
+    if !base.is_dir() {
+        return Ok(report);
+    }
+
+    let mut decoded = Vec::new();
+    let rd = fs::read_dir(&base).map_err(|e| CryptoError::Io(e.to_string()))?;
+    for ent in rd {
+        let ent = ent.map_err(|e| CryptoError::Io(e.to_string()))?;
+        let dir = ent.path();
+        if !dir.is_dir() {
+            continue;
+        }
+        let enc = ent.file_name();
+        match decode_csu_dir_name(&enc.to_string_lossy()) {
+            Ok(csu_id) => decoded.push((csu_id, dir)),
+            Err(_) => report.skipped.push((dir, "undecodable-dir".into())),
+        }
+    }
+
+    let now = unix_now_secs();
+    for (csu_id, dir) in decoded {
+        scan_orphan_tenant_meta(&dir, &mut report)?;
+        let list = list_one_tenant_backups(&csu_id, &dir)?;
+        let mut archived: Vec<_> = list.into_iter().filter(|b| !b.is_latest).collect();
+        archived.sort_by(|a, b| stamp_sort_key(&b.stamp).cmp(&stamp_sort_key(&a.stamp)));
+        for (rank, info) in archived.into_iter().enumerate() {
+            let rank = rank as u64;
+            let age = tenant_archive_age(&info);
+            match crate::crypto::should_retain_archived(rank, age, keep, older_than_days, now) {
+                Ok(true) => {}
+                Ok(false) => {
+                    if dry_run {
+                        report.deleted.push(info.secret_path.clone());
+                        if let Some(ref m) = info.meta_path {
+                            report.deleted.push(m.clone());
+                        }
+                    } else {
+                        fs::remove_file(&info.secret_path).map_err(|e| {
+                            CryptoError::Io(format!("prune {}: {e}", info.secret_path.display()))
+                        })?;
+                        report.deleted.push(info.secret_path.clone());
+                        if let Some(ref m) = info.meta_path {
+                            if m.is_file() {
+                                fs::remove_file(m).map_err(|e| {
+                                    CryptoError::Io(format!("prune meta {}: {e}", m.display()))
+                                })?;
+                                report.deleted.push(m.clone());
+                            }
+                        }
+                    }
+                }
+                Err(reason) => {
+                    report.skipped.push((info.secret_path.clone(), reason));
+                }
+            }
+        }
+    }
+    Ok(report)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1000,6 +1292,286 @@ mod tests {
         assert!(load_csu_tenant_signing(root, &csu).is_err());
         // list skips dirs without meta
         assert!(list_csu_tenant_signing(root).unwrap().is_empty());
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    fn plant_archive(tdir: &Path, stamp: &str, body: &[u8]) {
+        fs::write(
+            tdir.join(format!("{CSU_TENANT_SECRET_BACKUP_FILE}.{stamp}")),
+            body,
+        )
+        .unwrap();
+    }
+
+    fn plant_latest_prev(tdir: &Path, body: &[u8]) {
+        fs::write(tdir.join(CSU_TENANT_SECRET_BACKUP_FILE), body).unwrap();
+    }
+
+    #[test]
+    fn prune_keep_one_isolates_two_tenants() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-pr01", [71u8; 32]);
+        let csu_a = AiraRef::parse("aira:csu:pr.a").unwrap();
+        let csu_b = AiraRef::parse("aira:csu:pr.b").unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu_a,
+            AiraRef::parse("aira:identity:pr-a").unwrap(),
+            SigningKey::from_bytes(&[21u8; 32]),
+            false,
+        )
+        .unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu_b,
+            AiraRef::parse("aira:identity:pr-b").unwrap(),
+            SigningKey::from_bytes(&[22u8; 32]),
+            false,
+        )
+        .unwrap();
+        let da = tenant_dir(root, csu_a.as_str());
+        let db = tenant_dir(root, csu_b.as_str());
+        plant_latest_prev(&da, b"la\n");
+        plant_latest_prev(&db, b"lb\n");
+        plant_archive(&da, "100", b"a-old\n");
+        plant_archive(&da, "200", b"a-new\n");
+        plant_archive(&db, "100", b"b-old\n");
+        plant_archive(&db, "200", b"b-new\n");
+
+        let report = prune_csu_tenant_secret_backups(root, Some(1), None, false).unwrap();
+        assert_eq!(report.deleted.len(), 2);
+        assert!(!da.join("ed25519.prev.100").is_file());
+        assert!(da.join("ed25519.prev.200").is_file());
+        assert!(da.join(CSU_TENANT_SECRET_BACKUP_FILE).is_file());
+        assert!(!db.join("ed25519.prev.100").is_file());
+        assert!(db.join("ed25519.prev.200").is_file());
+        assert!(db.join(CSU_TENANT_SECRET_BACKUP_FILE).is_file());
+        assert!(da.join(CSU_TENANT_SECRET_FILE).is_file());
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn prune_keep_zero_drops_archives_keeps_latest() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-pr02", [72u8; 32]);
+        let csu = AiraRef::parse("aira:csu:pr.keep0").unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            AiraRef::parse("aira:identity:pr-k0").unwrap(),
+            SigningKey::from_bytes(&[23u8; 32]),
+            false,
+        )
+        .unwrap();
+        let tdir = tenant_dir(root, csu.as_str());
+        plant_latest_prev(&tdir, b"latest\n");
+        plant_archive(&tdir, "1", b"old\n");
+        plant_archive(&tdir, "2", b"mid\n");
+        prune_csu_tenant_secret_backups(root, Some(0), None, false).unwrap();
+        assert!(!tdir.join("ed25519.prev.1").is_file());
+        assert!(!tdir.join("ed25519.prev.2").is_file());
+        assert!(tdir.join(CSU_TENANT_SECRET_BACKUP_FILE).is_file());
+        assert!(tdir.join(CSU_TENANT_SECRET_FILE).is_file());
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn prune_older_than_skips_unparseable_keep_still_ranks() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-pr03", [73u8; 32]);
+        let csu = AiraRef::parse("aira:csu:pr.age").unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            AiraRef::parse("aira:identity:pr-age").unwrap(),
+            SigningKey::from_bytes(&[24u8; 32]),
+            false,
+        )
+        .unwrap();
+        let tdir = tenant_dir(root, csu.as_str());
+        plant_archive(&tdir, "notanumber", b"bad\n");
+        plant_archive(&tdir, "50", b"ok\n");
+        let skipped = prune_csu_tenant_secret_backups(root, None, Some(1), false).unwrap();
+        assert!(tdir.join("ed25519.prev.notanumber").is_file());
+        assert!(skipped
+            .skipped
+            .iter()
+            .any(|(_, w)| w.contains("unparseable")));
+        prune_csu_tenant_secret_backups(root, Some(0), None, false).unwrap();
+        assert!(!tdir.join("ed25519.prev.notanumber").is_file());
+        assert!(!tdir.join("ed25519.prev.50").is_file());
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn prune_dry_run_and_requires_policy() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-pr04", [74u8; 32]);
+        let csu = AiraRef::parse("aira:csu:pr.dry").unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            AiraRef::parse("aira:identity:pr-dry").unwrap(),
+            SigningKey::from_bytes(&[25u8; 32]),
+            false,
+        )
+        .unwrap();
+        let tdir = tenant_dir(root, csu.as_str());
+        plant_archive(&tdir, "3", b"x\n");
+        let dry = prune_csu_tenant_secret_backups(root, Some(0), None, true).unwrap();
+        assert!(dry.dry_run);
+        assert!(!dry.deleted.is_empty());
+        assert!(tdir.join("ed25519.prev.3").is_file());
+        assert!(prune_csu_tenant_secret_backups(root, None, None, false).is_err());
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn prune_never_deletes_orphan_meta_latest_or_live() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-pr05", [75u8; 32]);
+        let csu = AiraRef::parse("aira:csu:pr.orphan").unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            AiraRef::parse("aira:identity:pr-or").unwrap(),
+            SigningKey::from_bytes(&[26u8; 32]),
+            false,
+        )
+        .unwrap();
+        let tdir = tenant_dir(root, csu.as_str());
+        plant_latest_prev(&tdir, b"lat\n");
+        let orphan = tdir.join("ed25519.prev.99.meta.json");
+        fs::write(&orphan, "{}\n").unwrap();
+        prune_csu_tenant_secret_backups(root, Some(0), None, false).unwrap();
+        assert!(orphan.is_file());
+        assert!(tdir.join(CSU_TENANT_SECRET_BACKUP_FILE).is_file());
+        assert!(tdir.join(CSU_TENANT_SECRET_FILE).is_file());
+        assert!(tdir.join(CSU_TENANT_META_FILE).is_file());
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn node_prune_does_not_touch_tenant_archives() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-pr06", [76u8; 32]);
+        let csu = AiraRef::parse("aira:csu:pr.node").unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            AiraRef::parse("aira:identity:pr-node").unwrap(),
+            SigningKey::from_bytes(&[27u8; 32]),
+            false,
+        )
+        .unwrap();
+        let tdir = tenant_dir(root, csu.as_str());
+        plant_archive(&tdir, "8", b"t\n");
+        crate::crypto::prune_node_secret_backups(root, Some(0), None, false).unwrap();
+        assert!(tdir.join("ed25519.prev.8").is_file());
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn list_includes_latest_after_rotate_backup() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-pr07", [77u8; 32]);
+        let csu = AiraRef::parse("aira:csu:pr.list").unwrap();
+        let pub_id = AiraRef::parse("aira:identity:pr-list").unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            pub_id,
+            SigningKey::from_bytes(&[28u8; 32]),
+            false,
+        )
+        .unwrap();
+        rotate_csu_tenant_signing(root, &csu, SigningKey::from_bytes(&[29u8; 32]), true).unwrap();
+        let list = list_csu_tenant_secret_backups(root).unwrap();
+        assert!(list.iter().any(|b| b.is_latest && b.csu_id == csu.as_str()));
+        assert_eq!(list[0].csu_id, csu.as_str());
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn prune_numeric_rank_prefers_10_over_9() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-pr08", [78u8; 32]);
+        let csu = AiraRef::parse("aira:csu:pr.lex").unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            AiraRef::parse("aira:identity:pr-lex").unwrap(),
+            SigningKey::from_bytes(&[30u8; 32]),
+            false,
+        )
+        .unwrap();
+        let tdir = tenant_dir(root, csu.as_str());
+        plant_archive(&tdir, "9", b"nine\n");
+        plant_archive(&tdir, "10", b"ten\n");
+        prune_csu_tenant_secret_backups(root, Some(1), None, false).unwrap();
+        assert!(!tdir.join("ed25519.prev.9").is_file());
+        assert!(tdir.join("ed25519.prev.10").is_file());
+        reset_csu_tenants();
+        reset_primary_signer();
+    }
+
+    #[test]
+    fn prune_and_list_ignore_tmp_staging() {
+        let _lock = tenant_test_lock();
+        reset_csu_tenants();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write_min_node(root, "node-pr09", [79u8; 32]);
+        let csu = AiraRef::parse("aira:csu:pr.tmp").unwrap();
+        save_csu_tenant_signing(
+            root,
+            &csu,
+            AiraRef::parse("aira:identity:pr-tmp").unwrap(),
+            SigningKey::from_bytes(&[31u8; 32]),
+            false,
+        )
+        .unwrap();
+        let tdir = tenant_dir(root, csu.as_str());
+        let tmp = tdir.join("ed25519.prev.tmp");
+        fs::write(&tmp, b"staging\n").unwrap();
+        plant_archive(&tdir, "4", b"real\n");
+        let listed = list_csu_tenant_secret_backups(root).unwrap();
+        assert!(!listed.iter().any(|b| b.secret_path.ends_with(".tmp")));
+        prune_csu_tenant_secret_backups(root, Some(0), None, false).unwrap();
+        assert!(tmp.is_file());
+        assert!(!tdir.join("ed25519.prev.4").is_file());
         reset_csu_tenants();
         reset_primary_signer();
     }

@@ -121,7 +121,7 @@ curl -skS --cert client.pem --key client.key https://127.0.0.1:8787/health
 curl -sS http://127.0.0.1:8788/health
 ```
 
-Non-goals (див. [`QUEUE.md`](../QUEUE.md)): tenant `.prev` prune (#36); mTLS CN principal seam; YAML **write**/convert CLI; SQLite audit rewrite.
+Non-goals (див. [`QUEUE.md`](../QUEUE.md)): tenant `--secret-hex-file` / stdin (#37); mTLS CN principal seam; YAML **write**/convert CLI; SQLite audit rewrite.
 
 Shipped на HTTP: mTLS require + CN→TrustStore (A-51/55); plain `--health-listen` (A-56 / #21); multi-tenant CSU authz Bearer map (A-64 / #29); public bind opt-in `--allow-public-bind` (A-69 / #34).
 

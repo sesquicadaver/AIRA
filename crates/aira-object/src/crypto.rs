@@ -1031,7 +1031,7 @@ fn ed25519_archive_age_unix(info: &NodeSecretBackupInfo) -> Option<i64> {
     compact_stamp_unix(&info.stamp)
 }
 
-fn should_retain_archived(
+pub(crate) fn should_retain_archived(
     rank: u64,
     age_unix: Option<i64>,
     keep: Option<u64>,

@@ -27,10 +27,11 @@ pub use crypto::{
 pub use descriptor::{ObjectDescriptor, ObjectType};
 pub use handle::Handle;
 pub use tenant::{
-    csu_tenant_registered, encode_csu_dir_name, list_csu_tenant_signing,
-    load_all_csu_tenant_signing, load_csu_tenant_signing, register_csu_tenant_signing,
-    reset_csu_tenants, revoke_csu_tenant_signing, rotate_csu_tenant_signing,
-    save_csu_tenant_signing, signature_for_tenant, tenant_publisher_ids, unregister_csu_tenant,
+    csu_tenant_registered, encode_csu_dir_name, list_csu_tenant_secret_backups,
+    list_csu_tenant_signing, load_all_csu_tenant_signing, load_csu_tenant_signing,
+    prune_csu_tenant_secret_backups, register_csu_tenant_signing, reset_csu_tenants,
+    revoke_csu_tenant_signing, rotate_csu_tenant_signing, save_csu_tenant_signing,
+    signature_for_tenant, tenant_publisher_ids, unregister_csu_tenant, CsuTenantBackupInfo,
     CsuTenantInfo, CsuTenantMeta, CSU_TENANTS_DIR, CSU_TENANT_META_FILE,
     CSU_TENANT_SECRET_BACKUP_FILE, CSU_TENANT_SECRET_BACKUP_META_FILE, CSU_TENANT_SECRET_FILE,
 };

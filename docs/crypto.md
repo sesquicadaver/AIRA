@@ -24,11 +24,24 @@ cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant list
 cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant load
 cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant rotate \
   --csu-id aira:csu:example.worker --backup
+cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant backups
+cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant backups prune --keep 3
+cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant backups prune --older-than-days 31 --dry-run
 cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant revoke \
   --csu-id aira:csu:example.worker --reason compromised
 ```
 
 **Tenant ceremony** (Analyze-63): `rotate` keeps the same `publisher_id`, writes a new `ed25519` (optional `ed25519.prev` + archive prior latest), audits `tenant_rotate`. `revoke` unloads the map, drops the publisher verifying key when unshared (never primary / local-test), deletes `identity/tenants/<hex>/`, audits `tenant_revoke`. Signing-side only — TrustStore CRL is not updated; historical verify may still succeed if the pubkey remains trusted. `register` refuses overwrite unless `--force` (prefer `rotate`). One `publisher_id` may bind to at most one CSU.
+
+**Tenant backup retention** (Analyze-71): GC archived `ed25519.prev.<stamp>` only (never latest `.prev` or live `ed25519`). Per-tenant `--keep` / `--older-than-days` (same intersection rule as node `identity backups prune`). `identity backups prune` does **not** touch tenant dirs.
+
+```bash
+cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant backups
+# csu_id  stamp  old_pubkey|-  backed_up_at|-  path
+cargo run -p aira-cli -- --root "$ROOT" identity csu-tenant backups prune --keep 3
+```
+
+Recommended starting points: `--keep 3` or `--older-than-days 31`. At least one flag is required. Stamps are unix seconds (numeric rank, not lex). Unparseable ages under `--older-than-days` are skipped; orphan `.meta.json` without a secret is never deleted.
 
 On `LocalSession::open` / `submit_problem` / `aira identity create`:
 
@@ -176,7 +189,7 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Канон: [`QUEUE.md`](../QUEUE.md) Phase B (наступний OPEN: #36 tenant `.prev` prune).
+Канон: [`QUEUE.md`](../QUEUE.md) Phase B (наступний OPEN: #37 stdin secret).
 
 | Було Out | Рядок |
 |----------|-------|
@@ -189,13 +202,14 @@ Empty and `TESTSIG` are rejected on admission.
 | YAML config parity | #30 **DONE** (Analyze-65) |
 | STUN / ICE-lite dial path | #31 **DONE** (Analyze-66 Binding reflexive) |
 | Retention/prune `.prev.<stamp>` | #26 **DONE** (Analyze-61) |
-| Tenant `.prev.<stamp>` prune / stdin secret | #36 |
+| Tenant `.prev.<stamp>` prune | #36 **DONE** (Analyze-71) |
+| Tenant `--secret-hex-file` / stdin | #37 |
 | SQLite ceremony audit table | після #26 (не окремий рядок поки JSONL достатньо; додати в кінець за потреби) |
 | UDP discv5-style announce | #32 **DONE** (Analyze-67) |
 | Iterative FIND_NODE | #33 **DONE** (Analyze-68) |
 | Public HTTP bind opt-in | #34 **DONE** (Analyze-69 `--allow-public-bind`) |
 | Federation join prototype | #35 **DONE** (Analyze-70 local pin) |
 
-Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51); CN→TrustStore (A-55); self-sovereign trust-delta (A-52); plain `--health-listen` when mTLS (A-56); DHT→address_book `--apply-book` (A-57); durable relay registry (A-58); concurrent peer accept (`accept_tcp` + spawned handshake, A-59); systemd examples (A-60); `.prev.<stamp>` prune CLI (A-61); durable per-CSU secrets (A-62); tenant rotate/revoke ceremony (A-63); multi-tenant HTTP CSU authz Bearer map (A-64); YAML∨JSON config read parity (A-65); STUN Binding reflexive + `dht announce --from-stun` (A-66); UDP discv announce → local DHT store (A-67); iterative UDP FIND_NODE (A-68); public HTTP bind opt-in `--allow-public-bind` (A-69); local federation join pin (A-70).
+Shipped: local HTTP TLS (A-45); HTTP Bearer (A-48); DHT-lite (A-47); coordinated `local.x25519` rotate (A-49); remote same-id TrustStore dual-key / `TrustStore::rekey` (A-50); mTLS require client cert via `--tls-client-ca` (A-51); CN→TrustStore (A-55); self-sovereign trust-delta (A-52); plain `--health-listen` when mTLS (A-56); DHT→address_book `--apply-book` (A-57); durable relay registry (A-58); concurrent peer accept (`accept_tcp` + spawned handshake, A-59); systemd examples (A-60); `.prev.<stamp>` prune CLI (A-61); durable per-CSU secrets (A-62); tenant rotate/revoke ceremony (A-63); multi-tenant HTTP CSU authz Bearer map (A-64); YAML∨JSON config read parity (A-65); STUN Binding reflexive + `dht announce --from-stun` (A-66); UDP discv announce → local DHT store (A-67); iterative UDP FIND_NODE (A-68); public HTTP bind opt-in `--allow-public-bind` (A-69); local federation join pin (A-70); tenant `ed25519.prev.<stamp>` prune (A-71).
 
 See also: [peer-link.md](peer-link.md) (hello v1 + Noise XX + trust-delta + rekey notify + relay/DHT).
