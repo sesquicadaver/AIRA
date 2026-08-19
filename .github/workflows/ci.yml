@@ -12,7 +12,7 @@ env:
 
 jobs:
   check:
-    name: fmt-clippy-test
+    name: fmt-clippy-test-schema-c0-c1
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,3 +33,14 @@ jobs:
 
       - name: cargo test
         run: cargo test --workspace
+
+      # QUEUE #38 / Analyze-73: AIRA contract, not only Rust.
+      # Non-zero exit if fixtures fail or C0/C1 report failed > 0. C2 is out of this row.
+      - name: schema fixtures
+        run: cargo run -p aira-cli --locked -- schema validate --fixtures fixtures
+
+      - name: conformance C0
+        run: cargo run -p aira-cli --locked -- conformance run --profile C0 --out "${{ runner.temp }}/aira-c0"
+
+      - name: conformance C1
+        run: cargo run -p aira-cli --locked -- conformance run --profile C1 --out "${{ runner.temp }}/aira-c1"

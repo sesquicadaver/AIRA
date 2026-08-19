@@ -10,6 +10,9 @@
 
 Reports validate against `aira:schema:conformance:report:0.1` and are published as immutable `ConformanceArtifact`.
 
+CI (QUEUE #38 / Analyze-73) runs C0 and C1 after `cargo test`. C2 stays optional / local until a later plan.
+
+
 ## CLI
 
 ```bash
