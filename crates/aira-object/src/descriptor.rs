@@ -55,5 +55,31 @@ impl ObjectDescriptor {
                 b"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             ),
         }
+        .attach_canonical_signature()
+        .expect("canonical example_problem")
+    }
+
+    /// Sign over canonical JSON of this descriptor without the top-level `signature`.
+    pub fn attach_canonical_signature(mut self) -> Result<Self, crate::CryptoError> {
+        let v = serde_json::to_value(&self).map_err(|e| crate::CryptoError::Io(e.to_string()))?;
+        self.signature = crate::sign_canonical_descriptor(&self.producer_identity, &v)?;
+        Ok(self)
+    }
+
+    /// Tenant-isolated sign over the same canonical message as [`Self::attach_canonical_signature`].
+    pub fn attach_canonical_signature_for_tenant(
+        mut self,
+        tenant_csu: &AiraRef,
+    ) -> Result<Self, crate::CryptoError> {
+        let v = serde_json::to_value(&self).map_err(|e| crate::CryptoError::Io(e.to_string()))?;
+        let msg = crate::descriptor_signing_message(&v)?;
+        self.signature = crate::signature_for_tenant(tenant_csu, &self.producer_identity, &msg)?;
+        Ok(self)
+    }
+
+    /// Verify Ed25519 over canonical descriptor hash. No LOCAL_TEST domain fallback.
+    pub fn verify_canonical(&self) -> Result<(), crate::CryptoError> {
+        let v = serde_json::to_value(self).map_err(|e| crate::CryptoError::Io(e.to_string()))?;
+        crate::verify_canonical_descriptor(&self.signature, &v)
     }
 }

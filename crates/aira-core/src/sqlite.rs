@@ -60,6 +60,7 @@ impl SqliteObjectStore {
 
 impl ObjectStore for SqliteObjectStore {
     fn create(&mut self, descriptor: ObjectDescriptor) -> Result<Handle, CoreError> {
+        crate::store::admit_object(&descriptor)?;
         let token = self.next_token()?;
         let descriptor_json =
             serde_json::to_string(&descriptor).map_err(|e| CoreError::Storage(e.to_string()))?;

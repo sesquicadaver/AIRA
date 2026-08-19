@@ -26,6 +26,10 @@ pub enum CoreError {
     NotFound(AiraRef),
     #[error("duplicate object id: {object_id}")]
     DuplicateObject { object_id: AiraRef },
+    #[error("unsigned object: {0}")]
+    Unsigned(AiraRef),
+    #[error("invalid object signature: {0}")]
+    InvalidSignature(AiraRef),
     #[error("storage error: {0}")]
     Storage(String),
     #[error(transparent)]

@@ -5,9 +5,7 @@ use std::path::Path;
 
 use aira_artifact::{ArtifactStore, ArtifactType, CasArtifactStore};
 use aira_core::{MemoryObjectStore, ObjectStore};
-use aira_csu::support::{
-    json_bytes, local_identity, local_signature, local_signature_over, make_artifact, make_event,
-};
+use aira_csu::support::{json_bytes, local_identity, local_signature, make_artifact, make_event};
 use aira_csu::{Csu, CsuRuntime};
 use aira_csu_context_basic::ContextBasicCsu;
 use aira_csu_evidence_basic::EvidenceBasicCsu;
@@ -171,9 +169,11 @@ impl OperationalPlane {
             producer_identity: local_identity(),
             policy_refs: vec![AiraRef::parse("aira:policy:default").map_err(map_obj)?],
             provenance_refs: vec![],
-            content_hash: hash.clone(),
-            signature: local_signature_over(hash.as_str().as_bytes()),
-        };
+            content_hash: hash,
+            signature: local_signature(),
+        }
+        .attach_canonical_signature()
+        .map_err(|e| FlowError::Core(e.to_string()))?;
         self.objects
             .create(desc)
             .map_err(|e| FlowError::Core(e.to_string()))?;
@@ -307,9 +307,11 @@ impl OperationalPlane {
             producer_identity: local_identity(),
             policy_refs: vec![AiraRef::parse("aira:policy:default").map_err(map_obj)?],
             provenance_refs: vec![],
-            content_hash: hash.clone(),
-            signature: local_signature_over(hash.as_str().as_bytes()),
-        };
+            content_hash: hash,
+            signature: local_signature(),
+        }
+        .attach_canonical_signature()
+        .map_err(|e| FlowError::Core(e.to_string()))?;
         self.objects
             .create(desc)
             .map_err(|e| FlowError::Core(e.to_string()))?;

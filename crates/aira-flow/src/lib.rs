@@ -284,8 +284,7 @@ mod tests {
             .unwrap();
         assert_eq!(desc.producer_identity.as_str(), id);
         assert_eq!(desc.signature.key_ref.as_str(), id);
-        aira_object::verify_ed25519(&desc.signature, desc.content_hash.as_str().as_bytes())
-            .unwrap();
+        desc.verify_canonical().unwrap();
         let ev = session
             .plane()
             .events()

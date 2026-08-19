@@ -46,8 +46,23 @@ impl MemoryObjectStore {
     }
 }
 
+/// Admit an object descriptor: cryptographic signature over canonical JSON.
+pub(crate) fn admit_object(descriptor: &ObjectDescriptor) -> Result<(), CoreError> {
+    if descriptor.signature.signature_value.trim().is_empty() {
+        return Err(CoreError::Unsigned(descriptor.object_id.clone()));
+    }
+    match descriptor.verify_canonical() {
+        Ok(()) => Ok(()),
+        Err(aira_object::CryptoError::MissingOrLegacy) => {
+            Err(CoreError::Unsigned(descriptor.object_id.clone()))
+        }
+        Err(_) => Err(CoreError::InvalidSignature(descriptor.object_id.clone())),
+    }
+}
+
 impl ObjectStore for MemoryObjectStore {
     fn create(&mut self, descriptor: ObjectDescriptor) -> Result<Handle, CoreError> {
+        admit_object(&descriptor)?;
         let id_key = descriptor.object_id.as_str().to_string();
         if self.by_id.contains_key(&id_key) {
             return Err(CoreError::DuplicateObject {
