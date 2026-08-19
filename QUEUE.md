@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Analyze-82 CLOSED @ b91a5b1; QUEUE #47 DONE; наступний OPEN **#48** |
+| `main` | Analyze-83 CLOSED @ b22bebe; QUEUE #48 DONE; наступний OPEN **#49** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase C **#48 OPEN** (Analyze-83) |
+| Активна черга | Phase C **#49 OPEN** (Analyze-84) |
 
 ## Правила атомарності
 
@@ -75,7 +75,7 @@
 | 45 | **DONE** | ~~Analyze-80 — core dependency firewall~~ | CI: `aira-core` ↛ node/peer/concrete CSU; CSU ↛ CSU; без циклів імпорту | CI падає на forbidden import / цикл | split файлів; нові crates |
 | 46 | **DONE** | ~~Analyze-81 — modularize aira-cli~~ | Mechanical split `crates/aira-cli/src/main.rs` → `commands/*` | CLI поведінка незмінна; тести CLI зелені | crypto/tenant/http/tls; нові підкоманди |
 | 47 | **DONE** | ~~Analyze-82 — modularize crypto.rs~~ | Mechanical split `crates/aira-object/src/crypto.rs` | тести object/crypto зелені | `tenant.rs`; CLI; HTTP |
-| 48 | OPEN | Analyze-83 — modularize tenant.rs | Mechanical split `crates/aira-object/src/tenant.rs` | тести tenant зелені | `crypto.rs`; зміна HTTP authz семантики |
+| 48 | **DONE** | ~~Analyze-83 — modularize tenant.rs~~ | Mechanical split `crates/aira-object/src/tenant.rs` | тести tenant зелені | `crypto.rs`; зміна HTTP authz семантики |
 | 49 | OPEN | Analyze-84 — modularize http.rs | Mechanical split `crates/aira-node/src/http.rs` | HTTP тести/поведінка незмінні | `tls.rs`; нові маршрути |
 | 50 | OPEN | Analyze-85 — modularize tls.rs | Mechanical split `crates/aira-node/src/tls.rs` | TLS/mTLS/health bind незмінні | `http.rs`; нові режими TLS |
 | 51 | OPEN | Analyze-86 — OperationalPlane reference-local | Docs + коментарі модуля: plane = C1 reference/demo, не production runtime | явно зафіксовано non-production статус | зміна drain/loop семантики |
@@ -83,7 +83,7 @@
 
 ### Наступний цикл
 
-**#48 OPEN** — Analyze-83: modularize tenant.rs.
+**#49 OPEN** — Analyze-84: modularize http.rs.
 
 ---
 
