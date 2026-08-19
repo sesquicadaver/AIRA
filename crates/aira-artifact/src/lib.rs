@@ -36,6 +36,8 @@ mod tests {
             signature: aira_object::local_test_signature(hash.as_str().as_bytes()),
             created_at: Timestamp::parse("2026-07-10T12:00:00Z").unwrap(),
         }
+        .attach_canonical_signature()
+        .expect("canonical sample")
     }
 
     #[test]
@@ -84,9 +86,12 @@ mod tests {
         .unwrap();
         let bad = ArtifactDescriptor {
             content_hash: bad_hash.clone(),
+            content_ref: format!("cas://{}", bad_hash.as_str()),
             signature: aira_object::local_test_signature(bad_hash.as_str().as_bytes()),
             ..desc.clone()
-        };
+        }
+        .attach_canonical_signature()
+        .expect("canonical claimed hash");
         let err = store.publish(bad, payload).unwrap_err();
         assert!(matches!(err, ArtifactError::HashMismatch { .. }));
     }
@@ -155,6 +160,9 @@ mod tests {
             "aira:artifact:sha256_4444444444444444444444444444444444444444444444444444444444444444",
         );
         private.policy_refs = vec![AiraRef::parse(PRIVATE_ARTIFACT_POLICY).unwrap()];
+        private = private
+            .attach_canonical_signature()
+            .expect("re-sign private policy");
         store.publish(private.clone(), payload).unwrap();
         let denied = store.resolve(&private.artifact_id).unwrap_err();
         assert!(matches!(denied, ArtifactError::AccessDenied(_)));
@@ -164,5 +172,33 @@ mod tests {
         assert_eq!(got.artifact_id, private.artifact_id);
         assert_eq!(bytes, payload);
         assert!(is_private_artifact(&got));
+    }
+
+    #[test]
+    fn canonical_verify_fails_when_artifact_fields_change() {
+        let d = descriptor_for(
+            b"canon",
+            "aira:artifact:sha256_5555555555555555555555555555555555555555555555555555555555555555",
+        );
+        d.verify_canonical().unwrap();
+
+        let mut t = d.clone();
+        t.artifact_type = ArtifactType::ContextArtifact;
+        assert!(t.verify_canonical().is_err());
+
+        let mut p = d.clone();
+        p.provenance_refs = vec![AiraRef::parse("aira:event:01E9").unwrap()];
+        assert!(p.verify_canonical().is_err());
+
+        let mut pol = d.clone();
+        pol.policy_refs = vec![AiraRef::parse(PRIVATE_ARTIFACT_POLICY).unwrap()];
+        assert!(pol.verify_canonical().is_err());
+
+        let mut h = d;
+        h.content_hash = ContentHash::parse(
+            "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        )
+        .unwrap();
+        assert!(h.verify_canonical().is_err());
     }
 }

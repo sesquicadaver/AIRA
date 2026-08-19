@@ -166,16 +166,17 @@ impl ArtifactStore for CasArtifactStore {
         if descriptor.signature.signature_value.trim().is_empty() {
             return Err(ArtifactError::Unsigned(descriptor.artifact_id));
         }
-        aira_object::verify_ed25519(
-            &descriptor.signature,
-            descriptor.content_hash.as_str().as_bytes(),
-        )
-        .map_err(|e| match e {
-            aira_object::CryptoError::MissingOrLegacy => {
-                ArtifactError::Unsigned(descriptor.artifact_id.clone())
+        match descriptor.verify_canonical() {
+            Ok(()) => {}
+            Err(aira_object::CryptoError::MissingOrLegacy) => {
+                return Err(ArtifactError::Unsigned(descriptor.artifact_id.clone()));
             }
-            _ => ArtifactError::InvalidSignature(descriptor.artifact_id.clone()),
-        })?;
+            Err(_) => {
+                return Err(ArtifactError::InvalidSignature(
+                    descriptor.artifact_id.clone(),
+                ));
+            }
+        }
         let actual = ContentHash::sha256_bytes(payload);
         if actual != descriptor.content_hash {
             return Err(ArtifactError::HashMismatch {
