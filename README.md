@@ -47,6 +47,8 @@ Long-running daemons: [`docs/runbook-systemd.md`](docs/runbook-systemd.md).
 ## Build
 
 ```bash
+python3 scripts/dep_firewall.py --self-test
+python3 scripts/dep_firewall.py
 cargo fmt --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
