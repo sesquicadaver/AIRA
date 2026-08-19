@@ -25,6 +25,12 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
+      # QUEUE #45 / Analyze-80: fail on aira-core→node/peer/CSU, CSU→CSU, or import cycles.
+      - name: dependency firewall
+        run: |
+          python3 scripts/dep_firewall.py --self-test
+          python3 scripts/dep_firewall.py
+
       - name: cargo fmt
         run: cargo fmt --all -- --check
 
