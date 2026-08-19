@@ -206,3 +206,5 @@ GPU/LLM marketplace, blockchain-required settlement
 CSU SDK / new basic CSU roles to “complete” Book III
 C2 as merge-blocking CI
 ```
+
+Model layer (EVO-3) is **ABSENT** in this tree. Planned as Artifact/Capability/Policy/CSU, not Core: [phase-d-plan.md](phase-d-plan.md). Not a C1 pipeline step. Not in QUEUE until Phase D is explicitly opened.

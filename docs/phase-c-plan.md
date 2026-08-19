@@ -13,7 +13,7 @@
       → виконання: один OPEN рядок = один Analyze-цикл
 ```
 
-Заборонено додавати поодинокі пункти в чергу поза цим планом. Нова робота після `#52` — новий загальний план (Phase D+), не «ще один рядок» у Phase C.
+Заборонено додавати поодинокі пункти в чергу поза цим планом. Нова робота після `#52` — [`docs/phase-d-plan.md`](phase-d-plan.md) (Model Artifact & Inventory), не «ще один рядок» у Phase C.
 
 ---
 
@@ -57,7 +57,7 @@ OperationalPlane явно reference-local; є docs/implementation-status.md.
 Не додано нових системних сутностей Phase D–G.
 ```
 
-**Після Phase C (окремий план):** Full local C2 → контрольований C3 → CSU SDK → research через RFC-P.
+**Після Phase C:** [`phase-d-plan.md`](phase-d-plan.md) — Model Artifact & Inventory (CSU/Artifact, не Core; не C1-крок). Full local C2 / CSU SDK / research promotion — окремо, не змішувати з D0–D3.
 
 **Фільтр задачі**
 

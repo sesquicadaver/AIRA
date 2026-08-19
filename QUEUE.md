@@ -3,7 +3,7 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** [`docs/phase-c-plan.md`](docs/phase-c-plan.md) — загальний план → атоми без перекриття → цей лінійний хвіст.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Кандидат наступного етапу (план складено, виконання не стартоване): [`docs/phase-d-plan.md`](docs/phase-d-plan.md).
 
 ## Стан
 
@@ -12,7 +12,7 @@
 | `main` | Analyze-87 CLOSED @ f7f3289; QUEUE #52 DONE; Phase C **#38–#52** complete; **немає OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase C **#38–#52 DONE**; наступний OPEN лише після нового загального плану |
+| Активна черга | Phase C **#38–#52 DONE**. Phase D план: [`docs/phase-d-plan.md`](docs/phase-d-plan.md); **немає OPEN** |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти в Phase C не додавати; хвіст `#38`–`#52` — повний етап. Після `#52` — новий загальний план, не новий поодинокий рядок.
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C хвіст `#38`–`#52` — повний етап. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); рядки `#53+` лише після явного старту виконання.
 
 ---
 
@@ -83,7 +83,7 @@
 
 ### Наступний цикл
 
-**Phase C `#38`–`#52` DONE.** Наступний OPEN — лише після нового загального плану (Phase D+). Не додавати поодинокі рядки.
+**Phase C `#38`–`#52` DONE.** Phase D план складено ([`docs/phase-d-plan.md`](docs/phase-d-plan.md)); **OPEN немає** — не копіювати `#53+` у чергу без окремого рішення старту. `EVO-3.md` §11 (`#48`–`#55`) не є backlog.
 
 ---
 
@@ -113,5 +113,6 @@
 | EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
+| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); резерв `#53+`, ще не OPEN |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
