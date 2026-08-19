@@ -194,7 +194,7 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-Канон: [`QUEUE.md`](../QUEUE.md) Phase B.
+Канон: [`QUEUE.md`](../QUEUE.md). Phase C: [`docs/phase-c-plan.md`](phase-c-plan.md).
 
 | Було Out | Рядок |
 |----------|-------|

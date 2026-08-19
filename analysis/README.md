@@ -15,7 +15,7 @@
 ## Правила
 
 1. **Не редагувати** `Manifesto etc/` і `Meditation_About/` — лише цитувати.
-2. **Канон backlog** — [`QUEUE.md`](../QUEUE.md) у корені репозиторію.
+2. **Канон backlog** — [`QUEUE.md`](../QUEUE.md) у корені репозиторію. Phase C: [`docs/phase-c-plan.md`](../docs/phase-c-plan.md).
 3. **Новий цикл** — нова тека `analysis/Analyze-N/` (наступний вільний номер); див. [`Analyze-1/RULES.md`](Analyze-1/RULES.md).
 4. **Evidence vs Inference** — кожне твердження з джерелом у цьому репо або явно як inference.
 

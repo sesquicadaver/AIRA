@@ -1,24 +1,27 @@
 # AIRA — лінійна черга задач
 
-**Оновлено:** 2026-08-18  
+**Оновлено:** 2026-08-19  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
-**Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.
+**Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
+**План етапу:** [`docs/phase-c-plan.md`](docs/phase-c-plan.md) — загальний план → атоми без перекриття → цей лінійний хвіст.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-72 CLOSED @ 5c9824b; QUEUE #37 DONE; немає OPEN |
+| `main` | Phase B #18–#37 DONE; Phase C план зафіксовано; наступний OPEN **#38** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
-| Активна черга | **немає OPEN** (Phase B #18–#37 DONE) |
+| Phase B #18–#37 | **архів (DONE)** |
+| Активна черга | Phase C **#38 OPEN** (Analyze-73) |
 
 ## Правила атомарності
 
 1. **Лінійність:** `#N` стартує лише після `#N-1` = DONE (APPROVE/CLEAR + UltraQA + push).
 2. **Один вихід:** кожен рядок має один measurable «Done when».
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
-4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку.
+4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
+6. **План-перед-чергою:** поодинокі пункти в Phase C не додавати; хвіст `#38`–`#52` — повний етап. Після `#52` — новий загальний план, не новий поодинокий рядок.
 
 ---
 
@@ -29,7 +32,7 @@
 
 ---
 
-## Активна черга (лінійна) — Phase B
+## Архів (закрито) — Phase B: #18–#37
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
@@ -54,9 +57,33 @@
 | 36 | **DONE** | ~~Analyze-71 — tenant `.prev` prune~~ | Tenant `ed25519.prev.<stamp>` prune | prune CLI parity з node backups; тести | HTTP authz; stdin secret |
 | 37 | **DONE** | ~~Analyze-72 — tenant `--secret-hex-file` / stdin~~ | Tenant `--secret-hex-file` / stdin | register/rotate читає secret з file або stdin, не argv | HTTP authz |
 
+---
+
+## Активна черга (лінійна) — Phase C: стабілізація Reference
+
+План: [`docs/phase-c-plan.md`](docs/phase-c-plan.md). Не зливати рядки. Не додавати фічі поза `#38`–`#52`.
+
+| # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
+|---|--------|---------|-----------------|-----------|------------------|
+| 38 | **OPEN** | Analyze-73 — CI schema/C0/C1 gate | GitHub Actions: обов’язкові `schema validate --fixtures` + conformance C0 + C1 | CI червоний при невалідній схемі або провалі C0/C1; зелений на поточному дереві | семантика схем; C2 у CI; підписи; split файлів |
+| 39 | OPEN | Analyze-74 — canonical descriptor hash helper | Примітив hash/sign/verify canonical descriptor **без** зміни production call-sites | тести helper; verify-шляхи runtime не змінені | перемикання Event/Artifact/Object/CSU; прибирання fallback |
+| 40 | OPEN | Analyze-75 — Event canonical signatures | Event sign/verify = canonical descriptor без `signature`; mutation-тести; немає event-path runtime fallback на `LOCAL_TEST_DOMAIN_MSG` | зміна `event_type` / `causal_refs` / `object_refs` / `artifact_refs` / `payload_hash` ламає verify | Artifact/Object/CSU; protocol envelope як окремий sweep; Noise |
+| 41 | OPEN | Analyze-76 — Artifact canonical signatures | Artifact descriptor: canonical hash-signing + mutation-тести | зміна артефактних полів дескриптора ламає verify | Event/Object/CSU; CAS layout |
+| 42 | OPEN | Analyze-77 — Object canonical signatures | Core Object descriptor: canonical hash-signing + mutation-тести | зміна об’єктних полів дескриптора ламає verify | Event/Artifact/CSU |
+| 43 | OPEN | Analyze-78 — CSU manifest canonical signatures | Manifest sign/verify = canonical manifest без `signature` + mutation-тести | зміна полів маніфесту ламає verify | Event/Artifact/Object; нові CSU |
+| 44 | OPEN | Analyze-79 — leftover test-sig fallback | Прибрати runtime fallback `LOCAL_TEST_DOMAIN_MSG`/TESTSIG поза `#[cfg(test)]` там, де лишилось після #40–#43 | runtime verify не приймає test-domain fallback | повторний перепис уже мігрованих дескрипторів; нові протоколи |
+| 45 | OPEN | Analyze-80 — core dependency firewall | CI: `aira-core` ↛ node/peer/concrete CSU; CSU ↛ CSU; без циклів імпорту | CI падає на forbidden import / цикл | split файлів; нові crates |
+| 46 | OPEN | Analyze-81 — modularize aira-cli | Mechanical split `crates/aira-cli/src/main.rs` → `commands/*` | CLI поведінка незмінна; тести CLI зелені | crypto/tenant/http/tls; нові підкоманди |
+| 47 | OPEN | Analyze-82 — modularize crypto.rs | Mechanical split `crates/aira-object/src/crypto.rs` | тести object/crypto зелені | `tenant.rs`; CLI; HTTP |
+| 48 | OPEN | Analyze-83 — modularize tenant.rs | Mechanical split `crates/aira-object/src/tenant.rs` | тести tenant зелені | `crypto.rs`; зміна HTTP authz семантики |
+| 49 | OPEN | Analyze-84 — modularize http.rs | Mechanical split `crates/aira-node/src/http.rs` | HTTP тести/поведінка незмінні | `tls.rs`; нові маршрути |
+| 50 | OPEN | Analyze-85 — modularize tls.rs | Mechanical split `crates/aira-node/src/tls.rs` | TLS/mTLS/health bind незмінні | `http.rs`; нові режими TLS |
+| 51 | OPEN | Analyze-86 — OperationalPlane reference-local | Docs + коментарі модуля: plane = C1 reference/demo, не production runtime | явно зафіксовано non-production статус | зміна drain/loop семантики |
+| 52 | OPEN | Analyze-87 — implementation status matrix | `docs/implementation-status.md`: ТЗ → модуль → тести → статус | покриття Book 0–IV, schemas, C0/C1, CSU basic, HTTP/peer як post-MVP | нова реалізація «щоб заповнити матрицю» |
+
 ### Наступний цикл
 
-**немає OPEN.** Нові рядки лише в кінець черги за рішенням розробника.
+**#38 OPEN** — Analyze-73: CI schema/C0/C1 gate. Не стартувати, доки розробник не відкриє Analyze-цикл.
 
 ---
 
@@ -80,5 +107,11 @@
 | peer-link Out STUN / discv5 / FIND_NODE | #31–33 |
 | peer-link public HTTP bind | #34 **DONE** (Analyze-69) |
 | `specs/mvp-roadmap.md` post-MVP federation | #35 **DONE** (Analyze-70) |
+| EVO-1/EVO-2 CI schema+C0+C1 | #38 |
+| EVO-1/EVO-2 canonical signatures (розщеплено по типах) | #39–#44 |
+| EVO-2 dependency firewall | #45 |
+| EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
+| EVO-2 OperationalPlane reference-local | #51 |
+| EVO-2 implementation-status matrix | #52 |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
