@@ -826,7 +826,7 @@ pub fn prune_csu_tenant_secret_backups(
         scan_orphan_tenant_meta(&dir, &mut report)?;
         let list = list_one_tenant_backups(&csu_id, &dir)?;
         let mut archived: Vec<_> = list.into_iter().filter(|b| !b.is_latest).collect();
-        archived.sort_by(|a, b| stamp_sort_key(&b.stamp).cmp(&stamp_sort_key(&a.stamp)));
+        archived.sort_by_key(|b| std::cmp::Reverse(stamp_sort_key(&b.stamp)));
         for (rank, info) in archived.into_iter().enumerate() {
             let rank = rank as u64;
             let age = tenant_archive_age(&info);
