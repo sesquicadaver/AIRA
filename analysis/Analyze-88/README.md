@@ -1,7 +1,7 @@
 # Analyze-88 — ModelArtifact payload schema (QUEUE #53)
 
 ## Status
-OPEN (Phase D D0.1).
+CLOSED (QUEUE #53 DONE @ 22a13ab / PR #16).
 
 ## Done when
 JSON schema `aira:schema:model:artifact:0.1` + valid/invalid fixtures; `schema validate --fixtures` green. RFC-S recorded. Canonical `ArtifactType` unchanged.
