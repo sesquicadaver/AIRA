@@ -152,7 +152,7 @@ mod tests {
         let mut bad_abi = m;
         bad_abi.abi_version = "9.9".into();
         bad_abi.csu_id = AiraRef::parse("aira:csu:other.basic").unwrap();
-        bad_abi.signature = aira_object::local_test_signature(bad_abi.csu_id.as_str().as_bytes());
+        bad_abi.resign_canonical().unwrap();
         assert!(matches!(
             reg.register(bad_abi, None),
             Err(CsuError::UnsupportedAbi(_))
@@ -189,6 +189,7 @@ mod tests {
         let mut rt = CsuRuntime::new(producer(), sig());
         let mut manifest = sample_manifest();
         manifest.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
+        manifest.resign_canonical().unwrap();
         let id = manifest.csu_id.clone();
         let received = Arc::new(AtomicUsize::new(0));
         rt.register_handler(
@@ -214,8 +215,8 @@ mod tests {
         let mut rt2 = CsuRuntime::new(producer(), sig());
         let mut m2 = sample_manifest();
         m2.csu_id = AiraRef::parse("aira:csu:fail.basic").unwrap();
-        m2.signature = aira_object::local_test_signature(m2.csu_id.as_str().as_bytes());
         m2.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
+        m2.resign_canonical().unwrap();
         let id2 = m2.csu_id.clone();
         rt2.register_handler(Box::new(FailingCsu { manifest: m2 }), None)
             .unwrap();
@@ -250,7 +251,6 @@ mod tests {
         let mut rt = CsuRuntime::new(producer(), sig());
         let mut m = sample_manifest();
         m.csu_id = AiraRef::parse("aira:csu:fail.publisher").unwrap();
-        m.signature = aira_object::local_test_signature(m.csu_id.as_str().as_bytes());
         m.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
         support::apply_publisher(&mut m, pub_id.clone());
         register_csu_tenant_signing(&m.csu_id, pub_id.clone(), pub_sk).unwrap();
@@ -290,7 +290,6 @@ mod tests {
         let mut rt2 = CsuRuntime::new(producer(), sig());
         let mut m2 = sample_manifest();
         m2.csu_id = AiraRef::parse("aira:csu:fail.nosign").unwrap();
-        m2.signature = aira_object::local_test_signature(m2.csu_id.as_str().as_bytes());
         m2.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
         let missing = AiraRef::parse("aira:identity:no-signing-key").unwrap();
         support::apply_publisher(&mut m2, missing);
@@ -303,7 +302,6 @@ mod tests {
         // Without lifecycle sink, register succeeds; dispatch emit_failed fails closed.
         let mut m3 = sample_manifest();
         m3.csu_id = AiraRef::parse("aira:csu:fail.nosign2").unwrap();
-        m3.signature = aira_object::local_test_signature(m3.csu_id.as_str().as_bytes());
         m3.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
         support::apply_publisher(
             &mut m3,
@@ -371,5 +369,31 @@ mod tests {
         reg.save(&path).unwrap();
         let loaded = CsuRegistry::load(&path).unwrap();
         assert_eq!(loaded.list().len(), 1);
+    }
+
+    #[test]
+    fn canonical_verify_fails_when_manifest_fields_change() {
+        let m = sample_manifest();
+        m.verify_canonical().unwrap();
+
+        let mut name = m.clone();
+        name.csu_name = "mutated".into();
+        assert!(name.verify_canonical().is_err());
+
+        let mut ty = m.clone();
+        ty.csu_type = CsuType::Context;
+        assert!(ty.verify_canonical().is_err());
+
+        let mut abi = m.clone();
+        abi.abi_version = "9.9".into();
+        assert!(abi.verify_canonical().is_err());
+
+        let mut pub_id = m.clone();
+        pub_id.publisher_identity = AiraRef::parse("aira:identity:other").unwrap();
+        assert!(pub_id.verify_canonical().is_err());
+
+        let mut id = m;
+        id.csu_id = AiraRef::parse("aira:csu:mutated.basic").unwrap();
+        assert!(id.verify_canonical().is_err());
     }
 }

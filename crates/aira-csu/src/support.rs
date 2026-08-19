@@ -35,6 +35,9 @@ pub fn mvp_timestamp() -> Timestamp {
 /// [`aira_object::register_csu_tenant_signing`] so emits can sign under tenant isolation.
 pub fn apply_publisher(manifest: &mut CsuManifest, publisher: AiraRef) {
     manifest.publisher_identity = publisher;
+    manifest
+        .resign_canonical()
+        .expect("canonical manifest after publisher override");
 }
 
 /// Build a minimal signed manifest for a basic CSU.
@@ -74,9 +77,11 @@ pub fn basic_manifest(
         },
         lifecycle_hooks: None,
         provenance_refs: None,
-        signature: local_signature_over(csu_id.as_bytes()),
+        signature: local_signature(),
         created_at: mvp_timestamp(),
     }
+    .attach_canonical_signature()
+    .expect("canonical basic_manifest")
 }
 
 /// Build an event descriptor signed by `producer` under CSU tenant isolation.

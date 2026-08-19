@@ -662,10 +662,17 @@ mod tests {
 
     #[tokio::test]
     async fn http_csu_register() {
+        use aira_csu::support::basic_manifest;
+        use aira_csu::CsuType;
+
         let (_dir, state) = setup();
-        let manifest: Value =
-            serde_json::from_str(include_str!("../../../fixtures/valid/csu/manifest.json"))
-                .unwrap();
+        let manifest = basic_manifest(
+            "aira:csu:execution.basic",
+            "execution-basic",
+            CsuType::Execution,
+            &["CapsuleCreated"],
+            &["CapsuleCompleted"],
+        );
         let (st, v) = json_req(
             router(state),
             "POST",
@@ -777,7 +784,7 @@ mod tests {
     #[tokio::test]
     async fn tenant_register_ok_and_cross_forbidden() {
         use crate::tenant_auth::{save_tenant_auth_map, TenantAuthEntry, TenantAuthMap};
-        use aira_csu::support::basic_manifest;
+        use aira_csu::support::{apply_publisher, basic_manifest};
         use aira_csu::CsuType;
         use aira_object::AiraRef;
 
@@ -808,7 +815,10 @@ mod tests {
             &[],
             &[],
         );
-        ok_manifest.publisher_identity = AiraRef::parse("aira:identity:tenant-pub").unwrap();
+        apply_publisher(
+            &mut ok_manifest,
+            AiraRef::parse("aira:identity:tenant-pub").unwrap(),
+        );
         let (st, v) = json_req_auth(
             app.clone(),
             "POST",
@@ -826,7 +836,7 @@ mod tests {
             &[],
             &[],
         );
-        bad.publisher_identity = AiraRef::parse("aira:identity:other-pub").unwrap();
+        apply_publisher(&mut bad, AiraRef::parse("aira:identity:other-pub").unwrap());
         let (st2, v2) = json_req_auth(
             app,
             "POST",
@@ -842,7 +852,7 @@ mod tests {
     #[tokio::test]
     async fn tenant_list_filtered_admin_sees_all() {
         use crate::tenant_auth::{save_tenant_auth_map, TenantAuthEntry, TenantAuthMap};
-        use aira_csu::support::basic_manifest;
+        use aira_csu::support::{apply_publisher, basic_manifest};
         use aira_csu::{CsuRegistry, CsuType};
         use aira_object::AiraRef;
 
@@ -850,9 +860,9 @@ mod tests {
         let reg_path = state.root.join("csu").join("registry.json");
         let mut reg = CsuRegistry::new();
         let mut m1 = basic_manifest("aira:csu:t1", "t1", CsuType::Execution, &[], &[]);
-        m1.publisher_identity = AiraRef::parse("aira:identity:tenant-pub").unwrap();
+        apply_publisher(&mut m1, AiraRef::parse("aira:identity:tenant-pub").unwrap());
         let mut m2 = basic_manifest("aira:csu:t2", "t2", CsuType::Execution, &[], &[]);
-        m2.publisher_identity = AiraRef::parse("aira:identity:other-pub").unwrap();
+        apply_publisher(&mut m2, AiraRef::parse("aira:identity:other-pub").unwrap());
         reg.register(m1, None).unwrap();
         reg.register(m2, None).unwrap();
         reg.save(&reg_path).unwrap();
