@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Analyze-75 CLOSED @ ad6f882; QUEUE #40 DONE; наступний OPEN **#41** |
+| `main` | Analyze-76 CLOSED @ f04c986; QUEUE #41 DONE; наступний OPEN **#42** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase C **#41 OPEN** (Analyze-76) |
+| Активна черга | Phase C **#42 OPEN** (Analyze-77) |
 
 ## Правила атомарності
 
@@ -68,7 +68,7 @@
 | 38 | **DONE** | ~~Analyze-73 — CI schema/C0/C1 gate~~ | GitHub Actions: обов’язкові `schema validate --fixtures` + conformance C0 + C1 | CI червоний при невалідній схемі або провалі C0/C1; зелений на поточному дереві | семантика схем; C2 у CI; підписи; split файлів |
 | 39 | **DONE** | ~~Analyze-74 — canonical descriptor hash helper~~ | Примітив hash/sign/verify canonical descriptor **без** зміни production call-sites | тести helper; verify-шляхи runtime не змінені | перемикання Event/Artifact/Object/CSU; прибирання fallback |
 | 40 | **DONE** | ~~Analyze-75 — Event canonical signatures~~ | Event sign/verify = canonical descriptor без `signature`; mutation-тести; немає event-path runtime fallback на `LOCAL_TEST_DOMAIN_MSG` | зміна `event_type` / `causal_refs` / `object_refs` / `artifact_refs` / `payload_hash` ламає verify | Artifact/Object/CSU; protocol envelope як окремий sweep; Noise |
-| 41 | OPEN | Analyze-76 — Artifact canonical signatures | Artifact descriptor: canonical hash-signing + mutation-тести | зміна артефактних полів дескриптора ламає verify | Event/Object/CSU; CAS layout |
+| 41 | **DONE** | ~~Analyze-76 — Artifact canonical signatures~~ | Artifact descriptor: canonical hash-signing + mutation-тести | зміна артефактних полів дескриптора ламає verify | Event/Object/CSU; CAS layout |
 | 42 | OPEN | Analyze-77 — Object canonical signatures | Core Object descriptor: canonical hash-signing + mutation-тести | зміна об’єктних полів дескриптора ламає verify | Event/Artifact/CSU |
 | 43 | OPEN | Analyze-78 — CSU manifest canonical signatures | Manifest sign/verify = canonical manifest без `signature` + mutation-тести | зміна полів маніфесту ламає verify | Event/Artifact/Object; нові CSU |
 | 44 | OPEN | Analyze-79 — leftover test-sig fallback | Прибрати runtime fallback `LOCAL_TEST_DOMAIN_MSG`/TESTSIG поза `#[cfg(test)]` там, де лишилось після #40–#43 | runtime verify не приймає test-domain fallback | повторний перепис уже мігрованих дескрипторів; нові протоколи |
@@ -83,7 +83,7 @@
 
 ### Наступний цикл
 
-**#41 OPEN** — Analyze-76: Artifact canonical signatures.
+**#42 OPEN** — Analyze-77: Object canonical signatures.
 
 ---
 
