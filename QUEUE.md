@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Analyze-73 CLOSED @ a55f61a; QUEUE #38 DONE; наступний OPEN **#39** |
+| `main` | Analyze-74 CLOSED @ a73d81d; QUEUE #39 DONE; наступний OPEN **#40** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase C **#39 OPEN** (Analyze-74) |
+| Активна черга | Phase C **#40 OPEN** (Analyze-75) |
 
 ## Правила атомарності
 
@@ -66,7 +66,7 @@
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
 | 38 | **DONE** | ~~Analyze-73 — CI schema/C0/C1 gate~~ | GitHub Actions: обов’язкові `schema validate --fixtures` + conformance C0 + C1 | CI червоний при невалідній схемі або провалі C0/C1; зелений на поточному дереві | семантика схем; C2 у CI; підписи; split файлів |
-| 39 | OPEN | Analyze-74 — canonical descriptor hash helper | Примітив hash/sign/verify canonical descriptor **без** зміни production call-sites | тести helper; verify-шляхи runtime не змінені | перемикання Event/Artifact/Object/CSU; прибирання fallback |
+| 39 | **DONE** | ~~Analyze-74 — canonical descriptor hash helper~~ | Примітив hash/sign/verify canonical descriptor **без** зміни production call-sites | тести helper; verify-шляхи runtime не змінені | перемикання Event/Artifact/Object/CSU; прибирання fallback |
 | 40 | OPEN | Analyze-75 — Event canonical signatures | Event sign/verify = canonical descriptor без `signature`; mutation-тести; немає event-path runtime fallback на `LOCAL_TEST_DOMAIN_MSG` | зміна `event_type` / `causal_refs` / `object_refs` / `artifact_refs` / `payload_hash` ламає verify | Artifact/Object/CSU; protocol envelope як окремий sweep; Noise |
 | 41 | OPEN | Analyze-76 — Artifact canonical signatures | Artifact descriptor: canonical hash-signing + mutation-тести | зміна артефактних полів дескриптора ламає verify | Event/Object/CSU; CAS layout |
 | 42 | OPEN | Analyze-77 — Object canonical signatures | Core Object descriptor: canonical hash-signing + mutation-тести | зміна об’єктних полів дескриптора ламає verify | Event/Artifact/CSU |
@@ -83,7 +83,7 @@
 
 ### Наступний цикл
 
-**#39 OPEN** — Analyze-74: canonical descriptor hash helper.
+**#40 OPEN** — Analyze-75: Event canonical signatures.
 
 ---
 
