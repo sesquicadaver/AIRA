@@ -9,6 +9,7 @@
 - CLI already maps fixture/C0/C1 failures to `ExitCode::FAILURE`; CI does not swallow that.
 - `--locked` prevents silent dependency drift.
 - C2, schemas, and signature/split work are untouched.
+- Parallel `aira-flow` tests raced on the process tenant map / primary signer; serialized via `isolated_flow()` so `cargo test --workspace` can stay green.
 - Stable clippy 1.97 (`-D warnings`) failed on existing `tenant.rs` `sort_by`; mechanical `sort_by_key(Reverse)` so the new gate can run. Rank order covered by `prune_numeric_rank_prefers_10_over_9`.
 
 ## Residual

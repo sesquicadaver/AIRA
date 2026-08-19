@@ -26,6 +26,19 @@ mod tests {
     use aira_event::EventType;
     use aira_object::AiraRef;
     use serde_json::json;
+    use std::sync::{Mutex, OnceLock};
+
+    /// Process-wide CSU tenant map / primary signer must not race across parallel tests.
+    fn isolated_flow() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        let g = LOCK
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        aira_object::reset_csu_tenants();
+        aira_object::reset_primary_signer();
+        g
+    }
 
     #[test]
     fn version_is_semver_like() {
@@ -34,6 +47,7 @@ mod tests {
 
     #[test]
     fn submit_creates_problem_and_event_schema_valid() {
+        let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
         let mut plane = OperationalPlane::open(dir.path()).unwrap();
         let out = plane.submit_problem("Calculate 2 + 2").unwrap();
@@ -53,6 +67,7 @@ mod tests {
 
     #[test]
     fn calculate_two_plus_two_demo() {
+        let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
         let mut plane = OperationalPlane::open(dir.path()).unwrap();
         let out = plane.submit_problem("Calculate 2 + 2").unwrap();
@@ -100,6 +115,7 @@ mod tests {
 
     #[test]
     fn ready_solution_reuse_skips_execution() {
+        let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
         let mut plane = OperationalPlane::open(dir.path()).unwrap();
         let ready_payload = json_bytes(&json!({
@@ -141,6 +157,7 @@ mod tests {
 
     #[test]
     fn failure_to_evidence_demo() {
+        let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
         let mut plane = OperationalPlane::open(dir.path()).unwrap();
         let missing = AiraRef::parse("aira:artifact:missing99").unwrap();
@@ -170,6 +187,7 @@ mod tests {
 
     #[test]
     fn normative_split_stub_does_not_autocollapse() {
+        let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
         let mut plane = OperationalPlane::open(dir.path()).unwrap();
         let out = plane
@@ -190,6 +208,7 @@ mod tests {
 
     #[test]
     fn local_init_submit_status_and_artifact() {
+        let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join(".aira");
         init_node(&root).unwrap();
@@ -223,6 +242,7 @@ mod tests {
 
     #[test]
     fn local_session_submit_signs_with_node_identity() {
+        let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join(".aira");
         init_node(&root).unwrap();
@@ -317,6 +337,7 @@ mod tests {
 
     #[test]
     fn open_accepts_yaml_only_node() {
+        let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join(".aira");
         // Layout without config.json: dirs + yaml.
@@ -357,6 +378,7 @@ mod tests {
 
     #[test]
     fn status_accepts_yaml_only_node() {
+        let _lock = isolated_flow();
         // `aira status` uses node_config_present + LocalSession::open.
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join(".aira");
