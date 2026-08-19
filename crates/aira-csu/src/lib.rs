@@ -66,6 +66,8 @@ mod tests {
             created_at: Timestamp::parse("2026-07-10T12:00:00Z").unwrap(),
             signature: aira_object::local_test_signature(payload_hash.as_str().as_bytes()),
         }
+        .attach_canonical_signature()
+        .expect("canonical sample")
     }
 
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -236,7 +238,7 @@ mod tests {
     fn emit_failed_and_lifecycle_use_publisher_identity() {
         use aira_object::{
             register_csu_tenant_signing, reset_primary_signer, set_primary_signer, signature_for,
-            unregister_csu_tenant, verify_ed25519, LOCAL_TEST_KEY_REF,
+            unregister_csu_tenant, LOCAL_TEST_KEY_REF,
         };
         use ed25519_dalek::SigningKey;
 
@@ -263,11 +265,7 @@ mod tests {
             .expect("CSURegistered");
         assert_eq!(registered.producer_identity.as_str(), pub_id.as_str());
         assert_eq!(registered.signature.key_ref.as_str(), pub_id.as_str());
-        verify_ed25519(
-            &registered.signature,
-            registered.payload_hash.as_str().as_bytes(),
-        )
-        .unwrap();
+        registered.verify_canonical().unwrap();
         assert!(matches!(
             signature_for(&pub_id, b"x"),
             Err(aira_object::CryptoError::NoSigningKey(_))
@@ -286,7 +284,7 @@ mod tests {
         assert_eq!(failed.producer_identity.as_str(), pub_id.as_str());
         assert_eq!(failed.signature.key_ref.as_str(), pub_id.as_str());
         assert_eq!(failed.payload_ref.as_deref(), Some("boom"));
-        verify_ed25519(&failed.signature, failed.payload_hash.as_str().as_bytes()).unwrap();
+        failed.verify_canonical().unwrap();
 
         // Missing signing key → fail closed (no CSUFailed with wrong producer).
         let mut rt2 = CsuRuntime::new(producer(), sig());

@@ -141,6 +141,10 @@ fn test_secret_not_in_events() -> CaseResult {
         other => return fail(id, format!("expected SecretMaterial, got {other:?}")),
     }
     ev.payload_ref = Some("Calculate 2 + 2".into());
+    ev.payload_hash = aira_object::ContentHash::sha256_bytes(b"Calculate 2 + 2");
+    ev = ev
+        .attach_canonical_signature()
+        .expect("re-sign clean payload");
     if let Err(e) = log.append(ev) {
         return fail(id, e.to_string());
     }

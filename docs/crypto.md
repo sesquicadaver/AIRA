@@ -183,9 +183,9 @@ cargo run -p aira-cli -- --root "$ROOT" identity backups
 
 | Object | Message bytes |
 |--------|----------------|
-| Canonical descriptor helper (Analyze-74 / #39) | `descriptor_signing_hash(strip signature).as_str()` — **not wired** to Event/Artifact/Object/CSU yet |
+| Canonical descriptor helper (Analyze-74 / #39) | `descriptor_signing_hash(strip signature).as_str()` — wired to **Event** in #40; Artifact/Object/CSU not yet |
 | Artifact | `content_hash.as_str()` |
-| Event | `payload_hash.as_str()` **or** domain message |
+| Event | canonical descriptor JSON without `signature` (Analyze-75 / #40); no event-path `LOCAL_TEST_DOMAIN_MSG` fallback |
 | CSU manifest | `csu_id.as_str()` |
 | Problem object | `content_hash.as_str()` |
 | Protocol envelope | `payload_hash.as_str()` **or** domain message |

@@ -43,6 +43,8 @@ mod tests {
             created_at: Timestamp::parse("2026-07-10T12:00:00Z").unwrap(),
             signature: aira_object::local_test_signature(payload_hash.as_str().as_bytes()),
         }
+        .attach_canonical_signature()
+        .expect("canonical sample")
     }
 
     #[test]
@@ -99,9 +101,44 @@ mod tests {
         let mut log = MemoryEventLog::new();
         let mut e = sample_event("aira:event:sec1", EventType::CustomEvent);
         e.payload_ref = Some("password=hunter2".into());
+        e = e
+            .attach_canonical_signature()
+            .expect("re-sign after payload_ref");
         let err = log.append(e).unwrap_err();
         assert!(matches!(err, EventError::SecretMaterial));
         assert!(payload_contains_secret(Some("BEGIN PRIVATE KEY-----")));
         assert!(!payload_contains_secret(Some("Calculate 2 + 2")));
+    }
+
+    #[test]
+    fn canonical_verify_fails_when_event_type_or_causal_refs_change() {
+        let e = sample_event("aira:event:mut1", EventType::ProblemSubmitted);
+        e.verify_canonical().unwrap();
+
+        let mut t = e.clone();
+        t.event_type = EventType::ResultPublished;
+        assert!(t.verify_canonical().is_err());
+
+        let mut c = e.clone();
+        c.causal_refs = vec![AiraRef::parse("aira:event:01E0").unwrap()];
+        assert!(c.verify_canonical().is_err());
+
+        let mut o = e.clone();
+        o.object_refs = vec![AiraRef::parse("aira:problem:MUTATED").unwrap()];
+        assert!(o.verify_canonical().is_err());
+
+        let mut a = e.clone();
+        a.artifact_refs = vec![AiraRef::parse(
+            "aira:artifact:sha256_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        )
+        .unwrap()];
+        assert!(a.verify_canonical().is_err());
+
+        let mut h = e;
+        h.payload_hash = ContentHash::parse(
+            "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        )
+        .unwrap();
+        assert!(h.verify_canonical().is_err());
     }
 }

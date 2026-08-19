@@ -190,6 +190,8 @@ impl CsuRegistry {
                     .map_err(|e| CsuError::Storage(e.to_string()))?,
                 signature: signer,
             }
+            .attach_canonical_signature()
+            .map_err(|e| CsuError::Dispatch(e.to_string()))?
         };
         log.append(ev).map_err(|e| CsuError::Storage(e.to_string()))
     }

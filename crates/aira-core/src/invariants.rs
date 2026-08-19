@@ -60,15 +60,7 @@ impl InvariantChecker {
         event: &EventDescriptor,
         events: &mut dyn EventSink,
     ) -> Result<(), CoreError> {
-        let ok =
-            aira_object::verify_ed25519(&event.signature, event.payload_hash.as_str().as_bytes())
-                .or_else(|_| {
-                    aira_object::verify_ed25519(
-                        &event.signature,
-                        aira_object::LOCAL_TEST_DOMAIN_MSG,
-                    )
-                })
-                .is_ok();
+        let ok = event.verify_canonical().is_ok();
         if !ok {
             return self.emit(
                 events,
@@ -163,7 +155,9 @@ impl InvariantChecker {
             created_at: Timestamp::parse("2026-07-10T12:00:00Z")
                 .map_err(|e| CoreError::Storage(e.to_string()))?,
             signature: self.signer.clone(),
-        };
+        }
+        .attach_canonical_signature()
+        .map_err(|e| CoreError::Storage(e.to_string()))?;
         events
             .append(ev)
             .map_err(|e| CoreError::Storage(e.to_string()))?;
