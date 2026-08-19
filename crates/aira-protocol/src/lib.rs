@@ -14,8 +14,8 @@ pub use discovery::{
     CapabilityDescriptor, DiscoveryHit, DiscoveryRegistry, DISCOVERY_REGISTRY_SCHEMA,
 };
 pub use envelope::{
-    local_identity, local_signature, mvp_timestamp, ProtocolEnvelope, ProtocolError, ProtocolId,
-    ProtocolResponse, ProtocolStatus, ScopeDescriptor,
+    local_identity, local_signature, mvp_timestamp, signature_over_payload_hash, ProtocolEnvelope,
+    ProtocolError, ProtocolId, ProtocolResponse, ProtocolStatus, ScopeDescriptor,
 };
 pub use event_adapter::{EventProtocolAdapter, EP_VERSION};
 pub use federation::{
@@ -60,7 +60,10 @@ mod tests {
 
         let env: ProtocolEnvelope = serde_json::from_value(v).unwrap();
         assert_eq!(env.protocol_id, ProtocolId::Event);
-        env.validate_signature().unwrap();
+        // Schema fixtures are not live crypto objects (same rule as CSU manifest fixtures).
+        let mut live = env;
+        live.signature = signature_over_payload_hash(&live.payload_hash);
+        live.validate_signature().unwrap();
 
         let bad =
             std::fs::read_to_string(root.join("fixtures/invalid/protocol/envelope-unsigned.json"))
@@ -178,5 +181,47 @@ mod tests {
         assert!(v.get("provider_csu").is_some());
         assert!(v.get("node_id").is_none());
         assert_eq!(reg.list_all().len(), 1);
+    }
+
+    #[test]
+    fn envelope_rejects_local_test_domain_fallback() {
+        let hash = ContentHash::sha256_bytes(b"envelope-body");
+        let env = ProtocolEnvelope {
+            protocol_id: ProtocolId::Event,
+            protocol_version: EP_VERSION.into(),
+            message_type: "EventPublish".into(),
+            message_id: AiraRef::parse("aira:message:ep-domain-reject").unwrap(),
+            correlation_id: None,
+            causal_refs: vec![],
+            issuer_identity: local_identity(),
+            target_scope: ScopeDescriptor::local("event-protocol"),
+            policy_refs: vec![AiraRef::parse("aira:policy:default").unwrap()],
+            payload_hash: hash.clone(),
+            payload_ref: None,
+            created_at: mvp_timestamp(),
+            expires_at: None,
+            signature: local_signature(),
+        };
+        assert!(env.validate_signature().is_err());
+
+        let mut signed = env;
+        signed.signature = signature_over_payload_hash(&hash);
+        signed.validate_signature().unwrap();
+    }
+
+    #[test]
+    fn identity_rejects_local_test_domain_signature() {
+        let mut id = IdentityDescriptor::local_user(
+            "aira:identity:local-user",
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        )
+        .unwrap();
+        id.signature = local_signature();
+        assert!(
+            aira_object::verify_ed25519(&id.signature, id.identity_id.as_str().as_bytes()).is_err()
+        );
+        assert!(
+            aira_object::verify_ed25519(&id.signature, aira_object::LOCAL_TEST_DOMAIN_MSG).is_ok()
+        );
     }
 }

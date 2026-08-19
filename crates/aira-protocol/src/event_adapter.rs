@@ -7,8 +7,8 @@ use aira_object::{AiraRef, ContentHash};
 use serde_json::to_vec;
 
 use crate::envelope::{
-    local_identity, local_signature, mvp_timestamp, ProtocolEnvelope, ProtocolError, ProtocolId,
-    ProtocolResponse, ProtocolStatus, ScopeDescriptor,
+    local_identity, local_signature, mvp_timestamp, signature_over_payload_hash, ProtocolEnvelope,
+    ProtocolError, ProtocolId, ProtocolResponse, ProtocolStatus, ScopeDescriptor,
 };
 
 /// Supported local event protocol version.
@@ -103,11 +103,11 @@ impl EventProtocolAdapter {
             issuer_identity: local_identity(),
             target_scope: ScopeDescriptor::local("event-protocol"),
             policy_refs: event.policy_refs.clone(),
-            payload_hash: hash,
+            payload_hash: hash.clone(),
             payload_ref: Some(format!("event:{}", event.event_id)),
             created_at: mvp_timestamp(),
             expires_at: None,
-            signature: local_signature(),
+            signature: signature_over_payload_hash(&hash),
         })
     }
 

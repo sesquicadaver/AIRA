@@ -188,8 +188,8 @@ cargo run -p aira-cli -- --root "$ROOT" identity backups
 | Event | canonical descriptor JSON without `signature` (Analyze-75 / #40); no event-path `LOCAL_TEST_DOMAIN_MSG` fallback |
 | CSU manifest | canonical manifest JSON without `signature` (Analyze-78 / #43); signer = `identity_ref` |
 | Problem object | canonical descriptor JSON without `signature` (Analyze-77 / #42) |
-| Protocol envelope | `payload_hash.as_str()` **or** domain message |
-| Identity descriptor (create / rotate) | `identity_id` bytes |
+| Protocol envelope | `payload_hash.as_str()` only (Analyze-79 / #44); no `LOCAL_TEST_DOMAIN_MSG` verify fallback |
+| Identity descriptor (create / rotate) | `identity_id` bytes (Analyze-79 / #44); no domain-message verify |
 
 Empty and `TESTSIG` are rejected on admission.
 
