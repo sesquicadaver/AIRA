@@ -140,4 +140,33 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn canonical_verify_fails_when_object_fields_change() {
+        let d = ObjectDescriptor::example_problem();
+        d.verify_canonical().unwrap();
+
+        let mut t = d.clone();
+        t.object_type = ObjectType::Context;
+        assert!(t.verify_canonical().is_err());
+
+        let mut p = d.clone();
+        p.policy_refs = vec![AiraRef::parse("aira:policy:private").unwrap()];
+        assert!(p.verify_canonical().is_err());
+
+        let mut pr = d.clone();
+        pr.provenance_refs = vec![AiraRef::parse("aira:event:01E1").unwrap()];
+        assert!(pr.verify_canonical().is_err());
+
+        let mut h = d.clone();
+        h.content_hash = ContentHash::parse(
+            "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        )
+        .unwrap();
+        assert!(h.verify_canonical().is_err());
+
+        let mut id = d;
+        id.object_id = AiraRef::parse("aira:problem:MUTATED").unwrap();
+        assert!(id.verify_canonical().is_err());
+    }
 }

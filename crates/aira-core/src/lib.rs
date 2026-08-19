@@ -96,6 +96,24 @@ mod tests {
     }
 
     #[test]
+    fn create_rejects_unsigned_and_mutated_object_signature() {
+        let mut store = MemoryObjectStore::new();
+        let mut unsigned = ObjectDescriptor::example_problem();
+        unsigned.signature.signature_value.clear();
+        assert!(matches!(
+            store.create(unsigned),
+            Err(CoreError::Unsigned(_))
+        ));
+
+        let mut bad = ObjectDescriptor::example_problem();
+        bad.schema_version = "0.2".into();
+        assert!(matches!(
+            store.create(bad),
+            Err(CoreError::InvalidSignature(_))
+        ));
+    }
+
+    #[test]
     fn invariant_checker_emits_event_on_policy_deny() {
         let mut log = MemoryEventLog::new();
         let mut checker =
