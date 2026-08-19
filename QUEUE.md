@@ -2,7 +2,7 @@
 
 **Оновлено:** 2026-08-18  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
-**Канон:** цей файл. Старі `Analyze-*/todo/TODO_FIXME.md` — лише provenance.
+**Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.
 
 ## Стан
 
@@ -25,7 +25,7 @@
 ## Архів (закрито) — Phase A: #1–17
 
 Коротко: A-34…A-52 (listen → Noise → trust-delta → dual-key → notify → CSU publisher → audit → `.prev` → tenant keyring → gossip/relay/DHT → HTTP TLS/Bearer/mTLS → x25519 rotate → remote rekey grace → self-sovereign trust-delta).  
-Деталі — у відповідних `Analyze-N/` і git history. **Не брати в роботу повторно.**
+Деталі — у відповідних `analysis/Analyze-N/` і git history. **Не брати в роботу повторно.**
 
 ---
 
@@ -81,4 +81,4 @@
 | peer-link public HTTP bind | #34 **DONE** (Analyze-69) |
 | `specs/mvp-roadmap.md` post-MVP federation | #35 **DONE** (Analyze-70) |
 
-Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `Analyze-N/`.
+Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

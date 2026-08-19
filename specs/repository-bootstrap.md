@@ -170,6 +170,10 @@ aira/
  │   ├── invalid/
  │   └── flows/
  │
+ ├── analysis/
+ │   ├── README.md
+ │   └── Analyze-N/          # analytical cycles (research, review, Living Spec)
+ │
  ├── specs/
  │   ├── book-0.md
  │   ├── book-i.md

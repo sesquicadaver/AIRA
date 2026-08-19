@@ -27,7 +27,7 @@ Problem Statement
 |------|------|
 | `Manifesto etc/` | Immutable canonical Manifesto sources (Books 0–V + governance) |
 | `Meditation_About/` | Immutable historical drafts |
-| `Analyze-*/` | Analytical layer (does not change originals) |
+| `analysis/` | Analytical layer — `Analyze-N/` cycles (does not change originals) |
 | `specs/` | Working copies of Books + governance for implementation |
 | `crates/` | Rust MVP workspace |
 | `csu/` | Basic CSU crate skeletons |
@@ -36,7 +36,7 @@ Problem Statement
 
 **Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha**.
 **Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing; Trust; Peer P0–P2 + DHT/relay/gossip (`docs/crypto.md`, `docs/peer-link.md`, `docs/local-node.md`).
-**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase B; наступний OPEN: **#30 Analyze-65** (YAML config).
+**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase B **#18–#37 DONE**; немає OPEN.
 
 Останні закриті slices: A-56…A-63; A-64 multi-tenant HTTP CSU authz.
 
