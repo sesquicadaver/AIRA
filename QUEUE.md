@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase B #18–#37 DONE; Phase C план зафіксовано; наступний OPEN **#38** |
+| `main` | Analyze-73 CLOSED @ a55f61a; QUEUE #38 DONE; наступний OPEN **#39** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase C **#38 OPEN** (Analyze-73) |
+| Активна черга | Phase C **#39 OPEN** (Analyze-74) |
 
 ## Правила атомарності
 
@@ -65,7 +65,7 @@
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
-| 38 | **OPEN** | Analyze-73 — CI schema/C0/C1 gate | GitHub Actions: обов’язкові `schema validate --fixtures` + conformance C0 + C1 | CI червоний при невалідній схемі або провалі C0/C1; зелений на поточному дереві | семантика схем; C2 у CI; підписи; split файлів |
+| 38 | **DONE** | ~~Analyze-73 — CI schema/C0/C1 gate~~ | GitHub Actions: обов’язкові `schema validate --fixtures` + conformance C0 + C1 | CI червоний при невалідній схемі або провалі C0/C1; зелений на поточному дереві | семантика схем; C2 у CI; підписи; split файлів |
 | 39 | OPEN | Analyze-74 — canonical descriptor hash helper | Примітив hash/sign/verify canonical descriptor **без** зміни production call-sites | тести helper; verify-шляхи runtime не змінені | перемикання Event/Artifact/Object/CSU; прибирання fallback |
 | 40 | OPEN | Analyze-75 — Event canonical signatures | Event sign/verify = canonical descriptor без `signature`; mutation-тести; немає event-path runtime fallback на `LOCAL_TEST_DOMAIN_MSG` | зміна `event_type` / `causal_refs` / `object_refs` / `artifact_refs` / `payload_hash` ламає verify | Artifact/Object/CSU; protocol envelope як окремий sweep; Noise |
 | 41 | OPEN | Analyze-76 — Artifact canonical signatures | Artifact descriptor: canonical hash-signing + mutation-тести | зміна артефактних полів дескриптора ламає verify | Event/Object/CSU; CAS layout |
@@ -83,7 +83,7 @@
 
 ### Наступний цикл
 
-**#38 OPEN** — Analyze-73: CI schema/C0/C1 gate. Не стартувати, доки розробник не відкриє Analyze-цикл.
+**#39 OPEN** — Analyze-74: canonical descriptor hash helper.
 
 ---
 

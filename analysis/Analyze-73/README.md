@@ -1,6 +1,7 @@
 # Analyze-73 — CI schema/C0/C1 gate (QUEUE #38)
 
-## Scope
+## Status
+CLOSED (QUEUE #38 DONE @ a55f61a / PR #1).
 GitHub Actions must run the AIRA contract already declared in README: schema fixture validation plus conformance C0 and C1. Fail the job on non-zero CLI exit. C2, schema semantics, signatures, and file splits stay out.
 
 ## Done when
