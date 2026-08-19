@@ -1,308 +1,37 @@
 //! Optional HTTPS helpers for `aira-node --http` (Analyze-45/51/55 mTLS + CN→TrustStore).
+//!
+//! Mechanical split (Analyze-85 / QUEUE #50).
 
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+mod paths;
+mod pem;
+mod serve;
+mod verifier;
 
-use aira_object::{AiraRef, TrustStore};
-use anyhow::{bail, Context, Result};
-use axum::Router;
-use axum_server::tls_rustls::RustlsConfig;
-use rcgen::{CertificateParams, KeyPair, SanType};
-use rustls::pki_types::{CertificateDer, PrivateKeyDer, UnixTime};
-use rustls::server::danger::{ClientCertVerified, ClientCertVerifier};
-use rustls::server::WebPkiClientVerifier;
-use rustls::{
-    CertificateError, DigitallySignedStruct, DistinguishedName, Error as RustlsError,
-    RootCertStore, ServerConfig, SignatureScheme,
-};
-use x509_parser::prelude::*;
-
-/// Ensure rustls crypto provider is installed (ring; no aws-lc).
-pub fn install_crypto_provider() -> Result<()> {
-    rustls::crypto::ring::default_provider()
-        .install_default()
-        .map_err(|_| anyhow::anyhow!("rustls crypto provider already installed or unavailable"))
-}
-
-/// Paths to PEM certificate and private key under node root.
-pub fn self_signed_paths(root: impl AsRef<Path>) -> (PathBuf, PathBuf) {
-    let dir = root.as_ref().join("http");
-    (dir.join("cert.pem"), dir.join("key.pem"))
-}
-
-/// Generate a loopback self-signed cert+key if missing; return paths.
-pub fn ensure_self_signed(root: impl AsRef<Path>) -> Result<(PathBuf, PathBuf)> {
-    let (cert_path, key_path) = self_signed_paths(&root);
-    if cert_path.exists() && key_path.exists() {
-        return Ok((cert_path, key_path));
-    }
-    if let Some(parent) = cert_path.parent() {
-        fs::create_dir_all(parent).with_context(|| format!("mkdir {}", parent.display()))?;
-    }
-
-    let mut params =
-        CertificateParams::new(vec!["localhost".into(), "127.0.0.1".into(), "::1".into()])
-            .context("certificate params")?;
-    params
-        .subject_alt_names
-        .push(SanType::IpAddress(std::net::IpAddr::V4(
-            std::net::Ipv4Addr::LOCALHOST,
-        )));
-
-    let key_pair = KeyPair::generate().context("generate key")?;
-    let cert = params
-        .self_signed(&key_pair)
-        .context("self-sign certificate")?;
-
-    fs::write(&cert_path, cert.pem()).with_context(|| format!("write {}", cert_path.display()))?;
-    fs::write(&key_path, key_pair.serialize_pem())
-        .with_context(|| format!("write {}", key_path.display()))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600));
-    }
-    Ok((cert_path, key_path))
-}
-
-/// Resolve TLS PEM paths from CLI flags.
-pub fn resolve_tls_paths(
-    root: &Path,
-    tls_cert: Option<PathBuf>,
-    tls_key: Option<PathBuf>,
-    tls_self_signed: bool,
-) -> Result<Option<(PathBuf, PathBuf)>> {
-    match (tls_cert, tls_key, tls_self_signed) {
-        (None, None, false) => Ok(None),
-        (Some(c), Some(k), false) => {
-            if !c.exists() {
-                bail!("--tls-cert not found: {}", c.display());
-            }
-            if !k.exists() {
-                bail!("--tls-key not found: {}", k.display());
-            }
-            Ok(Some((c, k)))
-        }
-        (None, None, true) => Ok(Some(ensure_self_signed(root)?)),
-        (Some(_), Some(_), true) => {
-            bail!("--tls-self-signed is mutually exclusive with --tls-cert/--tls-key")
-        }
-        (Some(_), None, _) | (None, Some(_), _) => {
-            bail!("--tls-cert and --tls-key must be provided together")
-        }
-    }
-}
-
-/// Load PEM certificates from a file into DER list.
-fn load_certs(path: &Path) -> Result<Vec<CertificateDer<'static>>> {
-    let raw = fs::read(path).with_context(|| format!("read cert {}", path.display()))?;
-    let certs = rustls_pemfile::certs(&mut raw.as_slice())
-        .collect::<Result<Vec<_>, _>>()
-        .with_context(|| format!("parse cert PEM {}", path.display()))?;
-    if certs.is_empty() {
-        bail!("no certificates in {}", path.display());
-    }
-    Ok(certs)
-}
-
-/// Load a single private key from PEM.
-fn load_private_key(path: &Path) -> Result<PrivateKeyDer<'static>> {
-    let raw = fs::read(path).with_context(|| format!("read key {}", path.display()))?;
-    let mut keys: Vec<PrivateKeyDer<'static>> = rustls_pemfile::read_all(&mut raw.as_slice())
-        .filter_map(|item| match item.ok()? {
-            rustls_pemfile::Item::Pkcs8Key(k) => Some(PrivateKeyDer::Pkcs8(k)),
-            rustls_pemfile::Item::Pkcs1Key(k) => Some(PrivateKeyDer::Pkcs1(k)),
-            rustls_pemfile::Item::Sec1Key(k) => Some(PrivateKeyDer::Sec1(k)),
-            _ => None,
-        })
-        .collect();
-    if keys.len() != 1 {
-        bail!(
-            "expected exactly one private key in {} (got {})",
-            path.display(),
-            keys.len()
-        );
-    }
-    Ok(keys.pop().unwrap())
-}
-
-/// Load CA PEM into a [`RootCertStore`] (fail closed if empty/invalid).
-pub fn load_client_ca_roots(ca_path: &Path) -> Result<RootCertStore> {
-    if !ca_path.exists() {
-        bail!("--tls-client-ca not found: {}", ca_path.display());
-    }
-    let certs = load_certs(ca_path)?;
-    let mut roots = RootCertStore::empty();
-    let (added, _) = roots.add_parsable_certificates(certs);
-    if added == 0 || roots.is_empty() {
-        bail!(
-            "--tls-client-ca contains no usable trust anchors: {}",
-            ca_path.display()
-        );
-    }
-    Ok(roots)
-}
-
-/// Extract subject Common Name from an EE certificate DER (Analyze-55).
-pub fn client_cert_common_name(end_entity: &CertificateDer<'_>) -> Result<String, String> {
-    let (_, cert) = X509Certificate::from_der(end_entity.as_ref())
-        .map_err(|e| format!("client cert parse: {e}"))?;
-    let cn = cert
-        .subject()
-        .iter_common_name()
-        .next()
-        .ok_or_else(|| "client cert missing Common Name".to_string())?;
-    let cn = cn
-        .as_str()
-        .map_err(|_| "client cert CN is not valid UTF-8".to_string())?
-        .trim();
-    if cn.is_empty() {
-        return Err("client cert CN empty".into());
-    }
-    Ok(cn.to_string())
-}
-
-/// Fail-closed: CN must be a trusted, non-revoked AiraRef in local TrustStore.
-pub fn assert_cn_in_trust_store(node_root: &Path, cn: &str) -> Result<(), String> {
-    let id = cn.trim();
-    AiraRef::parse(id).map_err(|e| format!("client cert CN is not an AiraRef: {e}"))?;
-    let store = TrustStore::load(node_root).map_err(|e| format!("trust store: {e}"))?;
-    if store.is_revoked(id) {
-        return Err(format!("client cert CN revoked: {id}"));
-    }
-    if !store.entries.iter().any(|e| e.identity_id == id) {
-        return Err(format!("client cert CN not in TrustStore: {id}"));
-    }
-    Ok(())
-}
-
-/// WebPki CA check + TrustStore CN map (Analyze-55).
-#[derive(Debug)]
-struct TrustMappedClientVerifier {
-    inner: Arc<dyn ClientCertVerifier>,
-    node_root: PathBuf,
-}
-
-impl ClientCertVerifier for TrustMappedClientVerifier {
-    fn offer_client_auth(&self) -> bool {
-        self.inner.offer_client_auth()
-    }
-
-    fn client_auth_mandatory(&self) -> bool {
-        self.inner.client_auth_mandatory()
-    }
-
-    fn root_hint_subjects(&self) -> &[DistinguishedName] {
-        self.inner.root_hint_subjects()
-    }
-
-    fn verify_client_cert(
-        &self,
-        end_entity: &CertificateDer<'_>,
-        intermediates: &[CertificateDer<'_>],
-        now: UnixTime,
-    ) -> Result<ClientCertVerified, RustlsError> {
-        let verified = self
-            .inner
-            .verify_client_cert(end_entity, intermediates, now)?;
-        let cn = client_cert_common_name(end_entity).map_err(|_e| {
-            RustlsError::InvalidCertificate(CertificateError::ApplicationVerificationFailure)
-        })?;
-        assert_cn_in_trust_store(&self.node_root, &cn).map_err(|_e| {
-            RustlsError::InvalidCertificate(CertificateError::ApplicationVerificationFailure)
-        })?;
-        Ok(verified)
-    }
-
-    fn verify_tls12_signature(
-        &self,
-        message: &[u8],
-        cert: &CertificateDer<'_>,
-        dss: &DigitallySignedStruct,
-    ) -> Result<rustls::client::danger::HandshakeSignatureValid, RustlsError> {
-        self.inner.verify_tls12_signature(message, cert, dss)
-    }
-
-    fn verify_tls13_signature(
-        &self,
-        message: &[u8],
-        cert: &CertificateDer<'_>,
-        dss: &DigitallySignedStruct,
-    ) -> Result<rustls::client::danger::HandshakeSignatureValid, RustlsError> {
-        self.inner.verify_tls13_signature(message, cert, dss)
-    }
-
-    fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
-        self.inner.supported_verify_schemes()
-    }
-}
-
-/// Build a rustls [`ServerConfig`] for HTTPS, optionally requiring client certs + TrustStore CN.
-///
-/// When `client_ca` is set, `node_root` must be provided (Analyze-55 CN→TrustStore).
-pub fn build_server_config(
-    cert: &Path,
-    key: &Path,
-    client_ca: Option<&Path>,
-    node_root: Option<&Path>,
-) -> Result<ServerConfig> {
-    install_crypto_provider().ok();
-    let certs = load_certs(cert)?;
-    let key = load_private_key(key)?;
-
-    let builder = ServerConfig::builder();
-    let mut config = if let Some(ca) = client_ca {
-        let root = node_root
-            .ok_or_else(|| anyhow::anyhow!("mTLS requires node root for TrustStore CN mapping"))?;
-        let roots = Arc::new(load_client_ca_roots(ca)?);
-        let inner = WebPkiClientVerifier::builder(roots)
-            .build()
-            .map_err(|e| anyhow::anyhow!("client cert verifier: {e}"))?;
-        let verifier: Arc<dyn ClientCertVerifier> = Arc::new(TrustMappedClientVerifier {
-            inner,
-            node_root: root.to_path_buf(),
-        });
-        builder
-            .with_client_cert_verifier(verifier)
-            .with_single_cert(certs, key)
-            .map_err(|e| anyhow::anyhow!("server cert: {e}"))?
-    } else {
-        builder
-            .with_no_client_auth()
-            .with_single_cert(certs, key)
-            .map_err(|e| anyhow::anyhow!("server cert: {e}"))?
-    };
-    config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-    Ok(config)
-}
-
-/// Serve the axum router over HTTPS (server-only or mTLS + TrustStore CN).
-pub async fn serve_https(
-    addr: std::net::SocketAddr,
-    app: Router,
-    cert: &Path,
-    key: &Path,
-    client_ca: Option<&Path>,
-    node_root: &Path,
-) -> Result<()> {
-    let server_config = build_server_config(cert, key, client_ca, Some(node_root))?;
-    let config = RustlsConfig::from_config(Arc::new(server_config));
-    axum_server::bind_rustls(addr, config)
-        .serve(app.into_make_service())
-        .await
-        .context("https serve")?;
-    Ok(())
-}
+pub use paths::resolve_tls_paths;
+pub use pem::load_client_ca_roots;
+pub use serve::serve_https;
 
 #[cfg(test)]
 mod tests {
+    use super::paths::ensure_self_signed;
+    use super::pem::load_certs;
+    use super::serve::{build_server_config, install_crypto_provider};
+    use super::verifier::assert_cn_in_trust_store;
     use super::*;
     use aira_flow::init_node;
+    use aira_object::TrustStore;
+    use anyhow::Result;
+    use axum_server::tls_rustls::RustlsConfig;
     use ed25519_dalek::SigningKey;
     use rcgen::{BasicConstraints, DnType, IsCa, KeyUsagePurpose};
+    use rcgen::{CertificateParams, KeyPair, SanType};
+    use rustls::pki_types::PrivateKeyDer;
     use rustls::pki_types::ServerName;
     use rustls::ClientConfig;
+    use rustls::{RootCertStore, ServerConfig};
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::sync::Arc;
     use tempfile::tempdir;
 
     fn write_pair(dir: &Path, name: &str, cert_pem: &str, key_pem: &str) -> (PathBuf, PathBuf) {
