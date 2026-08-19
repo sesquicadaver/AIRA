@@ -1,7 +1,7 @@
 # Analyze-79 — leftover test-sig fallback (QUEUE #44)
 
 ## Status
-OPEN (implementation on branch `analyze-79-leftover-test-sig-fallback`).
+CLOSED (QUEUE #44 DONE @ 611c1b5 / PR #7).
 
 ## Done when
 Runtime verify does not accept `LOCAL_TEST_DOMAIN_MSG` as a fallback after the intended message fails. Envelope verifies `payload_hash` only; identity create verifies `identity_id` bytes.
