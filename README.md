@@ -36,7 +36,7 @@ Problem Statement
 
 **Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha**.
 **Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing; Trust; Peer P0–P2 + DHT/relay/gossip (`docs/crypto.md`, `docs/peer-link.md`, `docs/local-node.md`).
-**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md); **#38–#42 DONE**; наступний OPEN: **#43** (CSU manifest canonical signatures).
+**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md); **#38–#43 DONE**; наступний OPEN: **#44** (leftover test-sig fallback).
 
 Останні закриті slices: A-56…A-63; A-64 multi-tenant HTTP CSU authz.
 

@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Analyze-77 CLOSED @ 3fd02f0; QUEUE #42 DONE; наступний OPEN **#43** |
+| `main` | Analyze-78 CLOSED @ 86a67f6; QUEUE #43 DONE; наступний OPEN **#44** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase C **#43 OPEN** (Analyze-78) |
+| Активна черга | Phase C **#44 OPEN** (Analyze-79) |
 
 ## Правила атомарності
 
@@ -70,7 +70,7 @@
 | 40 | **DONE** | ~~Analyze-75 — Event canonical signatures~~ | Event sign/verify = canonical descriptor без `signature`; mutation-тести; немає event-path runtime fallback на `LOCAL_TEST_DOMAIN_MSG` | зміна `event_type` / `causal_refs` / `object_refs` / `artifact_refs` / `payload_hash` ламає verify | Artifact/Object/CSU; protocol envelope як окремий sweep; Noise |
 | 41 | **DONE** | ~~Analyze-76 — Artifact canonical signatures~~ | Artifact descriptor: canonical hash-signing + mutation-тести | зміна артефактних полів дескриптора ламає verify | Event/Object/CSU; CAS layout |
 | 42 | **DONE** | ~~Analyze-77 — Object canonical signatures~~ | Core Object descriptor: canonical hash-signing + mutation-тести | зміна об’єктних полів дескриптора ламає verify | Event/Artifact/CSU |
-| 43 | OPEN | Analyze-78 — CSU manifest canonical signatures | Manifest sign/verify = canonical manifest без `signature` + mutation-тести | зміна полів маніфесту ламає verify | Event/Artifact/Object; нові CSU |
+| 43 | **DONE** | ~~Analyze-78 — CSU manifest canonical signatures~~ | Manifest sign/verify = canonical manifest без `signature` + mutation-тести | зміна полів маніфесту ламає verify | Event/Artifact/Object; нові CSU |
 | 44 | OPEN | Analyze-79 — leftover test-sig fallback | Прибрати runtime fallback `LOCAL_TEST_DOMAIN_MSG`/TESTSIG поза `#[cfg(test)]` там, де лишилось після #40–#43 | runtime verify не приймає test-domain fallback | повторний перепис уже мігрованих дескрипторів; нові протоколи |
 | 45 | OPEN | Analyze-80 — core dependency firewall | CI: `aira-core` ↛ node/peer/concrete CSU; CSU ↛ CSU; без циклів імпорту | CI падає на forbidden import / цикл | split файлів; нові crates |
 | 46 | OPEN | Analyze-81 — modularize aira-cli | Mechanical split `crates/aira-cli/src/main.rs` → `commands/*` | CLI поведінка незмінна; тести CLI зелені | crypto/tenant/http/tls; нові підкоманди |
@@ -83,7 +83,7 @@
 
 ### Наступний цикл
 
-**#43 OPEN** — Analyze-78: CSU manifest canonical signatures.
+**#44 OPEN** — Analyze-79: leftover test-sig fallback.
 
 ---
 
