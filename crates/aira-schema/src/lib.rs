@@ -340,4 +340,25 @@ mod tests {
         assert_eq!(report.failed, 0, "fixture failures: {:?}", report.failures);
         assert!(report.passed >= 20);
     }
+
+    #[test]
+    fn model_artifact_payload_schema_loads() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:model:artifact:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        reg.validate_file(
+            "aira:schema:model:artifact:0.1",
+            root.join("fixtures/valid/model/artifact.json"),
+        )
+        .unwrap();
+        assert!(reg
+            .validate_file(
+                "aira:schema:model:artifact:0.1",
+                root.join("fixtures/invalid/model/artifact-missing-hash.json"),
+            )
+            .is_err());
+    }
 }

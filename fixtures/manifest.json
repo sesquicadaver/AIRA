@@ -79,6 +79,10 @@
     {
       "schema": "aira:schema:identity:identity-descriptor:0.1",
       "file": "fixtures/valid/identity/identity-descriptor.json"
+    },
+    {
+      "schema": "aira:schema:model:artifact:0.1",
+      "file": "fixtures/valid/model/artifact.json"
     }
   ],
   "invalid": [
@@ -105,6 +109,10 @@
     {
       "schema": "aira:schema:protocol:envelope:0.1",
       "file": "fixtures/invalid/protocol/envelope-unsigned.json"
+    },
+    {
+      "schema": "aira:schema:model:artifact:0.1",
+      "file": "fixtures/invalid/model/artifact-missing-hash.json"
     }
   ]
 }

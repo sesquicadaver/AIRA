@@ -1,0 +1,54 @@
+{
+  "$id": "aira:schema:model:artifact:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "payload_schema",
+    "model_id",
+    "format",
+    "quantization",
+    "parameter_class",
+    "content_hash",
+    "provenance_refs",
+    "signature"
+  ],
+  "properties": {
+    "payload_schema": {
+      "type": "string",
+      "const": "aira:schema:model:artifact:0.1"
+    },
+    "model_id": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "format": {
+      "type": "string",
+      "enum": ["gguf", "safetensors", "custom"]
+    },
+    "quantization": {
+      "type": "string",
+      "minLength": 1
+    },
+    "parameter_class": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content_hash": {
+      "$ref": "aira:schema:common:hash:0.1"
+    },
+    "tokenizer_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "license_policy_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "provenance_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}

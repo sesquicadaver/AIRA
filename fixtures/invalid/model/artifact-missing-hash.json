@@ -1,0 +1,17 @@
+{
+  "payload_schema": "aira:schema:model:artifact:0.1",
+  "model_id": "aira:model:example-7b-int4",
+  "format": "gguf",
+  "quantization": "int4",
+  "parameter_class": "7B",
+  "tokenizer_ref": "aira:artifact:sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "license_policy_ref": "aira:policy:model-license-local",
+  "provenance_refs": [
+    "aira:identity:local-test"
+  ],
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}

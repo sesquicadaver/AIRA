@@ -3,25 +3,25 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Кандидат наступного етапу (план складено, виконання не стартоване): [`docs/phase-d-plan.md`](docs/phase-d-plan.md).
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — виконання стартоване; перший OPEN **#53**.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-87 CLOSED @ f7f3289; QUEUE #52 DONE; Phase C **#38–#52** complete; **немає OPEN** |
+| `main` | Phase C `#38–#52` DONE; Phase D **#53 OPEN** (Analyze-88) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase C **#38–#52 DONE**. Phase D план: [`docs/phase-d-plan.md`](docs/phase-d-plan.md); **немає OPEN** |
+| Активна черга | Phase D **#53 OPEN** (Analyze-88 — ModelArtifact payload schema) |
 
 ## Правила атомарності
 
 1. **Лінійність:** `#N` стартує лише після `#N-1` = DONE (APPROVE/CLEAR + UltraQA + push).
 2. **Один вихід:** кожен рядок має один measurable «Done when».
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
-4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto.
+4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C хвіст `#38`–`#52` — повний етап. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); рядки `#53+` лише після явного старту виконання.
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C хвіст `#38`–`#52` — повний етап. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); хвіст `#53`–`#60` відкрито рішенням розробника 2026-08-20.
 
 ---
 
@@ -59,9 +59,9 @@
 
 ---
 
-## Активна черга (лінійна) — Phase C: стабілізація Reference
+## Архів (закрито) — Phase C: стабілізація Reference
 
-План: [`docs/phase-c-plan.md`](docs/phase-c-plan.md). Не зливати рядки. Не додавати фічі поза `#38`–`#52`.
+План: [`docs/phase-c-plan.md`](docs/phase-c-plan.md). **DONE** `#38`–`#52`.
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
@@ -81,9 +81,26 @@
 | 51 | **DONE** | ~~Analyze-86 — OperationalPlane reference-local~~ | Docs + коментарі модуля: plane = C1 reference/demo, не production runtime | явно зафіксовано non-production статус | зміна drain/loop семантики |
 | 52 | **DONE** | ~~Analyze-87 — implementation status matrix~~ | `docs/implementation-status.md`: ТЗ → модуль → тести → статус | покриття Book 0–IV, schemas, C0/C1, CSU basic, HTTP/peer як post-MVP | нова реалізація «щоб заповнити матрицю» |
 
+---
+
+## Активна черга (лінійна) — Phase D: Model Artifact & Inventory
+
+План: [`docs/phase-d-plan.md`](docs/phase-d-plan.md). Не зливати рядки. Не додавати download/sharing/rating у цьому хвості. Envelope = `CustomArtifact` + payload `$id`; не розширювати canonical `ArtifactType` у D0.
+
+| # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
+|---|--------|---------|-----------------|-----------|------------------|
+| 53 | OPEN | Analyze-88 — ModelArtifact payload schema | RFC-S + `aira:schema:model:artifact:0.1` + fixtures | schema validate --fixtures зелений; enum `ArtifactType` незмінний | Profile/Inventory/Policy schemas; downloader |
+| 54 | OPEN | Analyze-89 — ModelProfile payload schema | `aira:schema:model:profile:0.1` + fixtures | schema + fixtures | Inventory; hardware scan |
+| 55 | OPEN | Analyze-90 — LocalModelInventory payload schema | `aira:schema:model:inventory:0.1` + fixtures | schema + fixtures | CLI scan; мережа |
+| 56 | OPEN | Analyze-91 — ModelCompatibilityEvidence schema | payload evidence: reason / confidence / scope | schema + fixtures | auto-download; rating score |
+| 57 | OPEN | Analyze-92 — ModelAcquisitionPolicy schema | payload policy; default `auto_download=false` | schema + fixtures | downloader; allowlist runtime |
+| 58 | OPEN | Analyze-93 — local inventory read-only | `aira models scan\|list`; Inventory CSU, scoped FS | scan без мережі/download; immutable inventory artifact | compatible resolver; download |
+| 59 | OPEN | Analyze-94 — compatibility resolver | hardware/backend/profile → runnable / incompatible / unknown | Evidence Artifact + reason; без download | acquisition CSU; CLI download |
+| 60 | OPEN | Analyze-95 — acquisition policy DENY | runtime default-deny download | без policy = DENY + Event/Evidence; implicit download немає | реальний download (D4); sharing |
+
 ### Наступний цикл
 
-**Phase C `#38`–`#52` DONE.** Phase D план складено ([`docs/phase-d-plan.md`](docs/phase-d-plan.md)); **OPEN немає** — не копіювати `#53+` у чергу без окремого рішення старту. `EVO-3.md` §11 (`#48`–`#55`) не є backlog.
+**#53 OPEN** — Analyze-88: ModelArtifact payload schema (RFC-S).
 
 ---
 
@@ -113,6 +130,6 @@
 | EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
-| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); резерв `#53+`, ще не OPEN |
+| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); QUEUE `#53`–`#60` OPEN (перший `#53`) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

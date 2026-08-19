@@ -207,4 +207,4 @@ CSU SDK / new basic CSU roles to “complete” Book III
 C2 as merge-blocking CI
 ```
 
-Model layer (EVO-3) is **ABSENT** in this tree. Planned as Artifact/Capability/Policy/CSU, not Core: [phase-d-plan.md](phase-d-plan.md). Not a C1 pipeline step. Not in QUEUE until Phase D is explicitly opened.
+Model layer (EVO-3): payload schema `aira:schema:model:artifact:0.1` is **PARTIAL** (QUEUE #53). Not a Core entity; envelope remains `CustomArtifact`. Profile/inventory/policy/CLI still **ABSENT**. Plan: [phase-d-plan.md](phase-d-plan.md). Not a C1 pipeline step.
