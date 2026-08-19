@@ -109,6 +109,9 @@ fn test_private_artifact_denied(artifact_root: &Path) -> CaseResult {
         vec![],
     );
     desc.policy_refs = vec![AiraRef::parse(PRIVATE_ARTIFACT_POLICY).unwrap()];
+    desc = desc
+        .attach_canonical_signature()
+        .expect("re-sign private artifact");
     if let Err(e) = store.publish(desc.clone(), payload) {
         return fail(id, e.to_string());
     }

@@ -3,8 +3,7 @@
 use aira_artifact::{ArtifactDescriptor, ArtifactType};
 use aira_event::{EventDescriptor, EventType};
 use aira_object::{
-    active_identity, active_signature, signature_for_tenant, AiraRef, ContentHash, CryptoError,
-    Timestamp,
+    active_identity, active_signature, AiraRef, ContentHash, CryptoError, Timestamp,
 };
 use serde_json::{json, Value};
 
@@ -165,8 +164,7 @@ pub fn make_artifact_as(
     provenance: Vec<AiraRef>,
 ) -> Result<ArtifactDescriptor, CryptoError> {
     let hash = ContentHash::sha256_bytes(payload);
-    let sig = signature_for_tenant(&tenant_csu, &producer, hash.as_str().as_bytes())?;
-    Ok(ArtifactDescriptor {
+    let unsigned = ArtifactDescriptor {
         artifact_id: AiraRef::parse(artifact_id).expect("artifact_id"),
         artifact_type,
         schema_version: "0.1".into(),
@@ -176,9 +174,10 @@ pub fn make_artifact_as(
         provenance_refs: provenance,
         dependency_refs: vec![],
         policy_refs: vec![AiraRef::parse("aira:policy:default").expect("policy")],
-        signature: sig,
+        signature: local_signature(),
         created_at: mvp_timestamp(),
-    })
+    };
+    unsigned.attach_canonical_signature_for_tenant(&tenant_csu)
 }
 
 /// Build an artifact descriptor signed by the process primary (Analyze-22 path).
@@ -189,8 +188,7 @@ pub fn make_artifact(
     provenance: Vec<AiraRef>,
 ) -> ArtifactDescriptor {
     let hash = ContentHash::sha256_bytes(payload);
-    let sig = local_signature_over(hash.as_str().as_bytes());
-    ArtifactDescriptor {
+    let unsigned = ArtifactDescriptor {
         artifact_id: AiraRef::parse(artifact_id).expect("artifact_id"),
         artifact_type,
         schema_version: "0.1".into(),
@@ -200,9 +198,12 @@ pub fn make_artifact(
         provenance_refs: provenance,
         dependency_refs: vec![],
         policy_refs: vec![AiraRef::parse("aira:policy:default").expect("policy")],
-        signature: sig,
+        signature: local_signature(),
         created_at: mvp_timestamp(),
-    }
+    };
+    unsigned
+        .attach_canonical_signature()
+        .expect("canonical artifact signature")
 }
 
 /// Encode JSON value as artifact payload bytes.
@@ -215,7 +216,7 @@ mod tests {
     use super::*;
     use aira_object::{
         register_csu_tenant_signing, reset_primary_signer, set_primary_signer, signature_for,
-        unregister_csu_tenant, verify_ed25519, LOCAL_TEST_KEY_REF,
+        unregister_csu_tenant, LOCAL_TEST_KEY_REF,
     };
     use ed25519_dalek::SigningKey;
 
@@ -248,7 +249,7 @@ mod tests {
         .unwrap();
         assert_eq!(art.producer_identity.as_str(), pub_id.as_str());
         assert_eq!(art.signature.key_ref.as_str(), pub_id.as_str());
-        verify_ed25519(&art.signature, art.content_hash.as_str().as_bytes()).unwrap();
+        art.verify_canonical().unwrap();
 
         // Tenant signing secret is not in the process signing map.
         assert!(matches!(
