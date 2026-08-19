@@ -93,19 +93,13 @@ impl EventSink for MemoryEventLog {
         if event.signature.signature_value.is_empty() {
             return Err(EventError::MissingSignature);
         }
-        let msg = event.payload_hash.as_str().as_bytes();
-        match aira_object::verify_ed25519(&event.signature, msg) {
+        match event.verify_canonical() {
             Ok(()) => {}
             Err(aira_object::CryptoError::MissingOrLegacy) => {
                 return Err(EventError::MissingSignature);
             }
             Err(_) => {
-                // Emitters that reuse a domain-bound local-test signer (PolicyGate / Runtime).
-                if aira_object::verify_ed25519(&event.signature, aira_object::LOCAL_TEST_DOMAIN_MSG)
-                    .is_err()
-                {
-                    return Err(EventError::InvalidSignature);
-                }
+                return Err(EventError::InvalidSignature);
             }
         }
         if payload_contains_secret(event.payload_ref.as_deref()) {

@@ -101,8 +101,7 @@ pub fn make_event_as(
     } else {
         ContentHash::sha256_bytes(payload.as_bytes())
     };
-    let sig = signature_for_tenant(&tenant_csu, &producer, hash.as_str().as_bytes())?;
-    Ok(EventDescriptor {
+    let unsigned = EventDescriptor {
         event_id: AiraRef::parse(event_id).expect("event_id"),
         event_type,
         schema_version: "0.1".into(),
@@ -114,8 +113,9 @@ pub fn make_event_as(
         payload_hash: hash,
         payload_ref,
         created_at: mvp_timestamp(),
-        signature: sig,
-    })
+        signature: local_signature(),
+    };
+    unsigned.attach_canonical_signature_for_tenant(&tenant_csu)
 }
 
 /// Build an event descriptor signed by the process primary (Analyze-22 path).
@@ -136,8 +136,7 @@ pub fn make_event(
     } else {
         ContentHash::sha256_bytes(payload.as_bytes())
     };
-    let sig = local_signature_over(hash.as_str().as_bytes());
-    EventDescriptor {
+    let unsigned = EventDescriptor {
         event_id: AiraRef::parse(event_id).expect("event_id"),
         event_type,
         schema_version: "0.1".into(),
@@ -149,8 +148,11 @@ pub fn make_event(
         payload_hash: hash,
         payload_ref,
         created_at: mvp_timestamp(),
-        signature: sig,
-    }
+        signature: local_signature(),
+    };
+    unsigned
+        .attach_canonical_signature()
+        .expect("canonical event signature")
 }
 
 /// Build an artifact descriptor signed by `producer` under CSU tenant isolation.

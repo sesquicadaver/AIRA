@@ -84,7 +84,9 @@ impl PolicyGate {
                 created_at: Timestamp::parse("2026-07-10T12:00:00Z")
                     .map_err(|e| PolicyError::Event(e.to_string()))?,
                 signature: self.signer.clone(),
-            };
+            }
+            .attach_canonical_signature()
+            .map_err(|e| PolicyError::Event(e.to_string()))?;
             log.append(ev)
                 .map_err(|e| PolicyError::Event(e.to_string()))?;
         }
