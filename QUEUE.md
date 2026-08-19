@@ -1,6 +1,6 @@
 # AIRA — лінійна черга задач
 
-**Оновлено:** 2026-08-19  
+**Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
 **План етапу:** [`docs/phase-c-plan.md`](docs/phase-c-plan.md) — загальний план → атоми без перекриття → цей лінійний хвіст.
@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Analyze-85 CLOSED @ 061c535; QUEUE #50 DONE; наступний OPEN **#51** |
+| `main` | Analyze-86 CLOSED @ ad40195; QUEUE #51 DONE; наступний OPEN **#52** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase C **#51 OPEN** (Analyze-86) |
+| Активна черга | Phase C **#52 OPEN** (Analyze-87) |
 
 ## Правила атомарності
 
@@ -78,12 +78,12 @@
 | 48 | **DONE** | ~~Analyze-83 — modularize tenant.rs~~ | Mechanical split `crates/aira-object/src/tenant.rs` | тести tenant зелені | `crypto.rs`; зміна HTTP authz семантики |
 | 49 | **DONE** | ~~Analyze-84 — modularize http.rs~~ | Mechanical split `crates/aira-node/src/http.rs` | HTTP тести/поведінка незмінні | `tls.rs`; нові маршрути |
 | 50 | **DONE** | ~~Analyze-85 — modularize tls.rs~~ | Mechanical split `crates/aira-node/src/tls.rs` | TLS/mTLS/health bind незмінні | `http.rs`; нові режими TLS |
-| 51 | OPEN | Analyze-86 — OperationalPlane reference-local | Docs + коментарі модуля: plane = C1 reference/demo, не production runtime | явно зафіксовано non-production статус | зміна drain/loop семантики |
+| 51 | **DONE** | ~~Analyze-86 — OperationalPlane reference-local~~ | Docs + коментарі модуля: plane = C1 reference/demo, не production runtime | явно зафіксовано non-production статус | зміна drain/loop семантики |
 | 52 | OPEN | Analyze-87 — implementation status matrix | `docs/implementation-status.md`: ТЗ → модуль → тести → статус | покриття Book 0–IV, schemas, C0/C1, CSU basic, HTTP/peer як post-MVP | нова реалізація «щоб заповнити матрицю» |
 
 ### Наступний цикл
 
-**#51 OPEN** — Analyze-86: OperationalPlane reference-local.
+**#52 OPEN** — Analyze-87: implementation status matrix.
 
 ---
 
