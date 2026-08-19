@@ -1,7 +1,7 @@
 # Analyze-87 — implementation status matrix (QUEUE #52)
 
 ## Status
-OPEN (implementation in progress).
+CLOSED (QUEUE #52 DONE @ f7f3289 / PR #15).
 
 ## Done when
 `docs/implementation-status.md` maps ТЗ → module → tests → status covering Book 0–IV, Schema Pack, C0/C1, basic CSUs, and HTTP/peer as post-MVP.

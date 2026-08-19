@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Analyze-86 CLOSED @ ad40195; QUEUE #51 DONE; наступний OPEN **#52** |
+| `main` | Analyze-87 CLOSED @ f7f3289; QUEUE #52 DONE; Phase C **#38–#52** complete; **немає OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase C **#52 OPEN** (Analyze-87) |
+| Активна черга | Phase C **#38–#52 DONE**; наступний OPEN лише після нового загального плану |
 
 ## Правила атомарності
 
@@ -79,11 +79,11 @@
 | 49 | **DONE** | ~~Analyze-84 — modularize http.rs~~ | Mechanical split `crates/aira-node/src/http.rs` | HTTP тести/поведінка незмінні | `tls.rs`; нові маршрути |
 | 50 | **DONE** | ~~Analyze-85 — modularize tls.rs~~ | Mechanical split `crates/aira-node/src/tls.rs` | TLS/mTLS/health bind незмінні | `http.rs`; нові режими TLS |
 | 51 | **DONE** | ~~Analyze-86 — OperationalPlane reference-local~~ | Docs + коментарі модуля: plane = C1 reference/demo, не production runtime | явно зафіксовано non-production статус | зміна drain/loop семантики |
-| 52 | OPEN | Analyze-87 — implementation status matrix | `docs/implementation-status.md`: ТЗ → модуль → тести → статус | покриття Book 0–IV, schemas, C0/C1, CSU basic, HTTP/peer як post-MVP | нова реалізація «щоб заповнити матрицю» |
+| 52 | **DONE** | ~~Analyze-87 — implementation status matrix~~ | `docs/implementation-status.md`: ТЗ → модуль → тести → статус | покриття Book 0–IV, schemas, C0/C1, CSU basic, HTTP/peer як post-MVP | нова реалізація «щоб заповнити матрицю» |
 
 ### Наступний цикл
 
-**#52 OPEN** — Analyze-87: implementation status matrix.
+**Phase C `#38`–`#52` DONE.** Наступний OPEN — лише після нового загального плану (Phase D+). Не додавати поодинокі рядки.
 
 ---
 
