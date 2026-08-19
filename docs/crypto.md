@@ -183,6 +183,7 @@ cargo run -p aira-cli -- --root "$ROOT" identity backups
 
 | Object | Message bytes |
 |--------|----------------|
+| Canonical descriptor helper (Analyze-74 / #39) | `descriptor_signing_hash(strip signature).as_str()` — **not wired** to Event/Artifact/Object/CSU yet |
 | Artifact | `content_hash.as_str()` |
 | Event | `payload_hash.as_str()` **or** domain message |
 | CSU manifest | `csu_id.as_str()` |
