@@ -4,6 +4,7 @@
 //! `ObjectDescriptor` aligned with Schema Pack core schemas.
 
 mod audit;
+mod canonical;
 mod crypto;
 mod descriptor;
 mod handle;
@@ -12,6 +13,10 @@ mod types;
 
 pub use audit::{
     record_trust_audit, TrustAuditAction, TrustAuditEntry, TrustAuditLog, TRUST_AUDIT_FILE,
+};
+pub use canonical::{
+    canonical_json_bytes, canonicalize_value, descriptor_signing_hash, descriptor_signing_message,
+    sign_canonical_descriptor, strip_top_level_signature, verify_canonical_descriptor,
 };
 pub use crypto::{
     active_identity, active_signature, ensure_trust_defaults, is_cryptographic_signature,
