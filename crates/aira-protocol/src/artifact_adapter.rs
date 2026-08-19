@@ -4,8 +4,8 @@ use aira_artifact::{ArtifactDescriptor, ArtifactStore, CasArtifactStore, Publish
 use aira_object::{AiraRef, ContentHash};
 
 use crate::envelope::{
-    local_identity, local_signature, mvp_timestamp, ProtocolEnvelope, ProtocolError, ProtocolId,
-    ProtocolResponse, ProtocolStatus, ScopeDescriptor,
+    local_identity, local_signature, mvp_timestamp, signature_over_payload_hash, ProtocolEnvelope,
+    ProtocolError, ProtocolId, ProtocolResponse, ProtocolStatus, ScopeDescriptor,
 };
 
 /// Supported local artifact protocol version.
@@ -186,7 +186,7 @@ impl ArtifactProtocolAdapter {
             payload_ref: Some(format!("artifact:{}", subject)),
             created_at: mvp_timestamp(),
             expires_at: None,
-            signature: local_signature(),
+            signature: signature_over_payload_hash(hash),
         })
     }
 

@@ -1,9 +1,9 @@
 //! Local AIRA-ID Identity Descriptor (Issue #74).
 
-use aira_object::{AiraRef, Signature, Timestamp};
+use aira_object::{local_test_signature, AiraRef, Signature, Timestamp};
 use serde::{Deserialize, Serialize};
 
-use crate::envelope::{local_signature, mvp_timestamp, ProtocolError};
+use crate::envelope::{mvp_timestamp, ProtocolError};
 
 /// Identity kinds from Schema Pack.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -61,12 +61,13 @@ impl IdentityDescriptor {
             trust_anchors: vec![],
             policy_refs: vec![policy],
             metadata_hash: None,
-            signature: local_signature(),
+            signature: local_test_signature(identity_id.as_str().as_bytes()),
         };
         if desc.public_keys.is_empty() || desc.public_keys[0].public_key_material.is_empty() {
             return Err(ProtocolError::Schema("public key required".into()));
         }
-        if aira_object::verify_ed25519(&desc.signature, aira_object::LOCAL_TEST_DOMAIN_MSG).is_err()
+        if aira_object::verify_ed25519(&desc.signature, desc.identity_id.as_str().as_bytes())
+            .is_err()
         {
             return Err(ProtocolError::InvalidSignature);
         }
