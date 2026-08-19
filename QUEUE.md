@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Analyze-80 CLOSED @ 9bd0bfd; QUEUE #45 DONE; наступний OPEN **#46** |
+| `main` | Analyze-81 CLOSED @ 1704991; QUEUE #46 DONE; наступний OPEN **#47** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase C **#46 OPEN** (Analyze-81) |
+| Активна черга | Phase C **#47 OPEN** (Analyze-82) |
 
 ## Правила атомарності
 
@@ -73,7 +73,7 @@
 | 43 | **DONE** | ~~Analyze-78 — CSU manifest canonical signatures~~ | Manifest sign/verify = canonical manifest без `signature` + mutation-тести | зміна полів маніфесту ламає verify | Event/Artifact/Object; нові CSU |
 | 44 | **DONE** | ~~Analyze-79 — leftover test-sig fallback~~ | Прибрати runtime fallback `LOCAL_TEST_DOMAIN_MSG`/TESTSIG поза `#[cfg(test)]` там, де лишилось після #40–#43 | runtime verify не приймає test-domain fallback | повторний перепис уже мігрованих дескрипторів; нові протоколи |
 | 45 | **DONE** | ~~Analyze-80 — core dependency firewall~~ | CI: `aira-core` ↛ node/peer/concrete CSU; CSU ↛ CSU; без циклів імпорту | CI падає на forbidden import / цикл | split файлів; нові crates |
-| 46 | OPEN | Analyze-81 — modularize aira-cli | Mechanical split `crates/aira-cli/src/main.rs` → `commands/*` | CLI поведінка незмінна; тести CLI зелені | crypto/tenant/http/tls; нові підкоманди |
+| 46 | **DONE** | ~~Analyze-81 — modularize aira-cli~~ | Mechanical split `crates/aira-cli/src/main.rs` → `commands/*` | CLI поведінка незмінна; тести CLI зелені | crypto/tenant/http/tls; нові підкоманди |
 | 47 | OPEN | Analyze-82 — modularize crypto.rs | Mechanical split `crates/aira-object/src/crypto.rs` | тести object/crypto зелені | `tenant.rs`; CLI; HTTP |
 | 48 | OPEN | Analyze-83 — modularize tenant.rs | Mechanical split `crates/aira-object/src/tenant.rs` | тести tenant зелені | `crypto.rs`; зміна HTTP authz семантики |
 | 49 | OPEN | Analyze-84 — modularize http.rs | Mechanical split `crates/aira-node/src/http.rs` | HTTP тести/поведінка незмінні | `tls.rs`; нові маршрути |
@@ -83,7 +83,7 @@
 
 ### Наступний цикл
 
-**#46 OPEN** — Analyze-81: modularize aira-cli.
+**#47 OPEN** — Analyze-82: modularize crypto.rs.
 
 ---
 
