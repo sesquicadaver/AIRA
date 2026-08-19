@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "AIRA local operational flow (Epic 7)"
+description = "AIRA C1 reference-local operational flow (demo plane, not production runtime)"
 
 [dependencies]
 aira-object = { path = "../aira-object" }

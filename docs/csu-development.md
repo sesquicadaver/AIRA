@@ -51,3 +51,5 @@ Basic set under `csu/`:
 ## Isolation baseline
 
 Default sandbox: no filesystem/network/device/secret access; in-process only. Do not emit secret material into `payload_ref` (event log rejects obvious secret patterns).
+
+CSU `on_event` is invoked by the local C1 **reference/demo** `OperationalPlane` ([operational-plane.md](operational-plane.md)), not a production event, scheduler, or federation runtime.

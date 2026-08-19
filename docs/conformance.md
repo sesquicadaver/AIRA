@@ -5,7 +5,7 @@
 | Profile | Runner | Focus |
 |---------|--------|-------|
 | C0 | `run_c0` | ontology, object/artifact immutability, event causality, policy gate |
-| C1 | `run_c1` | pipeline 2+2, CSU manifests, verified result completeness, failure-to-evidence |
+| C1 | `run_c1` | pipeline 2+2, CSU manifests, verified result completeness, failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) |
 | C2 | `run_c2` | partial local protocols (M13): envelope/response/identity schemas, discovery Capability≠Node, UNSUPPORTED_VERSION without side effects |
 
 Reports validate against `aira:schema:conformance:report:0.1` and are published as immutable `ConformanceArtifact`.

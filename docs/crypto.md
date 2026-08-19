@@ -13,7 +13,7 @@ API: `aira_object::{local_test_signature, verify_ed25519, Keyring, active_signat
 
 `verify_ed25519` resolves `signature.key_ref` via a process `Keyring` that always includes local-test.
 
-**Primary signer** (Analyze-22): `aira_csu::support::{local_identity, local_signature, local_signature_over}` use `active_identity` / `active_signature`. When a node identity is registered, OperationalPlane + basic CSU emits carry that `key_ref`.
+**Primary signer** (Analyze-22): `aira_csu::support::{local_identity, local_signature, local_signature_over}` use `active_identity` / `active_signature`. When a node identity is registered, OperationalPlane + basic CSU emits carry that `key_ref`. The plane itself remains a C1 reference/demo ([operational-plane.md](operational-plane.md)), not a production event runtime.
 
 **Per-CSU publisher** (Analyze-29 / Analyze-39 / Analyze-42 / Analyze-62): CSU business emits, `CSUFailed`, and CSU registry lifecycle events use `CsuManifest.publisher_identity` via `make_event_as` / `make_artifact_as` + `signature_for_tenant` (fail closed). Default `publisher_identity == identity_ref == primary` signs through the process keyring. A distinct publisher requires `register_csu_tenant_signing` / durable `save_csu_tenant_signing` — the **signing** secret stays in the tenant map (CSU-A cannot use CSU-B’s key); only the verifying pubkey merges into the process Keyring. Durable layout: `identity/tenants/<hex(csu_id)>/{ed25519,meta.json}` (mode `0600`). `LocalSession::open` / `submit_problem` call `load_all_csu_tenant_signing` **after** trust sync. Override helpers: `ContextBasicCsu::with_publisher` (and siblings). OperationalPlane ProblemStatement / plane lifecycle remain on primary.
 
