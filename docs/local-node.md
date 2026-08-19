@@ -46,7 +46,7 @@ cargo run -p aira-cli -- --root "$ROOT" event tail --limit 20
 cargo run -p aira-node -- --root "$ROOT" --text "Calculate 2 + 2"
 ```
 
-Loads config, lists CSU registry entries, runs one local OperationalPlane submit.
+Loads config, lists CSU registry entries, runs one local **C1 reference** `OperationalPlane` submit ([operational-plane.md](operational-plane.md); not production event/scheduler/federation runtime).
 
 ## Local HTTP API (Roadmap M11 + Analyze-45/48)
 
@@ -132,6 +132,7 @@ Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.
 - Config: `config.json` (from `aira init`) **or** `config.yaml` (same `NodeConfig` schema). Both present → fail-closed. Init never writes YAML.
 - Multi-submit uses `run_nonce` so artifact/event ids do not collide.
 - No network dependency is required for local MVP.
+- Operational submit uses the C1 **reference/demo** plane, not a production event runtime ([operational-plane.md](operational-plane.md)).
 - AiraRefs in path segments may include `:` (single URL path segment).
 - Long-running under systemd: [runbook-systemd.md](runbook-systemd.md) (`aira-node.service`).
 - Federation join (local pin): `aira federation join --descriptor` — [peer-link.md](peer-link.md).

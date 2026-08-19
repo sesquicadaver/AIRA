@@ -257,7 +257,9 @@ pub fn load_config(root: impl AsRef<Path>) -> Result<NodeConfig, FlowError> {
     }
 }
 
-/// Local session: operational plane + disk persistence.
+/// Local session: C1 reference [`OperationalPlane`] + disk persistence.
+///
+/// The plane remains in-process demo/conformance wiring (not production runtime).
 pub struct LocalSession {
     pub paths: NodePaths,
     pub config: NodeConfig,

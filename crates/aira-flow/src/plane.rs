@@ -1,4 +1,10 @@
-//! Local operational plane: problem submit + CSU event drain.
+//! Reference-local operational plane: problem submit + CSU event drain.
+//!
+//! **Role (Analyze-86 / QUEUE #51):** [`OperationalPlane`] is the in-process **C1
+//! reference/demo** pipeline (basic CSUs, memory object/event stores, CAS artifacts).
+//! It is **not** a production event runtime, **not** a scheduler, **not** a
+//! distributed runtime, and **not** a federation runtime. See
+//! `docs/operational-plane.md`.
 
 use std::collections::VecDeque;
 use std::path::Path;
@@ -43,7 +49,7 @@ pub enum SubmitOutcome {
     NeedsHumanCollapse { field_artifact_id: AiraRef },
 }
 
-/// Local in-process operational plane.
+/// Local in-process C1 reference plane (demo / conformance), not production runtime.
 pub struct OperationalPlane {
     objects: MemoryObjectStore,
     artifacts: CasArtifactStore,
@@ -262,6 +268,7 @@ impl OperationalPlane {
         None
     }
 
+    /// In-process fan-out for the reference plane (demo safety bound 256, not a scheduler).
     fn drain_from(&mut self, start_idx: usize) -> Result<(), FlowError> {
         let mut queue: VecDeque<EventDescriptor> =
             self.events.all()[start_idx..].iter().cloned().collect();

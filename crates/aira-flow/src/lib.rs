@@ -2,6 +2,10 @@
 //!
 //! Wires Problem submit → basic CSU pipeline → Verified Result / Evidence.
 //! Epic 8 adds `.aira` layout persistence via [`local`].
+//!
+//! [`OperationalPlane`] is a **C1 reference/demo** (Analyze-86): not a production
+//! event runtime, scheduler, distributed runtime, or federation runtime.
+//! Operator-facing status: `docs/operational-plane.md`.
 
 mod local;
 mod plane;

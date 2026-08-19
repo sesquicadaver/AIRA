@@ -1,6 +1,6 @@
 # AIRA demos
 
-Local demos for the MVP operational flow (`aira-flow` / CLI).
+Local **C1 reference/demo** flow (`aira-flow` / CLI). [`OperationalPlane`](operational-plane.md) is not a production event runtime, scheduler, or federation runtime.
 
 ## Prerequisites
 
@@ -23,7 +23,7 @@ Expected:
 - JSON `result: 4.0`, `verification_status: "VERIFIED"`
 - Event chain includes `ProblemSubmitted` → `ContextResolved` → `CapsuleCreated` → `CapsuleCompleted` → `ResultPublished`
 
-Library equivalent: `OperationalPlane::submit_problem("Calculate 2 + 2")`.
+Library equivalent: `OperationalPlane::submit_problem("Calculate 2 + 2")` (C1 reference plane; [operational-plane.md](operational-plane.md)).
 
 ## Ready Solution reuse
 

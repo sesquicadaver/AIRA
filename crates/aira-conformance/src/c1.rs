@@ -1,4 +1,8 @@
 //! C1 conformance suite (Issues #65, #70).
+//!
+//! Pipeline cases drive [`aira_flow::OperationalPlane`] as the **C1 reference/demo**
+//! plane, not as a production event/scheduler/federation runtime
+//! (`docs/operational-plane.md`).
 
 use std::path::Path;
 

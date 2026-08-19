@@ -1,4 +1,7 @@
 //! C0 conformance suite (Issues #64, #66–#69).
+//!
+//! Event-causality cases may drive [`aira_flow::OperationalPlane`] as the C1
+//! **reference/demo** plane (`docs/operational-plane.md`), not a production runtime.
 
 use std::path::Path;
 
