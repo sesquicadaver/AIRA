@@ -183,10 +183,10 @@ cargo run -p aira-cli -- --root "$ROOT" identity backups
 
 | Object | Message bytes |
 |--------|----------------|
-| Canonical descriptor helper (Analyze-74 / #39) | `descriptor_signing_hash(strip signature).as_str()` — Event #40, Artifact #41, Object #42; CSU not yet |
+| Canonical descriptor helper (Analyze-74 / #39) | `descriptor_signing_hash(strip signature).as_str()` — Event #40, Artifact #41, Object #42, CSU #43 |
 | Artifact | canonical descriptor JSON without `signature` (Analyze-76 / #41); payload still must match `content_hash` |
 | Event | canonical descriptor JSON without `signature` (Analyze-75 / #40); no event-path `LOCAL_TEST_DOMAIN_MSG` fallback |
-| CSU manifest | `csu_id.as_str()` |
+| CSU manifest | canonical manifest JSON without `signature` (Analyze-78 / #43); signer = `identity_ref` |
 | Problem object | canonical descriptor JSON without `signature` (Analyze-77 / #42) |
 | Protocol envelope | `payload_hash.as_str()` **or** domain message |
 | Identity descriptor (create / rotate) | `identity_id` bytes |

@@ -98,14 +98,15 @@ impl CsuManifest {
         if self.signature.signature_value.trim().is_empty() {
             return Err(CsuError::UnsignedManifest(self.csu_id.clone()));
         }
-        aira_object::verify_ed25519(&self.signature, self.csu_id.as_str().as_bytes()).map_err(
-            |e| match e {
-                aira_object::CryptoError::MissingOrLegacy => {
-                    CsuError::UnsignedManifest(self.csu_id.clone())
-                }
-                other => CsuError::ManifestInvalid(format!("signature: {other}")),
-            },
-        )?;
+        match self.verify_canonical() {
+            Ok(()) => {}
+            Err(aira_object::CryptoError::MissingOrLegacy) => {
+                return Err(CsuError::UnsignedManifest(self.csu_id.clone()));
+            }
+            Err(other) => {
+                return Err(CsuError::ManifestInvalid(format!("signature: {other}")));
+            }
+        }
         if self.abi_version != SUPPORTED_ABI_VERSION {
             return Err(CsuError::UnsupportedAbi(self.abi_version.clone()));
         }
@@ -113,6 +114,41 @@ impl CsuManifest {
             return Err(CsuError::ManifestInvalid("csu_name empty".into()));
         }
         Ok(())
+    }
+
+    /// Sign over canonical JSON of this manifest without the top-level `signature`.
+    ///
+    /// Signer is `identity_ref` (process primary for basic manifests).
+    pub fn attach_canonical_signature(mut self) -> Result<Self, aira_object::CryptoError> {
+        self.resign_canonical()?;
+        Ok(self)
+    }
+
+    /// Recompute the canonical signature in place using `identity_ref`.
+    pub fn resign_canonical(&mut self) -> Result<(), aira_object::CryptoError> {
+        let v = serde_json::to_value(&*self)
+            .map_err(|e| aira_object::CryptoError::Io(e.to_string()))?;
+        self.signature = aira_object::sign_canonical_descriptor(&self.identity_ref, &v)?;
+        Ok(())
+    }
+
+    /// Tenant-isolated sign over the same canonical message as [`Self::attach_canonical_signature`].
+    pub fn attach_canonical_signature_for_tenant(
+        mut self,
+        tenant_csu: &AiraRef,
+    ) -> Result<Self, aira_object::CryptoError> {
+        let v =
+            serde_json::to_value(&self).map_err(|e| aira_object::CryptoError::Io(e.to_string()))?;
+        let msg = aira_object::descriptor_signing_message(&v)?;
+        self.signature = aira_object::signature_for_tenant(tenant_csu, &self.identity_ref, &msg)?;
+        Ok(self)
+    }
+
+    /// Verify Ed25519 over canonical manifest hash. No LOCAL_TEST domain fallback.
+    pub fn verify_canonical(&self) -> Result<(), aira_object::CryptoError> {
+        let v =
+            serde_json::to_value(self).map_err(|e| aira_object::CryptoError::Io(e.to_string()))?;
+        aira_object::verify_canonical_descriptor(&self.signature, &v)
     }
 
     /// Event type names this CSU subscribes to (from `event_subscriptions[].event_type`).

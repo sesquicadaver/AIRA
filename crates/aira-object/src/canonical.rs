@@ -3,8 +3,8 @@
 //! Schema Pack §2.2 / Book IV §20: UTF-8 Canonical JSON (sorted keys, no
 //! insignificant whitespace) → SHA-256 → Ed25519 over `hash.as_str()` bytes.
 //!
-//! Production Event (#40), Artifact (#41), and Object (#42) verify paths are switched.
-//! CSU remains unwired until #43.
+//! Production Event (#40), Artifact (#41), Object (#42), and CSU manifest (#43)
+//! verify paths are switched. Leftover LOCAL_TEST fallback is QUEUE #44.
 
 use serde_json::{Map, Value};
 
