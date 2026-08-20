@@ -629,6 +629,31 @@ pub(crate) enum ModelsCommands {
         #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
         allow_download: bool,
     },
+    /// Publish contextual model rating evidence (local-only; not a global score).
+    Rate {
+        #[arg(long)]
+        model_ref: String,
+        #[arg(long)]
+        context_id: String,
+        #[arg(long)]
+        task_class: String,
+        #[arg(long)]
+        reason: String,
+        #[arg(long, default_value_t = 0.5)]
+        confidence: f64,
+        #[arg(long)]
+        backend: Option<String>,
+        #[arg(long)]
+        quantization: Option<String>,
+        #[arg(long)]
+        notes: Option<String>,
+        #[arg(long)]
+        fit: Option<f64>,
+        #[arg(long)]
+        latency: Option<f64>,
+        #[arg(long)]
+        quality: Option<f64>,
+    },
 }
 
 #[derive(Subcommand, Debug)]

@@ -1,4 +1,4 @@
-//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#68).
+//! Local model inventory / compatibility / acquisition / rating CLI (QUEUE #58–#71).
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -10,6 +10,7 @@ use aira_csu_model_acquisition::{
 };
 use aira_csu_model_compatibility::resolve_and_publish;
 use aira_csu_model_inventory::{load_latest, scan_and_publish};
+use aira_csu_model_rating::{publish_rating, RatingRequest};
 use anyhow::Result;
 
 use crate::cli::{ModelsCommands, ModelsPolicyCommands};
@@ -213,6 +214,47 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
             visibility,
             allow_download,
         } => run_publish_share(root, &model_ref, &visibility, allow_download),
+        ModelsCommands::Rate {
+            model_ref,
+            context_id,
+            task_class,
+            reason,
+            confidence,
+            backend,
+            quantization,
+            notes,
+            fit,
+            latency,
+            quality,
+        } => {
+            let out = publish_rating(
+                root,
+                RatingRequest {
+                    model_ref,
+                    context_id,
+                    task_class,
+                    reason,
+                    confidence,
+                    backend,
+                    quantization,
+                    notes,
+                    fit,
+                    latency,
+                    quality,
+                },
+            )
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!("status rating-published");
+            println!("model_ref {}", out.model_ref);
+            println!("context_id {}", out.context_id);
+            println!("task_class {}", out.task_class);
+            println!("artifact {}", out.artifact_id);
+            println!("content_hash {}", out.content_hash);
+            println!("pointer {}", out.pointer_path);
+            println!("global_score false");
+            println!("network false");
+            Ok(ExitCode::SUCCESS)
+        }
     }
 }
 
