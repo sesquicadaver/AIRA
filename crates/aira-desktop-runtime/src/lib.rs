@@ -1,13 +1,14 @@
 //! AIRA Desktop lifecycle library (QUEUE #76 / Analyze-111).
 //!
 //! Shared by `aira desktop …` and the Desktop GUI. OS autostart is `#78`;
-//! Linux packaging layout/install is `#79`.
+//! Linux packaging layout/install is `#79`. P1 peer supervise is `#82`.
 
 mod autostart;
 mod bootstrap;
 mod health;
 mod launcher;
 mod paths;
+mod peer;
 mod process;
 mod settings;
 
@@ -25,6 +26,7 @@ pub use launcher::{
     AIRA_GUI_DESKTOP_FILENAME,
 };
 pub use paths::DesktopPaths;
+pub use peer::PeerPidRecordView;
 pub use process::{start, status, stop, LifecycleStatus, PidRecordView, StartOutcome};
 pub use settings::{
     effective_peer_listen, load_or_create_settings, normalize_settings, validate_listen_addr,

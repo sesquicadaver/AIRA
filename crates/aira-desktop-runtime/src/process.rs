@@ -1,4 +1,4 @@
-//! Supervise `aira-node --http` (PID/lock, attach, stop).
+//! Supervise `aira-node --http` (PID/lock, attach, stop) and P1 peer (QUEUE #82).
 
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::bootstrap::{ensure_bootstrap, read_http_token};
 use crate::health::{health_ok, port_in_use, wait_healthy};
 use crate::paths::DesktopPaths;
+use crate::peer::{ensure_peer, peer_status, stop_peer};
 use crate::settings::{load_or_create_settings, resolve_token_path, DesktopSettings};
 
 const HEALTH_TIMEOUT: Duration = Duration::from_secs(15);
@@ -45,17 +46,31 @@ pub struct StartOutcome {
     pub listen: String,
     pub instance_id: String,
     pub data_root: PathBuf,
+    pub peer_pid: Option<u32>,
+    pub peer_listen: Option<String>,
+    pub peer_attached: bool,
 }
 
-/// Start or attach to a compatible Desktop node.
+/// Start or attach to a compatible Desktop node; on P1 also supervise peer listen.
 pub fn start(paths: &DesktopPaths, node_bin: Option<PathBuf>) -> Result<StartOutcome> {
     paths.ensure_dirs()?;
     let mut settings = load_or_create_settings(paths)?;
     ensure_bootstrap(paths, &mut settings)?;
     let listen = settings.http_listen.clone();
     let instance_id = settings.instance_id.clone();
+    let aira_hint = node_bin
+        .as_ref()
+        .and_then(|n| n.parent().map(|d| d.join("aira")))
+        .filter(|p| p.is_file());
 
-    if let Some(outcome) = try_attach(paths, &settings)? {
+    if let Some(mut outcome) = try_attach(paths, &settings)? {
+        let (peer_pid, peer_listen, peer_attached) =
+            ensure_peer(paths, &settings, aira_hint.clone()).with_context(|| {
+                "node attached but peer listen failed — fix peer_listen / AIRA_BIN"
+            })?;
+        outcome.peer_pid = peer_pid;
+        outcome.peer_listen = peer_listen;
+        outcome.peer_attached = peer_attached;
         return Ok(outcome);
     }
 
@@ -101,14 +116,31 @@ pub fn start(paths: &DesktopPaths, node_bin: Option<PathBuf>) -> Result<StartOut
     )?;
 
     match wait_healthy(&listen, HEALTH_TIMEOUT) {
-        Ok(()) => Ok(StartOutcome {
-            status: LifecycleStatus::Running,
-            attached: false,
-            pid: Some(pid),
-            listen,
-            instance_id,
-            data_root: paths.data_root.clone(),
-        }),
+        Ok(()) => {
+            let aira_bin = aira_hint.or_else(|| {
+                node_bin
+                    .parent()
+                    .map(|d| d.join("aira"))
+                    .filter(|p| p.is_file())
+            });
+            match ensure_peer(paths, &settings, aira_bin) {
+                Ok((peer_pid, peer_listen, peer_attached)) => Ok(StartOutcome {
+                    status: LifecycleStatus::Running,
+                    attached: false,
+                    pid: Some(pid),
+                    listen,
+                    instance_id,
+                    data_root: paths.data_root.clone(),
+                    peer_pid,
+                    peer_listen,
+                    peer_attached,
+                }),
+                Err(e) => {
+                    let _ = stop(paths);
+                    bail!("node started but peer listen failed: {e}");
+                }
+            }
+        }
         Err(e) => {
             let _ = child.kill();
             let _ = child.wait();
@@ -118,8 +150,9 @@ pub fn start(paths: &DesktopPaths, node_bin: Option<PathBuf>) -> Result<StartOut
     }
 }
 
-/// Stop supervised node (SIGTERM then kill).
+/// Stop supervised peer (if any) then node (SIGTERM then kill).
 pub fn stop(paths: &DesktopPaths) -> Result<LifecycleStatus> {
+    let _ = stop_peer(paths);
     let Some(rec) = read_pid_record(paths)? else {
         clear_runtime_files(paths);
         return Ok(LifecycleStatus::Stopped);
@@ -142,7 +175,7 @@ pub fn stop(paths: &DesktopPaths) -> Result<LifecycleStatus> {
     Ok(LifecycleStatus::Stopped)
 }
 
-/// Report lifecycle status.
+/// Report lifecycle status (HTTP node + optional P1 peer).
 pub fn status(paths: &DesktopPaths) -> Result<(LifecycleStatus, Option<PidRecordView>)> {
     let settings = if paths.settings_file.is_file() {
         Some(load_or_create_settings(paths)?)
@@ -153,6 +186,8 @@ pub fn status(paths: &DesktopPaths) -> Result<(LifecycleStatus, Option<PidRecord
         .as_ref()
         .map(|s| s.http_listen.clone())
         .unwrap_or_else(|| "127.0.0.1:8787".into());
+
+    let peer = peer_status(paths, settings.as_ref())?;
 
     let Some(rec) = read_pid_record(paths)? else {
         if port_in_use(&listen, Duration::from_millis(100))
@@ -168,6 +203,8 @@ pub fn status(paths: &DesktopPaths) -> Result<(LifecycleStatus, Option<PidRecord
         instance_id: rec.instance_id.clone(),
         root: rec.root.clone(),
         listen: rec.listen.clone(),
+        peer_pid: peer.as_ref().map(|p| p.pid),
+        peer_listen: peer.as_ref().map(|p| p.listen.clone()),
     };
 
     if !pid_alive(rec.pid) {
@@ -187,6 +224,8 @@ pub struct PidRecordView {
     pub instance_id: String,
     pub root: String,
     pub listen: String,
+    pub peer_pid: Option<u32>,
+    pub peer_listen: Option<String>,
 }
 
 fn try_attach(paths: &DesktopPaths, settings: &DesktopSettings) -> Result<Option<StartOutcome>> {
@@ -204,6 +243,9 @@ fn try_attach(paths: &DesktopPaths, settings: &DesktopSettings) -> Result<Option
                     listen: rec.listen,
                     instance_id: rec.instance_id,
                     data_root: paths.data_root.clone(),
+                    peer_pid: None,
+                    peer_listen: None,
+                    peer_attached: false,
                 }));
             }
             // Stale unhealthy — stop and continue to fresh start.
@@ -298,7 +340,7 @@ fn clear_runtime_files(paths: &DesktopPaths) {
     let _ = fs::remove_file(paths.lock_file());
 }
 
-fn pid_alive(pid: u32) -> bool {
+pub(crate) fn pid_alive(pid: u32) -> bool {
     Command::new("kill")
         .args(["-0", &pid.to_string()])
         .stdout(Stdio::null())
@@ -308,7 +350,7 @@ fn pid_alive(pid: u32) -> bool {
         .unwrap_or(false)
 }
 
-fn signal_term(pid: u32) -> Result<()> {
+pub(crate) fn signal_term(pid: u32) -> Result<()> {
     let status = Command::new("kill")
         .args(["-TERM", &pid.to_string()])
         .stdout(Stdio::null())
@@ -321,7 +363,7 @@ fn signal_term(pid: u32) -> Result<()> {
     Ok(())
 }
 
-fn signal_kill(pid: u32) -> Result<()> {
+pub(crate) fn signal_kill(pid: u32) -> Result<()> {
     let _ = Command::new("kill")
         .args(["-KILL", &pid.to_string()])
         .stdout(Stdio::null())

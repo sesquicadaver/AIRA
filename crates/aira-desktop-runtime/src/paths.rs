@@ -57,6 +57,15 @@ impl DesktopPaths {
         self.runtime_dir.join("aira-node.lock")
     }
 
+    /// Supervised `aira peer listen` PID record (P1).
+    pub fn peer_pid_file(&self) -> PathBuf {
+        self.runtime_dir.join("aira-peer.pid.json")
+    }
+
+    pub fn peer_lock_file(&self) -> PathBuf {
+        self.runtime_dir.join("aira-peer.lock")
+    }
+
     pub fn token_file(&self) -> PathBuf {
         self.runtime_dir.join("http-token")
     }
