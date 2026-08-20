@@ -1,11 +1,11 @@
-//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#62).
+//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#63).
 
 use std::path::Path;
 use std::process::ExitCode;
 
 use aira_csu_model_acquisition::{
-    fetch_to_quarantine, load_policy, request_download, write_default_deny_policy, FetchOutcome,
-    GateDecision,
+    fetch_to_quarantine, load_policy, request_download, verify_quarantine,
+    write_default_deny_policy, FetchOutcome, GateDecision, VerifyOutcome,
 };
 use aira_csu_model_compatibility::resolve_and_publish;
 use aira_csu_model_inventory::{load_latest, scan_and_publish};
@@ -135,6 +135,49 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
                         println!("status policy-denied");
                         Ok(ExitCode::from(2))
                     }
+                }
+            }
+        }
+        ModelsCommands::Verify { artifact } => {
+            let out = verify_quarantine(root, &artifact).map_err(|e| anyhow::anyhow!("{e}"))?;
+            match out {
+                VerifyOutcome::Rejected {
+                    model_ref,
+                    quarantine_path,
+                    observed_hash,
+                    expected_hash,
+                    reason,
+                    reason_ref,
+                    evidence_artifact_id,
+                } => {
+                    println!("status verify-rejected");
+                    println!("model_ref {model_ref}");
+                    println!("quarantine {quarantine_path}");
+                    println!("observed_hash {observed_hash}");
+                    if let Some(e) = expected_hash {
+                        println!("expected_hash {e}");
+                    }
+                    println!("reason {reason}");
+                    println!("reason_ref {reason_ref}");
+                    println!("evidence {evidence_artifact_id}");
+                    println!("activated false");
+                    Ok(ExitCode::from(2))
+                }
+                VerifyOutcome::Verified {
+                    model_ref,
+                    quarantine_path,
+                    verified_path,
+                    content_hash,
+                    evidence_artifact_id,
+                } => {
+                    println!("status verify-passed");
+                    println!("model_ref {model_ref}");
+                    println!("quarantine {quarantine_path}");
+                    println!("verified {verified_path}");
+                    println!("content_hash {content_hash}");
+                    println!("evidence {evidence_artifact_id}");
+                    println!("activated false");
+                    Ok(ExitCode::SUCCESS)
                 }
             }
         }

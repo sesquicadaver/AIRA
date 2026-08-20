@@ -601,6 +601,12 @@ pub(crate) enum ModelsCommands {
         #[arg(long)]
         source: Option<PathBuf>,
     },
+    /// Verify quarantined weights vs ModelArtifact hash+signature; stage under `models/verified/`.
+    Verify {
+        /// Signed ModelArtifact JSON (`aira:schema:model:artifact:0.1`).
+        #[arg(long)]
+        artifact: PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]

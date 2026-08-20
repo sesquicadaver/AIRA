@@ -1,8 +1,9 @@
-//! Model acquisition policy gate + local quarantine fetch (QUEUE #60–#62).
+//! Model acquisition policy gate, quarantine fetch, and verify (QUEUE #60–#63).
 //!
 //! Default-deny download: missing policy or `auto_download=false` → DENY.
 //! With policy and `auto_download=true` → ALLOW. Optional local `--source`
-//! copy into `<root>/models/quarantine/` (no verify/activate; `#63`/`#64`).
+//! copy into `<root>/models/quarantine/`. Verify (`#63`) checks ModelArtifact
+//! content_hash + signature and may stage under `models/verified/` (no activate).
 //! Not wired into C1. `network=none`.
 
 use std::fs;
@@ -13,7 +14,8 @@ use aira_csu::support::{json_bytes, local_identity, make_artifact, make_event, m
 use aira_csu::{CsuManifest, CsuSandbox, CsuType, SUPPORTED_ABI_VERSION};
 use aira_event::{EventDescriptor, EventType};
 use aira_object::{
-    active_identity, active_signature, utc_now_rfc3339, AiraRef, ContentHash, Signature,
+    active_identity, active_signature, is_cryptographic_signature, utc_now_rfc3339, verify_ed25519,
+    AiraRef, ContentHash, Signature,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -29,6 +31,10 @@ pub const DECISION_POINTER_REL: &str = "models/acquisition.decision.latest.json"
 pub const QUARANTINE_REL: &str = "models/quarantine";
 /// Latest quarantine fetch pointer.
 pub const QUARANTINE_POINTER_REL: &str = "models/quarantine.latest.json";
+/// Verified staging directory (post-hash/signature check; pre-activate).
+pub const VERIFIED_REL: &str = "models/verified";
+/// Latest verified staging pointer.
+pub const VERIFIED_POINTER_REL: &str = "models/verified.latest.json";
 
 /// Acquisition gate / quarantine errors.
 #[derive(Debug, Error)]
@@ -49,6 +55,10 @@ pub enum AcquisitionError {
     SourceMissing(String),
     #[error("quarantine path outside scoped models: {0}")]
     OutsideScope(String),
+    #[error("no quarantine snapshot — run download --source first")]
+    NoQuarantine,
+    #[error("model artifact missing or invalid: {0}")]
+    BadArtifact(String),
     #[error("{0}")]
     Other(String),
 }
@@ -118,6 +128,40 @@ pub struct QuarantinePointer {
     pub bytes: u64,
     pub content_hash: String,
     pub decision_artifact_id: String,
+}
+
+/// Pointer to the latest verified staging object.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerifiedPointer {
+    pub updated_at: String,
+    pub model_ref: String,
+    pub verified_path: String,
+    pub quarantine_path: String,
+    pub content_hash: String,
+    pub evidence_artifact_id: String,
+}
+
+/// Result of quarantine hash/signature verification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum VerifyOutcome {
+    /// Hash mismatch or unsigned/invalid signature — weights remain in quarantine.
+    Rejected {
+        model_ref: String,
+        quarantine_path: String,
+        observed_hash: String,
+        expected_hash: Option<String>,
+        reason: String,
+        reason_ref: String,
+        evidence_artifact_id: String,
+    },
+    /// Hash + signature OK — copied to `models/verified/` (not activated).
+    Verified {
+        model_ref: String,
+        quarantine_path: String,
+        verified_path: String,
+        content_hash: String,
+        evidence_artifact_id: String,
+    },
 }
 
 /// Loaded acquisition policy view.
@@ -433,6 +477,298 @@ pub fn fetch_to_quarantine(
         content_hash: content_hash.as_str().to_string(),
         source_path: source.display().to_string(),
     })
+}
+
+/// Verify quarantined weights against a ModelArtifact payload (hash + signature).
+///
+/// On reject: Evidence + Event; quarantine file left in place.
+/// On pass: copy into `models/verified/` (no activate / inventory promote).
+pub fn verify_quarantine(
+    aira_root: impl AsRef<Path>,
+    artifact_path: impl AsRef<Path>,
+) -> Result<VerifyOutcome, AcquisitionError> {
+    let root = aira_root.as_ref();
+    let _ = aira_object::register_node_identity(root);
+
+    let qpath = root.join(QUARANTINE_POINTER_REL);
+    if !qpath.exists() {
+        return Err(AcquisitionError::NoQuarantine);
+    }
+    let pointer: QuarantinePointer = serde_json::from_str(
+        &fs::read_to_string(&qpath).map_err(|e| AcquisitionError::Io(e.to_string()))?,
+    )
+    .map_err(|e| AcquisitionError::Other(e.to_string()))?;
+
+    let qfile = Path::new(&pointer.quarantine_path);
+    if !qfile.is_file() {
+        return Err(AcquisitionError::SourceMissing(
+            pointer.quarantine_path.clone(),
+        ));
+    }
+    ensure_under_models(root, qfile)?;
+
+    let file_bytes = fs::read(qfile).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    let observed = ContentHash::sha256_bytes(&file_bytes);
+    let observed_hash = observed.as_str().to_string();
+
+    let art_raw = fs::read_to_string(artifact_path.as_ref())
+        .map_err(|e| AcquisitionError::BadArtifact(e.to_string()))?;
+    let artifact: Value =
+        serde_json::from_str(&art_raw).map_err(|e| AcquisitionError::BadArtifact(e.to_string()))?;
+    if let Ok(schema_root) =
+        aira_schema::find_repo_root(std::env::current_dir().unwrap_or_else(|_| root.to_path_buf()))
+    {
+        if let Ok(reg) = aira_schema::SchemaRegistry::load(schema_root.join("schemas")) {
+            reg.validate("aira:schema:model:artifact:0.1", &artifact)
+                .map_err(|e| AcquisitionError::BadArtifact(e.to_string()))?;
+        }
+    }
+
+    let expected_hash = artifact
+        .get("content_hash")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let sig_val = artifact.get("signature").cloned();
+    let signature: Option<Signature> = match sig_val {
+        Some(v) => Some(
+            serde_json::from_value(v)
+                .map_err(|e| AcquisitionError::BadArtifact(format!("signature: {e}")))?,
+        ),
+        None => None,
+    };
+
+    let mut reject_reason: Option<(String, String)> = None;
+
+    match &signature {
+        None => {
+            reject_reason = Some((
+                "model artifact has no signature".into(),
+                "aira:reason:model-unsigned".into(),
+            ));
+        }
+        Some(sig) if !is_cryptographic_signature(sig) => {
+            reject_reason = Some((
+                "model artifact signature is not cryptographic (unsigned/legacy)".into(),
+                "aira:reason:model-unsigned".into(),
+            ));
+        }
+        Some(sig) => {
+            let msg = signing_bytes_without_signature(&artifact)?;
+            if verify_ed25519(sig, &msg).is_err() {
+                reject_reason = Some((
+                    "model artifact signature verification failed".into(),
+                    "aira:reason:model-signature-invalid".into(),
+                ));
+            }
+        }
+    }
+
+    if reject_reason.is_none() {
+        match &expected_hash {
+            Some(exp) if exp != &observed_hash => {
+                reject_reason = Some((
+                    format!("content_hash mismatch: expected {exp}, observed {observed_hash}"),
+                    "aira:reason:model-hash-mismatch".into(),
+                ));
+            }
+            None => {
+                reject_reason = Some((
+                    "model artifact missing content_hash".into(),
+                    "aira:reason:model-hash-mismatch".into(),
+                ));
+            }
+            Some(_) => {}
+        }
+    }
+
+    if let Some((reason, reason_ref)) = reject_reason {
+        let evidence_id = publish_verify_evidence(
+            root,
+            VerifyEvidenceInput {
+                model_ref: &pointer.model_ref,
+                verified: false,
+                quarantine_path: &pointer.quarantine_path,
+                verified_path: None,
+                observed_hash: &observed_hash,
+                expected_hash: expected_hash.as_deref(),
+                reason_ref: &reason_ref,
+            },
+        )?;
+        let ev_id = format!(
+            "aira:event:acq-verify-reject-{}",
+            &observed_hash.trim_start_matches("sha256:")
+                [..16.min(observed_hash.trim_start_matches("sha256:").len())]
+        );
+        let event = make_event(
+            &ev_id,
+            EventType::CustomEvent,
+            vec![],
+            vec![AiraRef::parse(&evidence_id).expect("aid")],
+            vec![],
+            Some(format!(
+                "op:verify-rejected:download:{}:{reason_ref}",
+                pointer.model_ref
+            )),
+        );
+        append_custom_event(root, event)?;
+        return Ok(VerifyOutcome::Rejected {
+            model_ref: pointer.model_ref,
+            quarantine_path: pointer.quarantine_path,
+            observed_hash,
+            expected_hash,
+            reason,
+            reason_ref,
+            evidence_artifact_id: evidence_id,
+        });
+    }
+
+    let file_name = qfile
+        .file_name()
+        .ok_or_else(|| AcquisitionError::Other("quarantine path has no file name".into()))?
+        .to_string_lossy()
+        .to_string();
+    let slot = sanitize_slot(&pointer.model_ref);
+    let dest_dir = root.join(VERIFIED_REL).join(&slot);
+    fs::create_dir_all(&dest_dir).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    ensure_under_models(root, &dest_dir)?;
+    let dest = dest_dir.join(&file_name);
+    fs::copy(qfile, &dest).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    ensure_under_models(root, &dest)?;
+
+    let dest_display = dest.display().to_string();
+    let reason_ref = "aira:reason:model-verified";
+    let evidence_id = publish_verify_evidence(
+        root,
+        VerifyEvidenceInput {
+            model_ref: &pointer.model_ref,
+            verified: true,
+            quarantine_path: &pointer.quarantine_path,
+            verified_path: Some(&dest_display),
+            observed_hash: &observed_hash,
+            expected_hash: expected_hash.as_deref(),
+            reason_ref,
+        },
+    )?;
+    let hash_hex = observed_hash.trim_start_matches("sha256:");
+    let ev_id = format!(
+        "aira:event:acq-verify-ok-{}",
+        &hash_hex[..16.min(hash_hex.len())]
+    );
+    let event = make_event(
+        &ev_id,
+        EventType::CustomEvent,
+        vec![],
+        vec![AiraRef::parse(&evidence_id).expect("aid")],
+        vec![],
+        Some(format!(
+            "op:verify-passed:download:{}:{reason_ref}",
+            pointer.model_ref
+        )),
+    );
+    append_custom_event(root, event)?;
+
+    let updated_at = utc_now_rfc3339().map_err(|e| AcquisitionError::Crypto(e.to_string()))?;
+    let vpointer = VerifiedPointer {
+        updated_at,
+        model_ref: pointer.model_ref.clone(),
+        verified_path: dest.display().to_string(),
+        quarantine_path: pointer.quarantine_path.clone(),
+        content_hash: observed_hash.clone(),
+        evidence_artifact_id: evidence_id.clone(),
+    };
+    let vpath = root.join(VERIFIED_POINTER_REL);
+    if let Some(parent) = vpath.parent() {
+        fs::create_dir_all(parent).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    }
+    fs::write(
+        &vpath,
+        serde_json::to_string_pretty(&vpointer)
+            .map_err(|e| AcquisitionError::Other(e.to_string()))?,
+    )
+    .map_err(|e| AcquisitionError::Io(e.to_string()))?;
+
+    Ok(VerifyOutcome::Verified {
+        model_ref: pointer.model_ref,
+        quarantine_path: pointer.quarantine_path,
+        verified_path: dest.display().to_string(),
+        content_hash: observed_hash,
+        evidence_artifact_id: evidence_id,
+    })
+}
+
+fn signing_bytes_without_signature(artifact: &Value) -> Result<Vec<u8>, AcquisitionError> {
+    let obj = artifact
+        .as_object()
+        .ok_or_else(|| AcquisitionError::BadArtifact("artifact must be object".into()))?;
+    let mut body = Map::new();
+    for (k, v) in obj {
+        if k != "signature" {
+            body.insert(k.clone(), v.clone());
+        }
+    }
+    serde_json::to_vec(&Value::Object(body)).map_err(|e| AcquisitionError::Other(e.to_string()))
+}
+
+struct VerifyEvidenceInput<'a> {
+    model_ref: &'a str,
+    verified: bool,
+    quarantine_path: &'a str,
+    verified_path: Option<&'a str>,
+    observed_hash: &'a str,
+    expected_hash: Option<&'a str>,
+    reason_ref: &'a str,
+}
+
+fn publish_verify_evidence(
+    root: &Path,
+    input: VerifyEvidenceInput<'_>,
+) -> Result<String, AcquisitionError> {
+    let mut body = Map::new();
+    body.insert("kind".into(), json!("model-verify-evidence"));
+    body.insert("model_ref".into(), json!(input.model_ref));
+    body.insert("verified".into(), json!(input.verified));
+    body.insert("activated".into(), json!(false));
+    body.insert("quarantine_path".into(), json!(input.quarantine_path));
+    if let Some(p) = input.verified_path {
+        body.insert("verified_path".into(), json!(p));
+    }
+    body.insert("observed_hash".into(), json!(input.observed_hash));
+    if let Some(e) = input.expected_hash {
+        body.insert("expected_hash".into(), json!(e));
+    }
+    body.insert("reason_refs".into(), json!([input.reason_ref]));
+    let for_sign = Value::Object(body.clone());
+    let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
+    let sig: Signature = active_signature(&raw);
+    body.insert(
+        "signature".into(),
+        serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,
+    );
+    let payload = Value::Object(body);
+    let bytes = json_bytes(&payload);
+    let content_hash = ContentHash::sha256_bytes(&bytes);
+    let hash_hex = content_hash.as_str().trim_start_matches("sha256:");
+    let kind = if input.verified {
+        "acq-verify-ok"
+    } else {
+        "acq-verify-reject"
+    };
+    let artifact_id = format!("aira:artifact:{kind}:{hash_hex}");
+    let desc = make_artifact(
+        &artifact_id,
+        ArtifactType::CustomArtifact,
+        &bytes,
+        vec![AiraRef::parse(CSU_ID).expect("csu")],
+    );
+    let mut store = CasArtifactStore::open(root.join("artifacts"))
+        .map_err(|e| AcquisitionError::Artifact(e.to_string()))?;
+    match store.publish(desc, &bytes) {
+        Ok(_) => {}
+        Err(aira_artifact::ArtifactError::Immutable(_)) => {}
+        Err(e) => return Err(AcquisitionError::Artifact(e.to_string())),
+    }
+    Ok(artifact_id)
 }
 
 fn reject_remote_source(source: &Path) -> Result<(), AcquisitionError> {
@@ -778,5 +1114,120 @@ mod tests {
         )
         .unwrap_err();
         assert!(matches!(err, AcquisitionError::RemoteSource(_)));
+    }
+
+    fn signed_model_artifact(model_id: &str, content_hash: &str) -> Value {
+        let mut body = Map::new();
+        body.insert(
+            "payload_schema".into(),
+            json!("aira:schema:model:artifact:0.1"),
+        );
+        body.insert("model_id".into(), json!(model_id));
+        body.insert("format".into(), json!("gguf"));
+        body.insert("quantization".into(), json!("int4"));
+        body.insert("parameter_class".into(), json!("7B"));
+        body.insert("content_hash".into(), json!(content_hash));
+        body.insert(
+            "provenance_refs".into(),
+            json!(["aira:identity:local-test"]),
+        );
+        let for_sign = Value::Object(body.clone());
+        let raw = serde_json::to_vec(&for_sign).unwrap();
+        let sig = active_signature(&raw);
+        body.insert("signature".into(), serde_json::to_value(&sig).unwrap());
+        Value::Object(body)
+    }
+
+    #[test]
+    fn verify_promotes_to_verified_on_match() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("ok.gguf");
+        fs::write(&src, b"verify-me-please").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:ok", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"verify-me-please");
+        let art = signed_model_artifact("aira:model:ok", observed.as_str());
+        let art_path = dir.path().join("model.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        let out = verify_quarantine(dir.path(), &art_path).unwrap();
+        match out {
+            VerifyOutcome::Verified {
+                verified_path,
+                content_hash,
+                ..
+            } => {
+                assert!(Path::new(&verified_path).exists());
+                assert!(verified_path.contains("verified"));
+                assert_eq!(content_hash, observed.as_str());
+                // Quarantine retained.
+                assert!(dir.path().join(QUARANTINE_POINTER_REL).exists());
+            }
+            VerifyOutcome::Rejected { reason, .. } => panic!("unexpected reject: {reason}"),
+        }
+        assert!(dir.path().join(VERIFIED_POINTER_REL).exists());
+    }
+
+    #[test]
+    fn verify_rejects_hash_mismatch_keeps_quarantine() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("bad.gguf");
+        fs::write(&src, b"actual-bytes").unwrap();
+        let fetch = fetch_to_quarantine(dir.path(), "aira:model:bad", &src).unwrap();
+        let qpath = match fetch {
+            FetchOutcome::Quarantined {
+                quarantine_path, ..
+            } => quarantine_path,
+            FetchOutcome::Denied(_) => panic!("expected quarantine"),
+        };
+        let wrong = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let art = signed_model_artifact("aira:model:bad", wrong);
+        let art_path = dir.path().join("bad.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        let out = verify_quarantine(dir.path(), &art_path).unwrap();
+        match out {
+            VerifyOutcome::Rejected {
+                reason_ref,
+                quarantine_path,
+                ..
+            } => {
+                assert_eq!(reason_ref, "aira:reason:model-hash-mismatch");
+                assert_eq!(quarantine_path, qpath);
+                assert!(Path::new(&qpath).exists());
+            }
+            VerifyOutcome::Verified { .. } => panic!("expected reject"),
+        }
+        assert!(!dir.path().join(VERIFIED_POINTER_REL).exists());
+    }
+
+    #[test]
+    fn verify_rejects_unsigned_testsig() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("u.gguf");
+        fs::write(&src, b"unsigned-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:u", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"unsigned-bytes");
+        let mut art = signed_model_artifact("aira:model:u", observed.as_str());
+        art.as_object_mut().unwrap().insert(
+            "signature".into(),
+            json!({
+                "algorithm": "ed25519",
+                "key_ref": "aira:identity:local-test",
+                "signature_value": "TESTSIG"
+            }),
+        );
+        let art_path = dir.path().join("u.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        let out = verify_quarantine(dir.path(), &art_path).unwrap();
+        match out {
+            VerifyOutcome::Rejected { reason_ref, .. } => {
+                assert_eq!(reason_ref, "aira:reason:model-unsigned");
+            }
+            VerifyOutcome::Verified { .. } => panic!("expected unsigned reject"),
+        }
     }
 }
