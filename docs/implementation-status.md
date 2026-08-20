@@ -207,4 +207,4 @@ CSU SDK / new basic CSU roles to “complete” Book III
 C2 as merge-blocking CI
 ```
 
-Model layer (EVO-3): D0–D4 `#53`–`#64` **DONE**. D5.1–D5.3 `#65`–`#67` **DONE** (ShareOffer + share gate + local publish) @ 0aa78b1. `#68` local capability ad in flight (RFC-0017). Not Core. Plan: [phase-d-plan.md](phase-d-plan.md) §6b.
+Model layer (EVO-3): D0–D4 `#53`–`#64` **DONE**. Addendum D5 `#65`–`#68` **DONE** (ShareOffer + gate + local publish + local capability ad) @ 7719e92. D6–D7 не в QUEUE. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md) §6b.

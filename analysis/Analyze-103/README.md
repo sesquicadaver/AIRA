@@ -1,7 +1,7 @@
 # Analyze-103 — local capability advertisement (QUEUE #68)
 
 ## Status
-OPEN (feature branch `analyze-103-local-capability-ad`).
+CLOSED (QUEUE #68 DONE @ 7719e92 / PR #31).
 
 ## Done when
 CustomArtifact capability ad з publish; CLI `models publish|share`; visibility/scope local-only.
