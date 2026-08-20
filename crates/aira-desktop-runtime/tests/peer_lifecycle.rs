@@ -62,7 +62,10 @@ fn ensure_bins() -> (PathBuf, PathBuf) {
         .current_dir(workspace_root())
         .status()
         .expect("cargo build aira-cli/aira-node");
-    assert!(status.success(), "cargo build -p aira-cli -p aira-node failed");
+    assert!(
+        status.success(),
+        "cargo build -p aira-cli -p aira-node failed"
+    );
     node = node_bin();
     aira = aira_bin();
     assert!(
