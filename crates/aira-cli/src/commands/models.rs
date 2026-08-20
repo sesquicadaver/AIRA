@@ -1,11 +1,12 @@
-//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#66).
+//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#67).
 
 use std::path::Path;
 use std::process::ExitCode;
 
 use aira_csu_model_acquisition::{
-    activate_verified, fetch_to_quarantine, load_policy, request_download, request_publish,
-    verify_quarantine, write_acquisition_policy, FetchOutcome, GateDecision, VerifyOutcome,
+    activate_verified, fetch_to_quarantine, load_policy, publish_local, request_download,
+    verify_quarantine, write_acquisition_policy, FetchOutcome, GateDecision, PublishOutcome,
+    VerifyOutcome,
 };
 use aira_csu_model_compatibility::resolve_and_publish;
 use aira_csu_model_inventory::{load_latest, scan_and_publish};
@@ -202,21 +203,46 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
             println!("installed {}", inv.installed_count);
             Ok(ExitCode::SUCCESS)
         }
-        ModelsCommands::Publish { model_ref } => {
-            let out = request_publish(root, &model_ref).map_err(|e| anyhow::anyhow!("{e}"))?;
-            println!("decision {}", out.decision.as_str());
-            println!("model_ref {}", out.model_ref);
-            println!("reason {}", out.reason);
-            println!("reason_ref {}", out.reason_ref);
-            println!("evidence {}", out.decision_artifact_id);
-            match out.decision {
-                GateDecision::Allow => {
-                    println!("status policy-allowed");
-                    Ok(ExitCode::SUCCESS)
-                }
-                GateDecision::Deny => {
+        ModelsCommands::Publish {
+            model_ref,
+            visibility,
+            allow_download,
+        } => {
+            let out = publish_local(root, &model_ref, &visibility, allow_download)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            match out {
+                PublishOutcome::Denied(gate) => {
+                    println!("decision {}", gate.decision.as_str());
+                    println!("model_ref {}", gate.model_ref);
+                    println!("reason {}", gate.reason);
+                    println!("reason_ref {}", gate.reason_ref);
+                    println!("evidence {}", gate.decision_artifact_id);
                     println!("status policy-denied");
                     Ok(ExitCode::from(2))
+                }
+                PublishOutcome::Published {
+                    gate,
+                    model_artifact_id,
+                    share_offer_artifact_id,
+                    offer_id,
+                    content_hash,
+                    visibility,
+                    cache_path,
+                } => {
+                    println!("decision {}", gate.decision.as_str());
+                    println!("model_ref {}", gate.model_ref);
+                    println!("reason {}", gate.reason);
+                    println!("reason_ref {}", gate.reason_ref);
+                    println!("evidence {}", gate.decision_artifact_id);
+                    println!("status share-published");
+                    println!("offer_id {offer_id}");
+                    println!("model_artifact {model_artifact_id}");
+                    println!("share_offer {share_offer_artifact_id}");
+                    println!("content_hash {content_hash}");
+                    println!("visibility {visibility}");
+                    println!("cache {cache_path}");
+                    println!("remote_push false");
+                    Ok(ExitCode::SUCCESS)
                 }
             }
         }
