@@ -514,9 +514,7 @@ mod tests {
         assert!(reg
             .validate_file(
                 "aira:schema:model:upgrade-recommendation:0.1",
-                root.join(
-                    "fixtures/invalid/model/upgrade-recommendation-missing-evidence.json"
-                ),
+                root.join("fixtures/invalid/model/upgrade-recommendation-missing-evidence.json"),
             )
             .is_err());
     }

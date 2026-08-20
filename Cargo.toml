@@ -24,6 +24,7 @@ members = [
     "csu/model-compatibility",
     "csu/model-acquisition",
     "csu/model-rating",
+    "csu/model-recommendation",
 ]
 
 [workspace.package]
