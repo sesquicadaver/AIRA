@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D5 (`#53`–`#68`) **DONE**; Addendum D6 `#69` **DONE**; OPEN `#70`–`#71`. D7 не в QUEUE до DONE D6.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D5 (`#53`–`#68`) **DONE**; Addendum D6 `#69`–`#70` **DONE**; OPEN `#71`. D7 не в QUEUE до DONE D6.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-104 CLOSED @ 99aa890; QUEUE #69 DONE; Addendum D6 **#70 OPEN** |
+| `main` | Analyze-105 CLOSED @ e16d42c; QUEUE #70 DONE; Addendum D6 **#71 OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase D Addendum D6 **#70 OPEN** (Analyze-105 — local rating publish) |
+| Активна черга | Phase D Addendum D6 **#71 OPEN** (Analyze-106 — CLI models rate) |
 
 ## Правила атомарності
 
@@ -106,12 +106,12 @@
 | 67 | **DONE** | ~~Analyze-102 — local publish signed descriptor~~ | cache → signed ModelArtifact + ShareOffer; Event; без remote push | capability ad; remote registry; rating |
 | 68 | **DONE** | ~~Analyze-103 — local capability advertisement~~ | capability CustomArtifact + CLI publish\|share; local-only | federation; DHT; rating (D6); marketplace |
 | 69 | **DONE** | ~~Analyze-104 — ModelRatingEvidence schema~~ | `aira:schema:model:rating-evidence:0.1` + fixtures; context-bound; не global score | rating CSU; CLI rate; recommendation (D7) |
-| 70 | OPEN | Analyze-105 — local rating evidence publish | signed rating CustomArtifact + Event; context required | CLI; recommendation; network scoreboard |
+| 70 | **DONE** | ~~Analyze-105 — local rating evidence publish~~ | signed rating CustomArtifact + Event; context required | CLI; recommendation; network scoreboard |
 | 71 | OPEN | Analyze-106 — CLI `aira models rate` | publish contextual rating evidence; local-only | D7 recommend; marketplace; global rank |
 
 ### Наступний цикл
 
-**#70 OPEN** — Analyze-105: local rating evidence publish (D6.2).
+**#71 OPEN** — Analyze-106: CLI `aira models rate` (D6.3).
 
 ---
 
@@ -141,6 +141,6 @@
 | EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
-| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#69` DONE; Addendum D6 OPEN `#70`–`#71`; D7 після D6 |
+| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#70` DONE; Addendum D6 OPEN `#71`; D7 після D6 |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

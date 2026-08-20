@@ -1,7 +1,7 @@
 # Analyze-105 — local rating evidence publish (QUEUE #70)
 
 ## Status
-OPEN (feature branch `analyze-105-local-rating-publish`).
+CLOSED (QUEUE #70 DONE @ e16d42c / PR #33).
 
 ## Done when
 signed rating CustomArtifact + Event; context required.
