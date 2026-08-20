@@ -142,12 +142,12 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 81 | **DONE** | ~~Analyze-116 — Settings P1 + peer_listen~~ | runtime приймає P1; default/validate `peer_listen`; P2+ fail-closed; docs | settings load/save P1 + тести | peer supervise; invite IO; GUI |
 | 82 | **DONE** | ~~Analyze-117 — peer lifecycle supervise~~ | при P1: start/stop/status `peer listen --recv`; PID/lock; HTTP лишається | lifecycle тести dual-process | invite IO; QR; GUI |
 | 83 | **DONE** | ~~Analyze-118 — invite file export/import~~ | export JSON; import → trust add + book upsert; CLI/shared lib | roundtrip тести | QR; GUI |
-| 84 | **OPEN** | Analyze-119 — invite QR PNG | PeerInvite ↔ PNG encode/decode (файл) | roundtrip тести | camera; GUI |
+| 84 | **DONE** | ~~Analyze-119 — invite QR PNG~~ | PeerInvite ↔ PNG encode/decode (файл) | roundtrip тести | camera; GUI |
 | 85 | **OPEN** | Analyze-120 — GUI P1 + invite UX | profile toggle; peer status; export/import/QR file | GUI smoke P1 onboarding | P2+; camera; інші ОС |
 
 ### Наступний цикл
 
-**Перший OPEN:** `#84` — invite QR PNG.
+**Перший OPEN:** `#85` — GUI P1 + invite UX.
 
 > Порядок: `#80` → `#81` → `#82` → `#83` → `#84` → `#85`. Після `#85`: E2 macOS / E3 Windows — окремим рішенням.
 
@@ -180,6 +180,6 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
-| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#83` DONE, `#84`–`#85` OPEN |
+| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#84` DONE, `#85` OPEN |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
