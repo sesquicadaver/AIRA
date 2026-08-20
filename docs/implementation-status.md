@@ -210,4 +210,4 @@ C2 as merge-blocking CI
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
-Desktop one-click / GUI: launcher `#77` **DONE**; GUI `aira-desktop` + XDG autostart `#78` **DONE**; Linux tarball packaging `#79` (Analyze-114). Docs: [desktop-packaging.md](desktop-packaging.md), [desktop-gui.md](desktop-gui.md).
+Desktop one-click / GUI: `#75`–`#79` **DONE** (Linux E1). Addendum E1.1 P1+QR: `#80`–`#85` OPEN (перший `#80` PeerInvite schema). Docs: [phase-e-plan.md](phase-e-plan.md) §4a, [desktop-packaging.md](desktop-packaging.md).

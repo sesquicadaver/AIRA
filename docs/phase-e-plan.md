@@ -123,17 +123,51 @@ Loopback ≠ authorization boundary. Unauthenticated P0 не повинен ек
         → #79 Linux package
 ```
 
-## 4. Відкладені addendum (не OPEN, доки E1 не DONE)
+## 4. Відкладені / відкриті addendum
 
-### Addendum E1.1 — P1 + онбординг друга (файл/QR)
+### 4a. Addendum E1.1 — P1 + онбординг друга (файл/QR) — **OPEN**
 
-Після `#79` DONE. Scope: Network profile P1 у Settings; trust+book через файл/QR; `peer listen --recv` loopback. **Не** P2–P6 в тому ж addendum без окремого рішення.
+**Рішення розробника:** 2026-08-20 — відкрити **лише E1.1** після `#79` DONE. E2/E3 / P2–P6 не копіювати в QUEUE.
 
-### Addendum E2 — macOS
+**Інваріанти E1.1 (додатково до §2)**
 
-Паритет E1 (P0 + GUI + settings) як `.app` / DMG; той самий UI-код / shared lib.
+1. `network_profile=P1` дозволений у Desktop runtime; **P2–P6** лишаються fail-closed.
+2. P1 = HTTP loopback (`aira-node --http`) **+** окремий supervised `peer listen --recv` (другий процес). Без DHT / relay / gossip / federation.
+3. **`peer_listen` обов’язковий при P1.** Default: `127.0.0.1:9797` (same-host Dev Preview). Non-loopback — лише якщо користувач явно задав `peer_listen` (існуюча peer-семантика `listen_explicit`); **ніколи** Desktop `--allow-public-bind`.
+4. Онбординг друга = обмін **PeerInvite** (pubkey / identity_ref + опційний dial `addr`) через **файл** і **QR (PNG encode + decode з файлу зображення)**. Камера / live scan — **Out**.
+5. Import invite → `trust add` + address-book upsert (peer уже trusted); без авто-trust невідомих з мережі.
+6. C1 / `aira-core` / Book 0 — **не змінювати**. Settings `$id` лишається `0.1` (enum уже містить P1).
+7. GUI tech без змін: Rust-only egui.
 
-### Addendum E3 — Windows
+**Атоми → QUEUE `#80`–`#85`** (Analyze-115+)
+
+| ID | Підфаза | Атом | Done when | Не в цьому рядку |
+|----|---------|------|-----------|------------------|
+| `#80` | E1.1.0 | PeerInvite payload schema | `aira:schema:desktop:peer-invite:0.1` + fixtures; identity_ref/pubkey + optional addr | settings P1; peer process; QR; GUI |
+| `#81` | E1.1.1 | Settings: P1 + `peer_listen` | runtime приймає P1; default/validate `peer_listen`; fixtures/docs; P2+ fail-closed | peer supervise; invite IO; GUI |
+| `#82` | E1.1.2 | Lifecycle: supervise peer при P1 | start/stop/status другого процесу `peer listen --recv`; PID/lock; тести | invite schema IO; QR; GUI onboarding |
+| `#83` | E1.1.3 | Invite file export/import | export JSON; import → trust+book; CLI/shared lib | QR raster; GUI |
+| `#84` | E1.1.4 | QR PNG encode/decode | той самий PeerInvite ↔ PNG; тести roundtrip | camera; GUI polish |
+| `#85` | E1.1.5 | GUI: P1 + invite UX | profile toggle; peer status; export/import/QR show+load file | P2+; camera; інші ОС |
+
+```text
+#80 PeerInvite schema
+  → #81 settings P1 + peer_listen
+    → #82 peer lifecycle supervise
+      → #83 invite file export/import
+        → #84 QR PNG
+          → #85 GUI wiring
+```
+
+**RFC:** RFC-S invite (`#80`) → RFC-E settings/lifecycle (`#81`/`#82`) → RFC-E invite+QR (`#83`/`#84`) → docs GUI (`#85`).
+
+**Acceptance E1.1:** два Linux Dev Preview інстанси (або loopback dual-root): увімкнули P1 → обмінялись invite файл/QR → trust+book → `peer listen --recv` працює → dial/recv smoke. Без P2–P6.
+
+### Addendum E2 — macOS *(не OPEN)*
+
+Паритет E1 (P0 + GUI + settings) як `.app` / DMG; той самий UI-код / shared lib. Після E1.1 або паралельно за рішенням.
+
+### Addendum E3 — Windows *(не OPEN)*
 
 Паритет E1 як installer + tray.
 
@@ -148,8 +182,13 @@ P2–P6; окремі stabilization атоми (branch protection, Handle opacit
 - Packaging: [`desktop-packaging.md`](desktop-packaging.md) + RFC-0028 (`#79`); tarball+`.desktop` (не AppImage)
 - Linux launcher: [`desktop-launcher.md`](desktop-launcher.md) + RFC-0026 (`#77`)
 - Desktop GUI + autostart: [`desktop-gui.md`](desktop-gui.md) + RFC-0027 (`#78`)
+- Addendum E1.1 (P1+QR): §4a → QUEUE `#80`–`#85`
 - Позначити `NEXT_PROBLEM.md` як RESOLVED (вже)
 
 ## 6. Acceptance E1 (Linux)
 
 Кінцевий користувач на Linux: встановив пакет → клікнув іконку → node на **зафіксованому** loopback endpoint (або attach) → native UI за setting → Stop/Quit → autostart лише якщо увімкнув у Settings (hooks з `#78`). Без peer, без `cargo run`. Позиціонування: **Developer Preview**, не production distributed runtime.
+
+## 7. Acceptance E1.1 (після `#85`)
+
+Див. §4a Acceptance E1.1.

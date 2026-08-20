@@ -36,8 +36,9 @@
 | **P5** | Федерація (pin) | wizard `federation join` | окремий wizard |
 | **P6** | STUN / discv / FIND | discovery prototypes | **Dev / Advanced only** |
 
-**Онбординг P1:** обмін файлом/QR (pubkey + опційно addr) — **не** в E1.  
-**Рішення 2026-08-20:** варіант **C** — E1 = лише **P0 + GUI**; P1 відкладено на **E1.1**.
+**Онбординг P1:** обмін файлом/QR (pubkey + опційно addr) — Addendum E1.1 (`#80`–`#85`).  
+**Рішення 2026-08-20:** варіант **C** — E1 = лише **P0 + GUI**; P1 = E1.1.  
+**Рішення E1.1 (2026-08-20):** default `peer_listen=127.0.0.1:9797`; non-loopback лише explicit; QR = PNG файл (без камери); P2–P6 Out.
 
 Заборонено в default Desktop: `--allow-public-bind`, публічний STUN default, авто-trust невідомих peers, прихований auto-increment порту.
 
@@ -57,18 +58,18 @@
 E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS → E3 Windows
 ```
 
-Поставка атомів: lifecycle → `.desktop` → tray/GUI → package (`#76`→`#79`).
+Поставка атомів: lifecycle → `.desktop` → tray/GUI → package (`#76`→`#79`) → E1.1 P1+QR (`#80`→`#85`).
 
 ## 6. Мінімальні Settings (E1)
 
 | Key | Default | Примітка |
 |-----|---------|----------|
-| `network_profile` | `P0` | інші значення — після E1.1 |
+| `network_profile` | `P0` | `P1` дозволений у E1.1 (`#81`); P2+ fail-closed |
 | `open_ui_on_start` | `true` | native UI |
 | `autostart_on_login` | `false` | hooks у `#78` |
 | `http_listen` | `127.0.0.1:8787` | fixed; conflict → fail або attach ([phase-e §2.3](phase-e-plan.md)) |
 | `instance_id` | generated once | для attach-семантики |
-| `peer_listen` | n/a у P0 | |
+| `peer_listen` | `null` @ P0; default `127.0.0.1:9797` @ P1 | обов’язковий при P1 |
 | auth fields | per `#75`/`#76` | token-ref або IPC mode |
 
 ## 7. Посилання

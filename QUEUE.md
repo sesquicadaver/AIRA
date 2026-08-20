@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1 Developer Preview).
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); Addendum E1.1 `#80`–`#85` **OPEN**.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-114 CLOSED @ 04995ab / PR #42; QUEUE #79 DONE; Linux E1 complete |
+| `main` | Analyze-114 CLOSED @ 04995ab / PR #42; QUEUE #79 DONE; перший OPEN `#80` (E1.1 PeerInvite schema) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase E E1 **DONE**; наступне — Addendum E1.1 (P1+QR), ще не додано як OPEN рядки |
+| Активна черга | Phase E Addendum **E1.1** — **перший OPEN `#80`** |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE. Phase E — [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` відкрито 2026-08-20 (E1 = P0 only; P1 = Addendum E1.1 після `#79`).
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE. Phase E — [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; Addendum E1.1 `#80`–`#85` відкрито 2026-08-20.
 
 ---
 
@@ -131,11 +131,25 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 78 | **DONE** | ~~Analyze-113 — Linux tray/GUI (Rust-only)~~ | Status + native Open UI + Settings + Quit; shared lib; **XDG autostart hooks** (§2.5) | GUI start/stop; settings persist; autostart on/off works | P1; AppImage; Tauri/web; інші ОС |
 | 79 | **DONE** | ~~Analyze-114 — Linux packaging~~ | tarball+`.desktop` + Developer Preview docs; Dev CLI notes; paths for `#78` | install без `cargo`; autostart paths valid | macOS DMG; Win installer; P1; AppImage |
 
+## Активна черга (лінійна) — Phase E Addendum E1.1: P1 + файл/QR
+
+План: [`docs/phase-e-plan.md`](docs/phase-e-plan.md) §4a. UX: [`docs/desktop-ux.md`](docs/desktop-ux.md) §3 (P1).  
+**Не** P2–P6 / DHT / relay / gossip / camera / E2–E3 у цьому хвості.
+
+| # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
+|---|--------|---------|-----------------|-----------|------------------|
+| 80 | **OPEN** | Analyze-115 — PeerInvite schema | `aira:schema:desktop:peer-invite:0.1` + fixtures (identity_ref/pubkey + optional addr) | schema validate --fixtures зелений | settings P1; peer process; QR; GUI |
+| 81 | **OPEN** | Analyze-116 — Settings P1 + peer_listen | runtime приймає P1; default/validate `peer_listen`; P2+ fail-closed; docs | settings load/save P1 + тести | peer supervise; invite IO; GUI |
+| 82 | **OPEN** | Analyze-117 — peer lifecycle supervise | при P1: start/stop/status `peer listen --recv`; PID/lock; HTTP лишається | lifecycle тести dual-process | invite IO; QR; GUI |
+| 83 | **OPEN** | Analyze-118 — invite file export/import | export JSON; import → trust add + book upsert; CLI/shared lib | roundtrip тести | QR; GUI |
+| 84 | **OPEN** | Analyze-119 — invite QR PNG | PeerInvite ↔ PNG encode/decode (файл) | roundtrip тести | camera; GUI |
+| 85 | **OPEN** | Analyze-120 — GUI P1 + invite UX | profile toggle; peer status; export/import/QR file | GUI smoke P1 onboarding | P2+; camera; інші ОС |
+
 ### Наступний цикл
 
-**OPEN рядків немає.** Linux E1 (`#75`–`#79`) **DONE**.
+**Перший OPEN:** `#80` — PeerInvite schema.
 
-> Далі за планом: Addendum E1.1 (P1+QR) → E2 macOS → E3 Windows — додати як нові OPEN рядки лише окремим рішенням розробника.
+> Порядок: `#80` → `#81` → `#82` → `#83` → `#84` → `#85`. Після `#85`: E2 macOS / E3 Windows — окремим рішенням.
 
 ---
 
@@ -166,6 +180,6 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
-| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` OPEN (E1=P0; P1=E1.1 later) |
+| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#85` OPEN |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
