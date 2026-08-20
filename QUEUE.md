@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D3 (`#53`–`#60`) **DONE**; Addendum D4 `#61`–`#62` **DONE**; OPEN `#63`–`#64`. D5–D7 не в QUEUE.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D3 (`#53`–`#60`) **DONE**; Addendum D4 `#61`–`#63` **DONE**; OPEN `#64`. D5–D7 не в QUEUE.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-97 CLOSED @ 03dfef6; QUEUE #62 DONE; Addendum D4 **#63 OPEN** |
+| `main` | Analyze-98 CLOSED @ ae35546; QUEUE #63 DONE; Addendum D4 **#64 OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase D Addendum D4 **#63 OPEN** (Analyze-98 — verify hash/signature) |
+| Активна черга | Phase D Addendum D4 **#64 OPEN** (Analyze-99 — activate verified model) |
 
 ## Правила атомарності
 
@@ -99,12 +99,12 @@
 | 60 | **DONE** | ~~Analyze-95 — acquisition policy DENY~~ | runtime default-deny download | без policy = DENY + Event/Evidence; implicit download немає | реальний download (D4); sharing |
 | 61 | **DONE** | ~~Analyze-96 — policy ALLOW path~~ | `auto_download=true` → decision ALLOW (+ Event); DENY `#60` збережено; без byte transfer | quarantine fetch; verify; activate; HTTP |
 | 62 | **DONE** | ~~Analyze-97 — quarantine fetch (local source)~~ | після ALLOW: `--source` → `<root>/models/quarantine/`; Event; без activation | hash verify; activate; remote URL |
-| 63 | OPEN | Analyze-98 — verify hash/signature | mismatch → reject + Evidence; match → `verified/` staging | activate; inventory promote; HTTP |
+| 63 | **DONE** | ~~Analyze-98 — verify hash/signature~~ | mismatch → reject + Evidence; match → `verified/` staging | activate; inventory promote; HTTP |
 | 64 | OPEN | Analyze-99 — activate verified model | explicit activate → cache + inventory + Event; без auto-execution | sharing (D5); rating (D6); remote registry |
 
 ### Наступний цикл
 
-**#63 OPEN** — Analyze-98: verify hash/signature (D4.3).
+**#64 OPEN** — Analyze-99: activate verified model (D4.4).
 
 ---
 
@@ -134,6 +134,6 @@
 | EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
-| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#62` DONE; `#63`–`#64` OPEN |
+| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#63` DONE; `#64` OPEN |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
