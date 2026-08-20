@@ -1,6 +1,6 @@
-//! Model acquisition: policy gate, quarantine, verify, activate, share gate + local publish
-//! (QUEUE #60–#67). Inventory refresh is CLI-orchestrated (no CSU↛CSU). Not wired into C1.
-//! `network=none`.
+//! Model acquisition: policy gate, quarantine, verify, activate, share gate + local
+//! publish + local capability advertisement (QUEUE #60–#68). Inventory refresh is
+//! CLI-orchestrated (no CSU↛CSU). Not wired into C1. `network=none`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -39,6 +39,8 @@ pub const CACHE_REL: &str = "models/cache";
 pub const ACTIVATED_POINTER_REL: &str = "models/activated.latest.json";
 /// Latest local ShareOffer pointer.
 pub const SHARE_OFFER_POINTER_REL: &str = "models/share-offer.latest.json";
+/// Latest local capability advertisement pointer.
+pub const CAPABILITY_AD_POINTER_REL: &str = "models/capability-ad.latest.json";
 
 /// Acquisition gate / quarantine errors.
 #[derive(Debug, Error)]
@@ -120,12 +122,14 @@ pub struct ShareOutcome {
 pub enum PublishOutcome {
     /// Policy DENY — no descriptors written.
     Denied(ShareOutcome),
-    /// Policy ALLOW and local ModelArtifact + ShareOffer published to CAS.
+    /// Policy ALLOW and local ModelArtifact + ShareOffer + capability ad published to CAS.
     Published {
         gate: ShareOutcome,
         model_artifact_id: String,
         share_offer_artifact_id: String,
         offer_id: String,
+        capability_artifact_id: String,
+        capability_id: String,
         content_hash: String,
         visibility: String,
         cache_path: String,
@@ -143,6 +147,18 @@ pub struct ShareOfferPointer {
     pub content_hash: String,
     pub visibility: String,
     pub cache_path: String,
+}
+
+/// Pointer to the latest local capability advertisement.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CapabilityAdPointer {
+    pub updated_at: String,
+    pub model_ref: String,
+    pub capability_id: String,
+    pub capability_artifact_id: String,
+    pub share_offer_artifact_id: String,
+    pub model_artifact_id: String,
+    pub scope_type: String,
 }
 
 /// Result of gate + optional local quarantine copy.
@@ -550,10 +566,11 @@ pub fn request_publish(
     })
 }
 
-/// Gate + local signed ModelArtifact + ShareOffer from activated cache (no remote push).
+/// Gate + local signed ModelArtifact + ShareOffer + local capability ad (no remote push).
 ///
 /// DENY from [`request_publish`] → [`PublishOutcome::Denied`] (no descriptors).
 /// ALLOW requires matching [`ACTIVATED_POINTER_REL`] and cache file under `models/`.
+/// Capability advertisement always uses `scope_type=local` (no federation/DHT).
 pub fn publish_local(
     aira_root: impl AsRef<Path>,
     model_ref: &str,
@@ -637,6 +654,21 @@ pub fn publish_local(
     let share_offer_artifact_id = format!("aira:artifact:share-offer:{offer_hash_hex}");
     publish_custom_payload(root, &share_offer_artifact_id, &offer_bytes)?;
 
+    let capability_id = format!("aira:capability:model.share:{}", sanitize_slot(model_ref));
+    let cap_payload = build_signed_capability_ad(
+        &capability_id,
+        CSU_ID,
+        model_ref,
+        &model_artifact_id,
+        &share_offer_artifact_id,
+    )?;
+    validate_capability_payload(root, &cap_payload)?;
+    let cap_bytes = json_bytes(&cap_payload);
+    let cap_hash = ContentHash::sha256_bytes(&cap_bytes);
+    let cap_hash_hex = cap_hash.as_str().trim_start_matches("sha256:");
+    let capability_artifact_id = format!("aira:artifact:capability-ad:{cap_hash_hex}");
+    publish_custom_payload(root, &capability_artifact_id, &cap_bytes)?;
+
     let ev_id = format!(
         "aira:event:share-published-{}",
         &offer_hash_hex[..16.min(offer_hash_hex.len())]
@@ -648,6 +680,7 @@ pub fn publish_local(
         vec![
             AiraRef::parse(&model_artifact_id).expect("mid"),
             AiraRef::parse(&share_offer_artifact_id).expect("oid"),
+            AiraRef::parse(&capability_artifact_id).expect("cid"),
         ],
         vec![],
         Some(format!(
@@ -656,9 +689,23 @@ pub fn publish_local(
     );
     append_custom_event(root, event)?;
 
+    let cap_ev_id = format!(
+        "aira:event:capability-ad-{}",
+        &cap_hash_hex[..16.min(cap_hash_hex.len())]
+    );
+    let cap_event = make_event(
+        &cap_ev_id,
+        EventType::CustomEvent,
+        vec![],
+        vec![AiraRef::parse(&capability_artifact_id).expect("cid")],
+        vec![],
+        Some(format!("op:capability-advertised:share:{model_ref}:local")),
+    );
+    append_custom_event(root, cap_event)?;
+
     let updated_at = utc_now_rfc3339().map_err(|e| AcquisitionError::Crypto(e.to_string()))?;
     let pointer = ShareOfferPointer {
-        updated_at,
+        updated_at: updated_at.clone(),
         model_ref: model_ref.to_string(),
         offer_id: offer_id.clone(),
         model_artifact_id: model_artifact_id.clone(),
@@ -678,11 +725,33 @@ pub fn publish_local(
     )
     .map_err(|e| AcquisitionError::Io(e.to_string()))?;
 
+    let cap_pointer = CapabilityAdPointer {
+        updated_at,
+        model_ref: model_ref.to_string(),
+        capability_id: capability_id.clone(),
+        capability_artifact_id: capability_artifact_id.clone(),
+        share_offer_artifact_id: share_offer_artifact_id.clone(),
+        model_artifact_id: model_artifact_id.clone(),
+        scope_type: "local".into(),
+    };
+    let cpath = root.join(CAPABILITY_AD_POINTER_REL);
+    if let Some(parent) = cpath.parent() {
+        fs::create_dir_all(parent).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    }
+    fs::write(
+        &cpath,
+        serde_json::to_string_pretty(&cap_pointer)
+            .map_err(|e| AcquisitionError::Other(e.to_string()))?,
+    )
+    .map_err(|e| AcquisitionError::Io(e.to_string()))?;
+
     Ok(PublishOutcome::Published {
         gate,
         model_artifact_id,
         share_offer_artifact_id,
         offer_id,
+        capability_artifact_id,
+        capability_id,
         content_hash: content_hash_str,
         visibility: visibility.to_string(),
         cache_path: activated.cache_path,
@@ -764,6 +833,50 @@ fn build_signed_share_offer(
     Ok(Value::Object(body))
 }
 
+fn build_signed_capability_ad(
+    capability_id: &str,
+    provider_csu: &str,
+    model_ref: &str,
+    model_artifact_id: &str,
+    share_offer_artifact_id: &str,
+) -> Result<Value, AcquisitionError> {
+    let mut body = Map::new();
+    body.insert("capability_id".into(), json!(capability_id));
+    body.insert("capability_type".into(), json!("model.share.local"));
+    body.insert("schema_version".into(), json!("0.1"));
+    body.insert("provider_csu".into(), json!(provider_csu));
+    body.insert("input_artifact_types".into(), json!(["CustomArtifact"]));
+    body.insert("output_artifact_types".into(), json!(["CustomArtifact"]));
+    body.insert(
+        "constraints".into(),
+        json!({
+            "privacy_class": "local",
+            "model_ref": model_ref,
+        }),
+    );
+    body.insert(
+        "scope".into(),
+        json!({
+            "scope_type": "local",
+            "description": "host-local model share capability; no federation/DHT advertise",
+        }),
+    );
+    body.insert("policy_refs".into(), json!(["aira:policy:default"]));
+    body.insert(
+        "evidence_refs".into(),
+        json!([model_artifact_id, share_offer_artifact_id]),
+    );
+    body.insert("confidence".into(), json!(1.0));
+    let for_sign = Value::Object(body.clone());
+    let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
+    let sig: Signature = active_signature(&raw);
+    body.insert(
+        "signature".into(),
+        serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,
+    );
+    Ok(Value::Object(body))
+}
+
 fn validate_model_payload(root: &Path, payload: &Value) -> Result<(), AcquisitionError> {
     if let Ok(schema_root) =
         aira_schema::find_repo_root(std::env::current_dir().unwrap_or_else(|_| root.to_path_buf()))
@@ -782,6 +895,18 @@ fn validate_share_offer_payload(root: &Path, payload: &Value) -> Result<(), Acqu
     {
         if let Ok(reg) = aira_schema::SchemaRegistry::load(schema_root.join("schemas")) {
             reg.validate("aira:schema:model:share-offer:0.1", payload)
+                .map_err(|e| AcquisitionError::Schema(e.to_string()))?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_capability_payload(root: &Path, payload: &Value) -> Result<(), AcquisitionError> {
+    if let Ok(schema_root) =
+        aira_schema::find_repo_root(std::env::current_dir().unwrap_or_else(|_| root.to_path_buf()))
+    {
+        if let Ok(reg) = aira_schema::SchemaRegistry::load(schema_root.join("schemas")) {
+            reg.validate("aira:schema:capability:descriptor:0.1", payload)
                 .map_err(|e| AcquisitionError::Schema(e.to_string()))?;
         }
     }
@@ -1965,12 +2090,16 @@ mod tests {
                 model_artifact_id,
                 share_offer_artifact_id,
                 offer_id,
+                capability_artifact_id,
+                capability_id,
                 visibility,
                 content_hash,
                 ..
             } => {
                 assert!(model_artifact_id.contains("model-desc"));
                 assert!(share_offer_artifact_id.contains("share-offer"));
+                assert!(capability_artifact_id.contains("capability-ad"));
+                assert!(capability_id.starts_with("aira:capability:model.share:"));
                 assert!(offer_id.starts_with("aira:share:"));
                 assert_eq!(visibility, "opt_in");
                 assert_eq!(content_hash, observed.as_str());
@@ -1978,6 +2107,12 @@ mod tests {
             PublishOutcome::Denied(_) => panic!("expected Published"),
         }
         assert!(dir.path().join(SHARE_OFFER_POINTER_REL).exists());
+        assert!(dir.path().join(CAPABILITY_AD_POINTER_REL).exists());
+        let cap_ptr: CapabilityAdPointer = serde_json::from_str(
+            &fs::read_to_string(dir.path().join(CAPABILITY_AD_POINTER_REL)).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(cap_ptr.scope_type, "local");
         let log: Value = serde_json::from_str(
             &fs::read_to_string(dir.path().join("events/event-log.json")).unwrap(),
         )
@@ -1991,5 +2126,15 @@ mod tests {
             .collect::<Vec<_>>()
             .join("|");
         assert!(joined.contains("op:share-published:publish:aira:model:pub:opt_in"));
+        assert!(joined.contains("op:capability-advertised:share:aira:model:pub:local"));
+    }
+
+    #[test]
+    fn publish_local_deny_skips_capability_ad() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        let out = publish_local(dir.path(), "aira:model:x", "local", false).unwrap();
+        assert!(matches!(out, PublishOutcome::Denied(_)));
+        assert!(!dir.path().join(CAPABILITY_AD_POINTER_REL).exists());
     }
 }

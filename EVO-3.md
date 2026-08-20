@@ -1,4 +1,4 @@
-**Статус (2026-08-20):** proposal джерело для Phase D. Канон виконання — [`QUEUE.md`](QUEUE.md) `#53`–`#67` DONE; `#68` OPEN. Модельний контур = Artifact + Capability + Policy + CSU, **не** Core. Номери `#48`–`#55` у §11 **не** є чергою (колізія з Phase C). План: [`docs/phase-d-plan.md`](docs/phase-d-plan.md).
+**Статус (2026-08-20):** proposal джерело для Phase D. Канон виконання — [`QUEUE.md`](QUEUE.md) `#53`–`#67` DONE; `#68` in flight (local capability ad). Модельний контур = Artifact + Capability + Policy + CSU, **не** Core. Номери `#48`–`#55` у §11 **не** є чергою (колізія з Phase C). План: [`docs/phase-d-plan.md`](docs/phase-d-plan.md).
 
 Проблема: набір моделей у різних користувачів може і буде відрізнятися. 
 Причини: різна потужність cpu, gpu, ram, ssd тощо. 

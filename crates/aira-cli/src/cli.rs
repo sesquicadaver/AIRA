@@ -609,14 +609,23 @@ pub(crate) enum ModelsCommands {
     },
     /// Activate verified model into `models/cache/` and refresh inventory (no execution).
     Activate,
-    /// Evaluate share policy; on ALLOW publish local signed ModelArtifact + ShareOffer from cache.
+    /// Publish local signed ModelArtifact + ShareOffer + local capability ad (no remote push).
     Publish {
         #[arg(long)]
         model_ref: String,
-        /// ShareOffer visibility (`local` | `opt_in`).
+        /// ShareOffer visibility (`local` | `opt_in`). Capability ad scope stays `local`.
         #[arg(long, default_value = "local")]
         visibility: String,
         /// Whether peers may request download of this offer (default false).
+        #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
+        allow_download: bool,
+    },
+    /// Alias of `publish`: local share descriptors + local-only capability advertisement.
+    Share {
+        #[arg(long)]
+        model_ref: String,
+        #[arg(long, default_value = "local")]
+        visibility: String,
         #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
         allow_download: bool,
     },
