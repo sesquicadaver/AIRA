@@ -1,10 +1,11 @@
-//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#61).
+//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#62).
 
 use std::path::Path;
 use std::process::ExitCode;
 
 use aira_csu_model_acquisition::{
-    load_policy, request_download, write_default_deny_policy, GateDecision,
+    fetch_to_quarantine, load_policy, request_download, write_default_deny_policy, FetchOutcome,
+    GateDecision,
 };
 use aira_csu_model_compatibility::resolve_and_publish;
 use aira_csu_model_inventory::{load_latest, scan_and_publish};
@@ -83,22 +84,57 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
                 Ok(ExitCode::SUCCESS)
             }
         },
-        ModelsCommands::Download { model_ref } => {
-            let out = request_download(root, &model_ref).map_err(|e| anyhow::anyhow!("{e}"))?;
-            println!("decision {}", out.decision.as_str());
-            println!("model_ref {}", out.model_ref);
-            println!("reason {}", out.reason);
-            println!("reason_ref {}", out.reason_ref);
-            println!("evidence {}", out.decision_artifact_id);
-            match out.decision {
-                GateDecision::Allow => {
-                    // Gate passed; byte transfer is `#62` (not performed here).
-                    println!("status policy-allowed");
-                    Ok(ExitCode::SUCCESS)
+        ModelsCommands::Download { model_ref, source } => {
+            if let Some(src) = source {
+                let out = fetch_to_quarantine(root, &model_ref, &src)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                match out {
+                    FetchOutcome::Denied(gate) => {
+                        println!("decision {}", gate.decision.as_str());
+                        println!("model_ref {}", gate.model_ref);
+                        println!("reason {}", gate.reason);
+                        println!("reason_ref {}", gate.reason_ref);
+                        println!("evidence {}", gate.decision_artifact_id);
+                        println!("status policy-denied");
+                        Ok(ExitCode::from(2))
+                    }
+                    FetchOutcome::Quarantined {
+                        gate,
+                        quarantine_path,
+                        bytes,
+                        content_hash,
+                        source_path,
+                    } => {
+                        println!("decision {}", gate.decision.as_str());
+                        println!("model_ref {}", gate.model_ref);
+                        println!("reason {}", gate.reason);
+                        println!("evidence {}", gate.decision_artifact_id);
+                        println!("source {source_path}");
+                        println!("quarantine {quarantine_path}");
+                        println!("bytes {bytes}");
+                        println!("content_hash {content_hash}");
+                        println!("verified false");
+                        println!("activated false");
+                        println!("status quarantine-fetched");
+                        Ok(ExitCode::SUCCESS)
+                    }
                 }
-                GateDecision::Deny => {
-                    println!("status policy-denied");
-                    Ok(ExitCode::from(2))
+            } else {
+                let out = request_download(root, &model_ref).map_err(|e| anyhow::anyhow!("{e}"))?;
+                println!("decision {}", out.decision.as_str());
+                println!("model_ref {}", out.model_ref);
+                println!("reason {}", out.reason);
+                println!("reason_ref {}", out.reason_ref);
+                println!("evidence {}", out.decision_artifact_id);
+                match out.decision {
+                    GateDecision::Allow => {
+                        println!("status policy-allowed");
+                        Ok(ExitCode::SUCCESS)
+                    }
+                    GateDecision::Deny => {
+                        println!("status policy-denied");
+                        Ok(ExitCode::from(2))
+                    }
                 }
             }
         }

@@ -1,9 +1,9 @@
-//! Model acquisition policy gate (QUEUE #60–#61 / Analyze-95–96).
+//! Model acquisition policy gate + local quarantine fetch (QUEUE #60–#62).
 //!
-//! Default-deny download: missing policy or `auto_download=false` → DENY +
-//! Policy decision artifact + CustomEvent. With policy and
-//! `auto_download=true` → ALLOW + Evidence (**no** byte transfer; quarantine
-//! fetch is `#62`). Not wired into C1.
+//! Default-deny download: missing policy or `auto_download=false` → DENY.
+//! With policy and `auto_download=true` → ALLOW. Optional local `--source`
+//! copy into `<root>/models/quarantine/` (no verify/activate; `#63`/`#64`).
+//! Not wired into C1. `network=none`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -25,8 +25,12 @@ pub const CSU_ID: &str = "aira:csu:model.acquisition";
 pub const POLICY_FILE_REL: &str = "models/acquisition.policy.json";
 /// Latest DENY/ALLOW decision pointer.
 pub const DECISION_POINTER_REL: &str = "models/acquisition.decision.latest.json";
+/// Quarantine directory under scoped models tree.
+pub const QUARANTINE_REL: &str = "models/quarantine";
+/// Latest quarantine fetch pointer.
+pub const QUARANTINE_POINTER_REL: &str = "models/quarantine.latest.json";
 
-/// Acquisition gate errors.
+/// Acquisition gate / quarantine errors.
 #[derive(Debug, Error)]
 pub enum AcquisitionError {
     #[error("io: {0}")]
@@ -37,11 +41,19 @@ pub enum AcquisitionError {
     Crypto(String),
     #[error("schema: {0}")]
     Schema(String),
+    #[error("remote source rejected (local --source only): {0}")]
+    RemoteSource(String),
+    #[error("source is not a file: {0}")]
+    SourceNotFile(String),
+    #[error("source not found: {0}")]
+    SourceMissing(String),
+    #[error("quarantine path outside scoped models: {0}")]
+    OutsideScope(String),
     #[error("{0}")]
     Other(String),
 }
 
-/// Gate decision — ALLOW authorizes a future transfer; never transfers bytes here.
+/// Gate decision — ALLOW authorizes a future transfer; gate alone never copies bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum GateDecision {
@@ -71,6 +83,21 @@ pub struct AcquireOutcome {
     pub auto_download: Option<bool>,
 }
 
+/// Result of gate + optional local quarantine copy.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum FetchOutcome {
+    /// Policy DENY — no bytes copied.
+    Denied(AcquireOutcome),
+    /// Policy ALLOW and local source copied into quarantine.
+    Quarantined {
+        gate: AcquireOutcome,
+        quarantine_path: String,
+        bytes: u64,
+        content_hash: String,
+        source_path: String,
+    },
+}
+
 /// Pointer to the latest policy decision artifact.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecisionPointer {
@@ -78,6 +105,18 @@ pub struct DecisionPointer {
     pub decision: String,
     pub model_ref: String,
     pub reason: String,
+    pub decision_artifact_id: String,
+}
+
+/// Pointer to the latest quarantine object.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QuarantinePointer {
+    pub updated_at: String,
+    pub model_ref: String,
+    pub quarantine_path: String,
+    pub source_path: String,
+    pub bytes: u64,
+    pub content_hash: String,
     pub decision_artifact_id: String,
 }
 
@@ -94,7 +133,7 @@ pub fn crate_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
-/// Signed manifest: no network; no download capability.
+/// Signed manifest: scoped models FS; no network.
 pub fn acquisition_manifest() -> CsuManifest {
     CsuManifest {
         csu_id: AiraRef::parse(CSU_ID).expect("csu_id"),
@@ -106,7 +145,7 @@ pub fn acquisition_manifest() -> CsuManifest {
         identity_ref: local_identity(),
         publisher_identity: local_identity(),
         capabilities: vec![],
-        permissions: vec![json!({"filesystem": "read_only", "paths": ["models"]})],
+        permissions: vec![json!({"filesystem": "scoped", "paths": ["models"]})],
         event_subscriptions: vec![json!({"event_type": "CustomEvent"})],
         event_outputs: vec![
             json!({"event_type": "CustomEvent"}),
@@ -117,7 +156,7 @@ pub fn acquisition_manifest() -> CsuManifest {
         policy_refs: vec![AiraRef::parse("aira:policy:default").expect("policy")],
         resource_requirements: None,
         sandbox: CsuSandbox {
-            filesystem: "read_only".into(),
+            filesystem: "scoped".into(),
             network: "none".into(),
             process: "in_process".into(),
             device_access: "none".into(),
@@ -165,12 +204,12 @@ pub fn load_policy(aira_root: impl AsRef<Path>) -> Result<Option<PolicyView>, Ac
     }))
 }
 
-/// Evaluate a download request; publish decision evidence. **Never** transfers model bytes.
+/// Evaluate a download request; publish decision evidence. Gate alone never copies weights.
 ///
 /// Rules:
 /// - no policy → DENY (`aira:reason:no-acquisition-policy`)
 /// - `auto_download=false` → DENY (`aira:reason:auto-download-false`)
-/// - `auto_download=true` → ALLOW (`aira:reason:auto-download-true`) — authorizes `#62` fetch only
+/// - `auto_download=true` → ALLOW (`aira:reason:auto-download-true`)
 pub fn request_download(
     aira_root: impl AsRef<Path>,
     model_ref: &str,
@@ -266,7 +305,6 @@ pub fn request_download(
     )
     .map_err(|e| AcquisitionError::Io(e.to_string()))?;
 
-    // Explicit: no network, no file fetch, no CAS write of remote weights.
     let _host = active_identity();
 
     Ok(AcquireOutcome {
@@ -278,6 +316,193 @@ pub fn request_download(
         policy_present: policy.is_some(),
         auto_download,
     })
+}
+
+/// Run policy gate; on ALLOW copy local `source` into scoped quarantine.
+///
+/// Does **not** verify hash/signature (`#63`) or activate (`#64`). Rejects URL schemes.
+pub fn fetch_to_quarantine(
+    aira_root: impl AsRef<Path>,
+    model_ref: &str,
+    source: impl AsRef<Path>,
+) -> Result<FetchOutcome, AcquisitionError> {
+    let root = aira_root.as_ref();
+    let source = source.as_ref();
+    reject_remote_source(source)?;
+
+    let gate = request_download(root, model_ref)?;
+    if gate.decision == GateDecision::Deny {
+        return Ok(FetchOutcome::Denied(gate));
+    }
+
+    if !source.exists() {
+        return Err(AcquisitionError::SourceMissing(
+            source.display().to_string(),
+        ));
+    }
+    if !source.is_file() {
+        return Err(AcquisitionError::SourceNotFile(
+            source.display().to_string(),
+        ));
+    }
+
+    let file_name = source
+        .file_name()
+        .ok_or_else(|| AcquisitionError::Other("source has no file name".into()))?
+        .to_string_lossy()
+        .to_string();
+    let slot = sanitize_slot(model_ref);
+    let dest_dir = root.join(QUARANTINE_REL).join(&slot);
+    fs::create_dir_all(&dest_dir).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    ensure_under_models(root, &dest_dir)?;
+
+    let dest = dest_dir.join(&file_name);
+    fs::copy(source, &dest).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    ensure_under_models(root, &dest)?;
+
+    let file_bytes = fs::read(&dest).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    let bytes = file_bytes.len() as u64;
+    let content_hash = ContentHash::sha256_bytes(&file_bytes);
+    let hash_hex = content_hash.as_str().trim_start_matches("sha256:");
+    let updated_at = utc_now_rfc3339().map_err(|e| AcquisitionError::Crypto(e.to_string()))?;
+
+    let receipt = build_quarantine_receipt(
+        model_ref,
+        &dest.display().to_string(),
+        &source.display().to_string(),
+        bytes,
+        content_hash.as_str(),
+        &gate.decision_artifact_id,
+    )?;
+    let receipt_bytes = json_bytes(&receipt);
+    let receipt_hash = ContentHash::sha256_bytes(&receipt_bytes);
+    let receipt_hex = receipt_hash.as_str().trim_start_matches("sha256:");
+    let artifact_id = format!("aira:artifact:acq-quarantine:{receipt_hex}");
+    let desc = make_artifact(
+        &artifact_id,
+        ArtifactType::CustomArtifact,
+        &receipt_bytes,
+        vec![AiraRef::parse(CSU_ID).expect("csu")],
+    );
+    let mut store = CasArtifactStore::open(root.join("artifacts"))
+        .map_err(|e| AcquisitionError::Artifact(e.to_string()))?;
+    match store.publish(desc, &receipt_bytes) {
+        Ok(_) => {}
+        Err(aira_artifact::ArtifactError::Immutable(_)) => {}
+        Err(e) => return Err(AcquisitionError::Artifact(e.to_string())),
+    }
+
+    let ev_id = format!(
+        "aira:event:acq-quarantine-{}",
+        &hash_hex[..16.min(hash_hex.len())]
+    );
+    let event = make_event(
+        &ev_id,
+        EventType::CustomEvent,
+        vec![],
+        vec![AiraRef::parse(&artifact_id).expect("aid")],
+        vec![],
+        Some(format!("op:quarantine-fetched:download:{model_ref}")),
+    );
+    append_custom_event(root, event)?;
+
+    let pointer = QuarantinePointer {
+        updated_at,
+        model_ref: model_ref.to_string(),
+        quarantine_path: dest.display().to_string(),
+        source_path: source.display().to_string(),
+        bytes,
+        content_hash: content_hash.as_str().to_string(),
+        decision_artifact_id: gate.decision_artifact_id.clone(),
+    };
+    let ppath = root.join(QUARANTINE_POINTER_REL);
+    if let Some(parent) = ppath.parent() {
+        fs::create_dir_all(parent).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    }
+    fs::write(
+        &ppath,
+        serde_json::to_string_pretty(&pointer)
+            .map_err(|e| AcquisitionError::Other(e.to_string()))?,
+    )
+    .map_err(|e| AcquisitionError::Io(e.to_string()))?;
+
+    Ok(FetchOutcome::Quarantined {
+        gate,
+        quarantine_path: dest.display().to_string(),
+        bytes,
+        content_hash: content_hash.as_str().to_string(),
+        source_path: source.display().to_string(),
+    })
+}
+
+fn reject_remote_source(source: &Path) -> Result<(), AcquisitionError> {
+    let s = source.to_string_lossy();
+    let lower = s.to_ascii_lowercase();
+    for scheme in ["http://", "https://", "ftp://", "sftp://"] {
+        if lower.starts_with(scheme) {
+            return Err(AcquisitionError::RemoteSource(s.to_string()));
+        }
+    }
+    Ok(())
+}
+
+fn sanitize_slot(model_ref: &str) -> String {
+    let mut out = String::with_capacity(model_ref.len());
+    for c in model_ref.chars() {
+        if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' {
+            out.push(c);
+        } else {
+            out.push('_');
+        }
+    }
+    if out.is_empty() {
+        "model".into()
+    } else {
+        out
+    }
+}
+
+fn ensure_under_models(root: &Path, path: &Path) -> Result<(), AcquisitionError> {
+    let models = root.join("models");
+    fs::create_dir_all(&models).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    let scope = models
+        .canonicalize()
+        .map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    let canon = path
+        .canonicalize()
+        .map_err(|e| AcquisitionError::Io(format!("{}: {e}", path.display())))?;
+    if !canon.starts_with(&scope) {
+        return Err(AcquisitionError::OutsideScope(path.display().to_string()));
+    }
+    Ok(())
+}
+
+fn build_quarantine_receipt(
+    model_ref: &str,
+    quarantine_path: &str,
+    source_path: &str,
+    bytes: u64,
+    content_hash: &str,
+    decision_artifact_id: &str,
+) -> Result<Value, AcquisitionError> {
+    let mut body = Map::new();
+    body.insert("kind".into(), json!("model-quarantine-receipt"));
+    body.insert("model_ref".into(), json!(model_ref));
+    body.insert("quarantine_path".into(), json!(quarantine_path));
+    body.insert("source_path".into(), json!(source_path));
+    body.insert("bytes".into(), json!(bytes));
+    body.insert("content_hash".into(), json!(content_hash));
+    body.insert("decision_artifact_id".into(), json!(decision_artifact_id));
+    body.insert("verified".into(), json!(false));
+    body.insert("activated".into(), json!(false));
+    let for_sign = Value::Object(body.clone());
+    let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
+    let sig: Signature = active_signature(&raw);
+    body.insert(
+        "signature".into(),
+        serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,
+    );
+    Ok(Value::Object(body))
 }
 
 fn build_decision(decision: GateDecision, reason_ref: &str) -> Result<Value, AcquisitionError> {
@@ -414,9 +639,10 @@ mod tests {
     }
 
     #[test]
-    fn manifest_network_none() {
+    fn manifest_network_none_scoped_fs() {
         let m = acquisition_manifest();
         assert_eq!(m.sandbox.network, "none");
+        assert_eq!(m.sandbox.filesystem, "scoped");
         assert_eq!(m.csu_type, CsuType::Custom);
     }
 
@@ -488,5 +714,69 @@ mod tests {
         assert!(payload.contains("op:policy-allowed:download:"));
         assert!(weight_files(dir.path()).is_empty());
         assert!(!dir.path().join("models/quarantine").exists());
+    }
+
+    #[test]
+    fn quarantine_fetch_after_allow_copies_local_source() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("outside-weights.gguf");
+        fs::write(&src, b"fake-gguf-bytes").unwrap();
+        let out = fetch_to_quarantine(dir.path(), "aira:model:example", &src).unwrap();
+        match out {
+            FetchOutcome::Quarantined {
+                gate,
+                quarantine_path,
+                bytes,
+                ..
+            } => {
+                assert_eq!(gate.decision, GateDecision::Allow);
+                assert_eq!(bytes, 15);
+                assert!(Path::new(&quarantine_path).exists());
+                assert!(quarantine_path.contains("quarantine"));
+                assert!(!quarantine_path.contains("verified"));
+            }
+            FetchOutcome::Denied(_) => panic!("expected quarantine"),
+        }
+        assert!(dir.path().join(QUARANTINE_POINTER_REL).exists());
+        let log: Value = serde_json::from_str(
+            &fs::read_to_string(dir.path().join("events/event-log.json")).unwrap(),
+        )
+        .unwrap();
+        let events = log.get("events").and_then(|e| e.as_array()).unwrap();
+        let joined: String = events
+            .iter()
+            .filter_map(|e| e.get("payload_ref").and_then(|v| v.as_str()))
+            .collect::<Vec<_>>()
+            .join("|");
+        assert!(joined.contains("op:quarantine-fetched:download:"));
+        // Not activated into inventory cache root as loose weight.
+        assert!(weight_files(dir.path()).is_empty());
+    }
+
+    #[test]
+    fn quarantine_denied_without_policy_no_copy() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        let src = dir.path().join("x.gguf");
+        fs::write(&src, b"data").unwrap();
+        let out = fetch_to_quarantine(dir.path(), "aira:model:x", &src).unwrap();
+        assert!(matches!(out, FetchOutcome::Denied(_)));
+        assert!(!dir.path().join("models/quarantine").exists());
+    }
+
+    #[test]
+    fn quarantine_rejects_http_source() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let err = fetch_to_quarantine(
+            dir.path(),
+            "aira:model:x",
+            Path::new("https://example.com/m.gguf"),
+        )
+        .unwrap_err();
+        assert!(matches!(err, AcquisitionError::RemoteSource(_)));
     }
 }

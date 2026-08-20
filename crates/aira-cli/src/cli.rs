@@ -593,10 +593,13 @@ pub(crate) enum ModelsCommands {
         #[command(subcommand)]
         command: ModelsPolicyCommands,
     },
-    /// Evaluate download policy (ALLOW/DENY). ALLOW does not transfer bytes (`#62`).
+    /// Evaluate download policy; with `--source` copy local file into quarantine after ALLOW.
     Download {
         #[arg(long)]
         model_ref: String,
+        /// Local weight file to copy into `<root>/models/quarantine/` (no HTTP; no activate).
+        #[arg(long)]
+        source: Option<PathBuf>,
     },
 }
 
