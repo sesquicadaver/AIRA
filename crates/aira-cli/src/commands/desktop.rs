@@ -6,7 +6,7 @@ use std::process::{Command, ExitCode};
 use anyhow::{bail, Context, Result};
 
 use aira_desktop_runtime::{
-    install_user_launcher, start, status, stop, uninstall_user_launcher, DesktopPaths,
+    install_user_menu_entries, start, status, stop, uninstall_user_menu_entries, DesktopPaths,
     LifecycleStatus,
 };
 
@@ -55,17 +55,22 @@ pub(crate) fn run(command: DesktopCommands) -> Result<ExitCode> {
             Ok(ExitCode::SUCCESS)
         }
         DesktopCommands::LauncherInstall => {
-            let dest = install_user_launcher()?;
-            println!("installed {}", dest.display());
+            let (start_entry, gui_entry) = install_user_menu_entries()?;
+            println!("installed {}", start_entry.display());
+            println!("installed {}", gui_entry.display());
             println!("start: menu → AIRA  (or `aira desktop start`)");
             println!("stop:  menu → AIRA → Stop AIRA  (or `aira desktop stop`)");
-            println!("gui:   `aira desktop gui` or `aira-desktop`");
+            println!("gui:   menu → AIRA Desktop  (or `aira-desktop`)");
             Ok(ExitCode::SUCCESS)
         }
         DesktopCommands::LauncherUninstall => {
-            match uninstall_user_launcher()? {
-                Some(p) => println!("removed {}", p.display()),
-                None => println!("not installed"),
+            let removed = uninstall_user_menu_entries()?;
+            if removed.is_empty() {
+                println!("not installed");
+            } else {
+                for p in removed {
+                    println!("removed {}", p.display());
+                }
             }
             Ok(ExitCode::SUCCESS)
         }
