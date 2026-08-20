@@ -1,6 +1,6 @@
 # Phase D — Model Artifact & Inventory Plan v0.1
 
-**Статус:** складено 2026-08-20; перша хвиля D0–D3 (`#53`–`#60`) **DONE** @ 21d90a5. **Addendum D4** (`#61`–`#64`) **DONE** @ ffcf66f. D5–D7 **не** в QUEUE.  
+**Статус:** складено 2026-08-20; перша хвиля D0–D3 (`#53`–`#60`) **DONE** @ 21d90a5. **Addendum D4** (`#61`–`#64`) **DONE** @ ffcf66f. **Addendum D5** відкрито рішенням розробника 2026-08-20 → QUEUE `#65`–`#68`. D6–D7 **не** в QUEUE.  
 **Джерела:** рішення розробника щодо інтерпретації [`EVO-3.md`](../EVO-3.md); Book 0–IV; Schema Pack; RFC Process; [`docs/implementation-status.md`](implementation-status.md).  
 **Не канон backlog:** цей файл — загальний план і атомізація. Канон виконання — `QUEUE.md`.
 
@@ -10,12 +10,12 @@
 
 ```text
 загальний план (цей документ)
-  → атоми без перекриття (§4 / Addendum D4)
+  → атоми без перекриття (§4 / Addendum D4 / Addendum D5)
     → лінійний хвіст QUEUE
       → виконання: один OPEN рядок = один Analyze-цикл
 ```
 
-Заборонено додавати поодинокі пункти в `QUEUE.md` поза цим планом / addendum. D5–D7 лишаються відкладеними.
+Заборонено додавати поодинокі пункти в `QUEUE.md` поза цим планом / addendum. D6–D7 лишаються відкладеними.
 
 ---
 
@@ -202,11 +202,11 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 | ID | Зміст | RFC | Умова старту | Статус |
 |----|--------|-----|----------------|--------|
 | D4 | Model download + hash/signature verify + activation окремо | RFC-D + RFC-E | D3 DONE | **DONE** — Addendum D4 / QUEUE `#61`–`#64` @ ffcf66f |
-| D5 | Custom model publish / share, opt-in | RFC-D | D3 DONE; не вимагає D4 | **не в QUEUE** |
+| D5 | Custom model publish / share, opt-in | RFC-D + RFC-E | D3 DONE; не вимагає D4 | **відкрито** — Addendum D5 / QUEUE `#65`–`#68` |
 | D6 | Contextual model rating evidence (не global score) | RFC-R | після D3; не C1 | **не в QUEUE** |
 | D7 | Upgrade recommendation artifact (advisory) | RFC-R | після D3; не marketplace | **не в QUEUE** |
 
-Новий загальний план або ще один addendum — перед копіюванням D5–D7 у QUEUE.
+Новий загальний план або ще один addendum — перед копіюванням D6–D7 у QUEUE.
 
 ---
 
@@ -241,6 +241,41 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 ```
 
 **RFC:** RFC-D (Acquisition CSU download/activate contract) + RFC-E (`aira models download|activate` поведінка) — у циклах `#61`/`#62` відповідно, не змішувати з D5.
+
+---
+
+## 6b. Addendum D5 (2026-08-20) — лише custom publish / share (opt-in)
+
+**Рішення розробника:** відкрити **лише D5**. D6–D7 не копіювати в QUEUE.
+
+**Інваріанти D5 (додатково до §2)**
+
+1. `share_custom_models = false` за замовчуванням; publish/share без explicit opt-in → DENY + Evidence.
+2. Користувач публікує **signed Artifact descriptor**, не «голий файл» і **не** форсує global availability (EVO-3 §8 / §11 `#53`).
+3. Envelope = `CustomArtifact` + payload `$id`; canonical `ArtifactType::ModelArtifact` — **Out**.
+4. Sharing CSU (або окремий crate) — `network=none` у першому хвості; **немає** remote advertise / marketplace / DHT model registry.
+5. CSU↛CSU firewall: Sharing не залежить від Inventory/Acquisition Cargo-dep; CLI оркеструє.
+6. C1 / `aira-core` / Book 0 — **не змінювати**.
+7. Rating / recommendation / settlement — **Out** (D6–D7).
+8. Download/activate чужих shared моделей через мережу — **Out** цього addendum (D4 local path уже є; remote share fetch — окремий майбутній addendum).
+
+**Атоми → QUEUE `#65`–`#68`** (Analyze-100+)
+
+| ID | Підфаза | Атом | Done when | Не в цьому рядку |
+|----|---------|------|-----------|------------------|
+| `#65` | D5.1 | Payload schema `ModelShareOffer` | `aira:schema:model:share-offer:0.1` + fixtures; envelope CustomArtifact | policy runtime; publish CLI; network |
+| `#66` | D5.2 | Share policy gate (`share_custom_models`) | absent/false → DENY publish + Event/Evidence; true → ALLOW decision **без** publish bytes | actual publish; capability advertise; rating |
+| `#67` | D5.3 | Local publish signed descriptor | після ALLOW: з `models/cache` → signed ModelArtifact (+ ShareOffer link); Event; **без** remote push | capability advertise; remote registry; rating |
+| `#68` | D5.4 | Local capability advertisement | CustomArtifact capability ad з publish; CLI `models publish\|share`; visibility local-only | federation push; DHT; rating (D6); marketplace |
+
+```text
+#65 ShareOffer schema
+  → #66 share_custom_models gate
+    → #67 local publish signed descriptor
+      → #68 local capability advertisement
+```
+
+**RFC:** RFC-S (ShareOffer schema) → RFC-D (Sharing CSU) + RFC-E (`aira models publish|share`) у `#66`–`#68`; не змішувати з D6 rating.
 
 ---
 
