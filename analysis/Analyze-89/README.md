@@ -1,7 +1,7 @@
 # Analyze-89 — ModelProfile payload schema (QUEUE #54)
 
 ## Status
-OPEN (Phase D D0.2).
+CLOSED (QUEUE #54 DONE @ 5bcd29b / PR #17).
 
 ## Done when
 JSON schema `aira:schema:model:profile:0.1` + valid/invalid fixtures; `schema validate --fixtures` green. RFC-S recorded. Canonical `ArtifactType` unchanged.

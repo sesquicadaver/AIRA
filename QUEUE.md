@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — виконання стартоване; перший OPEN **#54**.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — виконання стартоване; перший OPEN **#55**.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-88 CLOSED @ 22a13ab; QUEUE #53 DONE; наступний OPEN **#54** |
+| `main` | Analyze-89 CLOSED @ 5bcd29b; QUEUE #54 DONE; наступний OPEN **#55** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase D **#54 OPEN** (Analyze-89 — ModelProfile payload schema) |
+| Активна черга | Phase D **#55 OPEN** (Analyze-90 — LocalModelInventory payload schema) |
 
 ## Правила атомарності
 
@@ -90,7 +90,7 @@
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
 | 53 | **DONE** | ~~Analyze-88 — ModelArtifact payload schema~~ | RFC-S + `aira:schema:model:artifact:0.1` + fixtures | schema validate --fixtures зелений; enum `ArtifactType` незмінний | Profile/Inventory/Policy schemas; downloader |
-| 54 | OPEN | Analyze-89 — ModelProfile payload schema | `aira:schema:model:profile:0.1` + fixtures | schema + fixtures | Inventory; hardware scan |
+| 54 | **DONE** | ~~Analyze-89 — ModelProfile payload schema~~ | `aira:schema:model:profile:0.1` + fixtures | schema + fixtures | Inventory; hardware scan |
 | 55 | OPEN | Analyze-90 — LocalModelInventory payload schema | `aira:schema:model:inventory:0.1` + fixtures | schema + fixtures | CLI scan; мережа |
 | 56 | OPEN | Analyze-91 — ModelCompatibilityEvidence schema | payload evidence: reason / confidence / scope | schema + fixtures | auto-download; rating score |
 | 57 | OPEN | Analyze-92 — ModelAcquisitionPolicy schema | payload policy; default `auto_download=false` | schema + fixtures | downloader; allowlist runtime |
@@ -100,7 +100,7 @@
 
 ### Наступний цикл
 
-**#54 OPEN** — Analyze-89: ModelProfile payload schema.
+**#55 OPEN** — Analyze-90: LocalModelInventory payload schema.
 
 ---
 
@@ -130,6 +130,6 @@
 | EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
-| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53` DONE; `#54`–`#60` OPEN |
+| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#54` DONE; `#55`–`#60` OPEN |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
