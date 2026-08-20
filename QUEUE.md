@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D5 (`#53`–`#68`) **DONE**; Addendum D6 `#69`–`#70` **DONE**; OPEN `#71`. D7 не в QUEUE до DONE D6.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D6 (`#53`–`#71`) **DONE**. Addendum D7 `#72`–`#74` **OPEN**. D4/D5 уже CLOSED.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-105 CLOSED @ e16d42c; QUEUE #70 DONE; Addendum D6 **#71 OPEN** |
+| `main` | Analyze-106 CLOSED @ 7960daa; QUEUE #71 DONE; **Addendum D6 COMPLETE**; D7 **#72 OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase D Addendum D6 **#71 OPEN** (Analyze-106 — CLI models rate) |
+| Активна черга | Phase D Addendum D7 **#72 OPEN** (Analyze-107 — UpgradeRecommendation schema) |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C хвіст `#38`–`#52` — повний етап. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#68` DONE; Addendum D6 `#69`–`#71` відкрито 2026-08-20; D7 не відкривати до DONE D6.
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C хвіст `#38`–`#52` — повний етап. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#71` DONE; Addendum D7 `#72`–`#74` відкрито 2026-08-20.
 
 ---
 
@@ -107,11 +107,16 @@
 | 68 | **DONE** | ~~Analyze-103 — local capability advertisement~~ | capability CustomArtifact + CLI publish\|share; local-only | federation; DHT; rating (D6); marketplace |
 | 69 | **DONE** | ~~Analyze-104 — ModelRatingEvidence schema~~ | `aira:schema:model:rating-evidence:0.1` + fixtures; context-bound; не global score | rating CSU; CLI rate; recommendation (D7) |
 | 70 | **DONE** | ~~Analyze-105 — local rating evidence publish~~ | signed rating CustomArtifact + Event; context required | CLI; recommendation; network scoreboard |
-| 71 | OPEN | Analyze-106 — CLI `aira models rate` | publish contextual rating evidence; local-only | D7 recommend; marketplace; global rank |
+| 71 | **DONE** | ~~Analyze-106 — CLI `aira models rate`~~ | publish contextual rating evidence; local-only | D7 recommend; marketplace; global rank |
+| 72 | OPEN | Analyze-107 — UpgradeRecommendation schema | `aira:schema:model:upgrade-recommendation:0.1` + fixtures; advisory | recommend CSU; CLI; marketplace |
+| 73 | OPEN | Analyze-108 — local upgrade recommendation publish | signed recommendation CustomArtifact + Event; evidence-backed | CLI; settlement; ads |
+| 74 | OPEN | Analyze-109 — CLI `aira models recommend` | advisory recommendation; local-only | marketplace; auto-download; settlement |
 
 ### Наступний цикл
 
-**#71 OPEN** — Analyze-106: CLI `aira models rate` (D6.3).
+**#72 OPEN** — Analyze-107: UpgradeRecommendation schema (D7.1).
+
+> Порядок: D6 DONE → D7; D4/D5 уже DONE (не переробляти).
 
 ---
 
@@ -141,6 +146,6 @@
 | EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
-| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#70` DONE; Addendum D6 OPEN `#71`; D7 після D6 |
+| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#71` DONE (D6 complete); Addendum D7 `#72`–`#74` OPEN |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

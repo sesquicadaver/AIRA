@@ -1,6 +1,6 @@
 # Phase D — Model Artifact & Inventory Plan v0.1
 
-**Статус:** складено 2026-08-20; перша хвиля D0–D3 (`#53`–`#60`) **DONE** @ 21d90a5. **Addendum D4** (`#61`–`#64`) **DONE** @ ffcf66f. **Addendum D5** (`#65`–`#68`) **DONE** @ 7719e92. **Addendum D6** відкрито рішенням розробника 2026-08-20 → QUEUE `#69`–`#71`. D7 **не** в QUEUE до DONE D6.  
+**Статус:** складено 2026-08-20; перша хвиля D0–D3 (`#53`–`#60`) **DONE** @ 21d90a5. **Addendum D4** (`#61`–`#64`) **DONE** @ ffcf66f. **Addendum D5** (`#65`–`#68`) **DONE** @ 7719e92. **Addendum D6** (`#69`–`#71`) **DONE** @ 7960daa. **Addendum D7** відкрито рішенням розробника 2026-08-20 → QUEUE `#72`–`#74`.  
 **Джерела:** рішення розробника щодо інтерпретації [`EVO-3.md`](../EVO-3.md); Book 0–IV; Schema Pack; RFC Process; [`docs/implementation-status.md`](implementation-status.md).  
 **Не канон backlog:** цей файл — загальний план і атомізація. Канон виконання — `QUEUE.md`.
 
