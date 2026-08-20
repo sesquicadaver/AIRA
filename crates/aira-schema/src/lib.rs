@@ -420,9 +420,7 @@ mod tests {
         assert!(reg
             .validate_file(
                 "aira:schema:model:compatibility-evidence:0.1",
-                root.join(
-                    "fixtures/invalid/model/compatibility-evidence-missing-reason.json"
-                ),
+                root.join("fixtures/invalid/model/compatibility-evidence-missing-reason.json"),
             )
             .is_err());
     }
