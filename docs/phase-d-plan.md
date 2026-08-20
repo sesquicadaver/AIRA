@@ -1,6 +1,6 @@
 # Phase D — Model Artifact & Inventory Plan v0.1
 
-**Статус:** складено 2026-08-20; виконання стартоване. `#53`–`#55` DONE @ 9d5e38e; перший OPEN — [`QUEUE.md`](../QUEUE.md) **#56**.  
+**Статус:** складено 2026-08-20; виконання стартоване. `#53`–`#56` DONE @ 9d5c311; перший OPEN — [`QUEUE.md`](../QUEUE.md) **#57**.  
 **Джерела:** рішення розробника щодо інтерпретації [`EVO-3.md`](../EVO-3.md); Book 0–IV; Schema Pack; RFC Process; [`docs/implementation-status.md`](implementation-status.md).  
 **Не канон backlog:** цей файл — загальний план і атомізація. Канон виконання — `QUEUE.md`.
 
