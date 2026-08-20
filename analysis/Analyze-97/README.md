@@ -1,7 +1,7 @@
 # Analyze-97 — quarantine fetch local source (QUEUE #62)
 
 ## Status
-OPEN (branch `analyze-97-quarantine-fetch`).
+CLOSED (QUEUE #62 DONE @ 03dfef6 / PR #25).
 
 ## Done when
 After ALLOW: `--source` → `<root>/models/quarantine/…` + Event; no activation.
