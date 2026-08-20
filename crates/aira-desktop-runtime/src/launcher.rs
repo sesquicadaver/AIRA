@@ -1,18 +1,34 @@
-//! Linux XDG `.desktop` launcher (QUEUE #77).
+//! Linux XDG `.desktop` launcher entries (QUEUE #77 / #79).
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 
-/// Canonical Desktop Entry shipped under `deploy/desktop/aira.desktop`.
+/// Canonical start/stop Desktop Entry shipped under `deploy/desktop/aira.desktop`.
 pub const AIRA_DESKTOP_ENTRY: &str = include_str!("../../../deploy/desktop/aira.desktop");
 
-/// Filename installed into applications directories.
+/// Canonical GUI Desktop Entry shipped under `deploy/desktop/aira-desktop.desktop`.
+pub const AIRA_GUI_DESKTOP_ENTRY: &str =
+    include_str!("../../../deploy/desktop/aira-desktop.desktop");
+
+/// Filename installed into applications directories (start/stop menu entry).
 pub const AIRA_DESKTOP_FILENAME: &str = "aira.desktop";
 
-/// Validate required Freedesktop keys for the AIRA launcher.
+/// Filename for the native GUI menu entry.
+pub const AIRA_GUI_DESKTOP_FILENAME: &str = "aira-desktop.desktop";
+
+/// Validate required Freedesktop keys for the AIRA start launcher.
 pub fn validate_desktop_entry(text: &str) -> Result<()> {
+    validate_named_exec(text, "aira desktop start")
+}
+
+/// Validate required Freedesktop keys for the AIRA GUI launcher.
+pub fn validate_gui_desktop_entry(text: &str) -> Result<()> {
+    validate_named_exec(text, "aira-desktop")
+}
+
+fn validate_named_exec(text: &str, exec_must_contain: &str) -> Result<()> {
     let mut has_type = false;
     let mut has_name = false;
     let mut has_exec = false;
@@ -45,8 +61,8 @@ pub fn validate_desktop_entry(text: &str) -> Result<()> {
                 }
                 "Exec" => {
                     let exec = v.trim();
-                    if !exec.contains("aira desktop start") {
-                        bail!("Exec must invoke `aira desktop start`, got: {exec}");
+                    if !exec.contains(exec_must_contain) {
+                        bail!("Exec must contain `{exec_must_contain}`, got: {exec}");
                     }
                     has_exec = true;
                 }
@@ -71,14 +87,35 @@ pub fn user_applications_dir() -> PathBuf {
     home.join(".local/share/applications")
 }
 
+fn write_entry(applications_dir: &Path, filename: &str, body: &str) -> Result<PathBuf> {
+    fs::create_dir_all(applications_dir)
+        .with_context(|| format!("mkdir {}", applications_dir.display()))?;
+    let dest = applications_dir.join(filename);
+    fs::write(&dest, body).with_context(|| format!("write {}", dest.display()))?;
+    Ok(dest)
+}
+
 /// Install `aira.desktop` into an applications directory.
 pub fn install_launcher_to(applications_dir: &Path) -> Result<PathBuf> {
     validate_desktop_entry(AIRA_DESKTOP_ENTRY)?;
-    fs::create_dir_all(applications_dir)
-        .with_context(|| format!("mkdir {}", applications_dir.display()))?;
-    let dest = applications_dir.join(AIRA_DESKTOP_FILENAME);
-    fs::write(&dest, AIRA_DESKTOP_ENTRY).with_context(|| format!("write {}", dest.display()))?;
-    Ok(dest)
+    write_entry(applications_dir, AIRA_DESKTOP_FILENAME, AIRA_DESKTOP_ENTRY)
+}
+
+/// Install `aira-desktop.desktop` into an applications directory.
+pub fn install_gui_launcher_to(applications_dir: &Path) -> Result<PathBuf> {
+    validate_gui_desktop_entry(AIRA_GUI_DESKTOP_ENTRY)?;
+    write_entry(
+        applications_dir,
+        AIRA_GUI_DESKTOP_FILENAME,
+        AIRA_GUI_DESKTOP_ENTRY,
+    )
+}
+
+/// Install both menu entries into an applications directory.
+pub fn install_menu_entries_to(applications_dir: &Path) -> Result<(PathBuf, PathBuf)> {
+    let start = install_launcher_to(applications_dir)?;
+    let gui = install_gui_launcher_to(applications_dir)?;
+    Ok((start, gui))
 }
 
 /// Install `aira.desktop` into the user applications directory.
@@ -86,9 +123,35 @@ pub fn install_user_launcher() -> Result<PathBuf> {
     install_launcher_to(&user_applications_dir())
 }
 
+/// Install both menu entries into the user applications directory.
+pub fn install_user_menu_entries() -> Result<(PathBuf, PathBuf)> {
+    install_menu_entries_to(&user_applications_dir())
+}
+
 /// Remove a launcher file from an applications directory if present.
 pub fn uninstall_launcher_from(applications_dir: &Path) -> Result<Option<PathBuf>> {
-    let dest = applications_dir.join(AIRA_DESKTOP_FILENAME);
+    remove_entry(applications_dir, AIRA_DESKTOP_FILENAME)
+}
+
+/// Remove the GUI menu entry if present.
+pub fn uninstall_gui_launcher_from(applications_dir: &Path) -> Result<Option<PathBuf>> {
+    remove_entry(applications_dir, AIRA_GUI_DESKTOP_FILENAME)
+}
+
+/// Remove both menu entries if present.
+pub fn uninstall_menu_entries_from(applications_dir: &Path) -> Result<Vec<PathBuf>> {
+    let mut removed = Vec::new();
+    if let Some(p) = uninstall_launcher_from(applications_dir)? {
+        removed.push(p);
+    }
+    if let Some(p) = uninstall_gui_launcher_from(applications_dir)? {
+        removed.push(p);
+    }
+    Ok(removed)
+}
+
+fn remove_entry(applications_dir: &Path, filename: &str) -> Result<Option<PathBuf>> {
+    let dest = applications_dir.join(filename);
     if dest.is_file() {
         fs::remove_file(&dest).with_context(|| format!("remove {}", dest.display()))?;
         Ok(Some(dest))
@@ -97,13 +160,24 @@ pub fn uninstall_launcher_from(applications_dir: &Path) -> Result<Option<PathBuf
     }
 }
 
-/// Remove the user launcher if present.
+/// Remove the user start launcher if present.
 pub fn uninstall_user_launcher() -> Result<Option<PathBuf>> {
     uninstall_launcher_from(&user_applications_dir())
 }
 
-/// Read and validate a desktop file from disk.
+/// Remove both user menu entries if present.
+pub fn uninstall_user_menu_entries() -> Result<Vec<PathBuf>> {
+    uninstall_menu_entries_from(&user_applications_dir())
+}
+
+/// Read and validate a start desktop file from disk.
 pub fn validate_desktop_file(path: &Path) -> Result<()> {
     let text = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
     validate_desktop_entry(&text)
+}
+
+/// Read and validate a GUI desktop file from disk.
+pub fn validate_gui_desktop_file(path: &Path) -> Result<()> {
+    let text = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    validate_gui_desktop_entry(&text)
 }

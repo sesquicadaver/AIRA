@@ -25,12 +25,13 @@ cargo build -p aira-desktop -p aira-node -p aira-cli
 ./target/debug/aira desktop gui --data-root /tmp/aira-gui --node-bin ./target/debug/aira-node
 ```
 
-Menu entry (GUI): [`deploy/desktop/aira-desktop.desktop`](../deploy/desktop/aira-desktop.desktop) — copy next to applications or install manually (packaging `#79`).
+Menu entry (GUI): [`deploy/desktop/aira-desktop.desktop`](../deploy/desktop/aira-desktop.desktop) — via `aira desktop launcher-install` or the Linux tarball ([`desktop-packaging.md`](desktop-packaging.md)).
 
 Headless start without UI: set `open_ui_on_start=false` in settings, or use `aira desktop start`.
 
 ## Related
 
-- Launcher (start-only): [`desktop-launcher.md`](desktop-launcher.md)
+- Packaging: [`desktop-packaging.md`](desktop-packaging.md)
+- Launcher: [`desktop-launcher.md`](desktop-launcher.md)
 - UX canon: [`desktop-ux.md`](desktop-ux.md)
 - Plan: [`phase-e-plan.md`](phase-e-plan.md)

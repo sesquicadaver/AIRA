@@ -1,7 +1,7 @@
 //! AIRA Desktop lifecycle library (QUEUE #76 / Analyze-111).
 //!
-//! Shared by `aira desktop …` and future tray/GUI. Does **not** implement OS
-//! autostart hooks (those are `#78`).
+//! Shared by `aira desktop …` and the Desktop GUI. OS autostart is `#78`;
+//! Linux packaging layout/install is `#79`.
 
 mod autostart;
 mod bootstrap;
@@ -17,8 +17,12 @@ pub use autostart::{
 };
 pub use bootstrap::ensure_bootstrap;
 pub use launcher::{
-    install_launcher_to, install_user_launcher, uninstall_launcher_from, uninstall_user_launcher,
-    validate_desktop_entry, validate_desktop_file, AIRA_DESKTOP_ENTRY, AIRA_DESKTOP_FILENAME,
+    install_gui_launcher_to, install_launcher_to, install_menu_entries_to, install_user_launcher,
+    install_user_menu_entries, uninstall_gui_launcher_from, uninstall_launcher_from,
+    uninstall_menu_entries_from, uninstall_user_launcher, uninstall_user_menu_entries,
+    validate_desktop_entry, validate_desktop_file, validate_gui_desktop_entry,
+    validate_gui_desktop_file, AIRA_DESKTOP_ENTRY, AIRA_DESKTOP_FILENAME, AIRA_GUI_DESKTOP_ENTRY,
+    AIRA_GUI_DESKTOP_FILENAME,
 };
 pub use paths::DesktopPaths;
 pub use process::{start, status, stop, LifecycleStatus, PidRecordView, StartOutcome};
