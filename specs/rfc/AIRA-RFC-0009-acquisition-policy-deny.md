@@ -2,7 +2,7 @@
 
 ## 1. Summary
 
-CSU `aira:csu:model.acquisition` evaluates download requests under default-deny. Missing policy or `auto_download=false` → `DENY` + policy decision `CustomArtifact` + `CustomEvent` (`op:policy-denied:download:…`). No byte transfer (D4 Out).
+CSU `aira:csu:model.acquisition` evaluates download requests under default-deny. Missing policy or `auto_download=false` → `DENY` + policy decision `CustomArtifact` + `CustomEvent` (`op:policy-denied:download:…`). `auto_download=true` ALLOW semantics: see RFC-0010 (`#61`). No byte transfer in D3.
 
 ## 2. Problem Statement
 
@@ -12,7 +12,7 @@ Without a gate, a future downloader could implicitly fetch models. D3 must prove
 
 - Crate `csu/model-acquisition` (`network=none`)
 - Optional policy file `models/acquisition.policy.json`
-- `request_download` always refuses transfer in D3
+- `request_download` refuses transfer in D3 (DENY paths only in this RFC)
 - CLI: `aira models policy show|set`, `aira models download --model-ref …` (exit 2 on DENY)
 
 ## 4. Non-Goals
@@ -30,7 +30,7 @@ allowlist marketplace
 |-----------|----------|------------|
 | no policy | DENY | `aira:reason:no-acquisition-policy` |
 | auto_download=false | DENY | `aira:reason:auto-download-false` |
-| auto_download=true | DENY (no transfer) | `aira:reason:download-not-implemented-d3` |
+| auto_download=true | *(superseded)* → RFC-0010 ALLOW | see RFC-0010 |
 
 ## 6. Rollback
 

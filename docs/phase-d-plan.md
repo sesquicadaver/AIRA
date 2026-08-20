@@ -250,7 +250,8 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 |------|--------|------|
 | RFC-S | payload schemas; **не** піднімати `ModelArtifact` у canonical enum на старті | до/разом із `#53` |
 | RFC-D | Inventory CSU contract; sandbox ≠ basic CSU | до/разом із `#58` |
-| RFC-E | `aira models scan\|list\|compatible`; local cache scan | до/разом із `#58`–`#59` |
+| RFC-E | `aira models download` ALLOW/DENY exits; `policy show\|set` | `#60`–`#61` |
+| RFC-D | Acquisition ALLOW path (no transfer) | `#61` / RFC-0010 |
 | RFC-T | fixtures/conformance для нових payload | разом зі схемами |
 | RFC-A / RFC-B | Book 0 pipeline / Core | **заборонені** цим планом |
 | RFC-R / RFC-P | rating, recommendation, popularity, placement | лише D6–D7 |
