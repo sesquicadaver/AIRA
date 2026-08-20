@@ -542,4 +542,28 @@ mod tests {
             )
             .is_err());
     }
+
+    #[test]
+    fn desktop_peer_invite_schema_loads() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:desktop:peer-invite:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let valid = root.join("fixtures/valid/desktop/peer-invite.json");
+        reg.validate_file("aira:schema:desktop:peer-invite:0.1", &valid)
+            .unwrap();
+        let text = std::fs::read_to_string(&valid).unwrap();
+        let v: Value = serde_json::from_str(&text).unwrap();
+        assert!(v.get("identity_ref").and_then(|x| x.as_str()).is_some());
+        let pk = v.get("public_key_hex").and_then(|x| x.as_str()).unwrap();
+        assert_eq!(pk.len(), 64);
+        assert!(reg
+            .validate_file(
+                "aira:schema:desktop:peer-invite:0.1",
+                root.join("fixtures/invalid/desktop/peer-invite-missing-identity-ref.json"),
+            )
+            .is_err());
+    }
 }

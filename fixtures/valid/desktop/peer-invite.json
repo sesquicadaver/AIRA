@@ -1,0 +1,8 @@
+{
+  "payload_schema": "aira:schema:desktop:peer-invite:0.1",
+  "identity_ref": "aira:identity:friend-alice",
+  "public_key_hex": "d4295b4daeeb41c8dcc7ab0823210104b257a68f38f79d26bdd66875265e0444",
+  "addr": "127.0.0.1:9797",
+  "display_name": "Alice (Dev Preview)",
+  "created_at": "2026-08-20T15:00:00Z"
+}
