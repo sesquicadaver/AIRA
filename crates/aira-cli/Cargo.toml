@@ -26,6 +26,7 @@ aira-object = { path = "../aira-object" }
 aira-peer = { path = "../aira-peer" }
 aira-protocol = { path = "../aira-protocol" }
 aira-csu-model-inventory = { path = "../../csu/model-inventory" }
+aira-csu-model-compatibility = { path = "../../csu/model-compatibility" }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
 
 [dev-dependencies]

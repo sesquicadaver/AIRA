@@ -586,4 +586,6 @@ pub(crate) enum ModelsCommands {
     },
     /// List the latest local model inventory snapshot (no network).
     List,
+    /// Classify installed models (runnable/incompatible/unknown); publish evidence (no download).
+    Compatible,
 }

@@ -1,8 +1,9 @@
-//! Local model inventory CLI (QUEUE #58 / Analyze-93).
+//! Local model inventory + compatibility CLI (QUEUE #58–#59).
 
 use std::path::Path;
 use std::process::ExitCode;
 
+use aira_csu_model_compatibility::resolve_and_publish;
 use aira_csu_model_inventory::{load_latest, scan_and_publish};
 use anyhow::Result;
 
@@ -35,6 +36,22 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
             } else {
                 println!("installed 0");
             }
+            Ok(ExitCode::SUCCESS)
+        }
+        ModelsCommands::Compatible => {
+            let out = resolve_and_publish(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!("assessed {}", out.rows.len());
+            for row in &out.rows {
+                println!(
+                    "{}\t{}\t{}",
+                    row.compatibility.as_str(),
+                    row.model_ref,
+                    row.reason
+                );
+                println!("evidence {}", row.evidence_artifact_id);
+            }
+            println!("summary {}", out.summary_path);
+            println!("status compatible");
             Ok(ExitCode::SUCCESS)
         }
     }

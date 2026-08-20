@@ -207,4 +207,4 @@ CSU SDK / new basic CSU roles to “complete” Book III
 C2 as merge-blocking CI
 ```
 
-Model layer (EVO-3): D0 payload schemas `#53`–`#57` **PARTIAL**; D1 local inventory scan/list (`aira models scan|list`, Inventory CSU scoped FS) `#58` **PARTIAL**. Not Core; envelope `CustomArtifact`. Resolver/policy runtime `#59`–`#60` still **ABSENT**. Plan: [phase-d-plan.md](phase-d-plan.md). Not a C1 pipeline step.
+Model layer (EVO-3): D0 schemas `#53`–`#57` **PARTIAL**; D1 inventory scan/list `#58` **PARTIAL**; D2 compatibility resolver (`aira models compatible`) `#59` **PARTIAL**. Not Core; `CustomArtifact` evidence. Policy DENY runtime `#60` still **ABSENT**. Plan: [phase-d-plan.md](phase-d-plan.md). Not a C1 pipeline step.

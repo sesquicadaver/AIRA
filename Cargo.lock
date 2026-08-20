@@ -80,6 +80,7 @@ version = "0.1.0"
 dependencies = [
  "aira-conformance",
  "aira-csu",
+ "aira-csu-model-compatibility",
  "aira-csu-model-inventory",
  "aira-flow",
  "aira-object",
@@ -199,6 +200,22 @@ dependencies = [
  "aira-object",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "aira-csu-model-compatibility"
+version = "0.1.0"
+dependencies = [
+ "aira-artifact",
+ "aira-csu",
+ "aira-event",
+ "aira-object",
+ "aira-schema",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "walkdir",
 ]
 
 [[package]]

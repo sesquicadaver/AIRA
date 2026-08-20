@@ -21,6 +21,7 @@ members = [
     "csu/evidence-basic",
     "csu/artifact-basic",
     "csu/model-inventory",
+    "csu/model-compatibility",
 ]
 
 [workspace.package]
