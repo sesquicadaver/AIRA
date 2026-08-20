@@ -1,0 +1,17 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=AIRA
+GenericName=AIRA Desktop
+Comment=AIRA Desktop (Developer Preview) — start local P0 node on loopback
+Exec=aira desktop start
+TryExec=aira
+Terminal=false
+Categories=Utility;Development;
+Keywords=aira;node;local;
+StartupNotify=false
+Actions=Stop;
+
+[Desktop Action Stop]
+Name=Stop AIRA
+Exec=aira desktop stop

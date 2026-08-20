@@ -5,7 +5,10 @@ use std::process::ExitCode;
 
 use anyhow::Result;
 
-use aira_desktop_runtime::{start, status, stop, DesktopPaths, LifecycleStatus};
+use aira_desktop_runtime::{
+    install_user_launcher, start, status, stop, uninstall_user_launcher, DesktopPaths,
+    LifecycleStatus,
+};
 
 use crate::cli::DesktopCommands;
 
@@ -49,6 +52,20 @@ pub(crate) fn run(command: DesktopCommands) -> Result<ExitCode> {
             }
             println!("settings {}", paths.settings_file.display());
             println!("data_root {}", paths.data_root.display());
+            Ok(ExitCode::SUCCESS)
+        }
+        DesktopCommands::LauncherInstall => {
+            let dest = install_user_launcher()?;
+            println!("installed {}", dest.display());
+            println!("start: menu → AIRA  (or `aira desktop start`)");
+            println!("stop:  menu → AIRA → Stop AIRA  (or `aira desktop stop`)");
+            Ok(ExitCode::SUCCESS)
+        }
+        DesktopCommands::LauncherUninstall => {
+            match uninstall_user_launcher()? {
+                Some(p) => println!("removed {}", p.display()),
+                None => println!("not installed"),
+            }
             Ok(ExitCode::SUCCESS)
         }
     }

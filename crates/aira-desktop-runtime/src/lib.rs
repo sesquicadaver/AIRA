@@ -5,11 +5,16 @@
 
 mod bootstrap;
 mod health;
+mod launcher;
 mod paths;
 mod process;
 mod settings;
 
 pub use bootstrap::ensure_bootstrap;
+pub use launcher::{
+    install_launcher_to, install_user_launcher, uninstall_launcher_from, uninstall_user_launcher,
+    validate_desktop_entry, validate_desktop_file, AIRA_DESKTOP_ENTRY, AIRA_DESKTOP_FILENAME,
+};
 pub use paths::DesktopPaths;
 pub use process::{start, status, stop, LifecycleStatus, PidRecordView, StartOutcome};
 pub use settings::{
