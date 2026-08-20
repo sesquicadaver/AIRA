@@ -111,6 +111,10 @@
     {
       "schema": "aira:schema:model:upgrade-recommendation:0.1",
       "file": "fixtures/valid/model/upgrade-recommendation.json"
+    },
+    {
+      "schema": "aira:schema:desktop:settings:0.1",
+      "file": "fixtures/valid/desktop/settings.json"
     }
   ],
   "invalid": [
@@ -169,6 +173,10 @@
     {
       "schema": "aira:schema:model:upgrade-recommendation:0.1",
       "file": "fixtures/invalid/model/upgrade-recommendation-missing-evidence.json"
+    },
+    {
+      "schema": "aira:schema:desktop:settings:0.1",
+      "file": "fixtures/invalid/desktop/settings-missing-instance-id.json"
     }
   ]
 }

@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` OPEN (E0+E1 Linux P0).
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75` **DONE**; `#76`–`#79` OPEN (E0.2+E1 Linux P0).
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-109 CLOSED @ d270b62; QUEUE #74 DONE; Phase E відкрито `#75`–`#79` |
+| `main` | Analyze-110 / QUEUE #75 Desktop settings schema |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase E — **перший OPEN `#75`** (Desktop settings schema) |
+| Активна черга | Phase E — **перший OPEN `#76`** (`aira desktop` lifecycle) |
 
 ## Правила атомарності
 
