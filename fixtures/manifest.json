@@ -103,6 +103,10 @@
     {
       "schema": "aira:schema:model:share-offer:0.1",
       "file": "fixtures/valid/model/share-offer.json"
+    },
+    {
+      "schema": "aira:schema:model:rating-evidence:0.1",
+      "file": "fixtures/valid/model/rating-evidence.json"
     }
   ],
   "invalid": [
@@ -153,6 +157,10 @@
     {
       "schema": "aira:schema:model:share-offer:0.1",
       "file": "fixtures/invalid/model/share-offer-missing-visibility.json"
+    },
+    {
+      "schema": "aira:schema:model:rating-evidence:0.1",
+      "file": "fixtures/invalid/model/rating-evidence-missing-context.json"
     }
   ]
 }

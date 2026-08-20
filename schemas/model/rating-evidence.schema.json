@@ -1,0 +1,100 @@
+{
+  "$id": "aira:schema:model:rating-evidence:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "payload_schema",
+    "model_ref",
+    "context",
+    "reason",
+    "confidence",
+    "scope",
+    "assessed_at"
+  ],
+  "properties": {
+    "payload_schema": {
+      "type": "string",
+      "const": "aira:schema:model:rating-evidence:0.1"
+    },
+    "model_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "rater_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context_id", "task_class"],
+      "description": "Binds the rating to a concrete workload/host context; forbids global-only scores.",
+      "properties": {
+        "context_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task_class": {
+          "type": "string",
+          "minLength": 1,
+          "description": "e.g. coding.llm.decode, chat.general, summarization"
+        },
+        "host_ref": {
+          "$ref": "aira:schema:common:ref:0.1"
+        },
+        "backend": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quantization": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional dimensional scores valid only within context; not a global ranking.",
+      "properties": {
+        "fit": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "latency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "quality": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "scope": {
+      "$ref": "aira:schema:common:scope-descriptor:0.1"
+    },
+    "assessed_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    }
+  }
+}
