@@ -95,6 +95,10 @@
     {
       "schema": "aira:schema:model:compatibility-evidence:0.1",
       "file": "fixtures/valid/model/compatibility-evidence.json"
+    },
+    {
+      "schema": "aira:schema:model:acquisition-policy:0.1",
+      "file": "fixtures/valid/model/acquisition-policy.json"
     }
   ],
   "invalid": [
@@ -137,6 +141,10 @@
     {
       "schema": "aira:schema:model:compatibility-evidence:0.1",
       "file": "fixtures/invalid/model/compatibility-evidence-missing-reason.json"
+    },
+    {
+      "schema": "aira:schema:model:acquisition-policy:0.1",
+      "file": "fixtures/invalid/model/acquisition-policy-missing-auto-download.json"
     }
   ]
 }
