@@ -1,0 +1,76 @@
+{
+  "$id": "aira:schema:model:upgrade-recommendation:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "payload_schema",
+    "recommendation_id",
+    "recommendation_type",
+    "reason",
+    "evidence_refs",
+    "confidence",
+    "scope",
+    "created_at"
+  ],
+  "properties": {
+    "payload_schema": {
+      "type": "string",
+      "const": "aira:schema:model:upgrade-recommendation:0.1"
+    },
+    "recommendation_id": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "host_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "recommendation_type": {
+      "type": "string",
+      "enum": ["hardware", "model", "storage", "backend", "none"],
+      "description": "Advisory class; none means no upgrade suggested."
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "expected_gain": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runnable_model_count_delta": { "type": "integer" },
+        "latency_delta_estimate": { "type": "string" },
+        "local_execution_ratio_delta": { "type": "string" },
+        "cache_pressure_delta": { "type": "string" }
+      }
+    },
+    "alternatives": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "smaller_quantization",
+          "remote_execution",
+          "download_model",
+          "hardware_upgrade"
+        ]
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "scope": {
+      "$ref": "aira:schema:common:scope-descriptor:0.1"
+    },
+    "created_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    }
+  }
+}

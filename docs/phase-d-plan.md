@@ -10,12 +10,12 @@
 
 ```text
 загальний план (цей документ)
-  → атоми без перекриття (§4 / Addendum D4 / Addendum D5 / Addendum D6)
+  → атоми без перекриття (§4 / Addendum D4 / Addendum D5 / Addendum D6 / Addendum D7)
     → лінійний хвіст QUEUE
       → виконання: один OPEN рядок = один Analyze-цикл
 ```
 
-Заборонено додавати поодинокі пункти в `QUEUE.md` поза цим планом / addendum. D7 лишається відкладеним до DONE D6.
+Заборонено додавати поодинокі пункти в `QUEUE.md` поза цим планом / addendum.
 
 ---
 
@@ -203,10 +203,10 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 |----|--------|-----|----------------|--------|
 | D4 | Model download + hash/signature verify + activation окремо | RFC-D + RFC-E | D3 DONE | **DONE** — Addendum D4 / QUEUE `#61`–`#64` @ ffcf66f |
 | D5 | Custom model publish / share, opt-in | RFC-D + RFC-E | D3 DONE; не вимагає D4 | **DONE** — Addendum D5 / QUEUE `#65`–`#68` @ 7719e92 |
-| D6 | Contextual model rating evidence (не global score) | RFC-R | після D3; не C1 | **відкрито** — Addendum D6 / QUEUE `#69`–`#71` |
-| D7 | Upgrade recommendation artifact (advisory) | RFC-R | після D3; не marketplace | **не в QUEUE** (після D6) |
+| D6 | Contextual model rating evidence (не global score) | RFC-R | після D3; не C1 | **DONE** — Addendum D6 / QUEUE `#69`–`#71` @ 7960daa |
+| D7 | Upgrade recommendation artifact (advisory) | RFC-R | після D3; не marketplace | **відкрито** — Addendum D7 / QUEUE `#72`–`#74` |
 
-Новий загальний план або ще один addendum — перед копіюванням D7 у QUEUE.
+Новий загальний план — лише якщо з’являться фази після D7.
 
 ---
 
@@ -310,6 +310,36 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 
 ---
 
+## 6d. Addendum D7 (2026-08-20) — лише upgrade recommendation (advisory)
+
+**Рішення розробника:** відкрити **D7** після DONE D6 (порядок D6→D7→D4→D5; D4/D5 уже DONE — не переробляти).
+
+**Інваріанти D7**
+
+1. Recommendation = **advisory Evidence Artifact**, не marketplace / ads / settlement.
+2. Evidence-backed (`evidence_refs`); типи: hardware | model | storage | backend | none.
+3. Envelope = `CustomArtifact` + payload `$id`; не Core; не C1.
+4. Recommendation CSU — `network=none`; без auto-download / purchase prompts.
+5. CSU↛CSU firewall: Recommendation не залежить від Rating/Inventory/Acquisition Cargo-dep; CLI оркеструє.
+
+**Атоми → QUEUE `#72`–`#74`** (Analyze-107+)
+
+| ID | Підфаза | Атом | Done when | Не в цьому рядку |
+|----|---------|------|-----------|------------------|
+| `#72` | D7.1 | Payload schema `UpgradeRecommendation` | `aira:schema:model:upgrade-recommendation:0.1` + fixtures | CSU; CLI; marketplace |
+| `#73` | D7.2 | Local recommendation publish | signed CustomArtifact + Event; evidence-backed | CLI; settlement; ads |
+| `#74` | D7.3 | CLI `aira models recommend` | advisory output; local-only | marketplace; auto-download |
+
+```text
+#72 UpgradeRecommendation schema
+  → #73 local recommendation publish
+    → #74 CLI models recommend
+```
+
+**RFC:** RFC-S → RFC-R + RFC-E у `#73`–`#74`.
+
+---
+
 ## 7. RFC-карта
 
 | Клас | Навіщо | Коли |
@@ -323,6 +353,7 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 | RFC-S | ModelRatingEvidence payload schema | `#69` / RFC-0018 |
 | RFC-R | local rating evidence publish CSU | `#70` / RFC-0019 |
 | RFC-E | `aira models rate` | `#71` / RFC-0020 |
+| RFC-S | UpgradeRecommendation payload schema | `#72` / RFC-0021 |
 | RFC-S | ModelShareOffer payload schema | `#65` / RFC-0014 |
 | RFC-E | `aira models activate` + inventory scan of cache | `#64` / RFC-0013 |
 | RFC-D | Activate verified → cache (no execution) | `#64` |

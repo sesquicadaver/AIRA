@@ -1,0 +1,13 @@
+{
+  "payload_schema": "aira:schema:model:upgrade-recommendation:0.1",
+  "recommendation_id": "aira:recommend:invalid-missing-evidence",
+  "host_ref": "aira:identity:local-test",
+  "recommendation_type": "hardware",
+  "reason": "invalid fixture: missing evidence_refs",
+  "confidence": 0.5,
+  "scope": {
+    "scope_type": "local",
+    "description": "must fail without evidence"
+  },
+  "created_at": "2026-08-20T13:00:00Z"
+}
