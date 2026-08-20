@@ -1,0 +1,10 @@
+{
+  "payload_schema": "aira:schema:model:compatibility-evidence:0.1",
+  "model_ref": "aira:artifact:sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "compatibility": "incompatible",
+  "confidence": 0.9,
+  "scope": {
+    "scope_type": "local",
+    "description": "host-local compatibility assessment"
+  }
+}

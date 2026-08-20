@@ -403,4 +403,27 @@ mod tests {
             )
             .is_err());
     }
+
+    #[test]
+    fn model_compatibility_evidence_payload_schema_loads() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:model:compatibility-evidence:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        reg.validate_file(
+            "aira:schema:model:compatibility-evidence:0.1",
+            root.join("fixtures/valid/model/compatibility-evidence.json"),
+        )
+        .unwrap();
+        assert!(reg
+            .validate_file(
+                "aira:schema:model:compatibility-evidence:0.1",
+                root.join(
+                    "fixtures/invalid/model/compatibility-evidence-missing-reason.json"
+                ),
+            )
+            .is_err());
+    }
 }
