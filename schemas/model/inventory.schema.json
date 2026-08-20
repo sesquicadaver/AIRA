@@ -1,0 +1,85 @@
+{
+  "$id": "aira:schema:model:inventory:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "payload_schema",
+    "host_ref",
+    "installed_models",
+    "runnable_models",
+    "downloadable_compatible_models",
+    "incompatible_models",
+    "cache_budget",
+    "updated_at",
+    "signature"
+  ],
+  "properties": {
+    "payload_schema": {
+      "type": "string",
+      "const": "aira:schema:model:inventory:0.1"
+    },
+    "host_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "installed_models": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "runnable_models": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "downloadable_compatible_models": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "incompatible_models": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["model_ref", "reason"],
+        "properties": {
+          "model_ref": {
+            "$ref": "aira:schema:common:ref:0.1"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "cache_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_gb", "used_gb", "reserved_gb"],
+      "properties": {
+        "total_gb": {
+          "type": "number",
+          "minimum": 0
+        },
+        "used_gb": {
+          "type": "number",
+          "minimum": 0
+        },
+        "reserved_gb": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "updated_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}

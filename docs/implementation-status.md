@@ -207,4 +207,4 @@ CSU SDK / new basic CSU roles to “complete” Book III
 C2 as merge-blocking CI
 ```
 
-Model layer (EVO-3): payload schemas `aira:schema:model:artifact:0.1` (#53) and `aira:schema:model:profile:0.1` (#54) are **PARTIAL**. Not Core entities; envelope remains `CustomArtifact`. Inventory/policy/CLI still **ABSENT**. Plan: [phase-d-plan.md](phase-d-plan.md). Not a C1 pipeline step.
+Model layer (EVO-3): payload schemas `artifact:0.1` (#53), `profile:0.1` (#54), `inventory:0.1` (#55) are **PARTIAL**. Not Core entities; envelope remains `CustomArtifact`. CompatibilityEvidence/policy/CLI still **ABSENT**. Plan: [phase-d-plan.md](phase-d-plan.md). Not a C1 pipeline step.
