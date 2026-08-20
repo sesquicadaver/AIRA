@@ -9,6 +9,10 @@ use aira_desktop_runtime::{
     NetworkProfile,
 };
 
+fn workspace_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
 fn node_bin() -> PathBuf {
     if let Ok(p) = std::env::var("AIRA_NODE_BIN") {
         return PathBuf::from(p);
@@ -37,7 +41,41 @@ fn aira_bin() -> PathBuf {
             return cand;
         }
     }
+    for profile in ["debug", "release"] {
+        let cand = workspace_root().join("target").join(profile).join("aira");
+        if cand.is_file() {
+            return cand;
+        }
+    }
     PathBuf::from("aira")
+}
+
+/// Ensure `aira` + `aira-node` exist (CI may run this crate's tests before `aira-cli` bins).
+fn ensure_bins() -> (PathBuf, PathBuf) {
+    let mut node = node_bin();
+    let mut aira = aira_bin();
+    if node.is_file() && aira.is_file() {
+        return (node, aira);
+    }
+    let status = std::process::Command::new(env!("CARGO"))
+        .args(["build", "-p", "aira-cli", "-p", "aira-node", "--quiet"])
+        .current_dir(workspace_root())
+        .status()
+        .expect("cargo build aira-cli/aira-node");
+    assert!(status.success(), "cargo build -p aira-cli -p aira-node failed");
+    node = node_bin();
+    aira = aira_bin();
+    assert!(
+        node.is_file(),
+        "missing aira-node after build ({})",
+        node.display()
+    );
+    assert!(
+        aira.is_file(),
+        "missing aira after build ({})",
+        aira.display()
+    );
+    (node, aira)
 }
 
 fn free_listen() -> String {
@@ -49,14 +87,7 @@ fn free_listen() -> String {
 
 #[test]
 fn p1_starts_http_and_peer_then_stop() {
-    let node = node_bin();
-    let aira = aira_bin();
-    assert!(node.is_file(), "build aira-node first");
-    assert!(
-        aira.is_file(),
-        "build aira-cli first (missing {})",
-        aira.display()
-    );
+    let (node, aira) = ensure_bins();
     std::env::set_var("AIRA_BIN", &aira);
 
     let tmp = tempfile::tempdir().unwrap();
@@ -98,8 +129,7 @@ fn p1_starts_http_and_peer_then_stop() {
 
 #[test]
 fn p0_does_not_start_peer() {
-    let node = node_bin();
-    assert!(node.is_file(), "build aira-node first");
+    let (node, _) = ensure_bins();
     let tmp = tempfile::tempdir().unwrap();
     let paths = DesktopPaths::for_data_root(tmp.path());
     paths.ensure_dirs().unwrap();
