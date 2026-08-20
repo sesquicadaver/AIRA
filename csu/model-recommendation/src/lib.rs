@@ -138,7 +138,7 @@ pub fn publish_recommendation(
     let slot = sanitize(rtype);
     let recommendation_id = format!(
         "aira:recommend:{slot}:{}",
-        &created_at[..19.min(created_at.len())].replace(':', "")
+        created_at[..19.min(created_at.len())].replace(':', "")
     );
 
     let mut body = Map::new();
