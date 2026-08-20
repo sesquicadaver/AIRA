@@ -609,15 +609,22 @@ pub(crate) enum ModelsCommands {
     },
     /// Activate verified model into `models/cache/` and refresh inventory (no execution).
     Activate,
+    /// Evaluate publish/share policy (ALLOW/DENY). ALLOW does not write ShareOffer (`#67`).
+    Publish {
+        #[arg(long)]
+        model_ref: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
 pub(crate) enum ModelsPolicyCommands {
     /// Print effective acquisition policy.
     Show,
-    /// Write acquisition policy (`--auto-download` sets true; default false).
+    /// Write acquisition policy (`--auto-download` / `--share-custom-models`; default false).
     Set {
         #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
         auto_download: bool,
+        #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
+        share_custom_models: bool,
     },
 }
