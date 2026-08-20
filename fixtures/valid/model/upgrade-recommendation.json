@@ -1,0 +1,27 @@
+{
+  "payload_schema": "aira:schema:model:upgrade-recommendation:0.1",
+  "recommendation_id": "aira:recommend:local-coding-vram-2026-08-20",
+  "host_ref": "aira:identity:local-test",
+  "recommendation_type": "model",
+  "reason": "coding workload exceeds local 7B INT4 fit; try smaller specialized coding model before hardware upgrade",
+  "evidence_refs": [
+    "aira:artifact:rating-evidence:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  ],
+  "expected_gain": {
+    "runnable_model_count_delta": 1,
+    "latency_delta_estimate": "neutral",
+    "local_execution_ratio_delta": "+0.1",
+    "cache_pressure_delta": "low"
+  },
+  "alternatives": [
+    "smaller_quantization",
+    "download_model",
+    "hardware_upgrade"
+  ],
+  "confidence": 0.78,
+  "scope": {
+    "scope_type": "local",
+    "description": "host-local advisory recommendation; not marketplace"
+  },
+  "created_at": "2026-08-20T13:00:00Z"
+}

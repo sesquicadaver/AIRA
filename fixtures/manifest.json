@@ -107,6 +107,10 @@
     {
       "schema": "aira:schema:model:rating-evidence:0.1",
       "file": "fixtures/valid/model/rating-evidence.json"
+    },
+    {
+      "schema": "aira:schema:model:upgrade-recommendation:0.1",
+      "file": "fixtures/valid/model/upgrade-recommendation.json"
     }
   ],
   "invalid": [
