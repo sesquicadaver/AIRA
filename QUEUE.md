@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — виконання стартоване; перший OPEN **#58**.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — виконання стартоване; перший OPEN **#59**.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-92 CLOSED @ 466a874; QUEUE #57 DONE; наступний OPEN **#58** |
+| `main` | Analyze-93 CLOSED @ 08a2b56; QUEUE #58 DONE; наступний OPEN **#59** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase D **#58 OPEN** (Analyze-93 — local inventory read-only) |
+| Активна черга | Phase D **#59 OPEN** (Analyze-94 — compatibility resolver) |
 
 ## Правила атомарності
 
@@ -94,13 +94,13 @@
 | 55 | **DONE** | ~~Analyze-90 — LocalModelInventory payload schema~~ | `aira:schema:model:inventory:0.1` + fixtures | schema + fixtures | CLI scan; мережа |
 | 56 | **DONE** | ~~Analyze-91 — ModelCompatibilityEvidence schema~~ | payload evidence: reason / confidence / scope | schema + fixtures | auto-download; rating score |
 | 57 | **DONE** | ~~Analyze-92 — ModelAcquisitionPolicy schema~~ | payload policy; default `auto_download=false` | schema + fixtures | downloader; allowlist runtime |
-| 58 | OPEN | Analyze-93 — local inventory read-only | `aira models scan\|list`; Inventory CSU, scoped FS | scan без мережі/download; immutable inventory artifact | compatible resolver; download |
+| 58 | **DONE** | ~~Analyze-93 — local inventory read-only~~ | `aira models scan\|list`; Inventory CSU, scoped FS | scan без мережі/download; immutable inventory artifact | compatible resolver; download |
 | 59 | OPEN | Analyze-94 — compatibility resolver | hardware/backend/profile → runnable / incompatible / unknown | Evidence Artifact + reason; без download | acquisition CSU; CLI download |
 | 60 | OPEN | Analyze-95 — acquisition policy DENY | runtime default-deny download | без policy = DENY + Event/Evidence; implicit download немає | реальний download (D4); sharing |
 
 ### Наступний цикл
 
-**#58 OPEN** — Analyze-93: local inventory read-only (`aira models scan|list`).
+**#59 OPEN** — Analyze-94: compatibility resolver.
 
 ---
 
@@ -130,6 +130,6 @@
 | EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
-| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#57` DONE; `#58`–`#60` OPEN |
+| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#58` DONE; `#59`–`#60` OPEN |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
