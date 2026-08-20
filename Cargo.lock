@@ -83,6 +83,7 @@ dependencies = [
  "aira-csu-model-acquisition",
  "aira-csu-model-compatibility",
  "aira-csu-model-inventory",
+ "aira-csu-model-rating",
  "aira-flow",
  "aira-object",
  "aira-peer",
