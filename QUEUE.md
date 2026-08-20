@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-113 / QUEUE #78 Desktop GUI |
+| `main` | Analyze-113 CLOSED @ 6bcc6d3 / PR #41; QUEUE #78 DONE; перший OPEN `#79` |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase E — **перший OPEN `#79`** (Linux packaging) |

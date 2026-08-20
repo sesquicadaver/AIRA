@@ -1,7 +1,7 @@
 # Analyze-113 — Linux tray/GUI (QUEUE #78)
 
 ## Status
-CLOSED (PR pending).
+CLOSED @ 6bcc6d3 / PR #41 (QUEUE #78 DONE).
 
 ## Done when
 native Status/Settings/Quit via shared lib; XDG autostart hooks; settings persist.
