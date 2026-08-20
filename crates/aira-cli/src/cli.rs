@@ -609,10 +609,16 @@ pub(crate) enum ModelsCommands {
     },
     /// Activate verified model into `models/cache/` and refresh inventory (no execution).
     Activate,
-    /// Evaluate publish/share policy (ALLOW/DENY). ALLOW does not write ShareOffer (`#67`).
+    /// Evaluate share policy; on ALLOW publish local signed ModelArtifact + ShareOffer from cache.
     Publish {
         #[arg(long)]
         model_ref: String,
+        /// ShareOffer visibility (`local` | `opt_in`).
+        #[arg(long, default_value = "local")]
+        visibility: String,
+        /// Whether peers may request download of this offer (default false).
+        #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
+        allow_download: bool,
     },
 }
 

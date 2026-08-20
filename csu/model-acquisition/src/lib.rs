@@ -1,7 +1,6 @@
-//! Model acquisition: policy gate, quarantine, verify, activate, share gate (QUEUE #60–#66).
-//!
-//! Default-deny download/share; ALLOW paths authorize later steps without performing them.
-//! Inventory refresh is CLI-orchestrated (no CSU↛CSU). Not wired into C1. `network=none`.
+//! Model acquisition: policy gate, quarantine, verify, activate, share gate + local publish
+//! (QUEUE #60–#67). Inventory refresh is CLI-orchestrated (no CSU↛CSU). Not wired into C1.
+//! `network=none`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -38,6 +37,8 @@ pub const VERIFIED_POINTER_REL: &str = "models/verified.latest.json";
 pub const CACHE_REL: &str = "models/cache";
 /// Latest activation pointer.
 pub const ACTIVATED_POINTER_REL: &str = "models/activated.latest.json";
+/// Latest local ShareOffer pointer.
+pub const SHARE_OFFER_POINTER_REL: &str = "models/share-offer.latest.json";
 
 /// Acquisition gate / quarantine errors.
 #[derive(Debug, Error)]
@@ -62,8 +63,12 @@ pub enum AcquisitionError {
     NoQuarantine,
     #[error("no verified snapshot — run models verify first")]
     NoVerified,
+    #[error("no activated cache for model — run models activate first")]
+    NoActivated,
     #[error("model artifact missing or invalid: {0}")]
     BadArtifact(String),
+    #[error("invalid share visibility (use local|opt_in): {0}")]
+    BadVisibility(String),
     #[error("{0}")]
     Other(String),
 }
@@ -108,6 +113,36 @@ pub struct ShareOutcome {
     pub decision_artifact_id: String,
     pub policy_present: bool,
     pub share_custom_models: Option<bool>,
+}
+
+/// Result of gate + optional local ShareOffer materialization.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PublishOutcome {
+    /// Policy DENY — no descriptors written.
+    Denied(ShareOutcome),
+    /// Policy ALLOW and local ModelArtifact + ShareOffer published to CAS.
+    Published {
+        gate: ShareOutcome,
+        model_artifact_id: String,
+        share_offer_artifact_id: String,
+        offer_id: String,
+        content_hash: String,
+        visibility: String,
+        cache_path: String,
+    },
+}
+
+/// Pointer to the latest local ShareOffer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShareOfferPointer {
+    pub updated_at: String,
+    pub model_ref: String,
+    pub offer_id: String,
+    pub model_artifact_id: String,
+    pub share_offer_artifact_id: String,
+    pub content_hash: String,
+    pub visibility: String,
+    pub cache_path: String,
 }
 
 /// Result of gate + optional local quarantine copy.
@@ -431,7 +466,8 @@ pub fn request_publish(
         ),
         Some(p) => (
             GateDecision::Allow,
-            "share_custom_models=true; publish ALLOW (no ShareOffer in this step)".to_string(),
+            "share_custom_models=true; publish ALLOW (gate; ShareOffer via publish_local)"
+                .to_string(),
             "aira:reason:share-custom-models-true".to_string(),
             Some(p.share_custom_models),
         ),
@@ -512,6 +548,265 @@ pub fn request_publish(
         policy_present: policy.is_some(),
         share_custom_models,
     })
+}
+
+/// Gate + local signed ModelArtifact + ShareOffer from activated cache (no remote push).
+///
+/// DENY from [`request_publish`] → [`PublishOutcome::Denied`] (no descriptors).
+/// ALLOW requires matching [`ACTIVATED_POINTER_REL`] and cache file under `models/`.
+pub fn publish_local(
+    aira_root: impl AsRef<Path>,
+    model_ref: &str,
+    visibility: &str,
+    allow_download: bool,
+) -> Result<PublishOutcome, AcquisitionError> {
+    let visibility = visibility.trim();
+    if visibility != "local" && visibility != "opt_in" {
+        return Err(AcquisitionError::BadVisibility(visibility.to_string()));
+    }
+
+    let root = aira_root.as_ref();
+    let gate = request_publish(root, model_ref)?;
+    if gate.decision == GateDecision::Deny {
+        return Ok(PublishOutcome::Denied(gate));
+    }
+
+    let apath = root.join(ACTIVATED_POINTER_REL);
+    if !apath.exists() {
+        return Err(AcquisitionError::NoActivated);
+    }
+    let activated: ActivatedPointer = serde_json::from_str(
+        &fs::read_to_string(&apath).map_err(|e| AcquisitionError::Io(e.to_string()))?,
+    )
+    .map_err(|e| AcquisitionError::Other(e.to_string()))?;
+    if activated.model_ref != model_ref {
+        return Err(AcquisitionError::NoActivated);
+    }
+
+    let cache_file = Path::new(&activated.cache_path);
+    if !cache_file.is_file() {
+        return Err(AcquisitionError::SourceMissing(
+            activated.cache_path.clone(),
+        ));
+    }
+    ensure_under_models(root, cache_file)?;
+
+    let file_bytes = fs::read(cache_file).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    let content_hash = ContentHash::sha256_bytes(&file_bytes);
+    let content_hash_str = content_hash.as_str().to_string();
+    if content_hash_str != activated.content_hash {
+        return Err(AcquisitionError::Other(format!(
+            "activated content_hash mismatch: pointer {} vs file {content_hash_str}",
+            activated.content_hash
+        )));
+    }
+
+    let format = infer_weight_format(cache_file);
+    let publisher = active_identity();
+    let model_payload = build_signed_model_artifact(
+        model_ref,
+        format,
+        &content_hash_str,
+        publisher.as_str(),
+        &activated.evidence_artifact_id,
+    )?;
+    validate_model_payload(root, &model_payload)?;
+
+    let model_bytes = json_bytes(&model_payload);
+    let model_hash = ContentHash::sha256_bytes(&model_bytes);
+    let model_hash_hex = model_hash.as_str().trim_start_matches("sha256:");
+    let model_artifact_id = format!("aira:artifact:model-desc:{model_hash_hex}");
+    publish_custom_payload(root, &model_artifact_id, &model_bytes)?;
+
+    let offer_id = format!("aira:share:{}", sanitize_slot(model_ref));
+    let created_at = utc_now_rfc3339().map_err(|e| AcquisitionError::Crypto(e.to_string()))?;
+    let offer_payload = build_signed_share_offer(
+        &offer_id,
+        publisher.as_str(),
+        &model_artifact_id,
+        &content_hash_str,
+        visibility,
+        allow_download,
+        &created_at,
+    )?;
+    validate_share_offer_payload(root, &offer_payload)?;
+
+    let offer_bytes = json_bytes(&offer_payload);
+    let offer_hash = ContentHash::sha256_bytes(&offer_bytes);
+    let offer_hash_hex = offer_hash.as_str().trim_start_matches("sha256:");
+    let share_offer_artifact_id = format!("aira:artifact:share-offer:{offer_hash_hex}");
+    publish_custom_payload(root, &share_offer_artifact_id, &offer_bytes)?;
+
+    let ev_id = format!(
+        "aira:event:share-published-{}",
+        &offer_hash_hex[..16.min(offer_hash_hex.len())]
+    );
+    let event = make_event(
+        &ev_id,
+        EventType::CustomEvent,
+        vec![],
+        vec![
+            AiraRef::parse(&model_artifact_id).expect("mid"),
+            AiraRef::parse(&share_offer_artifact_id).expect("oid"),
+        ],
+        vec![],
+        Some(format!(
+            "op:share-published:publish:{model_ref}:{visibility}"
+        )),
+    );
+    append_custom_event(root, event)?;
+
+    let updated_at = utc_now_rfc3339().map_err(|e| AcquisitionError::Crypto(e.to_string()))?;
+    let pointer = ShareOfferPointer {
+        updated_at,
+        model_ref: model_ref.to_string(),
+        offer_id: offer_id.clone(),
+        model_artifact_id: model_artifact_id.clone(),
+        share_offer_artifact_id: share_offer_artifact_id.clone(),
+        content_hash: content_hash_str.clone(),
+        visibility: visibility.to_string(),
+        cache_path: activated.cache_path.clone(),
+    };
+    let ppath = root.join(SHARE_OFFER_POINTER_REL);
+    if let Some(parent) = ppath.parent() {
+        fs::create_dir_all(parent).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    }
+    fs::write(
+        &ppath,
+        serde_json::to_string_pretty(&pointer)
+            .map_err(|e| AcquisitionError::Other(e.to_string()))?,
+    )
+    .map_err(|e| AcquisitionError::Io(e.to_string()))?;
+
+    Ok(PublishOutcome::Published {
+        gate,
+        model_artifact_id,
+        share_offer_artifact_id,
+        offer_id,
+        content_hash: content_hash_str,
+        visibility: visibility.to_string(),
+        cache_path: activated.cache_path,
+    })
+}
+
+fn infer_weight_format(path: &Path) -> &'static str {
+    match path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("gguf") => "gguf",
+        Some("safetensors") => "safetensors",
+        _ => "custom",
+    }
+}
+
+fn build_signed_model_artifact(
+    model_id: &str,
+    format: &str,
+    content_hash: &str,
+    publisher_ref: &str,
+    provenance_extra: &str,
+) -> Result<Value, AcquisitionError> {
+    let mut body = Map::new();
+    body.insert(
+        "payload_schema".into(),
+        json!("aira:schema:model:artifact:0.1"),
+    );
+    body.insert("model_id".into(), json!(model_id));
+    body.insert("format".into(), json!(format));
+    body.insert("quantization".into(), json!("unspecified"));
+    body.insert("parameter_class".into(), json!("unspecified"));
+    body.insert("content_hash".into(), json!(content_hash));
+    body.insert(
+        "provenance_refs".into(),
+        json!([publisher_ref, provenance_extra]),
+    );
+    let for_sign = Value::Object(body.clone());
+    let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
+    let sig: Signature = active_signature(&raw);
+    body.insert(
+        "signature".into(),
+        serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,
+    );
+    Ok(Value::Object(body))
+}
+
+fn build_signed_share_offer(
+    offer_id: &str,
+    publisher_ref: &str,
+    model_artifact_ref: &str,
+    content_hash: &str,
+    visibility: &str,
+    allow_download: bool,
+    created_at: &str,
+) -> Result<Value, AcquisitionError> {
+    let mut body = Map::new();
+    body.insert(
+        "payload_schema".into(),
+        json!("aira:schema:model:share-offer:0.1"),
+    );
+    body.insert("offer_id".into(), json!(offer_id));
+    body.insert("publisher_ref".into(), json!(publisher_ref));
+    body.insert("model_artifact_ref".into(), json!(model_artifact_ref));
+    body.insert("content_hash".into(), json!(content_hash));
+    body.insert("visibility".into(), json!(visibility));
+    body.insert("allow_download".into(), json!(allow_download));
+    body.insert("created_at".into(), json!(created_at));
+    let for_sign = Value::Object(body.clone());
+    let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
+    let sig: Signature = active_signature(&raw);
+    body.insert(
+        "signature".into(),
+        serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,
+    );
+    Ok(Value::Object(body))
+}
+
+fn validate_model_payload(root: &Path, payload: &Value) -> Result<(), AcquisitionError> {
+    if let Ok(schema_root) =
+        aira_schema::find_repo_root(std::env::current_dir().unwrap_or_else(|_| root.to_path_buf()))
+    {
+        if let Ok(reg) = aira_schema::SchemaRegistry::load(schema_root.join("schemas")) {
+            reg.validate("aira:schema:model:artifact:0.1", payload)
+                .map_err(|e| AcquisitionError::Schema(e.to_string()))?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_share_offer_payload(root: &Path, payload: &Value) -> Result<(), AcquisitionError> {
+    if let Ok(schema_root) =
+        aira_schema::find_repo_root(std::env::current_dir().unwrap_or_else(|_| root.to_path_buf()))
+    {
+        if let Ok(reg) = aira_schema::SchemaRegistry::load(schema_root.join("schemas")) {
+            reg.validate("aira:schema:model:share-offer:0.1", payload)
+                .map_err(|e| AcquisitionError::Schema(e.to_string()))?;
+        }
+    }
+    Ok(())
+}
+
+fn publish_custom_payload(
+    root: &Path,
+    artifact_id: &str,
+    bytes: &[u8],
+) -> Result<(), AcquisitionError> {
+    let desc = make_artifact(
+        artifact_id,
+        ArtifactType::CustomArtifact,
+        bytes,
+        vec![AiraRef::parse(CSU_ID).expect("csu")],
+    );
+    let mut store = CasArtifactStore::open(root.join("artifacts"))
+        .map_err(|e| AcquisitionError::Artifact(e.to_string()))?;
+    match store.publish(desc, bytes) {
+        Ok(_) => {}
+        Err(aira_artifact::ArtifactError::Immutable(_)) => {}
+        Err(e) => return Err(AcquisitionError::Artifact(e.to_string())),
+    }
+    Ok(())
 }
 
 /// Run policy gate; on ALLOW copy local `source` into scoped quarantine.
@@ -1619,7 +1914,82 @@ mod tests {
             .and_then(|v| v.as_str())
             .unwrap();
         assert!(payload.contains("op:policy-allowed:publish:"));
-        // No ShareOffer JSON written under models/.
-        assert!(!dir.path().join("models/share-offer.latest.json").exists());
+        // Gate alone still does not write ShareOffer pointer.
+        assert!(!dir.path().join(SHARE_OFFER_POINTER_REL).exists());
+    }
+
+    #[test]
+    fn publish_local_deny_without_policy() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        let out = publish_local(dir.path(), "aira:model:x", "local", false).unwrap();
+        assert!(matches!(out, PublishOutcome::Denied(_)));
+        assert!(!dir.path().join(SHARE_OFFER_POINTER_REL).exists());
+    }
+
+    #[test]
+    fn publish_local_requires_activated_cache() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_acquisition_policy(dir.path(), false, true).unwrap();
+        let err = publish_local(dir.path(), "aira:model:share-me", "local", false).unwrap_err();
+        assert!(matches!(err, AcquisitionError::NoActivated));
+    }
+
+    #[test]
+    fn publish_local_rejects_bad_visibility() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        let err = publish_local(dir.path(), "aira:model:x", "global", false).unwrap_err();
+        assert!(matches!(err, AcquisitionError::BadVisibility(_)));
+    }
+
+    #[test]
+    fn publish_local_writes_signed_descriptors_from_cache() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_acquisition_policy(dir.path(), true, true).unwrap();
+        let src = dir.path().join("pub.gguf");
+        fs::write(&src, b"publish-local-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:pub", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"publish-local-bytes");
+        let art = signed_model_artifact("aira:model:pub", observed.as_str());
+        let art_path = dir.path().join("pub.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        verify_quarantine(dir.path(), &art_path).unwrap();
+        activate_verified(dir.path()).unwrap();
+
+        let out = publish_local(dir.path(), "aira:model:pub", "opt_in", false).unwrap();
+        match out {
+            PublishOutcome::Published {
+                model_artifact_id,
+                share_offer_artifact_id,
+                offer_id,
+                visibility,
+                content_hash,
+                ..
+            } => {
+                assert!(model_artifact_id.contains("model-desc"));
+                assert!(share_offer_artifact_id.contains("share-offer"));
+                assert!(offer_id.starts_with("aira:share:"));
+                assert_eq!(visibility, "opt_in");
+                assert_eq!(content_hash, observed.as_str());
+            }
+            PublishOutcome::Denied(_) => panic!("expected Published"),
+        }
+        assert!(dir.path().join(SHARE_OFFER_POINTER_REL).exists());
+        let log: Value = serde_json::from_str(
+            &fs::read_to_string(dir.path().join("events/event-log.json")).unwrap(),
+        )
+        .unwrap();
+        let joined: String = log
+            .get("events")
+            .and_then(|e| e.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|e| e.get("payload_ref").and_then(|v| v.as_str()))
+            .collect::<Vec<_>>()
+            .join("|");
+        assert!(joined.contains("op:share-published:publish:aira:model:pub:opt_in"));
     }
 }
