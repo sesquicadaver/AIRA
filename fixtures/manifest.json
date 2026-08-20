@@ -165,6 +165,10 @@
     {
       "schema": "aira:schema:model:rating-evidence:0.1",
       "file": "fixtures/invalid/model/rating-evidence-missing-context.json"
+    },
+    {
+      "schema": "aira:schema:model:upgrade-recommendation:0.1",
+      "file": "fixtures/invalid/model/upgrade-recommendation-missing-evidence.json"
     }
   ]
 }

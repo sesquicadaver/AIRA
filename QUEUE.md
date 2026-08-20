@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D6 (`#53`–`#71`) **DONE**. Addendum D7 `#72`–`#74` **OPEN**. D4/D5 уже CLOSED.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D6 (`#53`–`#71`) **DONE**. Addendum D7 `#72` **DONE**; OPEN `#73`–`#74`. D4/D5 уже CLOSED.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-106 CLOSED @ 7960daa; QUEUE #71 DONE; **Addendum D6 COMPLETE**; D7 **#72 OPEN** |
+| `main` | Analyze-107 CLOSED @ 09b3de2; QUEUE #72 DONE; Addendum D7 **#73 OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase D Addendum D7 **#72 OPEN** (Analyze-107 — UpgradeRecommendation schema) |
+| Активна черга | Phase D Addendum D7 **#73 OPEN** (Analyze-108 — local recommend publish) |
 
 ## Правила атомарності
 
@@ -108,13 +108,13 @@
 | 69 | **DONE** | ~~Analyze-104 — ModelRatingEvidence schema~~ | `aira:schema:model:rating-evidence:0.1` + fixtures; context-bound; не global score | rating CSU; CLI rate; recommendation (D7) |
 | 70 | **DONE** | ~~Analyze-105 — local rating evidence publish~~ | signed rating CustomArtifact + Event; context required | CLI; recommendation; network scoreboard |
 | 71 | **DONE** | ~~Analyze-106 — CLI `aira models rate`~~ | publish contextual rating evidence; local-only | D7 recommend; marketplace; global rank |
-| 72 | OPEN | Analyze-107 — UpgradeRecommendation schema | `aira:schema:model:upgrade-recommendation:0.1` + fixtures; advisory | recommend CSU; CLI; marketplace |
+| 72 | **DONE** | ~~Analyze-107 — UpgradeRecommendation schema~~ | `aira:schema:model:upgrade-recommendation:0.1` + fixtures; advisory | recommend CSU; CLI; marketplace |
 | 73 | OPEN | Analyze-108 — local upgrade recommendation publish | signed recommendation CustomArtifact + Event; evidence-backed | CLI; settlement; ads |
 | 74 | OPEN | Analyze-109 — CLI `aira models recommend` | advisory recommendation; local-only | marketplace; auto-download; settlement |
 
 ### Наступний цикл
 
-**#72 OPEN** — Analyze-107: UpgradeRecommendation schema (D7.1).
+**#73 OPEN** — Analyze-108: local upgrade recommendation publish (D7.2).
 
 > Порядок: D6 DONE → D7; D4/D5 уже DONE (не переробляти).
 
@@ -146,6 +146,6 @@
 | EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
-| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#71` DONE (D6 complete); Addendum D7 `#72`–`#74` OPEN |
+| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#72` DONE; Addendum D7 OPEN `#73`–`#74` |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

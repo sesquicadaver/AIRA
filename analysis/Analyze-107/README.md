@@ -1,7 +1,7 @@
 # Analyze-107 — UpgradeRecommendation schema (QUEUE #72)
 
 ## Status
-OPEN (feature branch).
+CLOSED (QUEUE #72 DONE @ 09b3de2 / PR #35).
 
 ## Done when
 schema + fixtures; advisory; evidence required.
