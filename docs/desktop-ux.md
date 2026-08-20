@@ -1,8 +1,10 @@
 # AIRA Desktop UX — канон рішень
 
-**Статус:** зафіксовано 2026-08-20 (рішення розробника).  
+**Статус:** зафіксовано 2026-08-20 (рішення розробника); уточнено 2026-08-20 (CLI, layout, GUI tech, port/HTTP).  
 **План виконання:** [`phase-e-plan.md`](phase-e-plan.md). Канон черги: [`QUEUE.md`](../QUEUE.md).  
-**Не змінює** Book 0–IV / C0–C1 / Core.
+**Provenance:** [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED**).  
+**Не змінює** Book 0–IV / C0–C1 / Core.  
+**Posture:** Linux E1 = **Developer Preview** над local reference plane.
 
 ## 1. Персони
 
@@ -15,9 +17,12 @@
 ## 2. Запуск і UI
 
 - Запуск node для end-user — **лише через GUI** (іконка / tray).
+- CLI канон: **`aira desktop start|stop|status`** (shared lifecycle з GUI).
 - Після старту відкривати UI — **налаштування** (`open_ui_on_start`, default **on** для Desktop).
-- Автостарт після логіну — **налаштування** (`autostart_on_login`, default **off**).
-- Local HTTP loopback (`aira-node --http`) у Desktop **завжди** увімкнений (API для GUI).
+- «Open UI» = **нативне** status/settings вікно (не голий JSON у браузері як єдиний UX).
+- Автостарт після логіну — **налаштування** (`autostart_on_login`, default **off**); OS hooks реалізує `#78`.
+- Local HTTP loopback (`aira-node --http`) у Desktop **завжди** увімкнений; mutating routes — лише з Desktop auth-контрактом ([phase-e §2.4](phase-e-plan.md)).
+- GUI tech: **Rust-only** (egui/native tray). Без Node.js/web build dependency.
 
 ## 3. Network profiles
 
@@ -34,37 +39,41 @@
 **Онбординг P1:** обмін файлом/QR (pubkey + опційно addr) — **не** в E1.  
 **Рішення 2026-08-20:** варіант **C** — E1 = лише **P0 + GUI**; P1 відкладено на **E1.1**.
 
-Заборонено в default Desktop: `--allow-public-bind`, публічний STUN default, авто-trust невідомих peers.
+Заборонено в default Desktop: `--allow-public-bind`, публічний STUN default, авто-trust невідомих peers, прихований auto-increment порту.
 
 ## 4. Редакції
 
 | | AIRA Desktop | AIRA Dev |
 |--|--------------|----------|
 | Вхід | іконка / tray | GUI + повний CLI |
-| Root | OS app-data path (див. phase-e) | `--root` / кілька профілів |
-| First run | wizard → init + identity | CLI без змін |
+| Root | OS application-data | `--root` / кілька профілів |
+| Settings / PID / logs | OS config + runtime + log dirs ([phase-e §2.1](phase-e-plan.md)) | `--root` або colocated |
+| First run | wizard → init + identity + auth material (§2.4) | CLI без змін |
 | Мережа | профілі з §3 | усі CLI-прапорці |
 
 ## 5. Послідовність ОС
 
 ```text
-E0 (код, усі ОС) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS → E3 Windows
+E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS → E3 Windows
 ```
 
-Один UI-шар (кандидати: Tauri або egui tray); не три окремі GUI.
+Поставка атомів: lifecycle → `.desktop` → tray/GUI → package (`#76`→`#79`).
 
 ## 6. Мінімальні Settings (E1)
 
 | Key | Default | Примітка |
 |-----|---------|----------|
 | `network_profile` | `P0` | інші значення — після E1.1 |
-| `open_ui_on_start` | `true` | |
-| `autostart_on_login` | `false` | |
-| `http_listen` | `127.0.0.1:8787` | |
+| `open_ui_on_start` | `true` | native UI |
+| `autostart_on_login` | `false` | hooks у `#78` |
+| `http_listen` | `127.0.0.1:8787` | fixed; conflict → fail або attach ([phase-e §2.3](phase-e-plan.md)) |
+| `instance_id` | generated once | для attach-семантики |
 | `peer_listen` | n/a у P0 | |
+| auth fields | per `#75`/`#76` | token-ref або IPC mode |
 
 ## 7. Посилання
 
+- Plan / acceptance: [`phase-e-plan.md`](phase-e-plan.md)
 - Local HTTP: [`local-node.md`](local-node.md)
 - Peer (для майбутніх P1+): [`peer-link.md`](peer-link.md)
 - systemd (сервери, не Desktop): [`runbook-systemd.md`](runbook-systemd.md)

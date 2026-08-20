@@ -1,6 +1,16 @@
- Запуск системи має бути максимально спрощений (клік по іконці) для всіх користувачів. Проаналізувати це і знайти варіанти вирішення для Linux, MacOS і Windows.
+# NEXT_PROBLEM — one-click Desktop start
 
+**Status:** RESOLVED / provenance  
+**Resolved by:** [`docs/desktop-ux.md`](docs/desktop-ux.md)  
+**Implementation plan:** [`docs/phase-e-plan.md`](docs/phase-e-plan.md)  
+**Backlog:** [`QUEUE.md`](QUEUE.md) `#75`–`#79` (перший OPEN = `#75`)  
+**Не канон:** цей файл не конкурує з `desktop-ux.md` / `phase-e-plan.md` / `QUEUE.md`. Далі — лише історичний problem statement.
 
+## Problem statement (вхід)
+
+Запуск системи має бути максимально спрощений (клік по іконці) для всіх користувачів. Проаналізувати це і знайти варіанти вирішення для Linux, MacOS і Windows.
+
+---
 
 ## Діагноз
 
@@ -24,16 +34,28 @@
 
 | Крок | Поведінка |
 |------|-----------|
-| First run | `~/.aira` (або `%LOCALAPPDATA%\AIRA`) → `init` + `identity create`, якщо ще немає |
-| Start | один процес-оркестратор: HTTP node + (опційно) peer listen |
-| Stop | той самий ярлик / Quit у tray |
+| First run | OS app-data root → `init` + `identity create`, якщо ще немає |
+| Start | один lifecycle-оркестратор: HTTP node (P0); peer — не в E1 |
+| Stop | tray Quit / `aira desktop stop` |
 | Default | лише loopback; без `--allow-public-bind` |
 
-Ключова зміна в коді: **`aira start` / `aira-desktop`**, який ховає multi-step CLI.
+Ключова зміна в коді: **`aira desktop start|stop|status`** (спільно з GUI через shared lifecycle library).
+
+### Superseded (не реалізовувати як названо тут)
+
+| Було в чернетці | Чинне рішення |
+|-----------------|---------------|
+| `aira start` / `aira-desktop` | `aira desktop start\|stop\|status` |
+| Порядок **A → C → B** (orchestrator → package → GUI) | `#76 → #77 → #78 → #79` (orchestrator → launcher → GUI → package) |
+| Optional peer у першому Desktop-релізі | E1 = **лише P0**; P1 = Addendum E1.1 |
+| Root `~/.aira` як єдина норма | Desktop = OS app-data / config / runtime / logs (див. phase-e); Dev = `--root` / `.aira` |
+| «той самий ярлик» = Start і Stop | launcher → start; stop = CLI або tray Quit |
+| auto next port при зайнятості | **fail-closed** або attach до сумісного instance (див. phase-e) |
+| Tauri як рівний default | **Rust-only GUI/tray** (egui/native); без Node.js/web build dependency |
 
 ---
 
-## Варіанти по ОС
+## Варіанти по ОС (історичний аналіз)
 
 ### Linux
 
@@ -44,60 +66,37 @@
 | **L3** | user systemd + іконка «Start/Stop» | клік + автостарт | надійно для daemon | гірше для «звичайного» юзера |
 | **L4** | Tray (Ayatana/StatusNotifier) | іконка в панелі | status/stop/логи | більше UI-роботи |
 
-**Рекомендація Linux:** **L1 + внутрішній `aira start`**, далі AppImage (L2). systemd — для серверів, не для desktop.
+**Рекомендація Linux (чинна):** L1 + `aira desktop` → tray (`#78`) → AppImage/tarball (`#79`). systemd — для серверів, не для desktop.
 
-### macOS
+### macOS / Windows
 
-| # | Варіант | UX | Плюси | Мінуси |
-|---|---------|-----|-------|--------|
-| **M1** | `.app` bundle (скрипт/`aira start` у `Contents/MacOS`) | клік у Launchpad | стандарт Apple | підпис/notarize для Gatekeeper |
-| **M2** | Homebrew cask + `.app` | install → клік | звичний канал | окремий релізний пайплайн |
-| **M3** | LaunchAgent + меню-бар | завжди в фоні | зручно для node | складніше first-run |
-| **M4** | DMG з drag-to-Applications | класичний install | очікувано | підпис обов’язковий для чужих Mac |
-
-**Рекомендація macOS:** **M1/M4** поверх того ж `aira start`; меню-бар (M3) — друга ітерація.
-
-### Windows
-
-| # | Варіант | UX | Плюси | Мінуси |
-|---|---------|-----|-------|--------|
-| **W1** | `.exe` + ярлик Start Menu / Desktop | подвійний клік | мінімум | без install — PATH/оновлення вручну |
-| **W2** | MSIX / Inno/WiX installer | Setup → іконка | нормальний продукт | CI підпису кодом |
-| **W3** | Windows Service | фон без UI | для серверів | не «клік для всіх» |
-| **W4** | Tray у system tray | Start/Stop/Open API | найкращий desktop UX | потрібен маленький native/Tauri шар |
-
-**Рекомендація Windows:** **W2 + W4** (installer + tray), короткостроково — **W1** з `aira start`.
+Історичні таблиці M1–M4 / W1–W4 лишаються як аналіз. Чинний порядок: **E2 macOS**, **E3 Windows** після DONE Linux E1 (`phase-e-plan.md`).
 
 ---
 
-## Порівняння стратегій продукту
+## Порівняння стратегій продукту (історичне)
 
-| Стратегія | Суть | Коли |
-|-----------|------|------|
-| **A. CLI-оркестратор** | `aira start` ховає init/identity/node/peer | найшвидший win, усі ОС |
-| **B. Desktop shell** | Tauri/egui tray: Start / Stop / Status / Open `http://127.0.0.1:8787` | справжній «клік» |
-| **C. Пакети ОС** | AppImage / `.app`+DMG / MSIX | дистрибуція без Rust toolchain |
-| **D. Лише docs/scripts** | `start.sh` / `.bat` | **не** вирішує «для всіх» |
+| Стратегія | Суть | Статус |
+|-----------|------|--------|
+| **A. CLI-оркестратор** | lifecycle ховає init/identity/node | **канон `#76`** (не `aira start`) |
+| **B. Desktop shell** | tray/GUI | **канон `#78`** (після launcher) |
+| **C. Пакети ОС** | AppImage / `.app` / MSIX | **канон `#79`** (після GUI) |
+| **D. Лише docs/scripts** | `start.sh` / `.bat` | відхилено |
 
-Оптимально: **A → C → B**. Без A іконка лишається обгорткою над складним CLI.
-
----
-
-## Крайові випадки (одразу)
-
-- Два root / два вузли на одній машині — не «один клік», а профіль (`AIRA_ROOT` / UI picker) лише для тестування розробником.
-- Порт зайнятий — fail з зрозумілим повідомленням + auto next port або фіксований default.
-- Peer vs local-only — default: **лише local HTTP**; peer — opt-in у налаштуваннях.
-- Немає GUI поверх API — клік зараз = «сервіс увімкнено»; «відкрити продукт» потребує мінімальної status-сторінки або зовнішнього клієнта.
+Оптимальний порядок **не** A→C→B, а **A → launcher → B → C** (`#76`→`#79`).
 
 ---
 
-## Уточнення (щоб не будувати зайве)
+## Уточнення розробника (прийняті)
 
-1. **Хто юзер:** розробник / оператор вузла / кінцевий «нетехнічний»? - Орієнтуватись на кінцевого користувача, але тримати також версію для розробника. Оператор вузла - зайвий.
-2. **Один клік =** лише підняти node, чи одразу UI? На вибір користувача, задається в налаштуваннях. Запуск node через gui.
-3. **Peer** у default desktop-профілі потрібен, чи лише local problem→result? Визначити детальніше всі варіанти.
-4. **Автостарт** після логіну — так/ні? Задається в налаштуваннях програми.
-5. Перший пріоритет ОС: Linux / macOS / Windows / усі одразу? Linux / macOS / Windows, по черзі, щоб не створювати плутанини.
+1. End-user + Developer; оператор вузла — зайвий.
+2. Open UI on start — setting; старт node через GUI.
+3. Peer: детальні профілі в `desktop-ux.md`; E1 = P0 only (**C**).
+4. Autostart — setting (default off); OS hooks у `#78`.
+5. ОС по черзі: Linux → macOS → Windows.
 
-Після визначення - оформити конкретний RFC/QUEUE-атом (наприклад `aira start` + `.desktop` / `.app` / `.lnk` шаблони) без зайвого GUI-шару.
+---
+
+## Що далі
+
+Не розширювати цей файл новими рішеннями. Acceptance lifecycle / port / local HTTP auth / layout — у [`docs/phase-e-plan.md`](docs/phase-e-plan.md) §2–§3. Виконання — перший OPEN `#75` у `QUEUE.md`.

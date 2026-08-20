@@ -120,16 +120,16 @@ Phase D **COMPLETE** (`#53`–`#74`). Далі — Phase E нижче.
 
 ## Активна черга (лінійна) — Phase E: Desktop UX (Linux P0)
 
-План: [`docs/phase-e-plan.md`](docs/phase-e-plan.md). Рішення: [`docs/desktop-ux.md`](docs/desktop-ux.md).  
-E1 = **лише P0**; P1+QR = Addendum E1.1 після `#79` (не відкривати зараз). macOS/Windows = E2/E3 після Linux.
+План: [`docs/phase-e-plan.md`](docs/phase-e-plan.md) (lifecycle/port/HTTP/auth/layout §2). Рішення: [`docs/desktop-ux.md`](docs/desktop-ux.md). Provenance: [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) **RESOLVED**.  
+E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`. macOS/Windows = E2/E3 після Linux. **Не** вставляти stabilization phase перед `#75` — вимоги fold-in у Done when нижче.
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
-| 75 | **OPEN** | Analyze-110 — Desktop settings schema | `aira:schema:desktop:settings:0.1` + fixtures | schema validate --fixtures зелений | orchestrator; GUI; P1+ |
-| 76 | **OPEN** | Analyze-111 — `aira desktop` orchestrator | `start\|stop\|status`; P0 init+identity+`aira-node --http` loopback; читає settings | CLI + тести lifecycle | tray; AppImage; peer; OS autostart hooks |
-| 77 | **OPEN** | Analyze-112 — Linux `.desktop` launcher | `.desktop` → desktop start; документований stop | клік/меню запускає P0 node | tray UI; packaging; macOS/Win |
-| 78 | **OPEN** | Analyze-113 — Linux tray/GUI мінімум | Status + Open UI + Settings (`open_ui_on_start`, `autostart_on_login`) + Quit | старт node через GUI; settings персистяться | P1; AppImage; інші ОС |
-| 79 | **OPEN** | Analyze-114 — Linux packaging | AppImage **або** tarball+`.desktop` + docs; Dev CLI notes | end-user install без `cargo` | macOS DMG; Win installer; P1 |
+| 75 | **OPEN** | Analyze-110 — Desktop settings schema | `aira:schema:desktop:settings:0.1` + fixtures (P0 fields + `instance_id` + auth placeholders; phase-e §2.1/§2.4) | schema validate --fixtures зелений | orchestrator; GUI; token generation; P1+ |
+| 76 | **OPEN** | Analyze-111 — shared lifecycle + `aira desktop` | `start\|stop\|status`; P0 layout; init+identity+loopback HTTP; §2.2–§2.4 (idempotent/lock/health/port attach\|fail; Desktop auth contract); shared lib | CLI + lifecycle tests | tray; AppImage; peer; OS autostart hooks |
+| 77 | **OPEN** | Analyze-112 — Linux `.desktop` launcher | `.desktop` → desktop start (shared lib/CLI); stop via CLI/tray docs | клік/меню запускає P0 node | tray UI; packaging; macOS/Win |
+| 78 | **OPEN** | Analyze-113 — Linux tray/GUI (Rust-only) | Status + native Open UI + Settings + Quit; shared lib; **XDG autostart hooks** (§2.5) | GUI start/stop; settings persist; autostart on/off works | P1; AppImage; Tauri/web; інші ОС |
+| 79 | **OPEN** | Analyze-114 — Linux packaging | AppImage **або** tarball+`.desktop` + Developer Preview docs; Dev CLI notes; paths for `#78` | install без `cargo`; autostart paths valid | macOS DMG; Win installer; P1 |
 
 ### Наступний цикл
 
@@ -166,6 +166,6 @@ E1 = **лише P0**; P1+QR = Addendum E1.1 після `#79` (не відкри�
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
-| Desktop one-click / UX (розробник 2026-08-20) | [`docs/desktop-ux.md`](docs/desktop-ux.md); план [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` OPEN (E1=P0; P1=E1.1 later) |
+| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` OPEN (E1=P0; P1=E1.1 later) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
