@@ -1,0 +1,16 @@
+{
+  "payload_schema": "aira:schema:model:acquisition-policy:0.1",
+  "host_ref": "aira:identity:local-test",
+  "auto_download": false,
+  "allow_download_if_size_below_gb": 8,
+  "allow_quantized_only": true,
+  "allow_untrusted_models": false,
+  "max_model_cache_size_gb": 200,
+  "share_custom_models": false,
+  "updated_at": "2026-08-20T05:00:00Z",
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "payload_schema": "aira:schema:model:acquisition-policy:0.1",
+  "host_ref": "aira:identity:local-test",
+  "allow_untrusted_models": false,
+  "share_custom_models": false,
+  "updated_at": "2026-08-20T05:00:00Z",
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}

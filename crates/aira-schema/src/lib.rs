@@ -424,4 +424,26 @@ mod tests {
             )
             .is_err());
     }
+
+    #[test]
+    fn model_acquisition_policy_payload_schema_loads() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:model:acquisition-policy:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let valid = root.join("fixtures/valid/model/acquisition-policy.json");
+        reg.validate_file("aira:schema:model:acquisition-policy:0.1", &valid)
+            .unwrap();
+        let text = std::fs::read_to_string(&valid).unwrap();
+        let v: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(v.get("auto_download"), Some(&Value::Bool(false)));
+        assert!(reg
+            .validate_file(
+                "aira:schema:model:acquisition-policy:0.1",
+                root.join("fixtures/invalid/model/acquisition-policy-missing-auto-download.json"),
+            )
+            .is_err());
+    }
 }

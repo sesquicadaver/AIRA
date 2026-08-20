@@ -1,0 +1,54 @@
+{
+  "$id": "aira:schema:model:acquisition-policy:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "payload_schema",
+    "host_ref",
+    "auto_download",
+    "allow_untrusted_models",
+    "share_custom_models",
+    "updated_at",
+    "signature"
+  ],
+  "properties": {
+    "payload_schema": {
+      "type": "string",
+      "const": "aira:schema:model:acquisition-policy:0.1"
+    },
+    "host_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "auto_download": {
+      "type": "boolean",
+      "default": false,
+      "description": "Default-deny: producers SHOULD emit false; runtime without policy is DENY (#60)."
+    },
+    "allow_download_if_size_below_gb": {
+      "type": "number",
+      "minimum": 0
+    },
+    "allow_quantized_only": {
+      "type": "boolean"
+    },
+    "allow_untrusted_models": {
+      "type": "boolean",
+      "default": false
+    },
+    "max_model_cache_size_gb": {
+      "type": "number",
+      "minimum": 0
+    },
+    "share_custom_models": {
+      "type": "boolean",
+      "default": false,
+      "description": "Explicit opt-in only; default false."
+    },
+    "updated_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}
