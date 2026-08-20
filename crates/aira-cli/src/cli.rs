@@ -125,6 +125,25 @@ pub(crate) enum DesktopCommands {
         #[arg(long, default_value_t = false)]
         force_ui: bool,
     },
+    /// Export local PeerInvite JSON (friend onboarding file).
+    InviteExport {
+        #[arg(long)]
+        data_root: Option<PathBuf>,
+        /// Output path for the invite JSON.
+        #[arg(long)]
+        out: PathBuf,
+        /// Optional dial addr override (else P1 `peer_listen`, else trust-only).
+        #[arg(long)]
+        addr: Option<String>,
+    },
+    /// Import PeerInvite JSON → trust add + optional address-book upsert.
+    InviteImport {
+        #[arg(long)]
+        data_root: Option<PathBuf>,
+        /// Invite JSON file path.
+        #[arg(long)]
+        file: PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]

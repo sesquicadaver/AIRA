@@ -6,6 +6,7 @@
 mod autostart;
 mod bootstrap;
 mod health;
+mod invite;
 mod launcher;
 mod paths;
 mod peer;
@@ -17,6 +18,10 @@ pub use autostart::{
     set_autostart_in, sync_autostart_from_settings, AIRA_AUTOSTART_FILENAME,
 };
 pub use bootstrap::ensure_bootstrap;
+pub use invite::{
+    build_local_invite, export_invite_file, import_invite, import_invite_file, load_invite_file,
+    validate_peer_invite, ImportInviteOutcome, PeerInvite, PEER_INVITE_SCHEMA_ID,
+};
 pub use launcher::{
     install_gui_launcher_to, install_launcher_to, install_menu_entries_to, install_user_launcher,
     install_user_menu_entries, uninstall_gui_launcher_from, uninstall_launcher_from,

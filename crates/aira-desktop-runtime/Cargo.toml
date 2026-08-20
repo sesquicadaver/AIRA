@@ -18,6 +18,8 @@ hex = { workspace = true }
 ed25519-dalek = { workspace = true }
 aira-flow = { path = "../aira-flow" }
 aira-object = { path = "../aira-object" }
+aira-peer = { path = "../aira-peer" }
+time = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
