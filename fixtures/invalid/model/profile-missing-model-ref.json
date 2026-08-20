@@ -1,0 +1,13 @@
+{
+  "payload_schema": "aira:schema:model:profile:0.1",
+  "required_vram_gb": 6,
+  "required_ram_gb": 12,
+  "min_disk_gb": 4.5,
+  "supported_backends": ["llama.cpp"],
+  "supported_quantizations": ["int4"],
+  "context_length": 8192,
+  "modalities": ["text"],
+  "domains": ["general"],
+  "estimated_latency_class": "interactive",
+  "evidence_refs": []
+}
