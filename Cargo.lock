@@ -418,6 +418,7 @@ version = "0.1.0"
 dependencies = [
  "aira-flow",
  "aira-object",
+ "aira-peer",
  "anyhow",
  "ed25519-dalek",
  "hex",
@@ -426,6 +427,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 1.0.69",
+ "time",
  "uuid",
 ]
 

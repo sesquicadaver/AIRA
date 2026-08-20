@@ -182,7 +182,7 @@ P2–P6; окремі stabilization атоми (branch protection, Handle opacit
 - Packaging: [`desktop-packaging.md`](desktop-packaging.md) + RFC-0028 (`#79`); tarball+`.desktop` (не AppImage)
 - Linux launcher: [`desktop-launcher.md`](desktop-launcher.md) + RFC-0026 (`#77`)
 - Desktop GUI + autostart: [`desktop-gui.md`](desktop-gui.md) + RFC-0027 (`#78`)
-- Addendum E1.1 (P1+QR): §4a → QUEUE `#80`–`#85`; RFC-0029 PeerInvite (`#80`); RFC-0030 settings P1 (`#81`); RFC-0031 peer lifecycle (`#82`)
+- Addendum E1.1 (P1+QR): §4a → QUEUE `#80`–`#85`; RFC-0029 PeerInvite (`#80`); RFC-0030 settings P1 (`#81`); RFC-0031 peer lifecycle (`#82`); RFC-0032 invite file (`#83`)
 - Позначити `NEXT_PROBLEM.md` як RESOLVED (вже)
 
 ## 6. Acceptance E1 (Linux)

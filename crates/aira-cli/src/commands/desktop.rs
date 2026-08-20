@@ -6,8 +6,8 @@ use std::process::{Command, ExitCode};
 use anyhow::{bail, Context, Result};
 
 use aira_desktop_runtime::{
-    install_user_menu_entries, start, status, stop, uninstall_user_menu_entries, DesktopPaths,
-    LifecycleStatus,
+    export_invite_file, import_invite_file, install_user_menu_entries, start, status, stop,
+    uninstall_user_menu_entries, DesktopPaths, LifecycleStatus,
 };
 
 use crate::cli::DesktopCommands;
@@ -117,6 +117,36 @@ pub(crate) fn run(command: DesktopCommands) -> Result<ExitCode> {
             } else {
                 bail!("aira-desktop exited with {status}");
             }
+        }
+        DesktopCommands::InviteExport {
+            data_root,
+            out,
+            addr,
+        } => {
+            let paths = resolve_paths(data_root);
+            let invite = export_invite_file(&paths, &out, addr)?;
+            println!("exported {}", out.display());
+            println!("identity_ref {}", invite.identity_ref);
+            if let Some(a) = invite.addr.as_ref() {
+                println!("addr {a}");
+            } else {
+                println!("addr (none — trust-only)");
+            }
+            Ok(ExitCode::SUCCESS)
+        }
+        DesktopCommands::InviteImport { data_root, file } => {
+            let paths = resolve_paths(data_root);
+            let out = import_invite_file(&paths, &file)?;
+            println!("imported {}", file.display());
+            println!("trusted {}", out.identity_ref);
+            if out.book_updated {
+                if let Some(a) = out.addr.as_ref() {
+                    println!("address_book {} -> {a}", out.identity_ref);
+                }
+            } else {
+                println!("address_book (skipped — no addr)");
+            }
+            Ok(ExitCode::SUCCESS)
         }
     }
 }
