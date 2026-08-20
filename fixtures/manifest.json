@@ -83,6 +83,10 @@
     {
       "schema": "aira:schema:model:artifact:0.1",
       "file": "fixtures/valid/model/artifact.json"
+    },
+    {
+      "schema": "aira:schema:model:profile:0.1",
+      "file": "fixtures/valid/model/profile.json"
     }
   ],
   "invalid": [
@@ -113,6 +117,10 @@
     {
       "schema": "aira:schema:model:artifact:0.1",
       "file": "fixtures/invalid/model/artifact-missing-hash.json"
+    },
+    {
+      "schema": "aira:schema:model:profile:0.1",
+      "file": "fixtures/invalid/model/profile-missing-model-ref.json"
     }
   ]
 }

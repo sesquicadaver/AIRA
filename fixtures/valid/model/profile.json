@@ -1,0 +1,16 @@
+{
+  "payload_schema": "aira:schema:model:profile:0.1",
+  "model_ref": "aira:artifact:sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "required_vram_gb": 6,
+  "required_ram_gb": 12,
+  "min_disk_gb": 4.5,
+  "supported_backends": ["llama.cpp", "custom"],
+  "supported_quantizations": ["int4", "int8"],
+  "context_length": 8192,
+  "modalities": ["text", "code"],
+  "domains": ["general", "local-assist"],
+  "estimated_latency_class": "interactive",
+  "evidence_refs": [
+    "aira:evidence:sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  ]
+}

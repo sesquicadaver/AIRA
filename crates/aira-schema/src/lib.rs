@@ -361,4 +361,25 @@ mod tests {
             )
             .is_err());
     }
+
+    #[test]
+    fn model_profile_payload_schema_loads() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:model:profile:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        reg.validate_file(
+            "aira:schema:model:profile:0.1",
+            root.join("fixtures/valid/model/profile.json"),
+        )
+        .unwrap();
+        assert!(reg
+            .validate_file(
+                "aira:schema:model:profile:0.1",
+                root.join("fixtures/invalid/model/profile-missing-model-ref.json"),
+            )
+            .is_err());
+    }
 }
