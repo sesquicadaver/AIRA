@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Немає OPEN. D4/D5 уже були CLOSED (не перероблялись).
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` OPEN (E0+E1 Linux P0).
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-109 CLOSED @ d270b62; QUEUE #74 DONE; **Addendum D6+D7 COMPLETE** |
+| `main` | Analyze-109 CLOSED @ d270b62; QUEUE #74 DONE; Phase E відкрито `#75`–`#79` |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase D — **немає OPEN** (D0–D7 DONE; D4/D5 були DONE раніше) |
+| Активна черга | Phase E — **перший OPEN `#75`** (Desktop settings schema) |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C хвіст `#38`–`#52` — повний етап. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#71` DONE; Addendum D7 `#72`–`#74` відкрито 2026-08-20.
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE. Phase E — [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` відкрито 2026-08-20 (E1 = P0 only; P1 = Addendum E1.1 після `#79`).
 
 ---
 
@@ -83,9 +83,9 @@
 
 ---
 
-## Активна черга (лінійна) — Phase D: Model Artifact & Inventory
+## Архів (закрито) — Phase D: Model Artifact & Inventory
 
-План: [`docs/phase-d-plan.md`](docs/phase-d-plan.md). Не зливати рядки. Envelope = `CustomArtifact` + payload `$id`; не розширювати canonical `ArtifactType` без окремого RFC-S. Addendum D5: share opt-in only; no global registry / remote advertise in this wave.
+План: [`docs/phase-d-plan.md`](docs/phase-d-plan.md). **DONE** `#53`–`#74` (D0–D7). D4/D5 були CLOSED раніше (не перероблялись). Envelope = `CustomArtifact` + payload `$id`; не розширювати canonical `ArtifactType` без окремого RFC-S.
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
@@ -112,11 +112,30 @@
 | 73 | **DONE** | ~~Analyze-108 — local upgrade recommendation publish~~ | signed recommendation CustomArtifact + Event; evidence-backed | CLI; settlement; ads |
 | 74 | **DONE** | ~~Analyze-109 — CLI `aira models recommend`~~ | advisory recommendation; local-only | marketplace; auto-download; settlement |
 
+### Наступний цикл (Phase D)
+
+Phase D **COMPLETE** (`#53`–`#74`). Далі — Phase E нижче.
+
+---
+
+## Активна черга (лінійна) — Phase E: Desktop UX (Linux P0)
+
+План: [`docs/phase-e-plan.md`](docs/phase-e-plan.md). Рішення: [`docs/desktop-ux.md`](docs/desktop-ux.md).  
+E1 = **лише P0**; P1+QR = Addendum E1.1 після `#79` (не відкривати зараз). macOS/Windows = E2/E3 після Linux.
+
+| # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
+|---|--------|---------|-----------------|-----------|------------------|
+| 75 | **OPEN** | Analyze-110 — Desktop settings schema | `aira:schema:desktop:settings:0.1` + fixtures | schema validate --fixtures зелений | orchestrator; GUI; P1+ |
+| 76 | **OPEN** | Analyze-111 — `aira desktop` orchestrator | `start\|stop\|status`; P0 init+identity+`aira-node --http` loopback; читає settings | CLI + тести lifecycle | tray; AppImage; peer; OS autostart hooks |
+| 77 | **OPEN** | Analyze-112 — Linux `.desktop` launcher | `.desktop` → desktop start; документований stop | клік/меню запускає P0 node | tray UI; packaging; macOS/Win |
+| 78 | **OPEN** | Analyze-113 — Linux tray/GUI мінімум | Status + Open UI + Settings (`open_ui_on_start`, `autostart_on_login`) + Quit | старт node через GUI; settings персистяться | P1; AppImage; інші ОС |
+| 79 | **OPEN** | Analyze-114 — Linux packaging | AppImage **або** tarball+`.desktop` + docs; Dev CLI notes | end-user install без `cargo` | macOS DMG; Win installer; P1 |
+
 ### Наступний цикл
 
-**Немає OPEN** — Addendum D6 (`#69`–`#71`) + D7 (`#72`–`#74`) **COMPLETE**. D4/D5 уже були DONE (не перероблялись).
+**Перший OPEN:** `#75` — Desktop settings schema (E0.1).
 
-> Порядок: D6 DONE → D7; D4/D5 уже DONE (не переробляти).
+> Порядок: `#75`→`#79` (E0+E1 Linux P0). Після `#79`: Addendum E1.1 (P1+QR) лише окремим рішенням → потім E2 macOS → E3 Windows.
 
 ---
 
@@ -147,5 +166,6 @@
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
+| Desktop one-click / UX (розробник 2026-08-20) | [`docs/desktop-ux.md`](docs/desktop-ux.md); план [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` OPEN (E1=P0; P1=E1.1 later) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

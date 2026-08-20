@@ -207,4 +207,6 @@ CSU SDK / new basic CSU roles to “complete” Book III
 C2 as merge-blocking CI
 ```
 
-Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Немає OPEN. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
+Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
+
+Desktop one-click / GUI: **ABSENT** (canon + plan only). UX: [desktop-ux.md](desktop-ux.md). Plan: [phase-e-plan.md](phase-e-plan.md). QUEUE `#75`–`#79` OPEN (E1 = P0 only; P1 deferred to E1.1).
