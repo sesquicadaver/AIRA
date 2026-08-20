@@ -1,10 +1,10 @@
-//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#63).
+//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#64).
 
 use std::path::Path;
 use std::process::ExitCode;
 
 use aira_csu_model_acquisition::{
-    fetch_to_quarantine, load_policy, request_download, verify_quarantine,
+    activate_verified, fetch_to_quarantine, load_policy, request_download, verify_quarantine,
     write_default_deny_policy, FetchOutcome, GateDecision, VerifyOutcome,
 };
 use aira_csu_model_compatibility::resolve_and_publish;
@@ -180,6 +180,22 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
                     Ok(ExitCode::SUCCESS)
                 }
             }
+        }
+        ModelsCommands::Activate => {
+            let out = activate_verified(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+            let cache_dir = Path::new(&out.cache_scan_dir);
+            let inv =
+                scan_and_publish(root, Some(cache_dir)).map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!("status activated");
+            println!("model_ref {}", out.model_ref);
+            println!("cache {}", out.cache_path);
+            println!("verified {}", out.verified_path);
+            println!("content_hash {}", out.content_hash);
+            println!("evidence {}", out.evidence_artifact_id);
+            println!("executed false");
+            println!("inventory {}", inv.artifact_id);
+            println!("installed {}", inv.installed_count);
+            Ok(ExitCode::SUCCESS)
         }
     }
 }

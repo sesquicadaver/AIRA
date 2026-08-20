@@ -207,4 +207,4 @@ CSU SDK / new basic CSU roles to “complete” Book III
 C2 as merge-blocking CI
 ```
 
-Model layer (EVO-3): D0–D3 `#53`–`#60` **DONE**. D4.1–D4.3 `#61`–`#63` **DONE** (ALLOW + quarantine + verify) @ ae35546. `#64` OPEN (activate). Not Core. Plan: [phase-d-plan.md](phase-d-plan.md) §6a.
+Model layer (EVO-3): D0–D3 `#53`–`#60` **DONE**. D4.1–D4.3 `#61`–`#63` **DONE**. D4.4 `#64` **IN PROGRESS** (activate verified). Not Core. Plan: [phase-d-plan.md](phase-d-plan.md) §6a.
