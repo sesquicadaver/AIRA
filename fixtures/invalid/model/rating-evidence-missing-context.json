@@ -1,0 +1,15 @@
+{
+  "payload_schema": "aira:schema:model:rating-evidence:0.1",
+  "model_ref": "aira:model:example-7b-int4",
+  "rater_ref": "aira:identity:local-test",
+  "scores": {
+    "fit": 0.9
+  },
+  "reason": "invalid fixture: missing required context",
+  "confidence": 0.5,
+  "scope": {
+    "scope_type": "local",
+    "description": "must fail without context"
+  },
+  "assessed_at": "2026-08-20T12:00:00Z"
+}

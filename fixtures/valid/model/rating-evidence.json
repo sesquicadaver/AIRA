@@ -1,0 +1,28 @@
+{
+  "payload_schema": "aira:schema:model:rating-evidence:0.1",
+  "model_ref": "aira:model:example-7b-int4",
+  "rater_ref": "aira:identity:local-test",
+  "context": {
+    "context_id": "local-coding-session-2026-08-20",
+    "task_class": "coding.llm.decode",
+    "host_ref": "aira:identity:local-test",
+    "backend": "llama.cpp",
+    "quantization": "int4",
+    "notes": "single-host assessment; not a global leaderboard entry"
+  },
+  "scores": {
+    "fit": 0.88,
+    "latency": 0.75,
+    "quality": 0.8
+  },
+  "reason": "fits local VRAM and coding prompts with acceptable latency on llama.cpp int4",
+  "confidence": 0.85,
+  "scope": {
+    "scope_type": "local",
+    "description": "host-local contextual rating evidence"
+  },
+  "assessed_at": "2026-08-20T12:00:00Z",
+  "evidence_refs": [
+    "aira:evidence:sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  ]
+}

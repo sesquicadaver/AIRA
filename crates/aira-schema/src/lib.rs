@@ -469,4 +469,27 @@ mod tests {
             )
             .is_err());
     }
+
+    #[test]
+    fn model_rating_evidence_payload_schema_loads() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:model:rating-evidence:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let valid = root.join("fixtures/valid/model/rating-evidence.json");
+        reg.validate_file("aira:schema:model:rating-evidence:0.1", &valid)
+            .unwrap();
+        let text = std::fs::read_to_string(&valid).unwrap();
+        let v: Value = serde_json::from_str(&text).unwrap();
+        assert!(v.get("context").is_some());
+        assert!(v.get("global_score").is_none());
+        assert!(reg
+            .validate_file(
+                "aira:schema:model:rating-evidence:0.1",
+                root.join("fixtures/invalid/model/rating-evidence-missing-context.json"),
+            )
+            .is_err());
+    }
 }
