@@ -1,11 +1,11 @@
-//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#64).
+//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#66).
 
 use std::path::Path;
 use std::process::ExitCode;
 
 use aira_csu_model_acquisition::{
-    activate_verified, fetch_to_quarantine, load_policy, request_download, verify_quarantine,
-    write_default_deny_policy, FetchOutcome, GateDecision, VerifyOutcome,
+    activate_verified, fetch_to_quarantine, load_policy, request_download, request_publish,
+    verify_quarantine, write_acquisition_policy, FetchOutcome, GateDecision, VerifyOutcome,
 };
 use aira_csu_model_compatibility::resolve_and_publish;
 use aira_csu_model_inventory::{load_latest, scan_and_publish};
@@ -64,6 +64,7 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
                     None => {
                         println!("policy_present false");
                         println!("auto_download false");
+                        println!("share_custom_models false");
                         println!("posture default-deny");
                     }
                     Some(p) => {
@@ -75,11 +76,15 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
                 }
                 Ok(ExitCode::SUCCESS)
             }
-            ModelsPolicyCommands::Set { auto_download } => {
-                let path = write_default_deny_policy(root, auto_download)
+            ModelsPolicyCommands::Set {
+                auto_download,
+                share_custom_models,
+            } => {
+                let path = write_acquisition_policy(root, auto_download, share_custom_models)
                     .map_err(|e| anyhow::anyhow!("{e}"))?;
                 println!("policy {}", path.display());
                 println!("auto_download {auto_download}");
+                println!("share_custom_models {share_custom_models}");
                 println!("status policy-set");
                 Ok(ExitCode::SUCCESS)
             }
@@ -196,6 +201,24 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
             println!("inventory {}", inv.artifact_id);
             println!("installed {}", inv.installed_count);
             Ok(ExitCode::SUCCESS)
+        }
+        ModelsCommands::Publish { model_ref } => {
+            let out = request_publish(root, &model_ref).map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!("decision {}", out.decision.as_str());
+            println!("model_ref {}", out.model_ref);
+            println!("reason {}", out.reason);
+            println!("reason_ref {}", out.reason_ref);
+            println!("evidence {}", out.decision_artifact_id);
+            match out.decision {
+                GateDecision::Allow => {
+                    println!("status policy-allowed");
+                    Ok(ExitCode::SUCCESS)
+                }
+                GateDecision::Deny => {
+                    println!("status policy-denied");
+                    Ok(ExitCode::from(2))
+                }
+            }
         }
     }
 }

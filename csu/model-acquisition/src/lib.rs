@@ -1,9 +1,7 @@
-//! Model acquisition: policy gate, quarantine, verify, activate (QUEUE #60–#64).
+//! Model acquisition: policy gate, quarantine, verify, activate, share gate (QUEUE #60–#66).
 //!
-//! Default-deny download; ALLOW; local quarantine; hash/signature verify into
-//! `models/verified/`; explicit activate into `models/cache/` (no execution).
-//! Inventory refresh is CLI-orchestrated (no CSU↛CSU). Not wired into C1.
-//! `network=none`.
+//! Default-deny download/share; ALLOW paths authorize later steps without performing them.
+//! Inventory refresh is CLI-orchestrated (no CSU↛CSU). Not wired into C1. `network=none`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -24,8 +22,10 @@ use thiserror::Error;
 pub const CSU_ID: &str = "aira:csu:model.acquisition";
 /// Optional on-disk acquisition policy payload (schema `acquisition-policy:0.1`).
 pub const POLICY_FILE_REL: &str = "models/acquisition.policy.json";
-/// Latest DENY/ALLOW decision pointer.
+/// Latest DENY/ALLOW decision pointer (download).
 pub const DECISION_POINTER_REL: &str = "models/acquisition.decision.latest.json";
+/// Latest DENY/ALLOW decision pointer (publish/share).
+pub const SHARE_DECISION_POINTER_REL: &str = "models/share.decision.latest.json";
 /// Quarantine directory under scoped models tree.
 pub const QUARANTINE_REL: &str = "models/quarantine";
 /// Latest quarantine fetch pointer.
@@ -96,6 +96,18 @@ pub struct AcquireOutcome {
     pub decision_artifact_id: String,
     pub policy_present: bool,
     pub auto_download: Option<bool>,
+}
+
+/// Outcome of a publish/share request evaluation (no ShareOffer bytes).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShareOutcome {
+    pub decision: GateDecision,
+    pub reason: String,
+    pub reason_ref: String,
+    pub model_ref: String,
+    pub decision_artifact_id: String,
+    pub policy_present: bool,
+    pub share_custom_models: Option<bool>,
 }
 
 /// Result of gate + optional local quarantine copy.
@@ -387,6 +399,118 @@ pub fn request_download(
         decision_artifact_id: artifact_id,
         policy_present: policy.is_some(),
         auto_download,
+    })
+}
+
+/// Evaluate a publish/share request; publish decision evidence. Gate alone never writes ShareOffer.
+///
+/// Rules:
+/// - no policy → DENY (`aira:reason:no-acquisition-policy`)
+/// - `share_custom_models=false` → DENY (`aira:reason:share-custom-models-false`)
+/// - `share_custom_models=true` → ALLOW (`aira:reason:share-custom-models-true`)
+pub fn request_publish(
+    aira_root: impl AsRef<Path>,
+    model_ref: &str,
+) -> Result<ShareOutcome, AcquisitionError> {
+    let root = aira_root.as_ref();
+    let _ = aira_object::register_node_identity(root);
+    let policy = load_policy(root)?;
+
+    let (decision, reason, reason_ref, share_custom_models) = match &policy {
+        None => (
+            GateDecision::Deny,
+            "no acquisition policy; publish DENY".to_string(),
+            "aira:reason:no-acquisition-policy".to_string(),
+            None,
+        ),
+        Some(p) if !p.share_custom_models => (
+            GateDecision::Deny,
+            "share_custom_models=false; publish DENY".to_string(),
+            "aira:reason:share-custom-models-false".to_string(),
+            Some(false),
+        ),
+        Some(p) => (
+            GateDecision::Allow,
+            "share_custom_models=true; publish ALLOW (no ShareOffer in this step)".to_string(),
+            "aira:reason:share-custom-models-true".to_string(),
+            Some(p.share_custom_models),
+        ),
+    };
+
+    let updated_at = utc_now_rfc3339().map_err(|e| AcquisitionError::Crypto(e.to_string()))?;
+    let decision_payload = build_decision(decision, &reason_ref)?;
+    if let Ok(schema_root) =
+        aira_schema::find_repo_root(std::env::current_dir().unwrap_or_else(|_| root.to_path_buf()))
+    {
+        if let Ok(reg) = aira_schema::SchemaRegistry::load(schema_root.join("schemas")) {
+            reg.validate("aira:schema:policy:decision:0.1", &decision_payload)
+                .map_err(|e| AcquisitionError::Schema(e.to_string()))?;
+        }
+    }
+
+    let bytes = json_bytes(&decision_payload);
+    let content_hash = ContentHash::sha256_bytes(&bytes);
+    let hash_hex = content_hash.as_str().trim_start_matches("sha256:");
+    let kind = match decision {
+        GateDecision::Allow => "share-allow",
+        GateDecision::Deny => "share-deny",
+    };
+    let artifact_id = format!("aira:artifact:{kind}:{hash_hex}");
+    let desc = make_artifact(
+        &artifact_id,
+        ArtifactType::CustomArtifact,
+        &bytes,
+        vec![AiraRef::parse(CSU_ID).expect("csu")],
+    );
+    let mut store = CasArtifactStore::open(root.join("artifacts"))
+        .map_err(|e| AcquisitionError::Artifact(e.to_string()))?;
+    match store.publish(desc, &bytes) {
+        Ok(_) => {}
+        Err(aira_artifact::ArtifactError::Immutable(_)) => {}
+        Err(e) => return Err(AcquisitionError::Artifact(e.to_string())),
+    }
+
+    let op = match decision {
+        GateDecision::Allow => "policy-allowed",
+        GateDecision::Deny => "policy-denied",
+    };
+    let ev_id = format!("aira:event:{kind}-{}", &hash_hex[..16.min(hash_hex.len())]);
+    let event = make_event(
+        &ev_id,
+        EventType::CustomEvent,
+        vec![],
+        vec![AiraRef::parse(&artifact_id).expect("aid")],
+        vec![],
+        Some(format!("op:{op}:publish:{model_ref}:{reason_ref}")),
+    );
+    append_custom_event(root, event)?;
+
+    let pointer = DecisionPointer {
+        updated_at,
+        decision: decision.as_str().into(),
+        model_ref: model_ref.to_string(),
+        reason: reason.clone(),
+        decision_artifact_id: artifact_id.clone(),
+    };
+    let ppath = root.join(SHARE_DECISION_POINTER_REL);
+    if let Some(parent) = ppath.parent() {
+        fs::create_dir_all(parent).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    }
+    fs::write(
+        &ppath,
+        serde_json::to_string_pretty(&pointer)
+            .map_err(|e| AcquisitionError::Other(e.to_string()))?,
+    )
+    .map_err(|e| AcquisitionError::Io(e.to_string()))?;
+
+    Ok(ShareOutcome {
+        decision,
+        reason,
+        reason_ref,
+        model_ref: model_ref.to_string(),
+        decision_artifact_id: artifact_id,
+        policy_present: policy.is_some(),
+        share_custom_models,
     })
 }
 
@@ -1055,9 +1179,20 @@ fn append_custom_event(root: &Path, event: EventDescriptor) -> Result<(), Acquis
 }
 
 /// Write an acquisition policy file (for `policy set`).
+///
+/// Convenience: `share_custom_models=false`.
 pub fn write_default_deny_policy(
     aira_root: impl AsRef<Path>,
     auto_download: bool,
+) -> Result<PathBuf, AcquisitionError> {
+    write_acquisition_policy(aira_root, auto_download, false)
+}
+
+/// Write acquisition policy with explicit download and share flags.
+pub fn write_acquisition_policy(
+    aira_root: impl AsRef<Path>,
+    auto_download: bool,
+    share_custom_models: bool,
 ) -> Result<PathBuf, AcquisitionError> {
     let root = aira_root.as_ref();
     let _ = aira_object::register_node_identity(root);
@@ -1071,7 +1206,7 @@ pub fn write_default_deny_policy(
     body.insert("host_ref".into(), json!(host.as_str()));
     body.insert("auto_download".into(), json!(auto_download));
     body.insert("allow_untrusted_models".into(), json!(false));
-    body.insert("share_custom_models".into(), json!(false));
+    body.insert("share_custom_models".into(), json!(share_custom_models));
     body.insert("updated_at".into(), json!(updated_at));
     let for_sign = Value::Object(body.clone());
     let bytes =
@@ -1438,5 +1573,53 @@ mod tests {
         init_min_root(dir.path());
         let err = activate_verified(dir.path()).unwrap_err();
         assert!(matches!(err, AcquisitionError::NoVerified));
+    }
+
+    #[test]
+    fn publish_deny_without_policy() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        let out = request_publish(dir.path(), "aira:model:share-me").unwrap();
+        assert_eq!(out.decision, GateDecision::Deny);
+        assert!(!out.policy_present);
+        assert!(dir.path().join(SHARE_DECISION_POINTER_REL).exists());
+    }
+
+    #[test]
+    fn publish_deny_when_share_false() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_acquisition_policy(dir.path(), false, false).unwrap();
+        let out = request_publish(dir.path(), "aira:model:share-me").unwrap();
+        assert_eq!(out.decision, GateDecision::Deny);
+        assert_eq!(out.share_custom_models, Some(false));
+        assert_eq!(out.reason_ref, "aira:reason:share-custom-models-false");
+    }
+
+    #[test]
+    fn publish_allow_when_share_true_no_offer_bytes() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_acquisition_policy(dir.path(), false, true).unwrap();
+        let out = request_publish(dir.path(), "aira:model:share-me").unwrap();
+        assert_eq!(out.decision, GateDecision::Allow);
+        assert_eq!(out.share_custom_models, Some(true));
+        assert!(out.decision_artifact_id.contains("share-allow"));
+        let log: Value = serde_json::from_str(
+            &fs::read_to_string(dir.path().join("events/event-log.json")).unwrap(),
+        )
+        .unwrap();
+        let payload = log
+            .get("events")
+            .and_then(|e| e.as_array())
+            .unwrap()
+            .last()
+            .unwrap()
+            .get("payload_ref")
+            .and_then(|v| v.as_str())
+            .unwrap();
+        assert!(payload.contains("op:policy-allowed:publish:"));
+        // No ShareOffer JSON written under models/.
+        assert!(!dir.path().join("models/share-offer.latest.json").exists());
     }
 }

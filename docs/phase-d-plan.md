@@ -285,6 +285,8 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 |------|--------|------|
 | RFC-S | payload schemas; **не** піднімати `ModelArtifact` у canonical enum на старті | до/разом із `#53` |
 | RFC-D | Inventory CSU contract; sandbox ≠ basic CSU | до/разом із `#58` |
+| RFC-E | `aira models publish` share gate exits | `#66` / RFC-0015 |
+| RFC-D | share_custom_models publish gate | `#66` |
 | RFC-S | ModelShareOffer payload schema | `#65` / RFC-0014 |
 | RFC-E | `aira models activate` + inventory scan of cache | `#64` / RFC-0013 |
 | RFC-D | Activate verified → cache (no execution) | `#64` |
