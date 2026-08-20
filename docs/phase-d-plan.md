@@ -1,21 +1,21 @@
 # Phase D — Model Artifact & Inventory Plan v0.1
 
-**Статус:** складено 2026-08-20; перша хвиля D0–D3 (`#53`–`#60`) **DONE** @ 21d90a5. D4–D7 не в QUEUE до addendum.  
+**Статус:** складено 2026-08-20; перша хвиля D0–D3 (`#53`–`#60`) **DONE** @ 21d90a5. **Addendum D4** відкрито рішенням розробника 2026-08-20 → QUEUE `#61`–`#64`. D5–D7 **не** в QUEUE.  
 **Джерела:** рішення розробника щодо інтерпретації [`EVO-3.md`](../EVO-3.md); Book 0–IV; Schema Pack; RFC Process; [`docs/implementation-status.md`](implementation-status.md).  
 **Не канон backlog:** цей файл — загальний план і атомізація. Канон виконання — `QUEUE.md`.
 
-Номери `#48`–`#55` у `EVO-3.md` §11 — **не** черга. Вони колізія з Phase C. Живі номери — `#53`–`#60` у `QUEUE.md`.
+Номери `#48`–`#55` у `EVO-3.md` §11 — **не** черга. Вони колізія з Phase C. Живі номери — `#53`+ у `QUEUE.md`.
 
 ## 0. Порядок роботи
 
 ```text
 загальний план (цей документ)
-  → атоми без перекриття (§4)
-    → лінійний хвіст QUEUE `#53`–`#60`
+  → атоми без перекриття (§4 / Addendum D4)
+    → лінійний хвіст QUEUE
       → виконання: один OPEN рядок = один Analyze-цикл
 ```
 
-Заборонено додавати поодинокі пункти в `QUEUE.md` поза цим планом. Download / sharing / rating / upgrade — не перший хвіст.
+Заборонено додавати поодинокі пункти в `QUEUE.md` поза цим планом / addendum. D5–D7 лишаються відкладеними.
 
 ---
 
@@ -197,16 +197,50 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 
 ---
 
-## 6. Відкладені підфази (не нумерувати в QUEUE зараз)
+## 6. Відкладені підфази
 
-| ID | Зміст | RFC | Умова старту |
-|----|--------|-----|----------------|
-| D4 | Model download + hash/signature verify + activation окремо | RFC-D + RFC-E | D3 DONE |
-| D5 | Custom model publish / share, opt-in | RFC-D | D3 DONE; не вимагає D4, але не в першому хвості |
-| D6 | Contextual model rating evidence (не global score) | RFC-R | після D3; не C1 |
-| D7 | Upgrade recommendation artifact (advisory) | RFC-R | після D3; не marketplace |
+| ID | Зміст | RFC | Умова старту | Статус |
+|----|--------|-----|----------------|--------|
+| D4 | Model download + hash/signature verify + activation окремо | RFC-D + RFC-E | D3 DONE | **відкрито** — Addendum D4 / QUEUE `#61`–`#64` |
+| D5 | Custom model publish / share, opt-in | RFC-D | D3 DONE; не вимагає D4 | **не в QUEUE** |
+| D6 | Contextual model rating evidence (не global score) | RFC-R | після D3; не C1 | **не в QUEUE** |
+| D7 | Upgrade recommendation artifact (advisory) | RFC-R | після D3; не marketplace | **не в QUEUE** |
 
-Новий загальний план або addendum до цього файлу — перед копіюванням D4–D7 у QUEUE.
+Новий загальний план або ще один addendum — перед копіюванням D5–D7 у QUEUE.
+
+---
+
+## 6a. Addendum D4 (2026-08-20) — лише download / verify / activate
+
+**Рішення розробника:** відкрити **лише D4**. D5–D7 не копіювати в QUEUE.
+
+**Інваріанти D4 (додатково до §2)**
+
+1. Policy gate з D3 лишається обов’язковим: без policy / `auto_download=false` → DENY (без змін семантики `#60`).
+2. **Activation окрема від download** (Book / EVO-3 §8.3–8.4): download не активує і не виконує модель.
+3. Verify hash/signature **перед** activation; quarantine для невдалих.
+4. Envelope лишається `CustomArtifact` + payload `$id`; canonical `ArtifactType::ModelArtifact` — **Out**.
+5. C1 / `aira-core` / Book 0 pipeline — **не змінювати**.
+6. Sharing / rating / recommendation — **Out** (D5–D7).
+7. **Перший D4-хвіст: локальне джерело** (`--source` file path → quarantine під scoped `<root>/models`). Remote HTTP/URL fetch — **Out** цього addendum (окремий майбутній addendum або рядок, якщо знадобиться).
+
+**Атоми → QUEUE `#61`–`#64`** (Analyze-96+)
+
+| ID | Підфаза | Атом | Done when | Не в цьому рядку |
+|----|---------|------|-----------|------------------|
+| `#61` | D4.1 | Policy gate **ALLOW** path | при `auto_download=true` + наявній policy → decision **ALLOW** (+ Event); DENY-шляхи `#60` не зламані; **без** byte transfer | quarantine fetch; verify; activate; HTTP |
+| `#62` | D4.2 | Fetch у quarantine (local `--source` only) | після ALLOW: копія ваг у `<root>/models/quarantine/…`; Event; **без** activation | hash verify promote; activate; remote URL |
+| `#63` | D4.3 | Verify content_hash + signature | mismatch/unsigned → reject + Evidence, лишається quarantine; match → staging `verified/` | activate; inventory promote; HTTP |
+| `#64` | D4.4 | Activate окремо | explicit activate: verified → cache; inventory update; `ModelInstalled`-style CustomEvent; **без** auto-execution | sharing; rating; remote registry |
+
+```text
+#61 ALLOW gate
+  → #62 quarantine fetch (local source)
+    → #63 verify hash/signature
+      → #64 activate (explicit)
+```
+
+**RFC:** RFC-D (Acquisition CSU download/activate contract) + RFC-E (`aira models download|activate` поведінка) — у циклах `#61`/`#62` відповідно, не змішувати з D5.
 
 ---
 

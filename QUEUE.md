@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — перша хвиля D0–D3 (`#53`–`#60`) **DONE**; D4–D7 не в QUEUE.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D3 (`#53`–`#60`) **DONE**; **Addendum D4** OPEN `#61`–`#64`. D5–D7 не в QUEUE.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-95 CLOSED @ 21d90a5; QUEUE #60 DONE; Phase D `#53`–`#60` **DONE** |
+| `main` | Phase D `#53`–`#60` DONE; Addendum D4 **#61 OPEN** (Analyze-96) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase D перша хвиля `#53`–`#60` **DONE** (D4–D7 лише після addendum) |
+| Активна черга | Phase D Addendum D4 **#61 OPEN** (Analyze-96 — policy ALLOW path) |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C хвіст `#38`–`#52` — повний етап. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); хвіст `#53`–`#60` відкрито рішенням розробника 2026-08-20.
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C хвіст `#38`–`#52` — повний етап. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#60` DONE; Addendum D4 `#61`–`#64` відкрито 2026-08-20; D5–D7 не відкривати без нового addendum.
 
 ---
 
@@ -85,7 +85,7 @@
 
 ## Активна черга (лінійна) — Phase D: Model Artifact & Inventory
 
-План: [`docs/phase-d-plan.md`](docs/phase-d-plan.md). Не зливати рядки. Не додавати download/sharing/rating у цьому хвості. Envelope = `CustomArtifact` + payload `$id`; не розширювати canonical `ArtifactType` у D0.
+План: [`docs/phase-d-plan.md`](docs/phase-d-plan.md). Не зливати рядки. Envelope = `CustomArtifact` + payload `$id`; не розширювати canonical `ArtifactType` у D0–D4 без окремого RFC-S. Addendum D4: activation ≠ download; remote HTTP — Out цього хвоста.
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
@@ -97,10 +97,14 @@
 | 58 | **DONE** | ~~Analyze-93 — local inventory read-only~~ | `aira models scan\|list`; Inventory CSU, scoped FS | scan без мережі/download; immutable inventory artifact | compatible resolver; download |
 | 59 | **DONE** | ~~Analyze-94 — compatibility resolver~~ | hardware/backend/profile → runnable / incompatible / unknown | Evidence Artifact + reason; без download | acquisition CSU; CLI download |
 | 60 | **DONE** | ~~Analyze-95 — acquisition policy DENY~~ | runtime default-deny download | без policy = DENY + Event/Evidence; implicit download немає | реальний download (D4); sharing |
+| 61 | OPEN | Analyze-96 — policy ALLOW path | `auto_download=true` → decision ALLOW (+ Event); DENY `#60` збережено; без byte transfer | quarantine fetch; verify; activate; HTTP |
+| 62 | OPEN | Analyze-97 — quarantine fetch (local source) | після ALLOW: `--source` → `<root>/models/quarantine/`; Event; без activation | hash verify; activate; remote URL |
+| 63 | OPEN | Analyze-98 — verify hash/signature | mismatch → reject + Evidence; match → `verified/` staging | activate; inventory promote; HTTP |
+| 64 | OPEN | Analyze-99 — activate verified model | explicit activate → cache + inventory + Event; без auto-execution | sharing (D5); rating (D6); remote registry |
 
 ### Наступний цикл
 
-**Немає OPEN** у першій хвилі Phase D. D4–D7 (download / sharing / rating / upgrade) — лише після окремого addendum до [`docs/phase-d-plan.md`](docs/phase-d-plan.md).
+**#61 OPEN** — Analyze-96: policy ALLOW path (D4.1).
 
 ---
 
@@ -130,6 +134,6 @@
 | EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
-| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#60` **DONE** |
+| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#60` DONE; Addendum D4 `#61`–`#64` OPEN |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

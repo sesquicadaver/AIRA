@@ -207,4 +207,4 @@ CSU SDK / new basic CSU roles to “complete” Book III
 C2 as merge-blocking CI
 ```
 
-Model layer (EVO-3): D0 schemas `#53`–`#57` **PARTIAL**; D1 inventory `#58` **PARTIAL**; D2 compatibility `#59` **PARTIAL**; D3 acquisition default-DENY gate `#60` **PARTIAL** (no real download). Not Core. Plan: [phase-d-plan.md](phase-d-plan.md). Not a C1 pipeline step.
+Model layer (EVO-3): D0–D3 `#53`–`#60` **DONE** on main (schemas + inventory + compatibility + default-DENY gate). Addendum D4 `#61`–`#64` OPEN (ALLOW → local quarantine → verify → activate; no remote HTTP in this wave). Not Core. Plan: [phase-d-plan.md](phase-d-plan.md) §6a. Not a C1 pipeline step.
