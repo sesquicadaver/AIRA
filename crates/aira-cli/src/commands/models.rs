@@ -1,4 +1,4 @@
-//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#67).
+//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#68).
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -207,44 +207,62 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
             model_ref,
             visibility,
             allow_download,
+        }
+        | ModelsCommands::Share {
+            model_ref,
+            visibility,
+            allow_download,
+        } => run_publish_share(root, &model_ref, &visibility, allow_download),
+    }
+}
+
+fn run_publish_share(
+    root: &Path,
+    model_ref: &str,
+    visibility: &str,
+    allow_download: bool,
+) -> Result<ExitCode> {
+    let out = publish_local(root, model_ref, visibility, allow_download)
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    match out {
+        PublishOutcome::Denied(gate) => {
+            println!("decision {}", gate.decision.as_str());
+            println!("model_ref {}", gate.model_ref);
+            println!("reason {}", gate.reason);
+            println!("reason_ref {}", gate.reason_ref);
+            println!("evidence {}", gate.decision_artifact_id);
+            println!("status policy-denied");
+            Ok(ExitCode::from(2))
+        }
+        PublishOutcome::Published {
+            gate,
+            model_artifact_id,
+            share_offer_artifact_id,
+            offer_id,
+            capability_artifact_id,
+            capability_id,
+            content_hash,
+            visibility,
+            cache_path,
         } => {
-            let out = publish_local(root, &model_ref, &visibility, allow_download)
-                .map_err(|e| anyhow::anyhow!("{e}"))?;
-            match out {
-                PublishOutcome::Denied(gate) => {
-                    println!("decision {}", gate.decision.as_str());
-                    println!("model_ref {}", gate.model_ref);
-                    println!("reason {}", gate.reason);
-                    println!("reason_ref {}", gate.reason_ref);
-                    println!("evidence {}", gate.decision_artifact_id);
-                    println!("status policy-denied");
-                    Ok(ExitCode::from(2))
-                }
-                PublishOutcome::Published {
-                    gate,
-                    model_artifact_id,
-                    share_offer_artifact_id,
-                    offer_id,
-                    content_hash,
-                    visibility,
-                    cache_path,
-                } => {
-                    println!("decision {}", gate.decision.as_str());
-                    println!("model_ref {}", gate.model_ref);
-                    println!("reason {}", gate.reason);
-                    println!("reason_ref {}", gate.reason_ref);
-                    println!("evidence {}", gate.decision_artifact_id);
-                    println!("status share-published");
-                    println!("offer_id {offer_id}");
-                    println!("model_artifact {model_artifact_id}");
-                    println!("share_offer {share_offer_artifact_id}");
-                    println!("content_hash {content_hash}");
-                    println!("visibility {visibility}");
-                    println!("cache {cache_path}");
-                    println!("remote_push false");
-                    Ok(ExitCode::SUCCESS)
-                }
-            }
+            println!("decision {}", gate.decision.as_str());
+            println!("model_ref {}", gate.model_ref);
+            println!("reason {}", gate.reason);
+            println!("reason_ref {}", gate.reason_ref);
+            println!("evidence {}", gate.decision_artifact_id);
+            println!("status share-published");
+            println!("offer_id {offer_id}");
+            println!("model_artifact {model_artifact_id}");
+            println!("share_offer {share_offer_artifact_id}");
+            println!("capability {capability_id}");
+            println!("capability_artifact {capability_artifact_id}");
+            println!("capability_scope local");
+            println!("content_hash {content_hash}");
+            println!("visibility {visibility}");
+            println!("cache {cache_path}");
+            println!("remote_push false");
+            println!("federation_push false");
+            Ok(ExitCode::SUCCESS)
         }
     }
 }
