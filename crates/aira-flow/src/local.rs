@@ -195,6 +195,7 @@ pub fn init_node(root: impl AsRef<Path>) -> Result<NodePaths, FlowError> {
         paths.events_dir(),
         paths.problems_dir(),
         paths.conformance_reports(),
+        paths.root.join("models"),
     ] {
         fs::create_dir_all(&dir).map_err(|e| FlowError::Other(e.to_string()))?;
     }

@@ -20,6 +20,7 @@ members = [
     "csu/verification-basic",
     "csu/evidence-basic",
     "csu/artifact-basic",
+    "csu/model-inventory",
 ]
 
 [workspace.package]

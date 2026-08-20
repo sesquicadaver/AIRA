@@ -77,6 +77,11 @@ pub(crate) enum Commands {
         #[command(subcommand)]
         command: ConformanceCommands,
     },
+    /// Local model inventory (Phase D — read-only scan/list; no download).
+    Models {
+        #[command(subcommand)]
+        command: ModelsCommands,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -569,4 +574,16 @@ pub(crate) enum ConformanceCommands {
         #[arg(long)]
         out: Option<PathBuf>,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub(crate) enum ModelsCommands {
+    /// Scan scoped `<root>/models` (or `--dir` under it) and publish inventory artifact.
+    Scan {
+        /// Directory to scan (must stay under `<root>/models`). Default: `<root>/models`.
+        #[arg(long)]
+        dir: Option<PathBuf>,
+    },
+    /// List the latest local model inventory snapshot (no network).
+    List,
 }
