@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=AIRA Desktop
+GenericName=AIRA Desktop UI
+Comment=AIRA Desktop (Developer Preview) — Status / Settings / Quit
+Exec=aira-desktop
+TryExec=aira-desktop
+Terminal=false
+Categories=Utility;Development;
+Keywords=aira;desktop;gui;
+StartupNotify=true

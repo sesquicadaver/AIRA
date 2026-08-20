@@ -78,3 +78,4 @@ E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS → E3 Windows
 - Peer (для майбутніх P1+): [`peer-link.md`](peer-link.md)
 - systemd (сервери, не Desktop): [`runbook-systemd.md`](runbook-systemd.md)
 - Linux menu launcher: [`desktop-launcher.md`](desktop-launcher.md)
+- Desktop GUI: [`desktop-gui.md`](desktop-gui.md)

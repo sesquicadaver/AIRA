@@ -1,9 +1,9 @@
-//! `aira desktop start|stop|status` (QUEUE #76 / Analyze-111).
+//! `aira desktop start|stop|status|gui` (QUEUE #76 / #78).
 
 use std::path::PathBuf;
-use std::process::ExitCode;
+use std::process::{Command, ExitCode};
 
-use anyhow::Result;
+use anyhow::{bail, Context, Result};
 
 use aira_desktop_runtime::{
     install_user_launcher, start, status, stop, uninstall_user_launcher, DesktopPaths,
@@ -59,6 +59,7 @@ pub(crate) fn run(command: DesktopCommands) -> Result<ExitCode> {
             println!("installed {}", dest.display());
             println!("start: menu → AIRA  (or `aira desktop start`)");
             println!("stop:  menu → AIRA → Stop AIRA  (or `aira desktop stop`)");
+            println!("gui:   `aira desktop gui` or `aira-desktop`");
             Ok(ExitCode::SUCCESS)
         }
         DesktopCommands::LauncherUninstall => {
@@ -68,7 +69,51 @@ pub(crate) fn run(command: DesktopCommands) -> Result<ExitCode> {
             }
             Ok(ExitCode::SUCCESS)
         }
+        DesktopCommands::Gui {
+            data_root,
+            node_bin,
+            no_auto_start,
+            force_ui,
+        } => {
+            let bin = resolve_desktop_bin()?;
+            let mut cmd = Command::new(&bin);
+            if let Some(r) = data_root {
+                cmd.arg("--data-root").arg(r);
+            }
+            if let Some(n) = node_bin {
+                cmd.arg("--node-bin").arg(n);
+            }
+            if no_auto_start {
+                cmd.arg("--no-auto-start");
+            }
+            if force_ui {
+                cmd.arg("--force-ui");
+            }
+            let status = cmd
+                .status()
+                .with_context(|| format!("spawn {}", bin.display()))?;
+            if status.success() {
+                Ok(ExitCode::SUCCESS)
+            } else {
+                bail!("aira-desktop exited with {status}");
+            }
+        }
     }
+}
+
+fn resolve_desktop_bin() -> Result<PathBuf> {
+    if let Ok(p) = std::env::var("AIRA_DESKTOP_BIN") {
+        return Ok(PathBuf::from(p));
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let cand = dir.join("aira-desktop");
+            if cand.is_file() {
+                return Ok(cand);
+            }
+        }
+    }
+    Ok(PathBuf::from("aira-desktop"))
 }
 
 fn resolve_paths(data_root: Option<PathBuf>) -> DesktopPaths {

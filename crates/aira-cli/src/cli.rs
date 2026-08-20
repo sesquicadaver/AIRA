@@ -114,6 +114,17 @@ pub(crate) enum DesktopCommands {
     LauncherInstall,
     /// Remove the user `.desktop` launcher if present.
     LauncherUninstall,
+    /// Open the native Desktop GUI (`aira-desktop` binary on PATH / sibling).
+    Gui {
+        #[arg(long)]
+        data_root: Option<PathBuf>,
+        #[arg(long)]
+        node_bin: Option<PathBuf>,
+        #[arg(long, default_value_t = false)]
+        no_auto_start: bool,
+        #[arg(long, default_value_t = false)]
+        force_ui: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]
