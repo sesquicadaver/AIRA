@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D4 (`#53`–`#64`) **DONE**; Addendum D5 `#65`–`#66` **DONE**; OPEN `#67`–`#68`. D6–D7 не в QUEUE.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D4 (`#53`–`#64`) **DONE**; Addendum D5 `#65`–`#67` **DONE**; OPEN `#68`. D6–D7 не в QUEUE.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-101 CLOSED @ 4a7314d; QUEUE #66 DONE; Addendum D5 **#67 OPEN** |
+| `main` | Analyze-102 CLOSED @ 0aa78b1; QUEUE #67 DONE; Addendum D5 **#68 OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase D Addendum D5 **#67 OPEN** (Analyze-102 — local publish) |
+| Активна черга | Phase D Addendum D5 **#68 OPEN** (Analyze-103 — local capability ad) |
 
 ## Правила атомарності
 
@@ -103,12 +103,12 @@
 | 64 | **DONE** | ~~Analyze-99 — activate verified model~~ | explicit activate → cache + inventory + Event; без auto-execution | sharing (D5); rating (D6); remote registry |
 | 65 | **DONE** | ~~Analyze-100 — ModelShareOffer schema~~ | `aira:schema:model:share-offer:0.1` + fixtures; CustomArtifact envelope | policy runtime; publish CLI; network |
 | 66 | **DONE** | ~~Analyze-101 — share_custom_models gate~~ | absent/false → DENY publish + Event; true → ALLOW (без publish) | local publish; capability ad; rating |
-| 67 | OPEN | Analyze-102 — local publish signed descriptor | cache → signed ModelArtifact + ShareOffer; Event; без remote push | capability ad; remote registry; rating |
+| 67 | **DONE** | ~~Analyze-102 — local publish signed descriptor~~ | cache → signed ModelArtifact + ShareOffer; Event; без remote push | capability ad; remote registry; rating |
 | 68 | OPEN | Analyze-103 — local capability advertisement | capability CustomArtifact + CLI publish\|share; local-only | federation; DHT; rating (D6); marketplace |
 
 ### Наступний цикл
 
-**#67 OPEN** — Analyze-102: local publish signed descriptor (D5.3).
+**#68 OPEN** — Analyze-103: local capability advertisement (D5.4).
 
 ---
 
@@ -138,6 +138,6 @@
 | EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
-| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#66` DONE; `#67`–`#68` OPEN |
+| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#67` DONE; `#68` OPEN |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
