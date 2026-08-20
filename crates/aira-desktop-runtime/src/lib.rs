@@ -27,7 +27,9 @@ pub use launcher::{
 pub use paths::DesktopPaths;
 pub use process::{start, status, stop, LifecycleStatus, PidRecordView, StartOutcome};
 pub use settings::{
-    load_or_create_settings, write_settings, DesktopSettings, HttpAuthMode, NetworkProfile,
+    effective_peer_listen, load_or_create_settings, normalize_settings, validate_listen_addr,
+    write_settings, DesktopSettings, HttpAuthMode, NetworkProfile, DEFAULT_PEER_LISTEN,
+    SETTINGS_SCHEMA_ID,
 };
 
 /// Crate version for smoke tests.
