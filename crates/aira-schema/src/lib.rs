@@ -518,4 +518,28 @@ mod tests {
             )
             .is_err());
     }
+
+    #[test]
+    fn desktop_settings_schema_loads() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:desktop:settings:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let valid = root.join("fixtures/valid/desktop/settings.json");
+        reg.validate_file("aira:schema:desktop:settings:0.1", &valid)
+            .unwrap();
+        let text = std::fs::read_to_string(&valid).unwrap();
+        let v: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(v.get("network_profile"), Some(&Value::String("P0".into())));
+        assert_eq!(v.get("autostart_on_login"), Some(&Value::Bool(false)));
+        assert!(v.get("instance_id").and_then(|x| x.as_str()).is_some());
+        assert!(reg
+            .validate_file(
+                "aira:schema:desktop:settings:0.1",
+                root.join("fixtures/invalid/desktop/settings-missing-instance-id.json"),
+            )
+            .is_err());
+    }
 }

@@ -146,6 +146,7 @@ CI: `cargo run -p aira-cli -- schema validate --fixtures fixtures` (QUEUE #38).
 | `aira:schema:protocol:envelope:0.1` | `protocol/envelope.schema.json` | valid + unsigned invalid | **DONE** |
 | `aira:schema:protocol:response:0.1` | `protocol/response.schema.json` | valid | **DONE** |
 | `aira:schema:identity:identity-descriptor:0.1` | `identity/identity-descriptor.schema.json` | valid | **DONE** |
+| `aira:schema:desktop:settings:0.1` | `desktop/settings.schema.json` | valid + missing-instance-id invalid | **DONE** |
 
 Duplicate policy schema files share the same `$id`; they are not two contracts.
 
@@ -209,4 +210,4 @@ C2 as merge-blocking CI
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
-Desktop one-click / GUI: **ABSENT** (canon + plan only; Developer Preview target). UX: [desktop-ux.md](desktop-ux.md). Plan: [phase-e-plan.md](phase-e-plan.md) (lifecycle/port/HTTP auth acceptance). Provenance: [NEXT_PROBLEM.md](../NEXT_PROBLEM.md) RESOLVED. QUEUE `#75`–`#79` OPEN (E1 = P0 only; P1 deferred to E1.1).
+Desktop one-click / GUI: **ABSENT** (shell). Settings schema `aira:schema:desktop:settings:0.1` — **DONE** (`#75` / Analyze-110). UX: [desktop-ux.md](desktop-ux.md). Plan: [phase-e-plan.md](phase-e-plan.md). Provenance: [NEXT_PROBLEM.md](../NEXT_PROBLEM.md) RESOLVED. QUEUE `#76`–`#79` remain OPEN.

@@ -1,0 +1,57 @@
+{
+  "$id": "aira:schema:desktop:settings:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "payload_schema",
+    "network_profile",
+    "open_ui_on_start",
+    "autostart_on_login",
+    "http_listen",
+    "instance_id",
+    "http_auth_mode"
+  ],
+  "properties": {
+    "payload_schema": {
+      "type": "string",
+      "const": "aira:schema:desktop:settings:0.1"
+    },
+    "network_profile": {
+      "type": "string",
+      "enum": ["P0", "P1", "P2", "P3", "P4", "P5", "P6"],
+      "description": "E1 runtime uses P0 only; other values reserved for later addenda."
+    },
+    "open_ui_on_start": {
+      "type": "boolean",
+      "description": "Open native status/settings UI after successful start."
+    },
+    "autostart_on_login": {
+      "type": "boolean",
+      "description": "OS login autostart; hooks owned by tray (#78), default false."
+    },
+    "http_listen": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Fixed host:port for aira-node HTTP. No hidden auto-increment; conflict → fail or attach."
+    },
+    "instance_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable per-install id for single-instance attach semantics."
+    },
+    "http_auth_mode": {
+      "type": "string",
+      "enum": ["bearer_token", "desktop_ipc"],
+      "description": "Desktop auth contract placeholder; token generation / IPC are #76."
+    },
+    "http_token_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path or ref to token secret file (not the secret). Placeholder when http_auth_mode=bearer_token."
+    },
+    "peer_listen": {
+      "type": ["string", "null"],
+      "description": "Unused in P0; null or omitted until E1.1."
+    }
+  }
+}

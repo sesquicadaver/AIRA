@@ -143,7 +143,7 @@ P2–P6; окремі stabilization атоми (branch protection, Handle opacit
 
 ## 5. RFC / артефакти
 
-- RFC-S: desktop settings schema (`#75`)
+- RFC-S: desktop settings schema (`#75`) — [`AIRA-RFC-0024`](../specs/rfc/AIRA-RFC-0024-desktop-settings-payload-schema.md)
 - RFC-E: `aira desktop …` + shared lifecycle (`#76`)
 - Packaging docs під `docs/` + README після `#79`
 - Позначити `NEXT_PROBLEM.md` як RESOLVED (вже)
