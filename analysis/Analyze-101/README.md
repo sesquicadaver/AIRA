@@ -1,7 +1,7 @@
 # Analyze-101 — share_custom_models gate (QUEUE #66)
 
 ## Status
-OPEN (branch `analyze-101-share-custom-models-gate`).
+CLOSED (QUEUE #66 DONE @ 4a7314d / PR #29).
 
 ## Done when
 absent/false → DENY publish + Event; true → ALLOW without ShareOffer bytes.
