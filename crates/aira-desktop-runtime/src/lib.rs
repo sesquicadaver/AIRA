@@ -3,6 +3,7 @@
 //! Shared by `aira desktop …` and future tray/GUI. Does **not** implement OS
 //! autostart hooks (those are `#78`).
 
+mod autostart;
 mod bootstrap;
 mod health;
 mod launcher;
@@ -10,6 +11,10 @@ mod paths;
 mod process;
 mod settings;
 
+pub use autostart::{
+    autostart_desktop_entry, is_autostart_enabled, is_autostart_enabled_in, set_autostart,
+    set_autostart_in, sync_autostart_from_settings, AIRA_AUTOSTART_FILENAME,
+};
 pub use bootstrap::ensure_bootstrap;
 pub use launcher::{
     install_launcher_to, install_user_launcher, uninstall_launcher_from, uninstall_user_launcher,

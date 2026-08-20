@@ -1,0 +1,19 @@
+[package]
+name = "aira-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "AIRA Desktop GUI (Developer Preview) — Status / Settings / Quit"
+
+[[bin]]
+name = "aira-desktop"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+eframe = { version = "0.28", default-features = true }
+egui = "0.28"
+aira-desktop-runtime = { path = "../aira-desktop-runtime" }

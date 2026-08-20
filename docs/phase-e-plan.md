@@ -147,6 +147,7 @@ P2–P6; окремі stabilization атоми (branch protection, Handle opacit
 - RFC-E: `aira desktop …` + shared lifecycle (`#76`) — [`AIRA-RFC-0025`](../specs/rfc/AIRA-RFC-0025-desktop-lifecycle-cli.md)
 - Packaging docs під `docs/` + README після `#79`
 - Linux launcher: [`desktop-launcher.md`](desktop-launcher.md) + RFC-0026 (`#77`)
+- Desktop GUI + autostart: [`desktop-gui.md`](desktop-gui.md) + RFC-0027 (`#78`)
 - Позначити `NEXT_PROBLEM.md` як RESOLVED (вже)
 
 ## 6. Acceptance E1 (Linux)
