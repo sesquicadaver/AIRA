@@ -82,6 +82,34 @@ pub(crate) enum Commands {
         #[command(subcommand)]
         command: ModelsCommands,
     },
+    /// Desktop lifecycle (Phase E — P0 local HTTP supervisor).
+    Desktop {
+        #[command(subcommand)]
+        command: DesktopCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub(crate) enum DesktopCommands {
+    /// Ensure bootstrap and start (or attach) `aira-node --http` on loopback.
+    Start {
+        /// Dev/test data root (colocated settings/runtime). Default: OS Desktop layout.
+        #[arg(long)]
+        data_root: Option<PathBuf>,
+        /// Path to `aira-node` binary (else `AIRA_NODE_BIN`, sibling of `aira`, or PATH).
+        #[arg(long)]
+        node_bin: Option<PathBuf>,
+    },
+    /// Stop the supervised Desktop node.
+    Stop {
+        #[arg(long)]
+        data_root: Option<PathBuf>,
+    },
+    /// Print lifecycle status (`stopped|running|unhealthy|…`).
+    Status {
+        #[arg(long)]
+        data_root: Option<PathBuf>,
+    },
 }
 
 #[derive(Subcommand, Debug)]

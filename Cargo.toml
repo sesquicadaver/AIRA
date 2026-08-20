@@ -13,6 +13,7 @@ members = [
     "crates/aira-protocol",
     "crates/aira-peer",
     "crates/aira-node",
+    "crates/aira-desktop-runtime",
     "crates/aira-cli",
     "csu/context-basic",
     "csu/reduction-basic",
