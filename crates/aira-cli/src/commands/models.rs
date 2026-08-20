@@ -1,4 +1,4 @@
-//! Local model inventory / compatibility / acquisition / rating CLI (QUEUE #58–#71).
+//! Local model inventory / compatibility / acquisition / rating / recommend CLI (QUEUE #58–#74).
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -11,6 +11,7 @@ use aira_csu_model_acquisition::{
 use aira_csu_model_compatibility::resolve_and_publish;
 use aira_csu_model_inventory::{load_latest, scan_and_publish};
 use aira_csu_model_rating::{publish_rating, RatingRequest};
+use aira_csu_model_recommendation::{publish_recommendation, RecommendRequest};
 use anyhow::Result;
 
 use crate::cli::{ModelsCommands, ModelsPolicyCommands};
@@ -252,6 +253,35 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
             println!("content_hash {}", out.content_hash);
             println!("pointer {}", out.pointer_path);
             println!("global_score false");
+            println!("network false");
+            Ok(ExitCode::SUCCESS)
+        }
+        ModelsCommands::Recommend {
+            recommendation_type,
+            reason,
+            evidence_refs,
+            confidence,
+            alternatives,
+        } => {
+            let out = publish_recommendation(
+                root,
+                RecommendRequest {
+                    recommendation_type,
+                    reason,
+                    evidence_refs,
+                    confidence,
+                    alternatives,
+                },
+            )
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!("status recommendation-published");
+            println!("recommendation_id {}", out.recommendation_id);
+            println!("recommendation_type {}", out.recommendation_type);
+            println!("artifact {}", out.artifact_id);
+            println!("content_hash {}", out.content_hash);
+            println!("pointer {}", out.pointer_path);
+            println!("marketplace false");
+            println!("settlement false");
             println!("network false");
             Ok(ExitCode::SUCCESS)
         }
