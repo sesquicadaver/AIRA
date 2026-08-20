@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D6 (`#53`–`#71`) **DONE**. Addendum D7 `#72` **DONE**; OPEN `#73`–`#74`. D4/D5 уже CLOSED.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D6 (`#53`–`#71`) **DONE**. Addendum D7 `#72`–`#73` **DONE**; OPEN `#74`. D4/D5 уже CLOSED.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-107 CLOSED @ 09b3de2; QUEUE #72 DONE; Addendum D7 **#73 OPEN** |
+| `main` | Analyze-108 CLOSED @ 9760921; QUEUE #73 DONE; Addendum D7 **#74 OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase D Addendum D7 **#73 OPEN** (Analyze-108 — local recommend publish) |
+| Активна черга | Phase D Addendum D7 **#74 OPEN** (Analyze-109 — CLI models recommend) |
 
 ## Правила атомарності
 
@@ -109,12 +109,12 @@
 | 70 | **DONE** | ~~Analyze-105 — local rating evidence publish~~ | signed rating CustomArtifact + Event; context required | CLI; recommendation; network scoreboard |
 | 71 | **DONE** | ~~Analyze-106 — CLI `aira models rate`~~ | publish contextual rating evidence; local-only | D7 recommend; marketplace; global rank |
 | 72 | **DONE** | ~~Analyze-107 — UpgradeRecommendation schema~~ | `aira:schema:model:upgrade-recommendation:0.1` + fixtures; advisory | recommend CSU; CLI; marketplace |
-| 73 | OPEN | Analyze-108 — local upgrade recommendation publish | signed recommendation CustomArtifact + Event; evidence-backed | CLI; settlement; ads |
+| 73 | **DONE** | ~~Analyze-108 — local upgrade recommendation publish~~ | signed recommendation CustomArtifact + Event; evidence-backed | CLI; settlement; ads |
 | 74 | OPEN | Analyze-109 — CLI `aira models recommend` | advisory recommendation; local-only | marketplace; auto-download; settlement |
 
 ### Наступний цикл
 
-**#73 OPEN** — Analyze-108: local upgrade recommendation publish (D7.2).
+**#74 OPEN** — Analyze-109: CLI `aira models recommend` (D7.3).
 
 > Порядок: D6 DONE → D7; D4/D5 уже DONE (не переробляти).
 
