@@ -1,6 +1,6 @@
 # Phase E — Desktop UX & One-Click Start v0.1
 
-**Статус:** складено 2026-08-20; acceptance посилено 2026-08-20 (audit fold-in, без нових атомів перед `#75`).  
+**Статус:** складено 2026-08-20; acceptance посилено 2026-08-20; **Linux E1 (`#75`–`#79`) DONE** @ 2026-08-20.  
 **Рішення UX:** [`desktop-ux.md`](desktop-ux.md). Provenance проблеми: [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED**).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md). Поза цим планом / addendum поодинокі пункти в QUEUE не додавати.  
 **Не канон Book:** не змінює Core / C0–C1 / OperationalPlane semantics.  
