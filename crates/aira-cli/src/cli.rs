@@ -588,4 +588,25 @@ pub(crate) enum ModelsCommands {
     List,
     /// Classify installed models (runnable/incompatible/unknown); publish evidence (no download).
     Compatible,
+    /// Show local acquisition policy (default-deny if absent).
+    Policy {
+        #[command(subcommand)]
+        command: ModelsPolicyCommands,
+    },
+    /// Request model download — D3 always DENY (no real transfer; D4 is Out).
+    Download {
+        #[arg(long)]
+        model_ref: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub(crate) enum ModelsPolicyCommands {
+    /// Print effective acquisition policy.
+    Show,
+    /// Write acquisition policy (`--auto-download` sets true; default false).
+    Set {
+        #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
+        auto_download: bool,
+    },
 }
