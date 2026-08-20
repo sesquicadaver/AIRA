@@ -99,6 +99,10 @@
     {
       "schema": "aira:schema:model:acquisition-policy:0.1",
       "file": "fixtures/valid/model/acquisition-policy.json"
+    },
+    {
+      "schema": "aira:schema:model:share-offer:0.1",
+      "file": "fixtures/valid/model/share-offer.json"
     }
   ],
   "invalid": [
@@ -145,6 +149,10 @@
     {
       "schema": "aira:schema:model:acquisition-policy:0.1",
       "file": "fixtures/invalid/model/acquisition-policy-missing-auto-download.json"
+    },
+    {
+      "schema": "aira:schema:model:share-offer:0.1",
+      "file": "fixtures/invalid/model/share-offer-missing-visibility.json"
     }
   ]
 }

@@ -1,0 +1,22 @@
+{
+  "payload_schema": "aira:schema:model:share-offer:0.1",
+  "offer_id": "aira:share:example-7b-int4-local",
+  "publisher_ref": "aira:identity:local-test",
+  "model_artifact_ref": "aira:artifact:model:example-7b-int4",
+  "content_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "visibility": "local",
+  "allow_download": false,
+  "model_profile_ref": "aira:profile:example-7b-int4",
+  "license_policy_ref": "aira:policy:model-license-local",
+  "capability_hints": [
+    "coding.llm.decode",
+    "gguf",
+    "int4"
+  ],
+  "created_at": "2026-08-20T00:00:00Z",
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}
