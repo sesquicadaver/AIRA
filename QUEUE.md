@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-111 / QUEUE #76 Desktop lifecycle |
+| `main` | Analyze-111 CLOSED @ 45532d5 / PR #39; QUEUE #76 DONE; перший OPEN `#77` |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase E — **перший OPEN `#77`** (Linux `.desktop`) |
