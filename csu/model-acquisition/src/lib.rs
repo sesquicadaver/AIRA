@@ -237,10 +237,7 @@ pub fn request_download(
         GateDecision::Allow => "policy-allowed",
         GateDecision::Deny => "policy-denied",
     };
-    let ev_id = format!(
-        "aira:event:{kind}-{}",
-        &hash_hex[..16.min(hash_hex.len())]
-    );
+    let ev_id = format!("aira:event:{kind}-{}", &hash_hex[..16.min(hash_hex.len())]);
     let event = make_event(
         &ev_id,
         EventType::CustomEvent,
