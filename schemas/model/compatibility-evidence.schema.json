@@ -1,0 +1,53 @@
+{
+  "$id": "aira:schema:model:compatibility-evidence:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "payload_schema",
+    "model_ref",
+    "compatibility",
+    "reason",
+    "confidence",
+    "scope"
+  ],
+  "properties": {
+    "payload_schema": {
+      "type": "string",
+      "const": "aira:schema:model:compatibility-evidence:0.1"
+    },
+    "model_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "profile_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "host_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "compatibility": {
+      "type": "string",
+      "enum": ["runnable", "incompatible", "unknown"]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "scope": {
+      "$ref": "aira:schema:common:scope-descriptor:0.1"
+    },
+    "assessed_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    }
+  }
+}
