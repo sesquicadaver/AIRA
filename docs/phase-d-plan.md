@@ -321,6 +321,7 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 | RFC-D/E | local publish signed ModelArtifact + ShareOffer | `#67` / RFC-0016 |
 | RFC-D/E | local capability advertisement + CLI share | `#68` / RFC-0017 |
 | RFC-S | ModelRatingEvidence payload schema | `#69` / RFC-0018 |
+| RFC-R | local rating evidence publish CSU | `#70` / RFC-0019 |
 | RFC-S | ModelShareOffer payload schema | `#65` / RFC-0014 |
 | RFC-E | `aira models activate` + inventory scan of cache | `#64` / RFC-0013 |
 | RFC-D | Activate verified → cache (no execution) | `#64` |
