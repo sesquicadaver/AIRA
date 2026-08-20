@@ -250,8 +250,8 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 |------|--------|------|
 | RFC-S | payload schemas; **не** піднімати `ModelArtifact` у canonical enum на старті | до/разом із `#53` |
 | RFC-D | Inventory CSU contract; sandbox ≠ basic CSU | до/разом із `#58` |
-| RFC-E | `aira models download --source` quarantine | `#62` / RFC-0011 |
-| RFC-D | Local quarantine fetch after ALLOW | `#62` |
+| RFC-E | `aira models verify --artifact` | `#63` / RFC-0012 |
+| RFC-D | Quarantine verify → verified staging | `#63` |
 | RFC-T | fixtures/conformance для нових payload | разом зі схемами |
 | RFC-A / RFC-B | Book 0 pipeline / Core | **заборонені** цим планом |
 | RFC-R / RFC-P | rating, recommendation, popularity, placement | лише D6–D7 |
