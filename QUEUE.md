@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); Addendum E1.1 `#80`–`#85` **OPEN**.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); Addendum E1.1 `#80` **DONE**, `#81`–`#85` **OPEN**.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-114 CLOSED @ 04995ab / PR #42; QUEUE #79 DONE; перший OPEN `#80` (E1.1 PeerInvite schema) |
+| `main` | Analyze-115 CLOSED @ 26aebe3 / PR #43; QUEUE #80 DONE; перший OPEN `#81` |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase E Addendum **E1.1** — **перший OPEN `#80`** |
+| Активна черга | Phase E Addendum **E1.1** — **перший OPEN `#81`** |
 
 ## Правила атомарності
 
@@ -138,7 +138,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
-| 80 | **OPEN** | Analyze-115 — PeerInvite schema | `aira:schema:desktop:peer-invite:0.1` + fixtures (identity_ref/pubkey + optional addr) | schema validate --fixtures зелений | settings P1; peer process; QR; GUI |
+| 80 | **DONE** | ~~Analyze-115 — PeerInvite schema~~ | `aira:schema:desktop:peer-invite:0.1` + fixtures (identity_ref/pubkey + optional addr) | schema validate --fixtures зелений | settings P1; peer process; QR; GUI |
 | 81 | **OPEN** | Analyze-116 — Settings P1 + peer_listen | runtime приймає P1; default/validate `peer_listen`; P2+ fail-closed; docs | settings load/save P1 + тести | peer supervise; invite IO; GUI |
 | 82 | **OPEN** | Analyze-117 — peer lifecycle supervise | при P1: start/stop/status `peer listen --recv`; PID/lock; HTTP лишається | lifecycle тести dual-process | invite IO; QR; GUI |
 | 83 | **OPEN** | Analyze-118 — invite file export/import | export JSON; import → trust add + book upsert; CLI/shared lib | roundtrip тести | QR; GUI |
@@ -147,7 +147,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл
 
-**Перший OPEN:** `#80` — PeerInvite schema.
+**Перший OPEN:** `#81` — Settings P1 + peer_listen.
 
 > Порядок: `#80` → `#81` → `#82` → `#83` → `#84` → `#85`. Після `#85`: E2 macOS / E3 Windows — окремим рішенням.
 
@@ -180,6 +180,6 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
-| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#85` OPEN |
+| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80` DONE, `#81`–`#85` OPEN |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

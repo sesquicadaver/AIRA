@@ -1,7 +1,7 @@
 # Analyze-115 — PeerInvite schema (QUEUE #80)
 
 ## Status
-OPEN — `aira:schema:desktop:peer-invite:0.1`.
+CLOSED @ 26aebe3 / PR #43 (QUEUE #80 DONE).
 
 ## Done when
 schema + fixtures; `schema validate --fixtures` green.
