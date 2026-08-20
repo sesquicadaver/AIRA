@@ -1,8 +1,9 @@
-//! Model acquisition policy gate (QUEUE #60 / Analyze-95).
+//! Model acquisition policy gate (QUEUE #60–#61 / Analyze-95–96).
 //!
 //! Default-deny download: missing policy or `auto_download=false` → DENY +
-//! Policy decision artifact + CustomEvent. **Never** transfers model bytes
-//! (real download is D4 / Out of this row). Not wired into C1.
+//! Policy decision artifact + CustomEvent. With policy and
+//! `auto_download=true` → ALLOW + Evidence (**no** byte transfer; quarantine
+//! fetch is `#62`). Not wired into C1.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -40,16 +41,19 @@ pub enum AcquisitionError {
     Other(String),
 }
 
-/// Gate decision — D3 never performs a byte transfer.
+/// Gate decision — ALLOW authorizes a future transfer; never transfers bytes here.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum GateDecision {
+    Allow,
     Deny,
 }
 
 impl GateDecision {
+    /// Stable uppercase label for CLI / pointer JSON.
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::Allow => "ALLOW",
             Self::Deny => "DENY",
         }
     }
@@ -161,12 +165,12 @@ pub fn load_policy(aira_root: impl AsRef<Path>) -> Result<Option<PolicyView>, Ac
     }))
 }
 
-/// Evaluate a download request. **Always DENY transfer in D3**; publish decision evidence.
+/// Evaluate a download request; publish decision evidence. **Never** transfers model bytes.
 ///
 /// Rules:
 /// - no policy → DENY (`aira:reason:no-acquisition-policy`)
 /// - `auto_download=false` → DENY (`aira:reason:auto-download-false`)
-/// - `auto_download=true` → still DENY (`aira:reason:download-not-implemented-d3`) — no implicit/real download
+/// - `auto_download=true` → ALLOW (`aira:reason:auto-download-true`) — authorizes `#62` fetch only
 pub fn request_download(
     aira_root: impl AsRef<Path>,
     model_ref: &str,
@@ -175,27 +179,29 @@ pub fn request_download(
     let _ = aira_object::register_node_identity(root);
     let policy = load_policy(root)?;
 
-    let (reason, reason_ref, auto_download) = match &policy {
+    let (decision, reason, reason_ref, auto_download) = match &policy {
         None => (
+            GateDecision::Deny,
             "no acquisition policy; default DENY".to_string(),
             "aira:reason:no-acquisition-policy".to_string(),
             None,
         ),
         Some(p) if !p.auto_download => (
+            GateDecision::Deny,
             "auto_download=false; download DENY".to_string(),
             "aira:reason:auto-download-false".to_string(),
             Some(false),
         ),
         Some(p) => (
-            "auto_download=true but download runtime not implemented (D3); DENY transfer"
-                .to_string(),
-            "aira:reason:download-not-implemented-d3".to_string(),
+            GateDecision::Allow,
+            "auto_download=true; download ALLOW (no transfer in this step)".to_string(),
+            "aira:reason:auto-download-true".to_string(),
             Some(p.auto_download),
         ),
     };
 
     let updated_at = utc_now_rfc3339().map_err(|e| AcquisitionError::Crypto(e.to_string()))?;
-    let decision_payload = build_deny_decision(&reason_ref)?;
+    let decision_payload = build_decision(decision, &reason_ref)?;
     if let Ok(schema_root) =
         aira_schema::find_repo_root(std::env::current_dir().unwrap_or_else(|_| root.to_path_buf()))
     {
@@ -208,7 +214,11 @@ pub fn request_download(
     let bytes = json_bytes(&decision_payload);
     let content_hash = ContentHash::sha256_bytes(&bytes);
     let hash_hex = content_hash.as_str().trim_start_matches("sha256:");
-    let artifact_id = format!("aira:artifact:acq-deny:{hash_hex}");
+    let kind = match decision {
+        GateDecision::Allow => "acq-allow",
+        GateDecision::Deny => "acq-deny",
+    };
+    let artifact_id = format!("aira:artifact:{kind}:{hash_hex}");
     let desc = make_artifact(
         &artifact_id,
         ArtifactType::CustomArtifact,
@@ -223,8 +233,12 @@ pub fn request_download(
         Err(e) => return Err(AcquisitionError::Artifact(e.to_string())),
     }
 
+    let op = match decision {
+        GateDecision::Allow => "policy-allowed",
+        GateDecision::Deny => "policy-denied",
+    };
     let ev_id = format!(
-        "aira:event:acq-deny-{}",
+        "aira:event:{kind}-{}",
         &hash_hex[..16.min(hash_hex.len())]
     );
     let event = make_event(
@@ -233,15 +247,13 @@ pub fn request_download(
         vec![],
         vec![AiraRef::parse(&artifact_id).expect("aid")],
         vec![],
-        Some(format!(
-            "op:policy-denied:download:{model_ref}:{reason_ref}"
-        )),
+        Some(format!("op:{op}:download:{model_ref}:{reason_ref}")),
     );
     append_custom_event(root, event)?;
 
     let pointer = DecisionPointer {
         updated_at,
-        decision: GateDecision::Deny.as_str().into(),
+        decision: decision.as_str().into(),
         model_ref: model_ref.to_string(),
         reason: reason.clone(),
         decision_artifact_id: artifact_id.clone(),
@@ -261,7 +273,7 @@ pub fn request_download(
     let _host = active_identity();
 
     Ok(AcquireOutcome {
-        decision: GateDecision::Deny,
+        decision,
         reason,
         reason_ref,
         model_ref: model_ref.to_string(),
@@ -271,9 +283,9 @@ pub fn request_download(
     })
 }
 
-fn build_deny_decision(reason_ref: &str) -> Result<Value, AcquisitionError> {
+fn build_decision(decision: GateDecision, reason_ref: &str) -> Result<Value, AcquisitionError> {
     let mut body = Map::new();
-    body.insert("decision".into(), json!("DENY"));
+    body.insert("decision".into(), json!(decision.as_str()));
     body.insert("requirements".into(), json!([]));
     body.insert("reason_refs".into(), json!([reason_ref]));
     let for_sign = Value::Object(body.clone());
@@ -315,7 +327,7 @@ fn append_custom_event(root: &Path, event: EventDescriptor) -> Result<(), Acquis
     Ok(())
 }
 
-/// Write a default-deny acquisition policy file (for `policy set`).
+/// Write an acquisition policy file (for `policy set`).
 pub fn write_default_deny_policy(
     aira_root: impl AsRef<Path>,
     auto_download: bool,
@@ -384,6 +396,21 @@ mod tests {
         .unwrap();
     }
 
+    fn weight_files(root: &Path) -> Vec<String> {
+        fs::read_dir(root.join("models"))
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter_map(|e| {
+                let n = e.file_name().to_string_lossy().to_string();
+                if n.ends_with(".gguf") || n.ends_with(".safetensors") {
+                    Some(n)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     #[test]
     fn version_is_semver_like() {
         assert!(!crate_version().is_empty());
@@ -436,22 +463,33 @@ mod tests {
     }
 
     #[test]
-    fn still_deny_when_auto_download_true_no_transfer() {
+    fn allow_when_auto_download_true_no_transfer() {
         let dir = tempfile::tempdir().unwrap();
         init_min_root(dir.path());
         write_default_deny_policy(dir.path(), true).unwrap();
         let out = request_download(dir.path(), "aira:model:example").unwrap();
-        assert_eq!(out.decision, GateDecision::Deny);
-        assert!(out.reason.contains("not implemented"));
-        // No downloaded weight files created.
-        let models = fs::read_dir(dir.path().join("models")).unwrap();
-        let weights: Vec<_> = models
-            .filter_map(|e| e.ok())
-            .filter(|e| {
-                let n = e.file_name().to_string_lossy().to_string();
-                n.ends_with(".gguf") || n.ends_with(".safetensors")
-            })
-            .collect();
-        assert!(weights.is_empty());
+        assert_eq!(out.decision, GateDecision::Allow);
+        assert_eq!(out.auto_download, Some(true));
+        assert_eq!(out.reason_ref, "aira:reason:auto-download-true");
+        assert!(out.decision_artifact_id.contains("acq-allow"));
+        let pointer: DecisionPointer = serde_json::from_str(
+            &fs::read_to_string(dir.path().join(DECISION_POINTER_REL)).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(pointer.decision, "ALLOW");
+        let log: Value = serde_json::from_str(
+            &fs::read_to_string(dir.path().join("events/event-log.json")).unwrap(),
+        )
+        .unwrap();
+        let events = log.get("events").and_then(|e| e.as_array()).unwrap();
+        let payload = events
+            .last()
+            .unwrap()
+            .get("payload_ref")
+            .and_then(|v| v.as_str())
+            .unwrap();
+        assert!(payload.contains("op:policy-allowed:download:"));
+        assert!(weight_files(dir.path()).is_empty());
+        assert!(!dir.path().join("models/quarantine").exists());
     }
 }

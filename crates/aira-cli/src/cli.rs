@@ -593,7 +593,7 @@ pub(crate) enum ModelsCommands {
         #[command(subcommand)]
         command: ModelsPolicyCommands,
     },
-    /// Request model download — D3 always DENY (no real transfer; D4 is Out).
+    /// Evaluate download policy (ALLOW/DENY). ALLOW does not transfer bytes (`#62`).
     Download {
         #[arg(long)]
         model_ref: String,

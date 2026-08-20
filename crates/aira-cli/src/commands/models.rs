@@ -1,9 +1,11 @@
-//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#60).
+//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#61).
 
 use std::path::Path;
 use std::process::ExitCode;
 
-use aira_csu_model_acquisition::{load_policy, request_download, write_default_deny_policy};
+use aira_csu_model_acquisition::{
+    load_policy, request_download, write_default_deny_policy, GateDecision,
+};
 use aira_csu_model_compatibility::resolve_and_publish;
 use aira_csu_model_inventory::{load_latest, scan_and_publish};
 use anyhow::Result;
@@ -88,9 +90,17 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
             println!("reason {}", out.reason);
             println!("reason_ref {}", out.reason_ref);
             println!("evidence {}", out.decision_artifact_id);
-            println!("status policy-denied");
-            // Non-zero: download did not proceed (default-deny / no transfer).
-            Ok(ExitCode::from(2))
+            match out.decision {
+                GateDecision::Allow => {
+                    // Gate passed; byte transfer is `#62` (not performed here).
+                    println!("status policy-allowed");
+                    Ok(ExitCode::SUCCESS)
+                }
+                GateDecision::Deny => {
+                    println!("status policy-denied");
+                    Ok(ExitCode::from(2))
+                }
+            }
         }
     }
 }
