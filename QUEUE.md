@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — виконання стартоване; перший OPEN **#60**.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — перша хвиля D0–D3 (`#53`–`#60`) **DONE**; D4–D7 не в QUEUE.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-94 CLOSED @ 2b149f2; QUEUE #59 DONE; наступний OPEN **#60** |
+| `main` | Analyze-95 CLOSED @ 21d90a5; QUEUE #60 DONE; Phase D `#53`–`#60` **DONE** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase D **#60 OPEN** (Analyze-95 — acquisition policy DENY) |
+| Активна черга | Phase D перша хвиля `#53`–`#60` **DONE** (D4–D7 лише після addendum) |
 
 ## Правила атомарності
 
@@ -96,11 +96,11 @@
 | 57 | **DONE** | ~~Analyze-92 — ModelAcquisitionPolicy schema~~ | payload policy; default `auto_download=false` | schema + fixtures | downloader; allowlist runtime |
 | 58 | **DONE** | ~~Analyze-93 — local inventory read-only~~ | `aira models scan\|list`; Inventory CSU, scoped FS | scan без мережі/download; immutable inventory artifact | compatible resolver; download |
 | 59 | **DONE** | ~~Analyze-94 — compatibility resolver~~ | hardware/backend/profile → runnable / incompatible / unknown | Evidence Artifact + reason; без download | acquisition CSU; CLI download |
-| 60 | OPEN | Analyze-95 — acquisition policy DENY | runtime default-deny download | без policy = DENY + Event/Evidence; implicit download немає | реальний download (D4); sharing |
+| 60 | **DONE** | ~~Analyze-95 — acquisition policy DENY~~ | runtime default-deny download | без policy = DENY + Event/Evidence; implicit download немає | реальний download (D4); sharing |
 
 ### Наступний цикл
 
-**#60 OPEN** — Analyze-95: acquisition policy DENY.
+**Немає OPEN** у першій хвилі Phase D. D4–D7 (download / sharing / rating / upgrade) — лише після окремого addendum до [`docs/phase-d-plan.md`](docs/phase-d-plan.md).
 
 ---
 
@@ -130,6 +130,6 @@
 | EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
-| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#59` DONE; `#60` OPEN |
+| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#60` **DONE** |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
