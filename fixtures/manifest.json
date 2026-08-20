@@ -87,6 +87,10 @@
     {
       "schema": "aira:schema:model:profile:0.1",
       "file": "fixtures/valid/model/profile.json"
+    },
+    {
+      "schema": "aira:schema:model:inventory:0.1",
+      "file": "fixtures/valid/model/inventory.json"
     }
   ],
   "invalid": [
@@ -121,6 +125,10 @@
     {
       "schema": "aira:schema:model:profile:0.1",
       "file": "fixtures/invalid/model/profile-missing-model-ref.json"
+    },
+    {
+      "schema": "aira:schema:model:inventory:0.1",
+      "file": "fixtures/invalid/model/inventory-missing-signature.json"
     }
   ]
 }

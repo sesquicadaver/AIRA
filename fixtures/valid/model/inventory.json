@@ -1,0 +1,28 @@
+{
+  "payload_schema": "aira:schema:model:inventory:0.1",
+  "host_ref": "aira:identity:local-test",
+  "installed_models": [
+    "aira:artifact:sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  ],
+  "runnable_models": [
+    "aira:artifact:sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  ],
+  "downloadable_compatible_models": [],
+  "incompatible_models": [
+    {
+      "model_ref": "aira:artifact:sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "reason": "required_vram_gb exceeds local capacity"
+    }
+  ],
+  "cache_budget": {
+    "total_gb": 64,
+    "used_gb": 4.5,
+    "reserved_gb": 8
+  },
+  "updated_at": "2026-08-20T05:00:00Z",
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}

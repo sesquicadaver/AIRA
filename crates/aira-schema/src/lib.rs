@@ -382,4 +382,25 @@ mod tests {
             )
             .is_err());
     }
+
+    #[test]
+    fn model_inventory_payload_schema_loads() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:model:inventory:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        reg.validate_file(
+            "aira:schema:model:inventory:0.1",
+            root.join("fixtures/valid/model/inventory.json"),
+        )
+        .unwrap();
+        assert!(reg
+            .validate_file(
+                "aira:schema:model:inventory:0.1",
+                root.join("fixtures/invalid/model/inventory-missing-signature.json"),
+            )
+            .is_err());
+    }
 }
