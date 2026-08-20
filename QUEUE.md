@@ -125,7 +125,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
-| 75 | **OPEN** | Analyze-110 — Desktop settings schema | `aira:schema:desktop:settings:0.1` + fixtures (P0 fields + `instance_id` + auth placeholders; phase-e §2.1/§2.4) | schema validate --fixtures зелений | orchestrator; GUI; token generation; P1+ |
+| 75 | **DONE** | ~~Analyze-110 — Desktop settings schema~~ | `aira:schema:desktop:settings:0.1` + fixtures (P0 fields + `instance_id` + auth placeholders; phase-e §2.1/§2.4) | schema validate --fixtures зелений | orchestrator; GUI; token generation; P1+ |
 | 76 | **OPEN** | Analyze-111 — shared lifecycle + `aira desktop` | `start\|stop\|status`; P0 layout; init+identity+loopback HTTP; §2.2–§2.4 (idempotent/lock/health/port attach\|fail; Desktop auth contract); shared lib | CLI + lifecycle tests | tray; AppImage; peer; OS autostart hooks |
 | 77 | **OPEN** | Analyze-112 — Linux `.desktop` launcher | `.desktop` → desktop start (shared lib/CLI); stop via CLI/tray docs | клік/меню запускає P0 node | tray UI; packaging; macOS/Win |
 | 78 | **OPEN** | Analyze-113 — Linux tray/GUI (Rust-only) | Status + native Open UI + Settings + Quit; shared lib; **XDG autostart hooks** (§2.5) | GUI start/stop; settings persist; autostart on/off works | P1; AppImage; Tauri/web; інші ОС |
@@ -133,9 +133,9 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл
 
-**Перший OPEN:** `#75` — Desktop settings schema (E0.1).
+**Перший OPEN:** `#76` — shared lifecycle + `aira desktop` (E0.2).
 
-> Порядок: `#75`→`#79` (E0+E1 Linux P0). Після `#79`: Addendum E1.1 (P1+QR) лише окремим рішенням → потім E2 macOS → E3 Windows.
+> Порядок: `#75` DONE @ 56dd035 / PR #38 → `#76`→`#79` (E0.2+E1 Linux P0). Після `#79`: Addendum E1.1 (P1+QR) лише окремим рішенням → потім E2 macOS → E3 Windows.
 
 ---
 
