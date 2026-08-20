@@ -1,6 +1,6 @@
 # Phase D — Model Artifact & Inventory Plan v0.1
 
-**Статус:** складено 2026-08-20; перша хвиля D0–D3 (`#53`–`#60`) **DONE** @ 21d90a5. **Addendum D4** відкрито рішенням розробника 2026-08-20 → QUEUE `#61`–`#64`. D5–D7 **не** в QUEUE.  
+**Статус:** складено 2026-08-20; перша хвиля D0–D3 (`#53`–`#60`) **DONE** @ 21d90a5. **Addendum D4** (`#61`–`#64`) **DONE** @ ffcf66f. D5–D7 **не** в QUEUE.  
 **Джерела:** рішення розробника щодо інтерпретації [`EVO-3.md`](../EVO-3.md); Book 0–IV; Schema Pack; RFC Process; [`docs/implementation-status.md`](implementation-status.md).  
 **Не канон backlog:** цей файл — загальний план і атомізація. Канон виконання — `QUEUE.md`.
 
@@ -201,7 +201,7 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 
 | ID | Зміст | RFC | Умова старту | Статус |
 |----|--------|-----|----------------|--------|
-| D4 | Model download + hash/signature verify + activation окремо | RFC-D + RFC-E | D3 DONE | **відкрито** — Addendum D4 / QUEUE `#61`–`#64` |
+| D4 | Model download + hash/signature verify + activation окремо | RFC-D + RFC-E | D3 DONE | **DONE** — Addendum D4 / QUEUE `#61`–`#64` @ ffcf66f |
 | D5 | Custom model publish / share, opt-in | RFC-D | D3 DONE; не вимагає D4 | **не в QUEUE** |
 | D6 | Contextual model rating evidence (не global score) | RFC-R | після D3; не C1 | **не в QUEUE** |
 | D7 | Upgrade recommendation artifact (advisory) | RFC-R | після D3; не marketplace | **не в QUEUE** |
