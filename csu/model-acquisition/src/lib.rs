@@ -1,10 +1,9 @@
-//! Model acquisition policy gate, quarantine fetch, and verify (QUEUE #60–#63).
+//! Model acquisition: policy gate, quarantine, verify, activate (QUEUE #60–#64).
 //!
-//! Default-deny download: missing policy or `auto_download=false` → DENY.
-//! With policy and `auto_download=true` → ALLOW. Optional local `--source`
-//! copy into `<root>/models/quarantine/`. Verify (`#63`) checks ModelArtifact
-//! content_hash + signature and may stage under `models/verified/` (no activate).
-//! Not wired into C1. `network=none`.
+//! Default-deny download; ALLOW; local quarantine; hash/signature verify into
+//! `models/verified/`; explicit activate into `models/cache/` (no execution).
+//! Inventory refresh is CLI-orchestrated (no CSU↛CSU). Not wired into C1.
+//! `network=none`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -35,6 +34,10 @@ pub const QUARANTINE_POINTER_REL: &str = "models/quarantine.latest.json";
 pub const VERIFIED_REL: &str = "models/verified";
 /// Latest verified staging pointer.
 pub const VERIFIED_POINTER_REL: &str = "models/verified.latest.json";
+/// Activated model cache (post-activate; inventory scans this tree).
+pub const CACHE_REL: &str = "models/cache";
+/// Latest activation pointer.
+pub const ACTIVATED_POINTER_REL: &str = "models/activated.latest.json";
 
 /// Acquisition gate / quarantine errors.
 #[derive(Debug, Error)]
@@ -57,6 +60,8 @@ pub enum AcquisitionError {
     OutsideScope(String),
     #[error("no quarantine snapshot — run download --source first")]
     NoQuarantine,
+    #[error("no verified snapshot — run models verify first")]
+    NoVerified,
     #[error("model artifact missing or invalid: {0}")]
     BadArtifact(String),
     #[error("{0}")]
@@ -139,6 +144,29 @@ pub struct VerifiedPointer {
     pub quarantine_path: String,
     pub content_hash: String,
     pub evidence_artifact_id: String,
+}
+
+/// Pointer to the latest activated cache object.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActivatedPointer {
+    pub updated_at: String,
+    pub model_ref: String,
+    pub cache_path: String,
+    pub verified_path: String,
+    pub content_hash: String,
+    pub evidence_artifact_id: String,
+}
+
+/// Result of explicit activation (no model execution).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActivateOutcome {
+    pub model_ref: String,
+    pub cache_path: String,
+    pub verified_path: String,
+    pub content_hash: String,
+    pub evidence_artifact_id: String,
+    /// Absolute path to `models/cache` for inventory scan orchestration.
+    pub cache_scan_dir: String,
 }
 
 /// Result of quarantine hash/signature verification.
@@ -697,6 +725,147 @@ pub fn verify_quarantine(
     })
 }
 
+/// Explicitly activate a verified model into local cache.
+///
+/// Copies `models/verified/…` → `models/cache/…`, publishes ModelInstalled-style
+/// Evidence + Event. Does **not** execute the model. Inventory refresh is left to
+/// the CLI (`scan_and_publish` on [`CACHE_REL`]) to respect CSU↛CSU firewall.
+pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome, AcquisitionError> {
+    let root = aira_root.as_ref();
+    let _ = aira_object::register_node_identity(root);
+
+    let vpath = root.join(VERIFIED_POINTER_REL);
+    if !vpath.exists() {
+        return Err(AcquisitionError::NoVerified);
+    }
+    let pointer: VerifiedPointer = serde_json::from_str(
+        &fs::read_to_string(&vpath).map_err(|e| AcquisitionError::Io(e.to_string()))?,
+    )
+    .map_err(|e| AcquisitionError::Other(e.to_string()))?;
+
+    let vfile = Path::new(&pointer.verified_path);
+    if !vfile.is_file() {
+        return Err(AcquisitionError::SourceMissing(
+            pointer.verified_path.clone(),
+        ));
+    }
+    ensure_under_models(root, vfile)?;
+
+    let file_name = vfile
+        .file_name()
+        .ok_or_else(|| AcquisitionError::Other("verified path has no file name".into()))?
+        .to_string_lossy()
+        .to_string();
+    let slot = sanitize_slot(&pointer.model_ref);
+    let dest_dir = root.join(CACHE_REL).join(&slot);
+    fs::create_dir_all(&dest_dir).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    ensure_under_models(root, &dest_dir)?;
+    let dest = dest_dir.join(&file_name);
+    fs::copy(vfile, &dest).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    ensure_under_models(root, &dest)?;
+
+    let file_bytes = fs::read(&dest).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    let content_hash = ContentHash::sha256_bytes(&file_bytes);
+    let hash_hex = content_hash.as_str().trim_start_matches("sha256:");
+    let dest_display = dest.display().to_string();
+
+    let evidence_id = publish_activate_evidence(
+        root,
+        &pointer.model_ref,
+        &pointer.verified_path,
+        &dest_display,
+        content_hash.as_str(),
+    )?;
+
+    let ev_id = format!(
+        "aira:event:acq-activate-{}",
+        &hash_hex[..16.min(hash_hex.len())]
+    );
+    let event = make_event(
+        &ev_id,
+        EventType::CustomEvent,
+        vec![],
+        vec![AiraRef::parse(&evidence_id).expect("aid")],
+        vec![],
+        Some(format!("op:model-installed:activate:{}", pointer.model_ref)),
+    );
+    append_custom_event(root, event)?;
+
+    let updated_at = utc_now_rfc3339().map_err(|e| AcquisitionError::Crypto(e.to_string()))?;
+    let ap = ActivatedPointer {
+        updated_at,
+        model_ref: pointer.model_ref.clone(),
+        cache_path: dest_display.clone(),
+        verified_path: pointer.verified_path.clone(),
+        content_hash: content_hash.as_str().to_string(),
+        evidence_artifact_id: evidence_id.clone(),
+    };
+    let apath = root.join(ACTIVATED_POINTER_REL);
+    if let Some(parent) = apath.parent() {
+        fs::create_dir_all(parent).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    }
+    fs::write(
+        &apath,
+        serde_json::to_string_pretty(&ap).map_err(|e| AcquisitionError::Other(e.to_string()))?,
+    )
+    .map_err(|e| AcquisitionError::Io(e.to_string()))?;
+
+    let cache_scan = root.join(CACHE_REL);
+    Ok(ActivateOutcome {
+        model_ref: pointer.model_ref,
+        cache_path: dest_display,
+        verified_path: pointer.verified_path,
+        content_hash: content_hash.as_str().to_string(),
+        evidence_artifact_id: evidence_id,
+        cache_scan_dir: cache_scan.display().to_string(),
+    })
+}
+
+fn publish_activate_evidence(
+    root: &Path,
+    model_ref: &str,
+    verified_path: &str,
+    cache_path: &str,
+    content_hash: &str,
+) -> Result<String, AcquisitionError> {
+    let mut body = Map::new();
+    body.insert("kind".into(), json!("model-installed-evidence"));
+    body.insert("model_ref".into(), json!(model_ref));
+    body.insert("verified".into(), json!(true));
+    body.insert("activated".into(), json!(true));
+    body.insert("executed".into(), json!(false));
+    body.insert("verified_path".into(), json!(verified_path));
+    body.insert("cache_path".into(), json!(cache_path));
+    body.insert("content_hash".into(), json!(content_hash));
+    body.insert("reason_refs".into(), json!(["aira:reason:model-activated"]));
+    let for_sign = Value::Object(body.clone());
+    let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
+    let sig: Signature = active_signature(&raw);
+    body.insert(
+        "signature".into(),
+        serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,
+    );
+    let payload = Value::Object(body);
+    let bytes = json_bytes(&payload);
+    let ch = ContentHash::sha256_bytes(&bytes);
+    let hash_hex = ch.as_str().trim_start_matches("sha256:");
+    let artifact_id = format!("aira:artifact:acq-activate:{hash_hex}");
+    let desc = make_artifact(
+        &artifact_id,
+        ArtifactType::CustomArtifact,
+        &bytes,
+        vec![AiraRef::parse(CSU_ID).expect("csu")],
+    );
+    let mut store = CasArtifactStore::open(root.join("artifacts"))
+        .map_err(|e| AcquisitionError::Artifact(e.to_string()))?;
+    match store.publish(desc, &bytes) {
+        Ok(_) => {}
+        Err(aira_artifact::ArtifactError::Immutable(_)) => {}
+        Err(e) => return Err(AcquisitionError::Artifact(e.to_string())),
+    }
+    Ok(artifact_id)
+}
+
 fn signing_bytes_without_signature(artifact: &Value) -> Result<Vec<u8>, AcquisitionError> {
     let obj = artifact
         .as_object()
@@ -1229,5 +1398,45 @@ mod tests {
             }
             VerifyOutcome::Verified { .. } => panic!("expected unsigned reject"),
         }
+    }
+
+    #[test]
+    fn activate_copies_verified_to_cache_no_execution() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("act.gguf");
+        fs::write(&src, b"activate-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:act", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"activate-bytes");
+        let art = signed_model_artifact("aira:model:act", observed.as_str());
+        let art_path = dir.path().join("act.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        verify_quarantine(dir.path(), &art_path).unwrap();
+        let out = activate_verified(dir.path()).unwrap();
+        assert!(Path::new(&out.cache_path).exists());
+        assert!(out.cache_path.contains("cache"));
+        assert!(dir.path().join(ACTIVATED_POINTER_REL).exists());
+        let log: Value = serde_json::from_str(
+            &fs::read_to_string(dir.path().join("events/event-log.json")).unwrap(),
+        )
+        .unwrap();
+        let joined: String = log
+            .get("events")
+            .and_then(|e| e.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|e| e.get("payload_ref").and_then(|v| v.as_str()))
+            .collect::<Vec<_>>()
+            .join("|");
+        assert!(joined.contains("op:model-installed:activate:"));
+    }
+
+    #[test]
+    fn activate_requires_verified_pointer() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        let err = activate_verified(dir.path()).unwrap_err();
+        assert!(matches!(err, AcquisitionError::NoVerified));
     }
 }

@@ -607,6 +607,8 @@ pub(crate) enum ModelsCommands {
         #[arg(long)]
         artifact: PathBuf,
     },
+    /// Activate verified model into `models/cache/` and refresh inventory (no execution).
+    Activate,
 }
 
 #[derive(Subcommand, Debug)]
