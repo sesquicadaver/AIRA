@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#78` **DONE**; `#79` OPEN (Linux packaging).
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1 Developer Preview).
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-113 CLOSED @ 6bcc6d3 / PR #41; QUEUE #78 DONE; перший OPEN `#79` |
+| `main` | Analyze-114 CLOSED @ 04995ab / PR #42; QUEUE #79 DONE; Linux E1 complete |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase E — **перший OPEN `#79`** (Linux packaging) |
+| Активна черга | Phase E E1 **DONE**; наступне — Addendum E1.1 (P1+QR), ще не додано як OPEN рядки |
 
 ## Правила атомарності
 
@@ -129,13 +129,13 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 76 | **DONE** | ~~Analyze-111 — shared lifecycle + `aira desktop`~~ | `start\|stop\|status`; P0 layout; init+identity+loopback HTTP; §2.2–§2.4 (idempotent/lock/health/port attach\|fail; Desktop auth contract); shared lib | CLI + lifecycle tests | tray; AppImage; peer; OS autostart hooks |
 | 77 | **DONE** | ~~Analyze-112 — Linux `.desktop` launcher~~ | `.desktop` → desktop start (shared lib/CLI); stop via CLI/tray docs | клік/меню запускає P0 node | tray UI; packaging; macOS/Win |
 | 78 | **DONE** | ~~Analyze-113 — Linux tray/GUI (Rust-only)~~ | Status + native Open UI + Settings + Quit; shared lib; **XDG autostart hooks** (§2.5) | GUI start/stop; settings persist; autostart on/off works | P1; AppImage; Tauri/web; інші ОС |
-| 79 | **OPEN** | Analyze-114 — Linux packaging | AppImage **або** tarball+`.desktop` + Developer Preview docs; Dev CLI notes; paths for `#78` | install без `cargo`; autostart paths valid | macOS DMG; Win installer; P1 |
+| 79 | **DONE** | ~~Analyze-114 — Linux packaging~~ | tarball+`.desktop` + Developer Preview docs; Dev CLI notes; paths for `#78` | install без `cargo`; autostart paths valid | macOS DMG; Win installer; P1; AppImage |
 
 ### Наступний цикл
 
-**Перший OPEN:** `#79` — Linux packaging.
+**OPEN рядків немає.** Linux E1 (`#75`–`#79`) **DONE**.
 
-> Порядок: `#75`–`#78` DONE → `#79`. Після `#79`: Addendum E1.1 (P1+QR) → E2 macOS → E3 Windows.
+> Далі за планом: Addendum E1.1 (P1+QR) → E2 macOS → E3 Windows — додати як нові OPEN рядки лише окремим рішенням розробника.
 
 ---
 
