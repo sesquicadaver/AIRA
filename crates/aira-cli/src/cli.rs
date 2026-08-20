@@ -144,6 +144,25 @@ pub(crate) enum DesktopCommands {
         #[arg(long)]
         file: PathBuf,
     },
+    /// Export local PeerInvite as a QR PNG (file; no camera).
+    InviteExportQr {
+        #[arg(long)]
+        data_root: Option<PathBuf>,
+        /// Output path for the invite QR PNG.
+        #[arg(long)]
+        out: PathBuf,
+        /// Optional dial addr override (else P1 `peer_listen`, else trust-only).
+        #[arg(long)]
+        addr: Option<String>,
+    },
+    /// Import PeerInvite from a QR PNG/image file → trust + optional address book.
+    InviteImportQr {
+        #[arg(long)]
+        data_root: Option<PathBuf>,
+        /// QR PNG/image path.
+        #[arg(long)]
+        file: PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]

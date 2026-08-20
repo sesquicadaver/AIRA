@@ -2,11 +2,13 @@
 //!
 //! Shared by `aira desktop …` and the Desktop GUI. OS autostart is `#78`;
 //! Linux packaging layout/install is `#79`. P1 peer supervise is `#82`.
+//! Invite file IO is `#83`; QR PNG is `#84`.
 
 mod autostart;
 mod bootstrap;
 mod health;
 mod invite;
+mod invite_qr;
 mod launcher;
 mod paths;
 mod peer;
@@ -21,6 +23,10 @@ pub use bootstrap::ensure_bootstrap;
 pub use invite::{
     build_local_invite, export_invite_file, import_invite, import_invite_file, load_invite_file,
     validate_peer_invite, ImportInviteOutcome, PeerInvite, PEER_INVITE_SCHEMA_ID,
+};
+pub use invite_qr::{
+    decode_invite_png, encode_invite_png, export_invite_qr_png, import_invite_qr_file,
+    invite_qr_payload,
 };
 pub use launcher::{
     install_gui_launcher_to, install_launcher_to, install_menu_entries_to, install_user_launcher,
