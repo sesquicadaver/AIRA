@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-112 / QUEUE #77 Linux `.desktop` launcher |
+| `main` | Analyze-112 CLOSED @ 4bff889 / PR #40; QUEUE #77 DONE; перший OPEN `#78` |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase E — **перший OPEN `#78`** (Linux tray/GUI) |
