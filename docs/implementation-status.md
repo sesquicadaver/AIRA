@@ -210,4 +210,4 @@ C2 as merge-blocking CI
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
-Desktop one-click / GUI: `#75`–`#79` **DONE** (Linux E1). Addendum E1.1: PeerInvite schema `#80` (Analyze-115); `#81`–`#85` OPEN. Docs: [phase-e-plan.md](phase-e-plan.md) §4a.
+Desktop one-click / GUI: `#75`–`#79` **DONE**. E1.1: `#80` PeerInvite **DONE**; settings P1 `#81` (Analyze-116); `#82`–`#85` OPEN.

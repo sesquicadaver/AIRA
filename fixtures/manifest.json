@@ -117,6 +117,10 @@
       "file": "fixtures/valid/desktop/settings.json"
     },
     {
+      "schema": "aira:schema:desktop:settings:0.1",
+      "file": "fixtures/valid/desktop/settings-p1.json"
+    },
+    {
       "schema": "aira:schema:desktop:peer-invite:0.1",
       "file": "fixtures/valid/desktop/peer-invite.json"
     }
