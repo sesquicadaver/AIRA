@@ -1,13 +1,14 @@
-//! Local model inventory + compatibility CLI (QUEUE #58–#59).
+//! Local model inventory / compatibility / acquisition CLI (QUEUE #58–#60).
 
 use std::path::Path;
 use std::process::ExitCode;
 
+use aira_csu_model_acquisition::{load_policy, request_download, write_default_deny_policy};
 use aira_csu_model_compatibility::resolve_and_publish;
 use aira_csu_model_inventory::{load_latest, scan_and_publish};
 use anyhow::Result;
 
-use crate::cli::ModelsCommands;
+use crate::cli::{ModelsCommands, ModelsPolicyCommands};
 use crate::support::ensure_init;
 
 pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
@@ -53,6 +54,43 @@ pub(crate) fn run(root: &Path, command: ModelsCommands) -> Result<ExitCode> {
             println!("summary {}", out.summary_path);
             println!("status compatible");
             Ok(ExitCode::SUCCESS)
+        }
+        ModelsCommands::Policy { command } => match command {
+            ModelsPolicyCommands::Show => {
+                match load_policy(root).map_err(|e| anyhow::anyhow!("{e}"))? {
+                    None => {
+                        println!("policy_present false");
+                        println!("auto_download false");
+                        println!("posture default-deny");
+                    }
+                    Some(p) => {
+                        println!("policy_present true");
+                        println!("auto_download {}", p.auto_download);
+                        println!("allow_untrusted_models {}", p.allow_untrusted_models);
+                        println!("share_custom_models {}", p.share_custom_models);
+                    }
+                }
+                Ok(ExitCode::SUCCESS)
+            }
+            ModelsPolicyCommands::Set { auto_download } => {
+                let path = write_default_deny_policy(root, auto_download)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?;
+                println!("policy {}", path.display());
+                println!("auto_download {auto_download}");
+                println!("status policy-set");
+                Ok(ExitCode::SUCCESS)
+            }
+        },
+        ModelsCommands::Download { model_ref } => {
+            let out = request_download(root, &model_ref).map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!("decision {}", out.decision.as_str());
+            println!("model_ref {}", out.model_ref);
+            println!("reason {}", out.reason);
+            println!("reason_ref {}", out.reason_ref);
+            println!("evidence {}", out.decision_artifact_id);
+            println!("status policy-denied");
+            // Non-zero: download did not proceed (default-deny / no transfer).
+            Ok(ExitCode::from(2))
         }
     }
 }
