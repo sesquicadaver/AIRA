@@ -446,4 +446,27 @@ mod tests {
             )
             .is_err());
     }
+
+    #[test]
+    fn model_share_offer_payload_schema_loads() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:model:share-offer:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let valid = root.join("fixtures/valid/model/share-offer.json");
+        reg.validate_file("aira:schema:model:share-offer:0.1", &valid)
+            .unwrap();
+        let text = std::fs::read_to_string(&valid).unwrap();
+        let v: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(v.get("visibility"), Some(&Value::String("local".into())));
+        assert_eq!(v.get("allow_download"), Some(&Value::Bool(false)));
+        assert!(reg
+            .validate_file(
+                "aira:schema:model:share-offer:0.1",
+                root.join("fixtures/invalid/model/share-offer-missing-visibility.json"),
+            )
+            .is_err());
+    }
 }
