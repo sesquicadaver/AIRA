@@ -210,4 +210,4 @@ C2 as merge-blocking CI
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
-Desktop one-click / GUI: `#75`–`#79` **DONE**. E1.1: `#80`–`#82` **DONE**; invite file `#83` (Analyze-118); `#84`–`#85` OPEN.
+Desktop one-click / GUI: `#75`–`#79` **DONE**. E1.1: `#80`–`#83` **DONE**; invite QR `#84` (Analyze-119); `#85` OPEN.

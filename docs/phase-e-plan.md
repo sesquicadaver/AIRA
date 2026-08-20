@@ -159,7 +159,7 @@ Loopback ≠ authorization boundary. Unauthenticated P0 не повинен ек
           → #85 GUI wiring
 ```
 
-**RFC:** RFC-S invite (`#80`) → RFC-E settings/lifecycle (`#81`/`#82`) → RFC-E invite+QR (`#83`/`#84`) → docs GUI (`#85`).
+**RFC:** RFC-S invite (`#80`) → RFC-E settings/lifecycle (`#81`/`#82`) → RFC-E invite+QR (`#83`/`#84` → RFC-0032/RFC-0033) → docs GUI (`#85`).
 
 **Acceptance E1.1:** два Linux Dev Preview інстанси (або loopback dual-root): увімкнули P1 → обмінялись invite файл/QR → trust+book → `peer listen --recv` працює → dial/recv smoke. Без P2–P6.
 
@@ -182,7 +182,7 @@ P2–P6; окремі stabilization атоми (branch protection, Handle opacit
 - Packaging: [`desktop-packaging.md`](desktop-packaging.md) + RFC-0028 (`#79`); tarball+`.desktop` (не AppImage)
 - Linux launcher: [`desktop-launcher.md`](desktop-launcher.md) + RFC-0026 (`#77`)
 - Desktop GUI + autostart: [`desktop-gui.md`](desktop-gui.md) + RFC-0027 (`#78`)
-- Addendum E1.1 (P1+QR): §4a → QUEUE `#80`–`#85`; RFC-0029 PeerInvite (`#80`); RFC-0030 settings P1 (`#81`); RFC-0031 peer lifecycle (`#82`); RFC-0032 invite file (`#83`)
+- Addendum E1.1 (P1+QR): §4a → QUEUE `#80`–`#85`; RFC-0029 PeerInvite (`#80`); RFC-0030 settings P1 (`#81`); RFC-0031 peer lifecycle (`#82`); RFC-0032 invite file (`#83`); RFC-0033 invite QR (`#84`)
 - Позначити `NEXT_PROBLEM.md` як RESOLVED (вже)
 
 ## 6. Acceptance E1 (Linux)

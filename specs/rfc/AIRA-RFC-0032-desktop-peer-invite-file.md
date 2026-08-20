@@ -6,7 +6,7 @@ Shared lib + CLI (`aira desktop invite-export|invite-import`) exchange `aira:sch
 
 ## 5. Non-Goals
 
-QR PNG (`#84`); GUI (`#85`); DHT/relay; auto-trust from network.
+Camera / live scan (see RFC-0033 for file QR); GUI (`#85`); DHT/relay; auto-trust from network.
 
 ## 7. Change
 
