@@ -1,0 +1,21 @@
+[package]
+name = "aira-csu-model-rating"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "AIRA local contextual model rating evidence CSU (no network)"
+
+[dependencies]
+aira-csu = { path = "../../crates/aira-csu" }
+aira-event = { path = "../../crates/aira-event" }
+aira-artifact = { path = "../../crates/aira-artifact" }
+aira-object = { path = "../../crates/aira-object" }
+aira-schema = { path = "../../crates/aira-schema" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
