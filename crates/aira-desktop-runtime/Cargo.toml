@@ -1,0 +1,23 @@
+[package]
+name = "aira-desktop-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "AIRA Desktop lifecycle (start/stop/status) — shared by CLI and future tray"
+
+[dependencies]
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+rand = { workspace = true }
+hex = { workspace = true }
+ed25519-dalek = { workspace = true }
+aira-flow = { path = "../aira-flow" }
+aira-object = { path = "../aira-object" }
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -2,6 +2,7 @@
 
 mod conformance;
 mod csu;
+mod desktop;
 mod federation;
 mod identity;
 mod models;
@@ -42,5 +43,6 @@ pub(crate) fn dispatch(root: PathBuf, command: Commands) -> Result<ExitCode> {
         Commands::Federation { command } => federation::run(&root, command),
         Commands::Conformance { command } => conformance::run(&root, command),
         Commands::Models { command } => models::run(&root, command),
+        Commands::Desktop { command } => desktop::run(command),
     }
 }

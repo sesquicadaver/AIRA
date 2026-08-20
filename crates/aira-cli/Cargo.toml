@@ -30,6 +30,7 @@ aira-csu-model-compatibility = { path = "../../csu/model-compatibility" }
 aira-csu-model-acquisition = { path = "../../csu/model-acquisition" }
 aira-csu-model-rating = { path = "../../csu/model-rating" }
 aira-csu-model-recommendation = { path = "../../csu/model-recommendation" }
+aira-desktop-runtime = { path = "../aira-desktop-runtime" }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
 
 [dev-dependencies]
