@@ -133,9 +133,9 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл
 
-**Перший OPEN:** `#77` — Linux `.desktop` launcher (E1.1).
+**Перший OPEN:** `#78` — Linux tray/GUI (Rust-only).
 
-> Порядок: `#75`–`#76` DONE → `#77`→`#79`. Після `#79`: Addendum E1.1 (P1+QR) → E2 macOS → E3 Windows.
+> Порядок: `#75`–`#77` DONE → `#78`→`#79`. Після `#79`: Addendum E1.1 (P1+QR) → E2 macOS → E3 Windows.
 
 ---
 

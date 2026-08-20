@@ -210,4 +210,4 @@ C2 as merge-blocking CI
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
-Desktop one-click / GUI: **ABSENT** (shell). Settings schema `#75` **DONE**. Lifecycle `aira desktop` + `aira-desktop-runtime` `#76` **DONE**. UX: [desktop-ux.md](desktop-ux.md). Plan: [phase-e-plan.md](phase-e-plan.md). QUEUE `#77`–`#79` OPEN.
+Desktop one-click / GUI: launcher `.desktop` `#77` **DONE**; tray/GUI `#78` **ABSENT**. Settings `#75` + lifecycle `#76` **DONE**. Docs: [desktop-launcher.md](desktop-launcher.md). QUEUE `#78`–`#79` OPEN.
