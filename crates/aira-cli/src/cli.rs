@@ -654,6 +654,20 @@ pub(crate) enum ModelsCommands {
         #[arg(long)]
         quality: Option<f64>,
     },
+    /// Publish advisory upgrade recommendation (local-only; evidence-backed).
+    Recommend {
+        #[arg(long)]
+        recommendation_type: String,
+        #[arg(long)]
+        reason: String,
+        /// Evidence refs (repeatable); at least one required.
+        #[arg(long = "evidence-ref", required = true)]
+        evidence_refs: Vec<String>,
+        #[arg(long, default_value_t = 0.5)]
+        confidence: f64,
+        #[arg(long = "alternative")]
+        alternatives: Vec<String>,
+    },
 }
 
 #[derive(Subcommand, Debug)]

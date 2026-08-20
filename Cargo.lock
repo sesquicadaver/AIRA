@@ -84,6 +84,7 @@ dependencies = [
  "aira-csu-model-compatibility",
  "aira-csu-model-inventory",
  "aira-csu-model-rating",
+ "aira-csu-model-recommendation",
  "aira-flow",
  "aira-object",
  "aira-peer",
