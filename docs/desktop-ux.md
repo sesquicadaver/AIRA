@@ -77,6 +77,7 @@ E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS → E3 Windows
 - Plan / acceptance: [`phase-e-plan.md`](phase-e-plan.md)
 - Local HTTP: [`local-node.md`](local-node.md)
 - Peer (для майбутніх P1+): [`peer-link.md`](peer-link.md)
+- Desktop P1 peer supervise: [`desktop-peer.md`](desktop-peer.md)
 - systemd (сервери, не Desktop): [`runbook-systemd.md`](runbook-systemd.md)
 - Linux menu launcher: [`desktop-launcher.md`](desktop-launcher.md)
 - Desktop GUI: [`desktop-gui.md`](desktop-gui.md)

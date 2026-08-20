@@ -32,6 +32,15 @@ pub(crate) fn run(command: DesktopCommands) -> Result<ExitCode> {
             println!("listen {}", outcome.listen);
             println!("instance_id {}", outcome.instance_id);
             println!("data_root {}", outcome.data_root.display());
+            if let Some(pp) = outcome.peer_pid {
+                println!("peer_pid {pp}");
+            }
+            if let Some(pl) = outcome.peer_listen.as_ref() {
+                println!("peer_listen {pl}");
+                if outcome.peer_attached {
+                    println!("peer_attached");
+                }
+            }
             Ok(ExitCode::SUCCESS)
         }
         DesktopCommands::Stop { data_root } => {
@@ -49,6 +58,12 @@ pub(crate) fn run(command: DesktopCommands) -> Result<ExitCode> {
                 println!("instance_id {}", r.instance_id);
                 println!("listen {}", r.listen);
                 println!("root {}", r.root);
+                if let Some(pp) = r.peer_pid {
+                    println!("peer_pid {pp}");
+                }
+                if let Some(pl) = r.peer_listen.as_ref() {
+                    println!("peer_listen {pl}");
+                }
             }
             println!("settings {}", paths.settings_file.display());
             println!("data_root {}", paths.data_root.display());

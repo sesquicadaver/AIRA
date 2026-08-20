@@ -55,7 +55,13 @@ impl AiraDesktopApp {
         let (st, rec) = status(&self.paths)?;
         self.status_label = status_label(st).to_string();
         self.detail = match rec {
-            Some(r) => format!("pid {} · {} · {}", r.pid, r.listen, r.instance_id),
+            Some(r) => {
+                let mut s = format!("pid {} · {} · {}", r.pid, r.listen, r.instance_id);
+                if let (Some(pp), Some(pl)) = (r.peer_pid, r.peer_listen.as_ref()) {
+                    s.push_str(&format!(" · peer {pp}@{pl}"));
+                }
+                s
+            }
             None => format!("listen {}", self.settings.http_listen),
         };
         Ok(())
