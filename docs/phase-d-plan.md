@@ -1,6 +1,6 @@
 # Phase D — Model Artifact & Inventory Plan v0.1
 
-**Статус:** складено 2026-08-20; перша хвиля D0–D3 (`#53`–`#60`) **DONE** @ 21d90a5. **Addendum D4** (`#61`–`#64`) **DONE** @ ffcf66f. **Addendum D5** (`#65`–`#68`) **DONE** @ 7719e92. D6–D7 **не** в QUEUE.  
+**Статус:** складено 2026-08-20; перша хвиля D0–D3 (`#53`–`#60`) **DONE** @ 21d90a5. **Addendum D4** (`#61`–`#64`) **DONE** @ ffcf66f. **Addendum D5** (`#65`–`#68`) **DONE** @ 7719e92. **Addendum D6** відкрито рішенням розробника 2026-08-20 → QUEUE `#69`–`#71`. D7 **не** в QUEUE до DONE D6.  
 **Джерела:** рішення розробника щодо інтерпретації [`EVO-3.md`](../EVO-3.md); Book 0–IV; Schema Pack; RFC Process; [`docs/implementation-status.md`](implementation-status.md).  
 **Не канон backlog:** цей файл — загальний план і атомізація. Канон виконання — `QUEUE.md`.
 
@@ -10,12 +10,12 @@
 
 ```text
 загальний план (цей документ)
-  → атоми без перекриття (§4 / Addendum D4 / Addendum D5)
+  → атоми без перекриття (§4 / Addendum D4 / Addendum D5 / Addendum D6)
     → лінійний хвіст QUEUE
       → виконання: один OPEN рядок = один Analyze-цикл
 ```
 
-Заборонено додавати поодинокі пункти в `QUEUE.md` поза цим планом / addendum. D6–D7 лишаються відкладеними.
+Заборонено додавати поодинокі пункти в `QUEUE.md` поза цим планом / addendum. D7 лишається відкладеним до DONE D6.
 
 ---
 
@@ -203,10 +203,10 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 |----|--------|-----|----------------|--------|
 | D4 | Model download + hash/signature verify + activation окремо | RFC-D + RFC-E | D3 DONE | **DONE** — Addendum D4 / QUEUE `#61`–`#64` @ ffcf66f |
 | D5 | Custom model publish / share, opt-in | RFC-D + RFC-E | D3 DONE; не вимагає D4 | **DONE** — Addendum D5 / QUEUE `#65`–`#68` @ 7719e92 |
-| D6 | Contextual model rating evidence (не global score) | RFC-R | після D3; не C1 | **не в QUEUE** |
-| D7 | Upgrade recommendation artifact (advisory) | RFC-R | після D3; не marketplace | **не в QUEUE** |
+| D6 | Contextual model rating evidence (не global score) | RFC-R | після D3; не C1 | **відкрито** — Addendum D6 / QUEUE `#69`–`#71` |
+| D7 | Upgrade recommendation artifact (advisory) | RFC-R | після D3; не marketplace | **не в QUEUE** (після D6) |
 
-Новий загальний план або ще один addendum — перед копіюванням D6–D7 у QUEUE.
+Новий загальний план або ще один addendum — перед копіюванням D7 у QUEUE.
 
 ---
 
@@ -279,6 +279,37 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 
 ---
 
+## 6c. Addendum D6 (2026-08-20) — лише contextual rating evidence
+
+**Рішення розробника:** відкрити **лише D6** (потім D7; D4/D5 уже DONE — не переробляти).
+
+**Інваріанти D6 (додатково до §2)**
+
+1. Рейтинг = **context-specific Evidence Artifact**, не єдиний global scalar / leaderboard.
+2. Обов’язковий `context` (task_class / host / backend тощо); `additionalProperties: false` на payload.
+3. Envelope = `CustomArtifact` + payload `$id`; не Core; не C1.
+4. Rating CSU — `network=none`; без marketplace / popularity feed / federation score sync.
+5. CSU↛CSU firewall: Rating не залежить від Inventory/Acquisition/Sharing Cargo-dep; CLI оркеструє.
+6. Recommendation / upgrade (D7) — **Out** цього addendum.
+
+**Атоми → QUEUE `#69`–`#71`** (Analyze-104+)
+
+| ID | Підфаза | Атом | Done when | Не в цьому рядку |
+|----|---------|------|-----------|------------------|
+| `#69` | D6.1 | Payload schema `ModelRatingEvidence` | `aira:schema:model:rating-evidence:0.1` + fixtures; context required; немає global-only score | rating CSU; CLI; D7 |
+| `#70` | D6.2 | Local rating evidence publish | signed CustomArtifact + Event; pointer; context-bound | CLI surface; recommendation; network |
+| `#71` | D6.3 | CLI `aira models rate` | publish contextual rating; local-only | D7 recommend; marketplace; global rank |
+
+```text
+#69 ModelRatingEvidence schema
+  → #70 local rating evidence publish
+    → #71 CLI models rate
+```
+
+**RFC:** RFC-S (rating-evidence schema) → RFC-R (Rating CSU) + RFC-E (`aira models rate`) у `#70`–`#71`.
+
+---
+
 ## 7. RFC-карта
 
 | Клас | Навіщо | Коли |
@@ -289,6 +320,7 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 | RFC-D | share_custom_models publish gate | `#66` |
 | RFC-D/E | local publish signed ModelArtifact + ShareOffer | `#67` / RFC-0016 |
 | RFC-D/E | local capability advertisement + CLI share | `#68` / RFC-0017 |
+| RFC-S | ModelRatingEvidence payload schema | `#69` / RFC-0018 |
 | RFC-S | ModelShareOffer payload schema | `#65` / RFC-0014 |
 | RFC-E | `aira models activate` + inventory scan of cache | `#64` / RFC-0013 |
 | RFC-D | Activate verified → cache (no execution) | `#64` |
