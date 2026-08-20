@@ -1,7 +1,7 @@
 # Analyze-110 — Desktop settings schema (QUEUE #75)
 
 ## Status
-CLOSED (QUEUE #75 DONE — PR pending merge).
+CLOSED @ 56dd035 / PR #38 (QUEUE #75 DONE).
 
 ## Done when
 `aira:schema:desktop:settings:0.1` + fixtures; `schema validate --fixtures` green.

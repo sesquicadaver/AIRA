@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-110 / QUEUE #75 Desktop settings schema |
+| `main` | Analyze-110 CLOSED @ 56dd035 / PR #38; QUEUE #75 DONE; перший OPEN `#76` |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase E — **перший OPEN `#76`** (`aira desktop` lifecycle) |
