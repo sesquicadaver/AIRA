@@ -110,6 +110,10 @@ pub(crate) enum DesktopCommands {
         #[arg(long)]
         data_root: Option<PathBuf>,
     },
+    /// Install Linux `.desktop` launcher into the user applications menu (`~/.local/share/applications`).
+    LauncherInstall,
+    /// Remove the user `.desktop` launcher if present.
+    LauncherUninstall,
 }
 
 #[derive(Subcommand, Debug)]
