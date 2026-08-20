@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D3 (`#53`–`#60`) **DONE**; Addendum D4 `#61`–`#64` **DONE**; **Addendum D5** OPEN `#65`–`#68`. D6–D7 не в QUEUE.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D4 (`#53`–`#64`) **DONE**; Addendum D5 `#65` **DONE** @ e82ffa0; OPEN `#66`–`#68`. D6–D7 не в QUEUE.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Addendum D4 DONE; Addendum D5 **#65 OPEN** (Analyze-100) |
+| `main` | Analyze-100 CLOSED @ e82ffa0; QUEUE #65 DONE; Addendum D5 **#66 OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase D Addendum D5 **#65 OPEN** (Analyze-100 — ModelShareOffer schema) |
+| Активна черга | Phase D Addendum D5 **#66 OPEN** (Analyze-101 — share_custom_models gate) |
 
 ## Правила атомарності
 
@@ -101,14 +101,14 @@
 | 62 | **DONE** | ~~Analyze-97 — quarantine fetch (local source)~~ | після ALLOW: `--source` → `<root>/models/quarantine/`; Event; без activation | hash verify; activate; remote URL |
 | 63 | **DONE** | ~~Analyze-98 — verify hash/signature~~ | mismatch → reject + Evidence; match → `verified/` staging | activate; inventory promote; HTTP |
 | 64 | **DONE** | ~~Analyze-99 — activate verified model~~ | explicit activate → cache + inventory + Event; без auto-execution | sharing (D5); rating (D6); remote registry |
-| 65 | OPEN | Analyze-100 — ModelShareOffer schema | `aira:schema:model:share-offer:0.1` + fixtures; CustomArtifact envelope | policy runtime; publish CLI; network |
+| 65 | **DONE** | ~~Analyze-100 — ModelShareOffer schema~~ | `aira:schema:model:share-offer:0.1` + fixtures; CustomArtifact envelope | policy runtime; publish CLI; network |
 | 66 | OPEN | Analyze-101 — share_custom_models gate | absent/false → DENY publish + Event; true → ALLOW (без publish) | local publish; capability ad; rating |
 | 67 | OPEN | Analyze-102 — local publish signed descriptor | cache → signed ModelArtifact + ShareOffer; Event; без remote push | capability ad; remote registry; rating |
 | 68 | OPEN | Analyze-103 — local capability advertisement | capability CustomArtifact + CLI publish\|share; local-only | federation; DHT; rating (D6); marketplace |
 
 ### Наступний цикл
 
-**#65 OPEN** — Analyze-100: ModelShareOffer payload schema (D5.1).
+**#66 OPEN** — Analyze-101: share_custom_models gate (D5.2).
 
 ---
 
@@ -138,6 +138,6 @@
 | EVO-1/EVO-2 modularize monoliths (розщеплено по файлах) | #46–#50 |
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
-| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#64` DONE; Addendum D5 `#65`–`#68` OPEN |
+| EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#65` DONE; `#66`–`#68` OPEN |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

@@ -1,7 +1,7 @@
 # Analyze-100 — ModelShareOffer schema (QUEUE #65)
 
 ## Status
-OPEN (branch `analyze-100-share-offer-schema`).
+CLOSED (QUEUE #65 DONE @ e82ffa0 / PR #28).
 
 ## Done when
 `aira:schema:model:share-offer:0.1` + fixtures; `schema validate --fixtures` green; enum `ArtifactType` unchanged.

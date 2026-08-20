@@ -207,4 +207,4 @@ CSU SDK / new basic CSU roles to “complete” Book III
 C2 as merge-blocking CI
 ```
 
-Model layer (EVO-3): D0–D4 `#53`–`#64` **DONE**. D5.1 `#65` **IN PROGRESS** (ModelShareOffer schema). `#66`–`#68` OPEN. D6–D7 not in QUEUE. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md) §6b.
+Model layer (EVO-3): D0–D4 `#53`–`#64` **DONE**. D5.1 `#65` **DONE** (ModelShareOffer schema) @ e82ffa0. `#66`–`#68` OPEN. D6–D7 not in QUEUE. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md) §6b.
