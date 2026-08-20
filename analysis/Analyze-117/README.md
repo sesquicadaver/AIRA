@@ -1,7 +1,7 @@
 # Analyze-117 — peer lifecycle supervise (QUEUE #82)
 
 ## Status
-OPEN.
+CLOSED @ 8f4b738 / PR #45 (QUEUE #82 DONE).
 
 ## Done when
 P1 start/stop/status supervises `peer listen --recv` alongside HTTP; tests green.

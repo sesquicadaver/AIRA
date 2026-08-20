@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-20  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); Addendum E1.1 `#80`–`#81` **DONE**, `#82`–`#85` **OPEN**.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); Addendum E1.1 `#80`–`#82` **DONE**, `#83`–`#85` **OPEN**.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-116 CLOSED @ a908514 / PR #44; QUEUE #81 DONE; перший OPEN `#82` |
+| `main` | Analyze-117 CLOSED @ 8f4b738 / PR #45; QUEUE #82 DONE; перший OPEN `#83` |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase E Addendum **E1.1** — **перший OPEN `#82`** |
+| Активна черга | Phase E Addendum **E1.1** — **перший OPEN `#83`** |
 
 ## Правила атомарності
 
@@ -140,14 +140,14 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 |---|--------|---------|-----------------|-----------|------------------|
 | 80 | **DONE** | ~~Analyze-115 — PeerInvite schema~~ | `aira:schema:desktop:peer-invite:0.1` + fixtures (identity_ref/pubkey + optional addr) | schema validate --fixtures зелений | settings P1; peer process; QR; GUI |
 | 81 | **DONE** | ~~Analyze-116 — Settings P1 + peer_listen~~ | runtime приймає P1; default/validate `peer_listen`; P2+ fail-closed; docs | settings load/save P1 + тести | peer supervise; invite IO; GUI |
-| 82 | **OPEN** | Analyze-117 — peer lifecycle supervise | при P1: start/stop/status `peer listen --recv`; PID/lock; HTTP лишається | lifecycle тести dual-process | invite IO; QR; GUI |
+| 82 | **DONE** | ~~Analyze-117 — peer lifecycle supervise~~ | при P1: start/stop/status `peer listen --recv`; PID/lock; HTTP лишається | lifecycle тести dual-process | invite IO; QR; GUI |
 | 83 | **OPEN** | Analyze-118 — invite file export/import | export JSON; import → trust add + book upsert; CLI/shared lib | roundtrip тести | QR; GUI |
 | 84 | **OPEN** | Analyze-119 — invite QR PNG | PeerInvite ↔ PNG encode/decode (файл) | roundtrip тести | camera; GUI |
 | 85 | **OPEN** | Analyze-120 — GUI P1 + invite UX | profile toggle; peer status; export/import/QR file | GUI smoke P1 onboarding | P2+; camera; інші ОС |
 
 ### Наступний цикл
 
-**Перший OPEN:** `#82` — peer lifecycle supervise.
+**Перший OPEN:** `#83` — invite file export/import.
 
 > Порядок: `#80` → `#81` → `#82` → `#83` → `#84` → `#85`. Після `#85`: E2 macOS / E3 Windows — окремим рішенням.
 
@@ -180,6 +180,6 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
-| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#81` DONE, `#82`–`#85` OPEN |
+| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#82` DONE, `#83`–`#85` OPEN |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
