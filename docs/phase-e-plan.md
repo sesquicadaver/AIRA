@@ -125,7 +125,7 @@ Loopback ≠ authorization boundary. Unauthenticated P0 не повинен ек
 
 ## 4. Відкладені / відкриті addendum
 
-### 4a. Addendum E1.1 — P1 + онбординг друга (файл/QR) — **OPEN** (останній атом `#85`)
+### 4a. Addendum E1.1 — P1 + онбординг друга (файл/QR) — **DONE**
 
 **Рішення розробника:** 2026-08-20 — відкрити **лише E1.1** після `#79` DONE. E2/E3 / P2–P6 не копіювати в QUEUE.
 
