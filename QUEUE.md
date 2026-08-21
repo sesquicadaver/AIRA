@@ -1,18 +1,18 @@
 # AIRA — лінійна черга задач
 
-**Оновлено:** 2026-08-20  
+**Оновлено:** 2026-08-21  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); Addendum E1.1 `#80`–`#84` **DONE**, `#85` **OPEN**.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); Addendum E1.1 `#80`–`#85` **DONE**.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-119 CLOSED @ da5c800 / PR #47; QUEUE #84 DONE; перший OPEN `#85` |
+| `main` | Analyze-120 CLOSED @ ad59ef7 / PR #48; QUEUE #85 DONE; E1.1 complete |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase E Addendum **E1.1** — **перший OPEN `#85`** |
+| Активна черга | **порожня** — наступне: E2 macOS / E3 Windows (окреме рішення) |
 
 ## Правила атомарності
 
@@ -143,11 +143,11 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 82 | **DONE** | ~~Analyze-117 — peer lifecycle supervise~~ | при P1: start/stop/status `peer listen --recv`; PID/lock; HTTP лишається | lifecycle тести dual-process | invite IO; QR; GUI |
 | 83 | **DONE** | ~~Analyze-118 — invite file export/import~~ | export JSON; import → trust add + book upsert; CLI/shared lib | roundtrip тести | QR; GUI |
 | 84 | **DONE** | ~~Analyze-119 — invite QR PNG~~ | PeerInvite ↔ PNG encode/decode (файл) | roundtrip тести | camera; GUI |
-| 85 | **OPEN** | Analyze-120 — GUI P1 + invite UX | profile toggle; peer status; export/import/QR file | GUI smoke P1 onboarding | P2+; camera; інші ОС |
+| 85 | **DONE** | ~~Analyze-120 — GUI P1 + invite UX~~ | profile toggle; peer status; export/import/QR file | GUI smoke P1 onboarding | P2+; camera; інші ОС |
 
 ### Наступний цикл
 
-**Перший OPEN:** `#85` — GUI P1 + invite UX.
+**Перший OPEN:** немає (E1.1 `#80`–`#85` DONE). Наступне — E2 macOS / E3 Windows окремим рішенням.
 
 > Порядок: `#80` → `#81` → `#82` → `#83` → `#84` → `#85`. Після `#85`: E2 macOS / E3 Windows — окремим рішенням.
 
