@@ -15,7 +15,7 @@
 | Settings | `open_ui_on_start`, `autostart_on_login` (persisted) |
 | Friend invite | Export/Import JSON; Show/Export/Import QR PNG (no camera) |
 | Quit | stop node + close window |
-| Autostart | XDG `~/.config/autostart/aira-desktop.desktop` when enabled |
+| Autostart | Linux: XDG `~/.config/autostart/aira-desktop.desktop`; macOS: LaunchAgent `~/Library/LaunchAgents/ai.aira.desktop.plist` (`#87`) |
 
 After profile/`peer_listen` change: **Stop → Start** to apply peer supervise.
 
