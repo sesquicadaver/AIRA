@@ -151,6 +151,8 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 > Порядок E1.1: `#80` → `#81` → `#82` → `#83` → `#84` → `#85`.
 
+## Активна черга (лінійна) — Phase E Addendum E2: macOS
+
 План: [`docs/phase-e-plan.md`](docs/phase-e-plan.md) §4b.  
 **Не** DMG/notarize/App Store / E3 у цьому хвості. Packaging = `.app` + tarball.
 
