@@ -1,7 +1,8 @@
-//! AIRA Desktop GUI — native Status / Settings / Quit (QUEUE #78).
+//! AIRA Desktop GUI — native Status / Settings / Quit / P1 invite (QUEUE #78 / #85).
 //!
 //! Uses `aira-desktop-runtime` for lifecycle and XDG autostart; no CLI shell-out.
 
+mod actions;
 mod app;
 
 use std::path::PathBuf;
@@ -20,7 +21,7 @@ use crate::app::AiraDesktopApp;
 #[command(
     name = "aira-desktop",
     version,
-    about = "AIRA Desktop (Developer Preview) — local P0 node UI"
+    about = "AIRA Desktop (Developer Preview) — local P0/P1 node UI"
 )]
 struct Args {
     /// Dev/test data root (colocated settings/runtime). Default: OS Desktop layout.
@@ -78,13 +79,19 @@ fn run() -> Result<()> {
                 println!("pid {pid}");
             }
             println!("listen {}", outcome.listen);
+            if let Some(pp) = outcome.peer_pid {
+                println!("peer_pid {pp}");
+            }
+            if let Some(pl) = outcome.peer_listen.as_ref() {
+                println!("peer_listen {pl}");
+            }
         }
         return Ok(());
     }
 
     let native = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([420.0, 360.0])
+            .with_inner_size([480.0, 640.0])
             .with_title("AIRA Desktop"),
         ..Default::default()
     };

@@ -25,8 +25,8 @@ pub use invite::{
     validate_peer_invite, ImportInviteOutcome, PeerInvite, PEER_INVITE_SCHEMA_ID,
 };
 pub use invite_qr::{
-    decode_invite_png, encode_invite_png, export_invite_qr_png, import_invite_qr_file,
-    invite_qr_payload,
+    decode_invite_png, encode_invite_luma, encode_invite_png, encode_invite_rgba,
+    export_invite_qr_png, import_invite_qr_file, invite_qr_payload,
 };
 pub use launcher::{
     install_gui_launcher_to, install_launcher_to, install_menu_entries_to, install_user_launcher,

@@ -1,18 +1,23 @@
-# AIRA Desktop GUI (QUEUE #78)
+# AIRA Desktop GUI (QUEUE #78 / #85)
 
 **Binary:** `aira-desktop`  
 **CLI:** `aira desktop gui`  
-**Tech:** Rust-only (`eframe`/`egui`); no Node.js/Tauri.
+**Tech:** Rust-only (`eframe`/`egui`); no Node.js/Tauri. File dialogs via `rfd`.
 
 ## Features
 
 | Control | Behavior |
 |---------|----------|
 | Status | lifecycle label + pid/listen/instance |
+| Peer status | P1 supervised `peer listen` pid/addr (or off on P0) |
 | Start / Stop / Refresh | shared `aira-desktop-runtime` |
+| Network profile | P0 ↔ P1 toggle; P1 `peer_listen` edit (default `127.0.0.1:9797`) |
 | Settings | `open_ui_on_start`, `autostart_on_login` (persisted) |
+| Friend invite | Export/Import JSON; Show/Export/Import QR PNG (no camera) |
 | Quit | stop node + close window |
 | Autostart | XDG `~/.config/autostart/aira-desktop.desktop` when enabled |
+
+After profile/`peer_listen` change: **Stop → Start** to apply peer supervise.
 
 System tray StatusNotifier icon is **not** required for this slice: the native window is the primary UI. Autostart launches `aira-desktop`.
 
@@ -31,6 +36,8 @@ Headless start without UI: set `open_ui_on_start=false` in settings, or use `air
 
 ## Related
 
+- Invite file/QR: [`desktop-invite.md`](desktop-invite.md)
+- Peer supervise: [`desktop-peer.md`](desktop-peer.md)
 - Packaging: [`desktop-packaging.md`](desktop-packaging.md)
 - Launcher: [`desktop-launcher.md`](desktop-launcher.md)
 - UX canon: [`desktop-ux.md`](desktop-ux.md)
