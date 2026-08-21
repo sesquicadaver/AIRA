@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "AIRA Desktop GUI (Developer Preview) — Status / Settings / Quit"
+description = "AIRA Desktop GUI (Developer Preview) — Status / Settings / P1 invite / Quit"
 
 [[bin]]
 name = "aira-desktop"
@@ -16,4 +16,10 @@ anyhow = { workspace = true }
 clap = { workspace = true }
 eframe = { version = "0.28", default-features = true }
 egui = "0.28"
+rfd = "0.14"
 aira-desktop-runtime = { path = "../aira-desktop-runtime" }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+aira-object = { path = "../aira-object" }
+aira-peer = { path = "../aira-peer" }

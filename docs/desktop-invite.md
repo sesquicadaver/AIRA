@@ -23,4 +23,4 @@ aira desktop invite-import-qr --file ~/alice.invite.png
 
 Import applies `trust add` (identity_ref + public_key_hex). If `addr` is set, also upserts `peers/address_book.json`.
 
-Schema: [`aira:schema:desktop:peer-invite:0.1`](../schemas/desktop/peer-invite.schema.json). RFCs: RFC-0032 (file), RFC-0033 (QR). GUI UX is `#85`.
+Schema: [`aira:schema:desktop:peer-invite:0.1`](../schemas/desktop/peer-invite.schema.json). RFCs: RFC-0032 (file), RFC-0033 (QR). GUI: [`desktop-gui.md`](desktop-gui.md) / `#85`.

@@ -23,12 +23,29 @@ pub fn invite_qr_payload(invite: &PeerInvite) -> Result<String> {
     serde_json::to_string(invite).context("serialize PeerInvite for QR")
 }
 
-/// Encode a validated PeerInvite as a PNG QR at `out_path`.
-pub fn encode_invite_png(invite: &PeerInvite, out_path: &Path) -> Result<()> {
+/// Render invite QR as grayscale pixels (for GUI preview / PNG encode).
+pub fn encode_invite_luma(invite: &PeerInvite) -> Result<image::GrayImage> {
     let payload = invite_qr_payload(invite)?;
     let code = QrCode::new(payload.as_bytes())
         .with_context(|| format!("QR encode failed (payload {} bytes)", payload.len()))?;
-    let img = code.render::<Luma<u8>>().min_dimensions(256, 256).build();
+    Ok(code.render::<Luma<u8>>().min_dimensions(256, 256).build())
+}
+
+/// RGBA preview of invite QR (`width`, `height`, interleaved pixels).
+pub fn encode_invite_rgba(invite: &PeerInvite) -> Result<(usize, usize, Vec<u8>)> {
+    let img = encode_invite_luma(invite)?;
+    let (w, h) = img.dimensions();
+    let mut rgba = Vec::with_capacity((w as usize) * (h as usize) * 4);
+    for p in img.pixels() {
+        let v = p.0[0];
+        rgba.extend_from_slice(&[v, v, v, 255]);
+    }
+    Ok((w as usize, h as usize, rgba))
+}
+
+/// Encode a validated PeerInvite as a PNG QR at `out_path`.
+pub fn encode_invite_png(invite: &PeerInvite, out_path: &Path) -> Result<()> {
+    let img = encode_invite_luma(invite)?;
     if let Some(parent) = out_path.parent() {
         if !parent.as_os_str().is_empty() {
             fs::create_dir_all(parent)?;
