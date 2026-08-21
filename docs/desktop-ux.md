@@ -55,7 +55,7 @@
 ## 5. Послідовність ОС
 
 ```text
-E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS → E3 Windows
+E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS (`#86`–`#89`) → E3 Windows
 ```
 
 Поставка атомів: lifecycle → `.desktop` → tray/GUI → package (`#76`→`#79`) → E1.1 P1+QR (`#80`→`#85`).

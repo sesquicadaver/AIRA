@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-21  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); Addendum E1.1 `#80`–`#85` **DONE**.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); E1.1 `#80`–`#85` **DONE**; Addendum E2 macOS `#86`–`#89` **OPEN**.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-120 CLOSED @ ad59ef7 / PR #48; QUEUE #85 DONE; E1.1 complete |
+| `main` | E1.1 DONE; E2 відкрито 2026-08-21; перший OPEN `#86` |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | **порожня** — наступне: E2 macOS / E3 Windows (окреме рішення) |
+| Активна черга | Phase E Addendum **E2 macOS** — **перший OPEN `#86`** |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE. Phase E — [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; Addendum E1.1 `#80`–`#85` відкрито 2026-08-20.
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE. Phase E — [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#85` DONE; Addendum E2 `#86`–`#89` відкрито 2026-08-21.
 
 ---
 
@@ -147,9 +147,23 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл
 
-**Перший OPEN:** немає (E1.1 `#80`–`#85` DONE). Наступне — E2 macOS / E3 Windows окремим рішенням.
+**E1.1 DONE** (`#80`–`#85`). Див. Addendum E2 нижче.
 
-> Порядок: `#80` → `#81` → `#82` → `#83` → `#84` → `#85`. Після `#85`: E2 macOS / E3 Windows — окремим рішенням.
+> Порядок E1.1: `#80` → `#81` → `#82` → `#83` → `#84` → `#85`.
+
+План: [`docs/phase-e-plan.md`](docs/phase-e-plan.md) §4b.  
+**Не** DMG/notarize/App Store / E3 у цьому хвості. Packaging = `.app` + tarball.
+
+| # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
+|---|--------|---------|-----------------|-----------|------------------|
+| 86 | **OPEN** | Analyze-121 — macOS DesktopPaths | Application Support / Preferences / Logs layout | unit тести layout | LaunchAgent; `.app`; DMG |
+| 87 | **OPEN** | Analyze-122 — macOS LaunchAgent | plist autostart за `autostart_on_login`; Linux XDG лишається | roundtrip тести plist | `.app` bundle; notarize |
+| 88 | **OPEN** | Analyze-123 — macOS `.app` tarball | package script + Info.plist + Contents/MacOS | tarball містить runnable layout | DMG; notarize; Windows |
+| 89 | **OPEN** | Analyze-124 — macOS docs | packaging/install docs + RFC | docs узгоджені з `#86`–`#88` | E3; App Store |
+
+### Наступний цикл (E2)
+
+**Перший OPEN:** `#86` — macOS DesktopPaths.
 
 ---
 
@@ -180,6 +194,6 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
-| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#85` DONE |
+| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#85` DONE; E2 `#86`–`#89` OPEN (рішення 2026-08-21) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

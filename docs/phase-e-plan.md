@@ -1,6 +1,6 @@
 # Phase E — Desktop UX & One-Click Start v0.1
 
-**Статус:** складено 2026-08-20; acceptance посилено 2026-08-20; **Linux E1 (`#75`–`#79`) DONE**; **Addendum E1.1 (`#80`–`#85`) DONE** @ 2026-08-21.  
+**Статус:** складено 2026-08-20; **Linux E1 (`#75`–`#79`) DONE**; **E1.1 (`#80`–`#85`) DONE** @ 2026-08-21; **Addendum E2 macOS (`#86`–`#89`) OPEN** @ 2026-08-21.  
 **Рішення UX:** [`desktop-ux.md`](desktop-ux.md). Provenance проблеми: [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED**).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md). Поза цим планом / addendum поодинокі пункти в QUEUE не додавати.  
 **Не канон Book:** не змінює Core / C0–C1 / OperationalPlane semantics.  
@@ -49,10 +49,10 @@ Phase E = product shell over existing local plane
 
 | Роль | Desktop | Dev |
 |------|---------|-----|
-| Node root | OS application-data (напр. Linux `~/.local/share/aira/`) | explicit `--root` (default `.aira` / CLI convention) |
-| Settings | OS configuration (напр. `~/.config/aira/desktop-settings.json`) | той самий schema; path через flag або colocated |
-| PID / lock | OS runtime (напр. `XDG_RUNTIME_DIR/aira/` або `~/.local/state/aira/`) | under root або runtime dir |
-| Logs | OS log/cache (bounded) | under root or log dir |
+| Node root | OS application-data (Linux `~/.local/share/aira/`; macOS `~/Library/Application Support/AIRA/`) | explicit `--root` (default `.aira` / CLI convention) |
+| Settings | OS configuration (Linux `~/.config/aira/…`; macOS `~/Library/Preferences/AIRA/…`) | той самий schema; path через flag або colocated |
+| PID / lock | OS runtime (Linux XDG state/runtime; macOS `…/AIRA/runtime`) | under root або runtime dir |
+| Logs | OS log/cache (Linux cache; macOS `~/Library/Logs/AIRA`) | under root or log dir |
 
 Schema `#75` фіксує поля; оркестратор `#76` реалізує шляхи.
 
@@ -163,9 +163,29 @@ Loopback ≠ authorization boundary. Unauthenticated P0 не повинен ек
 
 **Acceptance E1.1:** два Linux Dev Preview інстанси (або loopback dual-root): увімкнули P1 → обмінялись invite файл/QR → trust+book → `peer listen --recv` працює → dial/recv smoke. Без P2–P6.
 
-### Addendum E2 — macOS *(не OPEN)*
+### 4b. Addendum E2 — macOS — **OPEN** (рішення 2026-08-21)
 
-Паритет E1 (P0 + GUI + settings) як `.app` / DMG; той самий UI-код / shared lib. Після E1.1 або паралельно за рішенням.
+**Scope:** паритет поточного Desktop (P0/P1 + GUI + settings з E1+E1.1) як macOS Developer Preview. Той самий UI / `aira-desktop-runtime`.
+
+**Рішення пакування:** `.app` directory + `.tar.gz` (аналог Linux tarball; **не** вимагає `hdiutil`). Codesign / notarize / DMG — **Out** першого E2.
+
+**Атоми → QUEUE `#86`–`#89`**
+
+| # | ID | Scope | Done when | Не в цьому рядку |
+|---|----|-------|-----------|------------------|
+| `#86` | E2.0 | macOS DesktopPaths | `Application Support` / `Preferences` / `Logs`; тести layout | LaunchAgent; `.app`; DMG |
+| `#87` | E2.1 | macOS LaunchAgent autostart | plist write/remove за `autostart_on_login`; Linux XDG лишається | `.app` bundle; notarize |
+| `#88` | E2.2 | macOS `.app` + tarball | `scripts/package-desktop-macos.sh` + Info.plist; bins у `Contents/MacOS` | DMG; notarize; Windows |
+| `#89` | E2.3 | Docs + RFC macOS | `docs/desktop-packaging-macos.md`; install без `cargo` notes | E3 Windows; App Store |
+
+```text
+#86 macOS paths
+  → #87 LaunchAgent
+    → #88 .app tarball
+      → #89 docs
+```
+
+**Acceptance E2:** на macOS (або cross-check layout на Linux CI): paths коректні → autostart plist → розпакував `.app` tarball → GUI start P0; P1 optional. Без notarize.
 
 ### Addendum E3 — Windows *(не OPEN)*
 
@@ -182,8 +202,7 @@ P2–P6; окремі stabilization атоми (branch protection, Handle opacit
 - Packaging: [`desktop-packaging.md`](desktop-packaging.md) + RFC-0028 (`#79`); tarball+`.desktop` (не AppImage)
 - Linux launcher: [`desktop-launcher.md`](desktop-launcher.md) + RFC-0026 (`#77`)
 - Desktop GUI + autostart: [`desktop-gui.md`](desktop-gui.md) + RFC-0027 (`#78`)
-- Addendum E1.1 (P1+QR): §4a → QUEUE `#80`–`#85`; RFC-0029 PeerInvite (`#80`); RFC-0030 settings P1 (`#81`); RFC-0031 peer lifecycle (`#82`); RFC-0032 invite file (`#83`); RFC-0033 invite QR (`#84`); RFC-0034 GUI P1+invite (`#85`)
-- Позначити `NEXT_PROBLEM.md` як RESOLVED (вже)
+- Addendum E2 (macOS): §4b → QUEUE `#86`–`#89`; RFC-0035 paths (`#86`)
 
 ## 6. Acceptance E1 (Linux)
 
