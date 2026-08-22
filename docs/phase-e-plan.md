@@ -1,6 +1,6 @@
 # Phase E — Desktop UX & One-Click Start v0.1
 
-**Статус:** складено 2026-08-20; **Linux E1 (`#75`–`#79`) DONE**; **E1.1 (`#80`–`#85`) DONE** @ 2026-08-21; **Addendum E2 macOS (`#86`–`#89`) DONE** @ 2026-08-22; **Addendum E3 Windows (`#90`–`#93`) DONE** @ 2026-08-22.  
+**Статус:** складено 2026-08-20; **Linux E1 (`#75`–`#79`) DONE**; **E1.1 (`#80`–`#85`) DONE** @ 2026-08-21; **Addendum E2 macOS (`#86`–`#89`) DONE** @ 2026-08-22; **Addendum E3 Windows (`#90`–`#93`) DONE** @ 2026-08-22; **Addendum E4 network profiles P2–P6 (`#94`–`#106`) OPEN** @ 2026-08-22.  
 **Рішення UX:** [`desktop-ux.md`](desktop-ux.md). Provenance проблеми: [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED**).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md). Поза цим планом / addendum поодинокі пункти в QUEUE не додавати.  
 **Не канон Book:** не змінює Core / C0–C1 / OperationalPlane semantics.  
@@ -211,9 +211,66 @@ Loopback ≠ authorization boundary. Unauthenticated P0 не повинен ек
 
 **Acceptance E3:** на Windows (або cross-check layout на Linux CI): paths коректні → autostart hook → розпакував zip → GUI start P0; P1 optional. Без codesign.
 
+### 4d. Addendum E4 — network profiles P2–P6 — **OPEN** (2026-08-22)
+
+**Рішення розробника:** 2026-08-22 — відкрити **E4** після DONE E3 (`#93`). Лінійно P2 → P3 → P4 → P5 → P6; один OPEN = один Analyze-цикл. Stabilization атоми (branch protection, Handle opacity, verify-on-read, Policy Gate у dispatch, acquisition fail-closed, toolchain pin, `SECURITY.md` refresh, split `model-acquisition`) — **поза E4**, за окремим рішенням.
+
+**Scope:** розширити Desktop runtime + GUI з поточного P0/P1 (E1.1) до профілів P2–P6 з [`desktop-ux.md`](desktop-ux.md) §3. CLI primitives вже є в post-MVP (`docs/peer-link.md`, Phase B `#18`–`#37`); E4 = **settings + supervise + UX**, не новий peer protocol.
+
+**Інваріанти E4 (додатково до §2 та §4a)**
+
+1. Профілі відкриваються **послідовно**: runtime приймає лише профілі ≤ поточного DONE-рівня; вищі — fail-closed до свого settings-атома.
+2. HTTP loopback (`aira-node --http`) — **завжди**; peer supervise лише при P1+ (як E1.1).
+3. **P2** = P1 + supervised `peer listen --recv --dht --apply-book` (opt-in DHT→address book, `#22`). Без relay / gossip / federation / STUN default.
+4. **P3** = P2 peer flags + `--relay` + `relay_ttl_days` у settings (default **31**). Dial `via` — існуюча peer-семантика; Desktop не auto-trust relay strangers.
+5. **P4** = P2 peer base + `--gossip`. **Mutex P3|P4:** одночасно `--relay` і `--gossip` на одному `peer listen` — fail-closed у settings normalize.
+6. **P5** = окремий wizard `federation join` (descriptor file); **не** змішувати з peer listen flags. Membership status read-only у GUI; Book II federation — Out.
+7. **P6** = **Dev / Advanced only** (opt-in panel): STUN query, discv listen, iterative FIND — operator shortcuts над існуючим CLI; **без** публічного STUN default, **без** auto-trust з discovery.
+8. Заборонено в Desktop (без змін): `--allow-public-bind`, публічний STUN default, авто-trust невідомих, прихований auto-increment порту, non-loopback `peer_listen` без explicit peer CLI (як E1.1).
+9. Settings `$id` лишається `0.1`; нові поля — optional з defaults у runtime (`relay_ttl_days` тощо).
+10. C1 / `aira-core` / Book 0 — **не змінювати**. GUI tech — Rust-only egui (без змін).
+
+**Атоми → QUEUE `#94`–`#106`**
+
+| ID | Підфаза | Атом | Done when | Не в цьому рядку |
+|----|---------|------|-----------|------------------|
+| `#94` | E4.0 | Settings P2 | runtime приймає P2; `peer_listen` як P1; P3+ fail-closed; fixtures/docs | peer `--dht`; GUI |
+| `#95` | E4.1 | Lifecycle P2 peer | supervise `peer listen --recv --dht --apply-book`; PID/lock; dual-root DHT→book smoke | P3 relay; GUI |
+| `#96` | E4.2 | GUI P2 | profile selector P0\|P1\|P2; peer status (dht mode); invite UX лишається | P3+; camera |
+| `#97` | E4.3 | Settings P3 + relay TTL | runtime P3; optional `relay_ttl_days` (default 31); P4+ fail-closed; mutex P3\|P4 зафіксовано в normalize | peer `--relay`; GUI |
+| `#98` | E4.4 | Lifecycle P3 relay | supervise `--relay --relay-ttl-days N`; registry reload smoke | gossip; GUI |
+| `#99` | E4.5 | GUI P3 Advanced | Advanced relay toggle/status; mutex hint P3 vs P4 | P4 gossip UI; P5 |
+| `#100` | E4.6 | Settings P4 gossip | runtime P4; enforce P3\|P4 mutex; P5+ fail-closed | peer `--gossip`; GUI |
+| `#101` | E4.7 | Lifecycle P4 gossip | supervise `--gossip` (без `--relay`); forward-filter smoke | relay; GUI |
+| `#102` | E4.8 | GUI P4 Advanced | gossip toggle/status у Advanced | P5 wizard; P6 |
+| `#103` | E4.9 | Federation join desktop | shared lib/CLI: descriptor file → `federation join`; membership read API; tests | GUI wizard; Book II |
+| `#104` | E4.10 | GUI P5 federation | wizard import descriptor; membership status display | P6; remote federation |
+| `#105` | E4.11 | P6 Advanced discovery | opt-in Dev panel: STUN/discv/FIND shortcuts (no public STUN default); operator docs hook | auto-trust; camera |
+| `#106` | E4.12 | Docs + RFC E4 | `docs/desktop-network-profiles.md` + RFC-0043; cross-links peer-link/desktop-peer/desktop-ux | зміна peer protocol |
+
+```text
+#94 settings P2
+  → #95 lifecycle P2 (--dht --apply-book)
+    → #96 GUI P2
+      → #97 settings P3 + relay_ttl
+        → #98 lifecycle P3 (--relay)
+          → #99 GUI P3
+            → #100 settings P4
+              → #101 lifecycle P4 (--gossip)
+                → #102 GUI P4
+                  → #103 federation join lib
+                    → #104 GUI P5
+                      → #105 P6 Advanced discovery
+                        → #106 docs + RFC
+```
+
+**RFC:** RFC-E settings/lifecycle per profile (`#94`/`#95`, `#97`/`#98`, `#100`/`#101`) → RFC-E federation desktop (`#103`) → RFC-E discovery advanced (`#105`) → RFC-0043 docs (`#106`).
+
+**Acceptance E4:** на Linux Dev Preview (dual-root smoke достатньо на CI): P2 DHT announce→find→book→dial; P3 relay register/deliver; P4 gossip forward filter; P5 federation join pin; P6 Advanced panel викликає STUN/discv/FIND без public defaults. macOS/Windows — паритет через той самий runtime/GUI (без нових packaging атомів). Позиціонування: **Developer Preview**, не production distributed AIRA.
+
 ### Пізніше (не нумерувати зараз)
 
-P2–P6; окремі stabilization атоми (branch protection, Handle opacity, verify-on-read, Policy Gate у dispatch, acquisition fail-closed, toolchain pin, `SECURITY.md` refresh, split `model-acquisition`) — **поза Phase E планом**, за окремим рішенням розробника в QUEUE.
+Окремі stabilization атоми (branch protection, Handle opacity, verify-on-read, Policy Gate у dispatch, acquisition fail-closed, toolchain pin, `SECURITY.md` refresh, split `model-acquisition`) — **поза Phase E планом**, за окремим рішенням розробника в QUEUE.
 
 ## 5. RFC / артефакти
 
@@ -226,6 +283,7 @@ P2–P6; окремі stabilization атоми (branch protection, Handle opacit
 - Desktop GUI + autostart: [`desktop-gui.md`](desktop-gui.md) + RFC-0027 (`#78`)
 - Addendum E2 (macOS): §4b → QUEUE `#86`–`#89`; RFC-0035 paths (`#86`); RFC-0036 LaunchAgent (`#87`); RFC-0037 `.app` tarball (`#88`); RFC-0038 docs (`#89`)
 - Addendum E3 (Windows): §4c → QUEUE `#90`–`#93`; RFC-0039 paths (`#90`); RFC-0040 autostart (`#91`); RFC-0041 zip (`#92`); RFC-0042 docs (`#93`)
+- Addendum E4 (P2–P6): §4d → QUEUE `#94`–`#106`; RFC-0043 network profiles docs (`#106`); per-profile RFC-E у відповідних атомах
 
 ## 6. Acceptance E1 (Linux)
 

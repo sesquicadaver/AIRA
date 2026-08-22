@@ -1,7 +1,7 @@
 //! Desktop settings document (`aira:schema:desktop:settings:0.1`).
 //!
-//! E1.1 (`#81`): `network_profile` may be P0 or P1. P2+ remain fail-closed.
-//! P1 requires a validated `peer_listen` (default `127.0.0.1:9797`).
+//! E1.1 (`#81`): `network_profile` may be P0 or P1.
+//! E4 (`#94`): P2 accepted with the same `peer_listen` rules as P1. P3+ fail-closed.
 
 use std::fs;
 use std::net::SocketAddr;
@@ -31,9 +31,14 @@ pub enum NetworkProfile {
 }
 
 impl NetworkProfile {
-    /// Profiles the Desktop runtime may load/persist in E1.1.
+    /// Profiles the Desktop runtime may load/persist (E4 `#94`: through P2).
     pub fn is_supported(self) -> bool {
-        matches!(self, Self::P0 | Self::P1)
+        matches!(self, Self::P0 | Self::P1 | Self::P2)
+    }
+
+    /// P1+ profiles that require validated `peer_listen` after normalize.
+    pub fn requires_peer_listen(self) -> bool {
+        matches!(self, Self::P1 | Self::P2)
     }
 }
 
@@ -88,7 +93,7 @@ pub fn validate_listen_addr(listen: &str) -> Result<SocketAddr> {
         .with_context(|| format!("invalid listen address `{listen}` (want host:port)"))
 }
 
-/// Fail-closed profile + listen validation; fill P1 `peer_listen` default when missing.
+/// Fail-closed profile + listen validation; fill P1/P2 `peer_listen` default when missing.
 pub fn normalize_settings(settings: &mut DesktopSettings) -> Result<()> {
     if settings.payload_schema != SETTINGS_SCHEMA_ID {
         bail!(
@@ -99,14 +104,14 @@ pub fn normalize_settings(settings: &mut DesktopSettings) -> Result<()> {
     }
     if !settings.network_profile.is_supported() {
         bail!(
-            "Desktop runtime supports network_profile=P0|P1 only (got {:?}; P2+ Out of E1.1)",
+            "Desktop runtime supports network_profile=P0|P1|P2 only (got {:?}; P3+ Out of E4)",
             settings.network_profile
         );
     }
     validate_listen_addr(&settings.http_listen).context("http_listen")?;
     match settings.network_profile {
         NetworkProfile::P0 => Ok(()),
-        NetworkProfile::P1 => {
+        NetworkProfile::P1 | NetworkProfile::P2 => {
             let listen = match settings.peer_listen.as_deref().map(str::trim) {
                 Some(s) if !s.is_empty() => s.to_string(),
                 _ => DEFAULT_PEER_LISTEN.to_string(),
@@ -115,19 +120,18 @@ pub fn normalize_settings(settings: &mut DesktopSettings) -> Result<()> {
             settings.peer_listen = Some(listen);
             Ok(())
         }
-        NetworkProfile::P2
-        | NetworkProfile::P3
-        | NetworkProfile::P4
-        | NetworkProfile::P5
-        | NetworkProfile::P6 => unreachable!("is_supported already rejected"),
+        NetworkProfile::P3 | NetworkProfile::P4 | NetworkProfile::P5 | NetworkProfile::P6 => {
+            unreachable!("is_supported already rejected")
+        }
     }
 }
 
-/// Effective peer listen for P1 (after normalize), or `None` on P0.
+/// Effective peer listen for P1/P2 (after normalize), or `None` on P0.
 pub fn effective_peer_listen(settings: &DesktopSettings) -> Option<&str> {
-    match settings.network_profile {
-        NetworkProfile::P1 => settings.peer_listen.as_deref(),
-        _ => None,
+    if settings.network_profile.requires_peer_listen() {
+        settings.peer_listen.as_deref()
+    } else {
+        None
     }
 }
 
@@ -139,7 +143,7 @@ pub fn load_or_create_settings(paths: &DesktopPaths) -> Result<DesktopSettings> 
             .with_context(|| format!("read {}", paths.settings_file.display()))?;
         let mut s: DesktopSettings = serde_json::from_str(&text)
             .with_context(|| format!("parse {}", paths.settings_file.display()))?;
-        let peer_missing = matches!(s.network_profile, NetworkProfile::P1)
+        let peer_missing = s.network_profile.requires_peer_listen()
             && s.peer_listen
                 .as_deref()
                 .map(str::trim)
@@ -213,7 +217,7 @@ mod unit {
     }
 
     #[test]
-    fn p2_rejected() {
+    fn p2_fills_default_peer_listen() {
         let mut s = DesktopSettings {
             payload_schema: SETTINGS_SCHEMA_ID.into(),
             network_profile: NetworkProfile::P2,
@@ -223,10 +227,27 @@ mod unit {
             instance_id: "aira:instance:test".into(),
             http_auth_mode: HttpAuthMode::BearerToken,
             http_token_ref: None,
+            peer_listen: None,
+        };
+        normalize_settings(&mut s).unwrap();
+        assert_eq!(s.peer_listen.as_deref(), Some(DEFAULT_PEER_LISTEN));
+    }
+
+    #[test]
+    fn p3_rejected() {
+        let mut s = DesktopSettings {
+            payload_schema: SETTINGS_SCHEMA_ID.into(),
+            network_profile: NetworkProfile::P3,
+            open_ui_on_start: true,
+            autostart_on_login: false,
+            http_listen: "127.0.0.1:8787".into(),
+            instance_id: "aira:instance:test".into(),
+            http_auth_mode: HttpAuthMode::BearerToken,
+            http_token_ref: None,
             peer_listen: Some(DEFAULT_PEER_LISTEN.into()),
         };
         let err = normalize_settings(&mut s).unwrap_err().to_string();
-        assert!(err.contains("P0|P1"), "{err}");
+        assert!(err.contains("P0|P1|P2"), "{err}");
     }
 
     #[test]

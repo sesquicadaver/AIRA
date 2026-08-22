@@ -30,15 +30,16 @@
 |----|-------|-----------|---------|
 | **P0** | Лише локально | тільки `aira-node --http` loopback | **E1 default / єдиний у першому Linux-релізі** |
 | **P1** | Приватна мережа (довірені) | + `peer listen --recv`; trust + address book | **E1.1+** (після E1) |
-| **P2** | Приватна + авто-книга | P1 + `--dht --apply-book` | після P1 |
-| **P3** | Relay | `--relay` (+ TTL); dial `via` | Advanced |
-| **P4** | Gossip trust | `--gossip` (не з `--relay` одночасно) | Advanced |
-| **P5** | Федерація (pin) | wizard `federation join` | окремий wizard |
-| **P6** | STUN / discv / FIND | discovery prototypes | **Dev / Advanced only** |
+| **P2** | Приватна + авто-книга | P1 + `--dht --apply-book` | **E4** (`#94`–`#96`) |
+| **P3** | Relay | `--relay` (+ TTL); dial `via` | **E4** Advanced (`#97`–`#99`) |
+| **P4** | Gossip trust | `--gossip` (не з `--relay` одночасно) | **E4** Advanced (`#100`–`#102`) |
+| **P5** | Федерація (pin) | wizard `federation join` | **E4** (`#103`–`#104`) |
+| **P6** | STUN / discv / FIND | discovery prototypes | **E4** Dev / Advanced (`#105`) |
 
 **Онбординг P1:** обмін файлом/QR (pubkey + опційно addr) — Addendum E1.1 (`#80`–`#85`).  
 **Рішення 2026-08-20:** варіант **C** — E1 = лише **P0 + GUI**; P1 = E1.1.  
-**Рішення E1.1 (2026-08-20):** default `peer_listen=127.0.0.1:9797`; non-loopback лише explicit; QR = PNG файл (без камери); P2–P6 Out.
+**Рішення E1.1 (2026-08-20):** default `peer_listen=127.0.0.1:9797`; non-loopback лише explicit; QR = PNG файл (без камери).  
+**Рішення E4 (2026-08-22):** P2–P6 відкрито в [`phase-e-plan.md`](phase-e-plan.md) §4d → QUEUE `#94`–`#106` (лінійно P2→P6).
 
 Заборонено в default Desktop: `--allow-public-bind`, публічний STUN default, авто-trust невідомих peers, прихований auto-increment порту.
 
@@ -55,7 +56,7 @@
 ## 5. Послідовність ОС
 
 ```text
-E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS (`#86`–`#89`) → E3 Windows (`#90`–`#93`)
+E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS (`#86`–`#89`) → E3 Windows (`#90`–`#93`) → E4 P2–P6 (`#94`–`#106`)
 ```
 
 Поставка атомів: lifecycle → `.desktop` → tray/GUI → package (`#76`→`#79`) → E1.1 P1+QR (`#80`→`#85`).
@@ -64,7 +65,7 @@ E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS (`#86`–`#89`) → E3
 
 | Key | Default | Примітка |
 |-----|---------|----------|
-| `network_profile` | `P0` | `P1` дозволений у E1.1 (`#81`); P2+ fail-closed |
+| `network_profile` | `P0` | `P1` E1.1 (`#81`); `P2`–`P6` E4 (`#94`+); вищі за DONE-рівень — fail-closed |
 | `open_ui_on_start` | `true` | native UI |
 | `autostart_on_login` | `false` | Linux XDG `#78`; macOS LaunchAgent `#87`; Windows `#91` |
 | `http_listen` | `127.0.0.1:8787` | fixed; conflict → fail або attach ([phase-e §2.3](phase-e-plan.md)) |
