@@ -102,6 +102,7 @@ cp -f "$ROOT/deploy/macos/uninstall-user.sh" "$STAGE/uninstall.sh"
 chmod +x "$STAGE/install.sh" "$STAGE/uninstall.sh"
 
 cp -f \
+  "$ROOT/docs/desktop-packaging-macos.md" \
   "$ROOT/docs/desktop-gui.md" \
   "$ROOT/docs/desktop-ux.md" \
   "$ROOT/docs/phase-e-plan.md" \
@@ -131,6 +132,8 @@ Developer CLI: \`aira desktop start|stop|status|gui\`.
 \`\`\`
 
 Node data (\`~/Library/Application Support/AIRA\`) and settings are kept.
+
+Docs: \`share/doc/aira/desktop-packaging-macos.md\`
 
 Layout-only artifacts (stub binaries) are for CI smoke only — rebuild on macOS for real use.
 EOF

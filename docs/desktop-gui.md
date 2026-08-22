@@ -30,7 +30,7 @@ cargo build -p aira-desktop -p aira-node -p aira-cli
 ./target/debug/aira desktop gui --data-root /tmp/aira-gui --node-bin ./target/debug/aira-node
 ```
 
-Menu entry (GUI): [`deploy/desktop/aira-desktop.desktop`](../deploy/desktop/aira-desktop.desktop) — via `aira desktop launcher-install` or the Linux tarball ([`desktop-packaging.md`](desktop-packaging.md)).
+Menu entry (GUI): Linux — [`deploy/desktop/aira-desktop.desktop`](../deploy/desktop/aira-desktop.desktop) via `aira desktop launcher-install` or the Linux tarball ([`desktop-packaging.md`](desktop-packaging.md)). macOS — **AIRA Desktop.app** via tarball ([`desktop-packaging-macos.md`](desktop-packaging-macos.md)).
 
 Headless start without UI: set `open_ui_on_start=false` in settings, or use `aira desktop start`.
 
@@ -38,7 +38,7 @@ Headless start without UI: set `open_ui_on_start=false` in settings, or use `air
 
 - Invite file/QR: [`desktop-invite.md`](desktop-invite.md)
 - Peer supervise: [`desktop-peer.md`](desktop-peer.md)
-- Packaging: [`desktop-packaging.md`](desktop-packaging.md)
+- Packaging: Linux [`desktop-packaging.md`](desktop-packaging.md); macOS [`desktop-packaging-macos.md`](desktop-packaging-macos.md)
 - Launcher: [`desktop-launcher.md`](desktop-launcher.md)
 - UX canon: [`desktop-ux.md`](desktop-ux.md)
 - Plan: [`phase-e-plan.md`](phase-e-plan.md)
