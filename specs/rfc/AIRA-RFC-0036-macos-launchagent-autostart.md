@@ -11,7 +11,7 @@ When `autostart_on_login=true` on macOS, write `~/Library/LaunchAgents/ai.aira.d
 ## 7. Change
 
 - `aira-desktop-runtime::autostart` (`launch_agent_plist`, `set_launch_agent_in`, OS dispatch in `set_autostart`)
-- Docs: `desktop-gui.md`, `desktop-ux.md`
+- Docs: `desktop-gui.md`, `desktop-ux.md`, [`desktop-packaging-macos.md`](../../docs/desktop-packaging-macos.md), [`desktop-packaging-macos.md`](../../docs/desktop-packaging-macos.md), [`desktop-packaging-macos.md`](../../docs/desktop-packaging-macos.md)
 
 ## 15. Tests
 

@@ -1,4 +1,4 @@
-//! macOS .app packaging layout smoke (QUEUE #88).
+//! macOS .app packaging layout smoke (#88) + packaging docs contract (#89).
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -72,4 +72,21 @@ fn launch_agent_label_matches_bundle_id() {
         text.contains(AIRA_LAUNCH_AGENT_LABEL),
         "LaunchAgent label must match CFBundleIdentifier for #87/#88"
     );
+}
+
+#[test]
+fn macos_packaging_doc_contract() {
+    let path = repo_root().join("docs/desktop-packaging-macos.md");
+    let text = std::fs::read_to_string(&path).expect("read desktop-packaging-macos.md");
+    for needle in [
+        "scripts/package-desktop-macos.sh",
+        "~/Applications/AIRA Desktop.app",
+        "Library/Application Support/AIRA",
+        "ai.aira.desktop.plist",
+        "install.sh",
+        "AIRA-RFC-0038",
+        "no `cargo`",
+    ] {
+        assert!(text.contains(needle), "doc missing: {needle}");
+    }
 }

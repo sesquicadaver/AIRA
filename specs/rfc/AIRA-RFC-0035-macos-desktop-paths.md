@@ -11,7 +11,7 @@ LaunchAgent (`#87`); `.app` packaging (`#88`); DMG/notarize; Windows.
 ## 7. Change
 
 - `aira-desktop-runtime::paths`
-- Docs: phase-e §2.1 / §4b
+- Docs: phase-e §2.1 / §4b; [`desktop-packaging-macos.md`](../../docs/desktop-packaging-macos.md); [`desktop-packaging-macos.md`](../../docs/desktop-packaging-macos.md); [`desktop-packaging-macos.md`](../../docs/desktop-packaging-macos.md)
 
 ## 15. Tests
 

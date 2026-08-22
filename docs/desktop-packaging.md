@@ -61,6 +61,7 @@ Install must place `aira-desktop` on PATH (this package → `~/.local/bin`). Abs
 
 ## Related
 
+- macOS packaging: [`desktop-packaging-macos.md`](desktop-packaging-macos.md)
 - GUI: [`desktop-gui.md`](desktop-gui.md)
 - Launcher: [`desktop-launcher.md`](desktop-launcher.md)
 - UX / plan: [`desktop-ux.md`](desktop-ux.md), [`phase-e-plan.md`](phase-e-plan.md)

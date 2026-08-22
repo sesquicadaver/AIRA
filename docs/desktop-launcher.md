@@ -1,6 +1,6 @@
 # Linux Desktop launcher (QUEUE #77)
 
-**Status:** Developer Preview. GUI: [`desktop-gui.md`](desktop-gui.md). Packaging: [`desktop-packaging.md`](desktop-packaging.md).
+**Status:** Developer Preview. GUI: [`desktop-gui.md`](desktop-gui.md). Packaging: Linux [`desktop-packaging.md`](desktop-packaging.md); macOS [`desktop-packaging-macos.md`](desktop-packaging-macos.md).
 
 ## Install
 

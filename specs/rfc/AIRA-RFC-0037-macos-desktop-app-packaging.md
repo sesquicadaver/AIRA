@@ -6,12 +6,13 @@ Ship AIRA Desktop Developer Preview for macOS as **`AIRA Desktop.app`** inside a
 
 ## 5. Non-Goals
 
-DMG / `hdiutil`; codesign / notarize; App Store; Windows (`E3`); full macOS docs (`#89`).
+DMG / `hdiutil`; codesign / notarize; App Store; Windows (`E3`). Docs: RFC-0038 / `desktop-packaging-macos.md` (`#89`).
 
 ## 7. Change
 
 - `scripts/package-desktop-macos.sh`
 - `deploy/macos/Info.plist`, `install-user.sh`, `uninstall-user.sh`
+- Docs: [`desktop-packaging-macos.md`](../../docs/desktop-packaging-macos.md) (RFC-0038)
 - Tests: `crates/aira-desktop-runtime/tests/macos_packaging.rs`
 
 ## 15. Tests
