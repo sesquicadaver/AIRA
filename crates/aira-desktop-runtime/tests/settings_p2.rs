@@ -18,14 +18,14 @@ fn p2_roundtrip_persists_default_peer_listen() {
 }
 
 #[test]
-fn p4_write_rejected() {
+fn p5_write_rejected() {
     let tmp = tempfile::tempdir().unwrap();
     let paths = DesktopPaths::for_data_root(tmp.path());
     let mut s = load_or_create_settings(&paths).unwrap();
-    s.network_profile = NetworkProfile::P4;
+    s.network_profile = NetworkProfile::P5;
     s.peer_listen = Some(DEFAULT_PEER_LISTEN.into());
     let err = write_settings(&paths, &s).unwrap_err().to_string();
-    assert!(err.contains("P0|P1|P2|P3"), "{err}");
+    assert!(err.contains("P0|P1|P2|P3|P4"), "{err}");
 }
 
 #[test]

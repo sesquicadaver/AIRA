@@ -2,7 +2,8 @@
 //!
 //! E1.1 (`#81`): `network_profile` may be P0 or P1.
 //! E4 (`#94`): P2 accepted with the same `peer_listen` rules as P1.
-//! E4 (`#97`): P3 + `relay_ttl_days` (default 31). P4+ fail-closed; P3|P4 mutex by profile enum.
+//! E4 (`#97`): P3 + `relay_ttl_days` (default 31).
+//! E4 (`#100`): P4 gossip profile. P5+ fail-closed; P3|P4 mutex by profile enum.
 
 use std::fs;
 use std::net::SocketAddr;
@@ -35,14 +36,14 @@ pub enum NetworkProfile {
 }
 
 impl NetworkProfile {
-    /// Profiles the Desktop runtime may load/persist (E4 `#97`: through P3).
+    /// Profiles the Desktop runtime may load/persist (E4 `#100`: through P4).
     pub fn is_supported(self) -> bool {
-        matches!(self, Self::P0 | Self::P1 | Self::P2 | Self::P3)
+        matches!(self, Self::P0 | Self::P1 | Self::P2 | Self::P3 | Self::P4)
     }
 
-    /// P1–P3 profiles that require validated `peer_listen` after normalize.
+    /// P1–P4 profiles that require validated `peer_listen` after normalize.
     pub fn requires_peer_listen(self) -> bool {
-        matches!(self, Self::P1 | Self::P2 | Self::P3)
+        matches!(self, Self::P1 | Self::P2 | Self::P3 | Self::P4)
     }
 
     /// Relay hub profile (mutex with P4 gossip at settings level).
@@ -50,7 +51,7 @@ impl NetworkProfile {
         matches!(self, Self::P3)
     }
 
-    /// Gossip profile (mutex with P3 relay; accepted in `#100`).
+    /// Gossip profile (mutex with P3 relay at settings level).
     pub fn is_gossip_profile(self) -> bool {
         matches!(self, Self::P4)
     }
@@ -111,7 +112,7 @@ pub fn validate_listen_addr(listen: &str) -> Result<SocketAddr> {
         .with_context(|| format!("invalid listen address `{listen}` (want host:port)"))
 }
 
-/// Fail-closed profile + listen validation; fill defaults for P1–P3.
+/// Fail-closed profile + listen validation; fill defaults for P1–P4.
 pub fn normalize_settings(settings: &mut DesktopSettings) -> Result<()> {
     if settings.payload_schema != SETTINGS_SCHEMA_ID {
         bail!(
@@ -122,7 +123,7 @@ pub fn normalize_settings(settings: &mut DesktopSettings) -> Result<()> {
     }
     if !settings.network_profile.is_supported() {
         bail!(
-            "Desktop runtime supports network_profile=P0|P1|P2|P3 only (got {:?}; P4+ Out of E4)",
+            "Desktop runtime supports network_profile=P0|P1|P2|P3|P4 only (got {:?}; P5+ Out of E4)",
             settings.network_profile
         );
     }
@@ -149,7 +150,12 @@ pub fn normalize_settings(settings: &mut DesktopSettings) -> Result<()> {
             settings.relay_ttl_days = Some(ttl);
             Ok(())
         }
-        NetworkProfile::P4 | NetworkProfile::P5 | NetworkProfile::P6 => {
+        NetworkProfile::P4 => {
+            normalize_peer_listen(settings)?;
+            settings.relay_ttl_days = None;
+            Ok(())
+        }
+        NetworkProfile::P5 | NetworkProfile::P6 => {
             unreachable!("is_supported already rejected")
         }
     }
@@ -174,7 +180,7 @@ pub fn effective_relay_ttl_days(settings: &DesktopSettings) -> Option<u32> {
     }
 }
 
-/// Effective peer listen for P1–P3 (after normalize), or `None` on P0.
+/// Effective peer listen for P1–P4 (after normalize), or `None` on P0.
 pub fn effective_peer_listen(settings: &DesktopSettings) -> Option<&str> {
     if settings.network_profile.requires_peer_listen() {
         settings.peer_listen.as_deref()
@@ -303,10 +309,10 @@ mod unit {
     }
 
     #[test]
-    fn p4_rejected() {
+    fn p5_rejected() {
         let mut s = DesktopSettings {
             payload_schema: SETTINGS_SCHEMA_ID.into(),
-            network_profile: NetworkProfile::P4,
+            network_profile: NetworkProfile::P5,
             open_ui_on_start: true,
             autostart_on_login: false,
             http_listen: "127.0.0.1:8787".into(),
@@ -317,7 +323,25 @@ mod unit {
             relay_ttl_days: None,
         };
         let err = normalize_settings(&mut s).unwrap_err().to_string();
-        assert!(err.contains("P0|P1|P2|P3"), "{err}");
+        assert!(err.contains("P0|P1|P2|P3|P4"), "{err}");
+    }
+
+    #[test]
+    fn p4_clears_relay_ttl() {
+        let mut s = DesktopSettings {
+            payload_schema: SETTINGS_SCHEMA_ID.into(),
+            network_profile: NetworkProfile::P4,
+            open_ui_on_start: true,
+            autostart_on_login: false,
+            http_listen: "127.0.0.1:8787".into(),
+            instance_id: "aira:instance:test".into(),
+            http_auth_mode: HttpAuthMode::BearerToken,
+            http_token_ref: None,
+            peer_listen: Some(DEFAULT_PEER_LISTEN.into()),
+            relay_ttl_days: Some(31),
+        };
+        normalize_settings(&mut s).unwrap();
+        assert!(s.relay_ttl_days.is_none());
     }
 
     #[test]
