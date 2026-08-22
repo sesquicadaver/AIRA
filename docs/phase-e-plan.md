@@ -202,7 +202,7 @@ P2–P6; окремі stabilization атоми (branch protection, Handle opacit
 - Packaging: [`desktop-packaging.md`](desktop-packaging.md) + RFC-0028 (`#79`); tarball+`.desktop` (не AppImage)
 - Linux launcher: [`desktop-launcher.md`](desktop-launcher.md) + RFC-0026 (`#77`)
 - Desktop GUI + autostart: [`desktop-gui.md`](desktop-gui.md) + RFC-0027 (`#78`)
-- Addendum E2 (macOS): §4b → QUEUE `#86`–`#89`; RFC-0035 paths (`#86`); RFC-0036 LaunchAgent (`#87`)
+- Addendum E2 (macOS): §4b → QUEUE `#86`–`#89`; RFC-0035 paths (`#86`); RFC-0036 LaunchAgent (`#87`); RFC-0037 `.app` tarball (`#88`)
 
 ## 6. Acceptance E1 (Linux)
 

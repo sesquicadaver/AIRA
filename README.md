@@ -42,7 +42,7 @@ Problem Statement
 
 Останні закриті slices: A-56…A-63; A-64 multi-tenant HTTP CSU authz.
 
-See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md`, `scripts/prepare-alpha.sh`, and `scripts/package-desktop-linux.sh`.
+See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md`, `scripts/prepare-alpha.sh`, `scripts/package-desktop-linux.sh`, and `scripts/package-desktop-macos.sh`.
 
 Long-running daemons: [`docs/runbook-systemd.md`](docs/runbook-systemd.md).
 
