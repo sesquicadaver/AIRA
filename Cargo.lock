@@ -423,6 +423,7 @@ dependencies = [
  "aira-flow",
  "aira-object",
  "aira-peer",
+ "aira-protocol",
  "anyhow",
  "ed25519-dalek",
  "hex",
@@ -435,6 +436,7 @@ dependencies = [
  "tempfile",
  "thiserror 1.0.69",
  "time",
+ "tokio",
  "uuid",
 ]
 

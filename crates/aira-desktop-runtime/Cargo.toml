@@ -26,3 +26,6 @@ rqrr = "0.10"
 
 [dev-dependencies]
 tempfile = { workspace = true }
+tokio = { workspace = true }
+aira-protocol = { path = "../aira-protocol" }
+hex = { workspace = true }
