@@ -77,3 +77,27 @@ cargo run -p aira-cli -- schema list
 ## License
 
 Apache-2.0 OR MIT.
+
+## Support the project
+
+If this project is useful to you, you may support its development with a voluntary donation in USDT.
+
+Donations are optional and do not provide ownership, equity, tokens, governance rights, paid support, priority service, or any investment return.
+
+### USDT donations
+
+| Network | Address |
+|---|---|
+| USDT ERC-20 / Ethereum | 0xfa9821efd142228d53e1418fe335bb1cd8ff3c39 |
+| USDT TRC-20 / Tron | TNnhueeGqujf6AAUhcgissoEkL7tdzmqQv |
+
+### Important
+
+Please make sure that the selected network matches the address type.
+
+- Send **USDT ERC-20** only to the Ethereum address.
+- Send **USDT TRC-20** only to the Tron address.
+
+Transactions sent to the wrong network may be permanently lost.
+
+Thank you for supporting the project.
