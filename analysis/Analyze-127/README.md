@@ -1,7 +1,7 @@
 # Analyze-127 — Windows zip package (QUEUE #92)
 
 ## Status
-OPEN — Analyze-127 / PR pending.
+CLOSED @ 278da37 / PR #55 (QUEUE #92 DONE).
 
 ## Done when
 package script + deploy/windows install; zip layout smoke; tests.
