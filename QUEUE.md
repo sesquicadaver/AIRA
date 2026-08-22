@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-139 CLOSED @ PR #67; **перший OPEN = `#105`** (P6 Advanced discovery) |
+| `main` | Analyze-140 CLOSED @ PR #68; **перший OPEN = `#106`** (E4 docs + RFC) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Addendum E4 `#94`–`#106` (P2→P6) |
@@ -201,12 +201,12 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 102 | **DONE** | ~~Analyze-137 — GUI P4 Advanced~~ | gossip toggle/status у Advanced | GUI smoke P4 | P5; P6 |
 | 103 | **DONE** | ~~Analyze-138 — Federation join desktop~~ | shared lib: descriptor file → `federation join`; membership read API | join pin + trust smoke | GUI wizard; Book II |
 | 104 | **DONE** | ~~Analyze-139 — GUI P5 federation~~ | wizard import descriptor; membership status | GUI smoke P5 | P6; remote federation |
-| 105 | **OPEN** | Analyze-140 — P6 Advanced discovery | opt-in Dev panel: STUN/discv/FIND shortcuts; no public STUN default | operator smoke + docs hook | auto-trust; camera |
+| 105 | **DONE** | ~~Analyze-140 — P6 Advanced discovery~~ | opt-in Dev panel: STUN/discv/FIND shortcuts; no public STUN default | operator smoke + docs hook | auto-trust; camera |
 | 106 | **OPEN** | Analyze-141 — E4 docs + RFC | `docs/desktop-network-profiles.md` + RFC-0043 | docs узгоджені з `#94`–`#105` | peer protocol change |
 
 ### Наступний цикл (E4)
 
-**Перший OPEN:** `#105` P6 Advanced discovery. Порядок: `#105` → `#106`.
+**Перший OPEN:** `#106` E4 docs + RFC. Порядок: `#106` (фінальний атом E4).
 
 > Mutex: P3 (relay) і P4 (gossip) — окремі lifecycle рядки; settings normalize fail-closed при одночасному виборі.
 
