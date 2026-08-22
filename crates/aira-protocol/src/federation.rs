@@ -164,6 +164,13 @@ fn pin_identity(
     Ok(())
 }
 
+/// Load local federation membership if present.
+pub fn load_federation_membership(
+    root: impl AsRef<Path>,
+) -> Result<Option<FederationMembership>, FederationError> {
+    load_membership(root)
+}
+
 /// Join locally: verify descriptor, pin `identity_ref` in TrustStore, write membership.
 pub fn join_federation(
     root: impl AsRef<Path>,
