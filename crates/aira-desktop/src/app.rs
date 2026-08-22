@@ -256,6 +256,14 @@ impl AiraDesktopApp {
         }
     }
 
+    fn toggle_gossip_profile(&mut self, enable: bool) {
+        if enable {
+            self.apply_profile(NetworkProfile::P4);
+        } else if self.settings.network_profile == NetworkProfile::P4 {
+            self.apply_profile(NetworkProfile::P2);
+        }
+    }
+
     fn load_qr_preview(&mut self, ctx: &egui::Context) {
         match actions::preview_invite_qr(&self.paths, &mut self.settings) {
             Ok((invite, w, h, rgba)) => {
@@ -353,7 +361,7 @@ impl eframe::App for AiraDesktopApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("AIRA Desktop");
-                ui.label("Developer Preview · P0/P1/P2 local · P3 relay in Advanced");
+                ui.label("Developer Preview · P0/P1/P2 local · P3/P4 in Advanced");
                 ui.separator();
 
                 ui.horizontal(|ui| {
@@ -467,6 +475,13 @@ impl eframe::App for AiraDesktopApp {
                         .unwrap_or(DEFAULT_RELAY_TTL_DAYS);
                     ui.label(format!("relay status: enabled · TTL {ttl} days"));
                 }
+                let mut gossip_on = self.settings.network_profile.is_gossip_profile();
+                if ui.checkbox(&mut gossip_on, "P4 gossip trust").changed() {
+                    self.toggle_gossip_profile(gossip_on);
+                }
+                if self.settings.network_profile.is_gossip_profile() {
+                    ui.label("gossip status: enabled (dht+apply-book+apply-trust)");
+                }
 
                 ui.separator();
                 ui.heading("Settings");
@@ -546,6 +561,9 @@ fn format_peer_running(
     relay_ttl_days: Option<u32>,
 ) -> String {
     match profile {
+        NetworkProfile::P4 => {
+            format!("peer running (gossip+dht+apply-book) · pid {pid} @ {listen}")
+        }
         NetworkProfile::P3 => {
             let ttl = relay_ttl_days.unwrap_or(DEFAULT_RELAY_TTL_DAYS);
             format!("peer running (relay · TTL {ttl}d) · pid {pid} @ {listen}")
@@ -558,6 +576,7 @@ fn format_peer_running(
 
 fn format_peer_not_running(profile: NetworkProfile) -> String {
     match profile {
+        NetworkProfile::P4 => "peer not running (Start with P4 gossip)".into(),
         NetworkProfile::P3 => "peer not running (Start with P3 relay)".into(),
         NetworkProfile::P2 => "peer not running (Start with P2)".into(),
         NetworkProfile::P1 => "peer not running (Start with P1)".into(),
@@ -572,6 +591,7 @@ fn format_peer_configured(
 ) -> String {
     let addr = listen.unwrap_or(DEFAULT_PEER_LISTEN);
     match profile {
+        NetworkProfile::P4 => format!("peer configured (gossip+dht+apply-book) · {addr}"),
         NetworkProfile::P3 => {
             let ttl = relay_ttl_days.unwrap_or(DEFAULT_RELAY_TTL_DAYS);
             format!("peer configured (relay · TTL {ttl}d) · {addr}")
