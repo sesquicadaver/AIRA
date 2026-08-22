@@ -1,6 +1,6 @@
 # Phase E — Desktop UX & One-Click Start v0.1
 
-**Статус:** складено 2026-08-20; **Linux E1 (`#75`–`#79`) DONE**; **E1.1 (`#80`–`#85`) DONE** @ 2026-08-21; **Addendum E2 macOS (`#86`–`#89`) `#86`–`#88` DONE**, `#89` OPEN @ 2026-08-22.  
+**Статус:** складено 2026-08-20; **Linux E1 (`#75`–`#79`) DONE**; **E1.1 (`#80`–`#85`) DONE** @ 2026-08-21; **Addendum E2 macOS (`#86`–`#89`) DONE** @ 2026-08-22.  
 **Рішення UX:** [`desktop-ux.md`](desktop-ux.md). Provenance проблеми: [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED**).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md). Поза цим планом / addendum поодинокі пункти в QUEUE не додавати.  
 **Не канон Book:** не змінює Core / C0–C1 / OperationalPlane semantics.  
@@ -163,7 +163,7 @@ Loopback ≠ authorization boundary. Unauthenticated P0 не повинен ек
 
 **Acceptance E1.1:** два Linux Dev Preview інстанси (або loopback dual-root): увімкнули P1 → обмінялись invite файл/QR → trust+book → `peer listen --recv` працює → dial/recv smoke. Без P2–P6.
 
-### 4b. Addendum E2 — macOS — **OPEN** (рішення 2026-08-21)
+### 4b. Addendum E2 — macOS — **DONE** (2026-08-22)
 
 **Scope:** паритет поточного Desktop (P0/P1 + GUI + settings з E1+E1.1) як macOS Developer Preview. Той самий UI / `aira-desktop-runtime`.
 

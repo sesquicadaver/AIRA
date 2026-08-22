@@ -38,7 +38,7 @@ Problem Statement
 **Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing; Trust; Peer P0–P2 + DHT/relay/gossip (`docs/crypto.md`, `docs/peer-link.md`, `docs/local-node.md`).
 **OperationalPlane:** C1 reference/demo only — [`docs/operational-plane.md`](docs/operational-plane.md) (not production event/scheduler/federation runtime).
 **Implementation status:** [`docs/implementation-status.md`](docs/implementation-status.md) — Book 0–IV / schemas / C0–C1 / CSU basic; HTTP/peer = post-MVP.
-**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C **#38–#52 DONE**. Phase D D0–D7 **#53–#74 DONE**. Phase E Desktop **#75–#79 DONE**; E1.1 **#80–#85 DONE**; E2 macOS **#86–#88 DONE**, `#89` OPEN — [`docs/phase-e-plan.md`](docs/phase-e-plan.md) §4b.
+**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C **#38–#52 DONE**. Phase D D0–D7 **#53–#74 DONE**. Phase E Desktop **#75–#89 DONE** (Linux E1 + E1.1 + E2 macOS) — [`docs/phase-e-plan.md`](docs/phase-e-plan.md).
 
 Останні закриті slices: A-56…A-63; A-64 multi-tenant HTTP CSU authz.
 
