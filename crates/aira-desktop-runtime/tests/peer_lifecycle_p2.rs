@@ -148,8 +148,7 @@ fn p2_dht_apply_book_smoke() {
     let bob_invite_path = tmp.path().join("bob.invite.json");
     let alice_invite =
         export_invite_file(&alice, &alice_invite_path, Some(alice_peer.clone())).unwrap();
-    let _bob_invite =
-        export_invite_file(&bob, &bob_invite_path, Some(bob_peer.clone())).unwrap();
+    let _bob_invite = export_invite_file(&bob, &bob_invite_path, Some(bob_peer.clone())).unwrap();
 
     import_invite_file(&bob, &alice_invite_path).expect("bob imports alice");
     import_invite_file(&alice, &bob_invite_path).expect("alice imports bob");
