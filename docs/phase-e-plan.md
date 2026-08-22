@@ -187,7 +187,7 @@ Loopback ≠ authorization boundary. Unauthenticated P0 не повинен ек
 
 **Acceptance E2:** на macOS (або cross-check layout на Linux CI): paths коректні → autostart plist → розпакував `.app` tarball → GUI start P0; P1 optional. Без notarize.
 
-### 4c. Addendum E3 — Windows — **OPEN** (2026-08-22)
+### 4c. Addendum E3 — Windows — **DONE** (2026-08-22)
 
 **Scope:** паритет поточного Desktop (P0/P1 + GUI + settings з E1+E1.1) як Windows Developer Preview. Той самий UI / `aira-desktop-runtime`.
 
