@@ -11,7 +11,7 @@ use aira_desktop_runtime::{
     DEFAULT_PEER_LISTEN,
 };
 
-/// Apply P0 or P1 profile; fill default `peer_listen` on P1.
+/// Apply P0, P1, or P2 profile; fill default `peer_listen` on P1/P2.
 pub fn apply_network_profile(
     settings: &mut DesktopSettings,
     profile: NetworkProfile,
@@ -22,7 +22,7 @@ pub fn apply_network_profile(
     }
     settings.network_profile = profile;
     match profile {
-        NetworkProfile::P1 => {
+        NetworkProfile::P1 | NetworkProfile::P2 => {
             let trimmed = peer_listen_edit.trim();
             settings.peer_listen = Some(if trimmed.is_empty() {
                 DEFAULT_PEER_LISTEN.to_string()

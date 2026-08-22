@@ -19,7 +19,7 @@
     "network_profile": {
       "type": "string",
       "enum": ["P0", "P1", "P2", "P3", "P4", "P5", "P6"],
-      "description": "Desktop runtime E1.1 accepts P0|P1; P2–P6 reserved (fail-closed in runtime)."
+      "description": "Desktop runtime E4 accepts P0|P1|P2; P3–P6 reserved (fail-closed in runtime)."
     },
     "open_ui_on_start": {
       "type": "boolean",

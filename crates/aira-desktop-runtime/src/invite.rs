@@ -100,7 +100,7 @@ pub fn build_local_invite(
     let addr = match addr_override {
         Some(a) => Some(a),
         None => match settings.network_profile {
-            NetworkProfile::P1 => settings.peer_listen.clone(),
+            NetworkProfile::P1 | NetworkProfile::P2 => settings.peer_listen.clone(),
             _ => None,
         },
     };
