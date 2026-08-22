@@ -9,10 +9,10 @@
 | Control | Behavior |
 |---------|----------|
 | Status | lifecycle label + pid/listen/instance |
-| Peer status | P1/P2 supervised `peer listen` pid/addr; P2 shows dht+apply-book; P3 relay+TTL in Advanced |
+| Peer status | P1/P2 supervised `peer listen` pid/addr; P2 dht+apply-book; P3 relay+TTL; P4 gossip in Advanced |
 | Start / Stop / Refresh | shared `aira-desktop-runtime` |
-| Network profile | P0 / P1 / P2 selector; P1/P2/P3 `peer_listen` edit (default `127.0.0.1:9797`) |
-| Advanced | P3 relay hub toggle; `relay_ttl_days` (default 31); mutex hint P3 vs P4 gossip |
+| Network profile | P0 / P1 / P2 selector; P1–P4 `peer_listen` edit (default `127.0.0.1:9797`) |
+| Advanced | P3 relay toggle + `relay_ttl_days`; P4 gossip toggle; mutex hint P3 vs P4 |
 | Settings | `open_ui_on_start`, `autostart_on_login` (persisted) |
 | Friend invite | Export/Import JSON; Show/Export/Import QR PNG (no camera) |
 | Quit | stop node + close window |

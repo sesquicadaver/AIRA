@@ -11,7 +11,7 @@ use aira_desktop_runtime::{
     DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
-/// Apply supported profile; fill defaults for `peer_listen` / `relay_ttl_days` on P1–P3.
+/// Apply supported profile; fill defaults for `peer_listen` / `relay_ttl_days` on P1–P4.
 pub fn apply_network_profile(
     settings: &mut DesktopSettings,
     profile: NetworkProfile,
@@ -23,7 +23,7 @@ pub fn apply_network_profile(
     }
     settings.network_profile = profile;
     match profile {
-        NetworkProfile::P1 | NetworkProfile::P2 | NetworkProfile::P3 => {
+        NetworkProfile::P1 | NetworkProfile::P2 | NetworkProfile::P3 | NetworkProfile::P4 => {
             let trimmed = peer_listen_edit.trim();
             settings.peer_listen = Some(if trimmed.is_empty() {
                 DEFAULT_PEER_LISTEN.to_string()
@@ -115,6 +115,19 @@ mod tests {
         assert_eq!(loaded.network_profile, NetworkProfile::P3);
         assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:19096"));
         assert_eq!(loaded.relay_ttl_days, Some(21));
+    }
+
+    #[test]
+    fn p4_profile_persist_peer_listen() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = DesktopPaths::for_data_root(tmp.path());
+        let mut settings = load_or_create_settings(&paths).unwrap();
+        apply_network_profile(&mut settings, NetworkProfile::P4, "127.0.0.1:19097", None).unwrap();
+        persist_settings(&paths, &settings).unwrap();
+        let loaded = load_or_create_settings(&paths).unwrap();
+        assert_eq!(loaded.network_profile, NetworkProfile::P4);
+        assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:19097"));
+        assert!(loaded.relay_ttl_days.is_none());
     }
 
     #[test]

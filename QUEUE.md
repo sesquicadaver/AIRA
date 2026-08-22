@@ -206,7 +206,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл (E4)
 
-**Перший OPEN:** `#101` Lifecycle P4 gossip. Порядок: `#101` → `#102` → … → `#106`.
+**Перший OPEN:** `#102` GUI P4 Advanced. Порядок: `#102` → `#103` → … → `#106`.
 
 > Mutex: P3 (relay) і P4 (gossip) — окремі lifecycle рядки; settings normalize fail-closed при одночасному виборі.
 
