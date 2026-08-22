@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-22  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); E1.1 `#80`–`#85` **DONE**; Addendum E2 macOS `#86`–`#89` **DONE**.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); E1.1 `#80`–`#85` **DONE**; Addendum E2 macOS `#86`–`#89` **DONE**; Addendum E3 Windows `#90`–`#93` **OPEN**.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-124 CLOSED @ 4f8f9c7 / PR #52; QUEUE #89 DONE; E2 **DONE**; OPEN-хвіст порожній |
+| `main` | E2 DONE; перший OPEN `#90` (Analyze-125) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | **порожня** — E3 Windows не OPEN |
+| Активна черга | Phase E Addendum **E3 Windows** — **перший OPEN `#90`** |
 
 ## Правила атомарності
 
@@ -165,7 +165,23 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл (E2)
 
-**E2 macOS DONE** (`#86`–`#89`). E3 Windows — не OPEN.
+**E2 macOS DONE** (`#86`–`#89`). Див. Addendum E3 нижче.
+
+## Активна черга (лінійна) — Phase E Addendum E3: Windows
+
+План: [`docs/phase-e-plan.md`](docs/phase-e-plan.md) §4c.  
+**Не** MSI/codesign/Store у цьому хвості. Packaging = `.zip` + install script.
+
+| # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
+|---|--------|---------|-----------------|-----------|------------------|
+| 90 | **OPEN** | Analyze-125 — Windows DesktopPaths | `%LOCALAPPDATA%` / `%APPDATA%` layout | unit тести layout | autostart; zip; MSI |
+| 91 | **OPEN** | Analyze-126 — Windows login autostart | Startup/Registry за `autostart_on_login`; Linux/macOS лишаються | roundtrip тести hook | zip package; codesign |
+| 92 | **OPEN** | Analyze-127 — Windows zip package | package script + `deploy/windows/` install | zip містить runnable layout | MSI; codesign; macOS |
+| 93 | **OPEN** | Analyze-128 — Windows docs | packaging/install docs + RFC | docs узгоджені з `#90`–`#92` | App Store; MSI |
+
+### Наступний цикл (E3)
+
+**Перший OPEN:** `#90` — Windows DesktopPaths.
 
 ---
 

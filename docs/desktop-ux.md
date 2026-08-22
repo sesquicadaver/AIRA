@@ -20,7 +20,7 @@
 - CLI канон: **`aira desktop start|stop|status`** (shared lifecycle з GUI).
 - Після старту відкривати UI — **налаштування** (`open_ui_on_start`, default **on** для Desktop).
 - «Open UI» = **нативне** status/settings вікно (не голий JSON у браузері як єдиний UX).
-- Автостарт після логіну — **налаштування** (`autostart_on_login`, default **off**); OS hooks: Linux `#78` (XDG), macOS `#87` (LaunchAgent).
+- Автостарт після логіну — **налаштування** (`autostart_on_login`, default **off**); OS hooks: Linux `#78` (XDG), macOS `#87` (LaunchAgent), Windows `#91` (Startup/Registry).
 - Local HTTP loopback (`aira-node --http`) у Desktop **завжди** увімкнений; mutating routes — лише з Desktop auth-контрактом ([phase-e §2.4](phase-e-plan.md)).
 - GUI tech: **Rust-only** (egui/native tray). Без Node.js/web build dependency.
 
@@ -55,7 +55,7 @@
 ## 5. Послідовність ОС
 
 ```text
-E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS (`#86`–`#89`) → E3 Windows
+E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS (`#86`–`#89`) → E3 Windows (`#90`–`#93`)
 ```
 
 Поставка атомів: lifecycle → `.desktop` → tray/GUI → package (`#76`→`#79`) → E1.1 P1+QR (`#80`→`#85`).
@@ -66,7 +66,7 @@ E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS (`#86`–`#89`) → E3
 |-----|---------|----------|
 | `network_profile` | `P0` | `P1` дозволений у E1.1 (`#81`); P2+ fail-closed |
 | `open_ui_on_start` | `true` | native UI |
-| `autostart_on_login` | `false` | Linux XDG `#78`; macOS LaunchAgent `#87` |
+| `autostart_on_login` | `false` | Linux XDG `#78`; macOS LaunchAgent `#87`; Windows `#91` |
 | `http_listen` | `127.0.0.1:8787` | fixed; conflict → fail або attach ([phase-e §2.3](phase-e-plan.md)) |
 | `instance_id` | generated once | для attach-семантики |
 | `peer_listen` | `null` @ P0; default `127.0.0.1:9797` @ P1 | обов’язковий при P1 |

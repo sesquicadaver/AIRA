@@ -1,6 +1,6 @@
 # Phase E — Desktop UX & One-Click Start v0.1
 
-**Статус:** складено 2026-08-20; **Linux E1 (`#75`–`#79`) DONE**; **E1.1 (`#80`–`#85`) DONE** @ 2026-08-21; **Addendum E2 macOS (`#86`–`#89`) DONE** @ 2026-08-22.  
+**Статус:** складено 2026-08-20; **Linux E1 (`#75`–`#79`) DONE**; **E1.1 (`#80`–`#85`) DONE** @ 2026-08-21; **Addendum E2 macOS (`#86`–`#89`) DONE** @ 2026-08-22; **Addendum E3 Windows (`#90`–`#93`) OPEN** @ 2026-08-22.  
 **Рішення UX:** [`desktop-ux.md`](desktop-ux.md). Provenance проблеми: [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED**).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md). Поза цим планом / addendum поодинокі пункти в QUEUE не додавати.  
 **Не канон Book:** не змінює Core / C0–C1 / OperationalPlane semantics.  
@@ -49,10 +49,10 @@ Phase E = product shell over existing local plane
 
 | Роль | Desktop | Dev |
 |------|---------|-----|
-| Node root | OS application-data (Linux `~/.local/share/aira/`; macOS `~/Library/Application Support/AIRA/`) | explicit `--root` (default `.aira` / CLI convention) |
-| Settings | OS configuration (Linux `~/.config/aira/…`; macOS `~/Library/Preferences/AIRA/…`) | той самий schema; path через flag або colocated |
-| PID / lock | OS runtime (Linux XDG state/runtime; macOS `…/AIRA/runtime`) | under root або runtime dir |
-| Logs | OS log/cache (Linux cache; macOS `~/Library/Logs/AIRA`) | under root or log dir |
+| Node root | OS application-data (Linux `~/.local/share/aira/`; macOS `~/Library/Application Support/AIRA/`; Windows `%LOCALAPPDATA%\AIRA\`) | explicit `--root` (default `.aira` / CLI convention) |
+| Settings | OS configuration (Linux `~/.config/aira/…`; macOS `~/Library/Preferences/AIRA/…`; Windows `%APPDATA%\AIRA\…`) | той самий schema; path через flag або colocated |
+| PID / lock | OS runtime (Linux XDG state/runtime; macOS `…/AIRA/runtime`; Windows `%LOCALAPPDATA%\AIRA\runtime`) | under root або runtime dir |
+| Logs | OS log/cache (Linux cache; macOS `~/Library/Logs/AIRA`; Windows `%LOCALAPPDATA%\AIRA\logs`) | under root or log dir |
 
 Schema `#75` фіксує поля; оркестратор `#76` реалізує шляхи.
 
@@ -187,9 +187,29 @@ Loopback ≠ authorization boundary. Unauthenticated P0 не повинен ек
 
 **Acceptance E2:** на macOS (або cross-check layout на Linux CI): paths коректні → autostart plist → розпакував `.app` tarball → GUI start P0; P1 optional. Без notarize.
 
-### Addendum E3 — Windows *(не OPEN)*
+### 4c. Addendum E3 — Windows — **OPEN** (2026-08-22)
 
-Паритет E1 як installer + tray.
+**Scope:** паритет поточного Desktop (P0/P1 + GUI + settings з E1+E1.1) як Windows Developer Preview. Той самий UI / `aira-desktop-runtime`.
+
+**Рішення пакування:** versioned **`.zip`** + user install script (аналог Linux tarball / macOS `.tar.gz`; **не** вимагає MSI/NSIS на першому E3). Codesign / SmartScreen / Store — **Out** першого E3.
+
+**Атоми → QUEUE `#90`–`#93`**
+
+| # | ID | Scope | Done when | Не в цьому рядку |
+|---|----|-------|-----------|------------------|
+| `#90` | E3.0 | Windows DesktopPaths | `%LOCALAPPDATA%` / `%APPDATA%`; тести layout | autostart; zip; MSI |
+| `#91` | E3.1 | Windows login autostart | Startup shortcut або Registry Run за `autostart_on_login`; Linux/macOS лишаються | zip package; codesign |
+| `#92` | E3.2 | Windows zip package | `scripts/package-desktop-windows.sh` + `deploy/windows/` install | MSI; codesign; macOS |
+| `#93` | E3.3 | Docs + RFC Windows | `docs/desktop-packaging-windows.md`; install без `cargo` notes | App Store; MSI |
+
+```text
+#90 Windows paths
+  → #91 login autostart
+    → #92 zip package
+      → #93 docs
+```
+
+**Acceptance E3:** на Windows (або cross-check layout на Linux CI): paths коректні → autostart hook → розпакував zip → GUI start P0; P1 optional. Без codesign.
 
 ### Пізніше (не нумерувати зараз)
 
@@ -204,6 +224,7 @@ P2–P6; окремі stabilization атоми (branch protection, Handle opacit
 - Linux launcher: [`desktop-launcher.md`](desktop-launcher.md) + RFC-0026 (`#77`)
 - Desktop GUI + autostart: [`desktop-gui.md`](desktop-gui.md) + RFC-0027 (`#78`)
 - Addendum E2 (macOS): §4b → QUEUE `#86`–`#89`; RFC-0035 paths (`#86`); RFC-0036 LaunchAgent (`#87`); RFC-0037 `.app` tarball (`#88`); RFC-0038 docs (`#89`)
+- Addendum E3 (Windows): §4c → QUEUE `#90`–`#93`; RFC-0039 paths (`#90`)
 
 ## 6. Acceptance E1 (Linux)
 
