@@ -20,6 +20,12 @@ pub struct AiraDesktopApp {
     relay_ttl_edit: String,
     invite_msg: Option<String>,
     federation_detail: String,
+    discovery_msg: Option<String>,
+    stun_server_edit: String,
+    discv_to_edit: String,
+    discv_addr_edit: String,
+    find_key_edit: String,
+    find_to_edit: String,
     last_error: Option<String>,
     qr_texture: Option<egui::TextureHandle>,
     restart_hint: bool,
@@ -59,6 +65,12 @@ impl AiraDesktopApp {
             relay_ttl_edit,
             invite_msg: None,
             federation_detail: String::new(),
+            discovery_msg: None,
+            stun_server_edit: String::new(),
+            discv_to_edit: String::new(),
+            discv_addr_edit: String::new(),
+            find_key_edit: String::new(),
+            find_to_edit: String::new(),
             last_error,
             qr_texture: None,
             restart_hint: false,
@@ -309,6 +321,54 @@ impl AiraDesktopApp {
         }
     }
 
+    fn run_stun_query(&mut self) {
+        match actions::discovery_stun_query(&self.paths, &self.stun_server_edit) {
+            Ok(out) => {
+                self.discovery_msg = Some(format!(
+                    "STUN reflexive {} via {}",
+                    out.reflexive_addr, out.stun_server
+                ));
+                self.last_error = None;
+            }
+            Err(e) => self.last_error = Some(format!("{e:#}")),
+        }
+    }
+
+    fn run_discv_announce(&mut self) {
+        match actions::discovery_discv_announce(
+            &self.paths,
+            &self.discv_to_edit,
+            &self.discv_addr_edit,
+        ) {
+            Ok(msg) => {
+                self.discovery_msg = Some(msg);
+                self.last_error = None;
+            }
+            Err(e) => self.last_error = Some(format!("{e:#}")),
+        }
+    }
+
+    fn run_discv_find(&mut self) {
+        let to = self.find_to_edit.trim();
+        let to_opt = if to.is_empty() { None } else { Some(to) };
+        match actions::discovery_discv_find(&self.paths, &self.find_key_edit, to_opt, 8) {
+            Ok(report) => {
+                self.discovery_msg = Some(format!(
+                    "FIND hops={} queried={} stored={}{}",
+                    report.hops,
+                    report.queried,
+                    report.stored,
+                    report
+                        .exact
+                        .map(|(id, addr)| format!(" exact {id} @ {addr}"))
+                        .unwrap_or_default()
+                ));
+                self.last_error = None;
+            }
+            Err(e) => self.last_error = Some(format!("{e:#}")),
+        }
+    }
+
     fn load_qr_preview(&mut self, ctx: &egui::Context) {
         match actions::preview_invite_qr(&self.paths, &mut self.settings) {
             Ok((invite, w, h, rgba)) => {
@@ -406,7 +466,7 @@ impl eframe::App for AiraDesktopApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("AIRA Desktop");
-                ui.label("Developer Preview · P0–P4 network · P5 federation below");
+                ui.label("Developer Preview · P0–P4 network · P5 federation · P6 discovery (Dev)");
                 ui.separator();
 
                 ui.horizontal(|ui| {
@@ -535,6 +595,38 @@ impl eframe::App for AiraDesktopApp {
                 ui.label(&self.federation_detail);
                 if ui.button("Import federation descriptor…").clicked() {
                     self.import_federation_descriptor_dialog();
+                }
+
+                ui.separator();
+                ui.heading("Discovery (P6 Dev)");
+                ui.label("Operator shortcuts only — explicit STUN server; no public STUN default; no auto-trust.");
+                ui.horizontal(|ui| {
+                    ui.label("stun_server:");
+                    ui.text_edit_singleline(&mut self.stun_server_edit);
+                    if ui.button("STUN query").clicked() {
+                        self.run_stun_query();
+                    }
+                });
+                ui.horizontal(|ui| {
+                    ui.label("discv to:");
+                    ui.text_edit_singleline(&mut self.discv_to_edit);
+                    ui.label("addr:");
+                    ui.text_edit_singleline(&mut self.discv_addr_edit);
+                    if ui.button("discv announce").clicked() {
+                        self.run_discv_announce();
+                    }
+                });
+                ui.horizontal(|ui| {
+                    ui.label("find key:");
+                    ui.text_edit_singleline(&mut self.find_key_edit);
+                    ui.label("seed to:");
+                    ui.text_edit_singleline(&mut self.find_to_edit);
+                    if ui.button("discv FIND").clicked() {
+                        self.run_discv_find();
+                    }
+                });
+                if let Some(msg) = &self.discovery_msg {
+                    ui.label(msg);
                 }
 
                 ui.separator();

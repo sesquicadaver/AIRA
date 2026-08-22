@@ -8,9 +8,11 @@ use aira_desktop_runtime::{
     build_local_invite, encode_invite_rgba, ensure_bootstrap, export_invite_file,
     export_invite_qr_png, import_invite_file, import_invite_qr_file,
     join_federation_descriptor_file, normalize_settings, read_federation_membership,
-    write_settings, DesktopPaths, DesktopSettings, ImportInviteOutcome, NetworkProfile, PeerInvite,
+    run_discv_announce, run_discv_find, run_stun_query, write_settings, DesktopPaths,
+    DesktopSettings, DiscoveryStunOutcome, ImportInviteOutcome, NetworkProfile, PeerInvite,
     DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
+use aira_peer::DiscvFindReport;
 use aira_protocol::{FederationMembership, JoinOutcome};
 
 /// Apply supported profile; fill defaults for `peer_listen` / `relay_ttl_days` on P1–P4.
@@ -60,6 +62,33 @@ pub fn join_federation_descriptor(
 /// Read local federation membership for status display.
 pub fn federation_membership(paths: &DesktopPaths) -> Result<Option<FederationMembership>> {
     read_federation_membership(paths)
+}
+
+/// Explicit STUN Binding query (P6; no public default server).
+pub fn discovery_stun_query(
+    paths: &DesktopPaths,
+    stun_server: &str,
+) -> Result<DiscoveryStunOutcome> {
+    run_stun_query(paths, stun_server)
+}
+
+/// UDP discv announce shortcut (explicit addr required).
+pub fn discovery_discv_announce(
+    paths: &DesktopPaths,
+    to: &str,
+    advertised_addr: &str,
+) -> Result<String> {
+    run_discv_announce(paths, to, advertised_addr)
+}
+
+/// Iterative discv FIND shortcut.
+pub fn discovery_discv_find(
+    paths: &DesktopPaths,
+    key_ref: &str,
+    to: Option<&str>,
+    k: u32,
+) -> Result<DiscvFindReport> {
+    run_discv_find(paths, key_ref, to, k)
 }
 
 /// Build local invite + RGBA QR preview for the GUI (bootstraps identity if needed).
@@ -246,5 +275,13 @@ mod tests {
         let m = federation_membership(&paths).unwrap().unwrap();
         assert_eq!(m.federation_id, fed);
         assert_eq!(m.identity_ref, id);
+    }
+
+    #[test]
+    fn p6_discovery_stun_fail_closed() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = DesktopPaths::for_data_root(tmp.path());
+        let err = discovery_stun_query(&paths, "").unwrap_err().to_string();
+        assert!(err.contains("STUN server required"), "{err}");
     }
 }

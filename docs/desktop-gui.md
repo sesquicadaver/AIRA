@@ -14,6 +14,7 @@
 | Network profile | P0 / P1 / P2 selector; P1–P4 `peer_listen` edit (default `127.0.0.1:9797`) |
 | Advanced | P3 relay toggle + `relay_ttl_days`; P4 gossip toggle; mutex hint P3 vs P4 |
 | Federation (P5) | Import signed descriptor JSON; membership status display |
+| Discovery (P6 Dev) | STUN query, discv announce, discv FIND — explicit inputs only; no public STUN default |
 | Settings | `open_ui_on_start`, `autostart_on_login` (persisted) |
 | Friend invite | Export/Import JSON; Show/Export/Import QR PNG (no camera) |
 | Quit | stop node + close window |
@@ -40,6 +41,7 @@ Headless start without UI: set `open_ui_on_start=false` in settings, or use `air
 
 - Invite file/QR: [`desktop-invite.md`](desktop-invite.md)
 - Peer supervise: [`desktop-peer.md`](desktop-peer.md)
+- P6 discovery shortcuts: [`desktop-discovery.md`](desktop-discovery.md)
 - Packaging: Linux [`desktop-packaging.md`](desktop-packaging.md); macOS [`desktop-packaging-macos.md`](desktop-packaging-macos.md); Windows [`desktop-packaging-windows.md`](desktop-packaging-windows.md)
 - Launcher: [`desktop-launcher.md`](desktop-launcher.md)
 - UX canon: [`desktop-ux.md`](desktop-ux.md)
