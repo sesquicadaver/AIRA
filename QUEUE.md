@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-136 CLOSED @ PR #64; **перший OPEN = `#102`** (GUI P4 Advanced) |
+| `main` | Analyze-137 CLOSED @ PR #65; **перший OPEN = `#103`** (Federation join desktop) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Addendum E4 `#94`–`#106` (P2→P6) |
@@ -198,7 +198,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 99 | **DONE** | ~~Analyze-134 — GUI P3 Advanced~~ | Advanced relay toggle/status; mutex hint P3 vs P4 | GUI smoke P3 | P4 gossip; P5 |
 | 100 | **DONE** | ~~Analyze-135 — Settings P4 gossip~~ | runtime P4; P3\|P4 mutex; P5+ fail-closed | settings + mutex тести | peer `--gossip`; GUI |
 | 101 | **DONE** | ~~Analyze-136 — Lifecycle P4 gossip~~ | supervise `--gossip` (без `--relay`) | gossip forward-filter smoke | relay; GUI |
-| 102 | **OPEN** | Analyze-137 — GUI P4 Advanced | gossip toggle/status у Advanced | GUI smoke P4 | P5; P6 |
+| 102 | **DONE** | ~~Analyze-137 — GUI P4 Advanced~~ | gossip toggle/status у Advanced | GUI smoke P4 | P5; P6 |
 | 103 | **OPEN** | Analyze-138 — Federation join desktop | shared lib: descriptor file → `federation join`; membership read API | join pin + trust smoke | GUI wizard; Book II |
 | 104 | **OPEN** | Analyze-139 — GUI P5 federation | wizard import descriptor; membership status | GUI smoke P5 | P6; remote federation |
 | 105 | **OPEN** | Analyze-140 — P6 Advanced discovery | opt-in Dev panel: STUN/discv/FIND shortcuts; no public STUN default | operator smoke + docs hook | auto-trust; camera |
