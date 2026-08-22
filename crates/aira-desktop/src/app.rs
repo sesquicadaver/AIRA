@@ -74,22 +74,21 @@ impl AiraDesktopApp {
             Some(r) => {
                 self.detail = format!("pid {} · {} · {}", r.pid, r.listen, r.instance_id);
                 self.peer_detail = match (r.peer_pid, r.peer_listen.as_ref()) {
-                    (Some(pp), Some(pl)) => format!("peer running · pid {pp} @ {pl}"),
-                    _ if self.settings.network_profile == NetworkProfile::P1 => {
-                        "peer not running (Start with P1)".into()
+                    (Some(pp), Some(pl)) => {
+                        format_peer_running(self.settings.network_profile, pp, pl)
+                    }
+                    _ if self.settings.network_profile.requires_peer_listen() => {
+                        format_peer_not_running(self.settings.network_profile)
                     }
                     _ => "peer off (P0)".into(),
                 };
             }
             None => {
                 self.detail = format!("listen {}", self.settings.http_listen);
-                self.peer_detail = if self.settings.network_profile == NetworkProfile::P1 {
-                    format!(
-                        "peer configured · {}",
-                        self.settings
-                            .peer_listen
-                            .as_deref()
-                            .unwrap_or(DEFAULT_PEER_LISTEN)
+                self.peer_detail = if self.settings.network_profile.requires_peer_listen() {
+                    format_peer_configured(
+                        self.settings.network_profile,
+                        self.settings.peer_listen.as_deref(),
                     )
                 } else {
                     "peer off (P0)".into()
@@ -110,8 +109,10 @@ impl AiraDesktopApp {
             outcome.instance_id
         );
         self.peer_detail = match (outcome.peer_pid, outcome.peer_listen.as_ref()) {
-            (Some(pp), Some(pl)) => format!("peer running · pid {pp} @ {pl}"),
-            _ if self.settings.network_profile == NetworkProfile::P1 => "peer not running".into(),
+            (Some(pp), Some(pl)) => format_peer_running(self.settings.network_profile, pp, pl),
+            _ if self.settings.network_profile.requires_peer_listen() => {
+                format_peer_not_running(self.settings.network_profile)
+            }
             _ => "peer off (P0)".into(),
         };
         self.restart_hint = false;
@@ -138,7 +139,7 @@ impl AiraDesktopApp {
     fn apply_profile(&mut self, profile: NetworkProfile) {
         match actions::apply_network_profile(&mut self.settings, profile, &self.peer_listen_edit) {
             Ok(()) => {
-                if profile == NetworkProfile::P1 {
+                if profile.requires_peer_listen() {
                     self.peer_listen_edit = self
                         .settings
                         .peer_listen
@@ -155,14 +156,11 @@ impl AiraDesktopApp {
     }
 
     fn save_peer_listen(&mut self) {
-        if self.settings.network_profile != NetworkProfile::P1 {
+        let profile = self.settings.network_profile;
+        if !profile.requires_peer_listen() {
             return;
         }
-        match actions::apply_network_profile(
-            &mut self.settings,
-            NetworkProfile::P1,
-            &self.peer_listen_edit,
-        ) {
+        match actions::apply_network_profile(&mut self.settings, profile, &self.peer_listen_edit) {
             Ok(()) => {
                 self.restart_hint = true;
                 if let Err(e) = self.persist_settings() {
@@ -270,7 +268,7 @@ impl eframe::App for AiraDesktopApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("AIRA Desktop");
-                ui.label("Developer Preview · P0/P1 local");
+                ui.label("Developer Preview · P0/P1/P2 local");
                 ui.separator();
 
                 ui.horizontal(|ui| {
@@ -337,8 +335,17 @@ impl eframe::App for AiraDesktopApp {
                     {
                         self.apply_profile(NetworkProfile::P1);
                     }
+                    if ui
+                        .selectable_label(
+                            self.settings.network_profile == NetworkProfile::P2,
+                            "P2 + DHT book",
+                        )
+                        .clicked()
+                    {
+                        self.apply_profile(NetworkProfile::P2);
+                    }
                 });
-                if self.settings.network_profile == NetworkProfile::P1 {
+                if self.settings.network_profile.requires_peer_listen() {
                     ui.horizontal(|ui| {
                         ui.label("peer_listen:");
                         let resp = ui.text_edit_singleline(&mut self.peer_listen_edit);
@@ -418,5 +425,30 @@ fn status_label(st: LifecycleStatus) -> &'static str {
         LifecycleStatus::Unhealthy => "unhealthy",
         LifecycleStatus::Stopping => "stopping",
         LifecycleStatus::Failed => "failed",
+    }
+}
+
+fn format_peer_running(profile: NetworkProfile, pid: u32, listen: &str) -> String {
+    match profile {
+        NetworkProfile::P2 => format!("peer running (dht+apply-book) · pid {pid} @ {listen}"),
+        NetworkProfile::P1 => format!("peer running · pid {pid} @ {listen}"),
+        _ => format!("peer running · pid {pid} @ {listen}"),
+    }
+}
+
+fn format_peer_not_running(profile: NetworkProfile) -> String {
+    match profile {
+        NetworkProfile::P2 => "peer not running (Start with P2)".into(),
+        NetworkProfile::P1 => "peer not running (Start with P1)".into(),
+        _ => "peer not running".into(),
+    }
+}
+
+fn format_peer_configured(profile: NetworkProfile, listen: Option<&str>) -> String {
+    let addr = listen.unwrap_or(DEFAULT_PEER_LISTEN);
+    match profile {
+        NetworkProfile::P2 => format!("peer configured (dht+apply-book) · {addr}"),
+        NetworkProfile::P1 => format!("peer configured · {addr}"),
+        _ => format!("peer configured · {addr}"),
     }
 }

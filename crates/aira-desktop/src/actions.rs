@@ -84,6 +84,18 @@ mod tests {
     use aira_peer::AddressBook;
 
     #[test]
+    fn p2_profile_persist_peer_listen() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = DesktopPaths::for_data_root(tmp.path());
+        let mut settings = load_or_create_settings(&paths).unwrap();
+        apply_network_profile(&mut settings, NetworkProfile::P2, "127.0.0.1:19095").unwrap();
+        persist_settings(&paths, &settings).unwrap();
+        let loaded = load_or_create_settings(&paths).unwrap();
+        assert_eq!(loaded.network_profile, NetworkProfile::P2);
+        assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:19095"));
+    }
+
+    #[test]
     fn smoke_p1_toggle_and_invite_roundtrip() {
         let tmp = tempfile::tempdir().unwrap();
         let alice = DesktopPaths::for_data_root(tmp.path().join("alice"));
