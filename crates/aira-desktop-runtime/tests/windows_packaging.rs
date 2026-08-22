@@ -1,4 +1,4 @@
-//! Windows zip packaging layout smoke (QUEUE #92).
+//! Windows zip packaging layout smoke (#92) + packaging docs contract (#93).
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -59,4 +59,21 @@ fn install_dest_matches_autostart_resolve_pattern() {
     let text = std::fs::read_to_string(manifest).expect("read package script");
     assert!(text.contains("Programs\\\\AIRA"));
     assert!(text.contains("aira-desktop.exe"));
+}
+
+#[test]
+fn windows_packaging_doc_contract() {
+    let path = repo_root().join("docs/desktop-packaging-windows.md");
+    let text = std::fs::read_to_string(&path).expect("read desktop-packaging-windows.md");
+    for needle in [
+        "scripts/package-desktop-windows.sh",
+        "%LOCALAPPDATA%\\Programs\\AIRA",
+        "%LOCALAPPDATA%\\AIRA",
+        "AIRA Desktop.bat",
+        "install.bat",
+        "AIRA-RFC-0042",
+        "no `cargo`",
+    ] {
+        assert!(text.contains(needle), "doc missing: {needle}");
+    }
 }
