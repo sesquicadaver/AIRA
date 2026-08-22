@@ -38,7 +38,7 @@ Headless start without UI: set `open_ui_on_start=false` in settings, or use `air
 
 - Invite file/QR: [`desktop-invite.md`](desktop-invite.md)
 - Peer supervise: [`desktop-peer.md`](desktop-peer.md)
-- Packaging: Linux [`desktop-packaging.md`](desktop-packaging.md); macOS [`desktop-packaging-macos.md`](desktop-packaging-macos.md)
+- Packaging: Linux [`desktop-packaging.md`](desktop-packaging.md); macOS [`desktop-packaging-macos.md`](desktop-packaging-macos.md); Windows [`desktop-packaging-windows.md`](desktop-packaging-windows.md)
 - Launcher: [`desktop-launcher.md`](desktop-launcher.md)
 - UX canon: [`desktop-ux.md`](desktop-ux.md)
 - Plan: [`phase-e-plan.md`](phase-e-plan.md)

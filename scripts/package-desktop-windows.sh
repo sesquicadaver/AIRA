@@ -100,6 +100,7 @@ cp -f "$ROOT/deploy/windows/install-user.bat" "$STAGE/install.bat"
 cp -f "$ROOT/deploy/windows/uninstall-user.bat" "$STAGE/uninstall.bat"
 
 cp -f \
+  "$ROOT/docs/desktop-packaging-windows.md" \
   "$ROOT/docs/desktop-gui.md" \
   "$ROOT/docs/desktop-ux.md" \
   "$ROOT/docs/phase-e-plan.md" \
@@ -128,6 +129,8 @@ uninstall.bat
 \`\`\`
 
 Node data (\`%LOCALAPPDATA%\\AIRA\`) and settings are kept.
+
+Docs: \`share/doc/aira/desktop-packaging-windows.md\`
 
 Layout-only artifacts (stub binaries) are for CI smoke only — rebuild on Windows for real use.
 EOF

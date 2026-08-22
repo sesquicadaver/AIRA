@@ -11,7 +11,7 @@ Registry Run keys; `.lnk` COM shortcuts; zip packaging (`#92`); codesign; macOS/
 ## 7. Change
 
 - `aira-desktop-runtime::autostart` (`windows_startup_bat`, `set_windows_startup_in`, OS dispatch in `set_autostart`)
-- Docs: `desktop-gui.md`, `desktop-ux.md`
+- Docs: `desktop-gui.md`, `desktop-ux.md`, [`desktop-packaging-windows.md`](../../docs/desktop-packaging-windows.md)
 
 ## 15. Tests
 

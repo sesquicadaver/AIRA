@@ -221,10 +221,11 @@ P2–P6; окремі stabilization атоми (branch protection, Handle opacit
 - RFC-E: `aira desktop …` + shared lifecycle (`#76`) — [`AIRA-RFC-0025`](../specs/rfc/AIRA-RFC-0025-desktop-lifecycle-cli.md)
 - Packaging: [`desktop-packaging.md`](desktop-packaging.md) + RFC-0028 (`#79`); tarball+`.desktop` (не AppImage)
 - macOS packaging: [`desktop-packaging-macos.md`](desktop-packaging-macos.md) + RFC-0038 (`#89`)
+- Windows packaging: [`desktop-packaging-windows.md`](desktop-packaging-windows.md) + RFC-0042 (`#93`)
 - Linux launcher: [`desktop-launcher.md`](desktop-launcher.md) + RFC-0026 (`#77`)
 - Desktop GUI + autostart: [`desktop-gui.md`](desktop-gui.md) + RFC-0027 (`#78`)
 - Addendum E2 (macOS): §4b → QUEUE `#86`–`#89`; RFC-0035 paths (`#86`); RFC-0036 LaunchAgent (`#87`); RFC-0037 `.app` tarball (`#88`); RFC-0038 docs (`#89`)
-- Addendum E3 (Windows): §4c → QUEUE `#90`–`#93`; RFC-0039 paths (`#90`); RFC-0040 autostart (`#91`); RFC-0041 zip (`#92`)
+- Addendum E3 (Windows): §4c → QUEUE `#90`–`#93`; RFC-0039 paths (`#90`); RFC-0040 autostart (`#91`); RFC-0041 zip (`#92`); RFC-0042 docs (`#93`)
 
 ## 6. Acceptance E1 (Linux)
 

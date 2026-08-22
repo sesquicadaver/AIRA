@@ -6,7 +6,7 @@ Ship AIRA Desktop Developer Preview for Windows as a versioned **`.zip`** with `
 
 ## 5. Non-Goals
 
-MSI / NSIS; codesign / SmartScreen; App Store; macOS/Linux packaging; full Windows docs (`#93`).
+MSI / NSIS; codesign / SmartScreen; App Store; macOS/Linux packaging. Docs: RFC-0042 / `desktop-packaging-windows.md` (`#93`).
 
 ## 7. Change
 
