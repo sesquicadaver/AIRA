@@ -48,6 +48,8 @@ Long-running daemons: [`docs/runbook-systemd.md`](docs/runbook-systemd.md).
 
 ## Build
 
+Rust **1.94.0** (pinned in [`rust-toolchain.toml`](rust-toolchain.toml); `rustup` auto-selects via directory override).
+
 ```bash
 python3 scripts/dep_firewall.py --self-test
 python3 scripts/dep_firewall.py
