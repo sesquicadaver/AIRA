@@ -1,4 +1,4 @@
-//! Supervise `aira-node --http` (PID/lock, attach, stop) and P1 peer (QUEUE #82).
+//! Supervise `aira-node --http` (PID/lock, attach, stop) and P1/P2 peer (QUEUE #82, E4 `#95`).
 
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
@@ -51,7 +51,7 @@ pub struct StartOutcome {
     pub peer_attached: bool,
 }
 
-/// Start or attach to a compatible Desktop node; on P1 also supervise peer listen.
+/// Start or attach to a compatible Desktop node; on P1/P2 also supervise peer listen.
 pub fn start(paths: &DesktopPaths, node_bin: Option<PathBuf>) -> Result<StartOutcome> {
     paths.ensure_dirs()?;
     let mut settings = load_or_create_settings(paths)?;

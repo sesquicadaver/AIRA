@@ -1,4 +1,4 @@
-//! Supervise `aira peer listen --recv` for Desktop P1 (QUEUE #82).
+//! Supervise `aira peer listen` for Desktop P1/P2 (QUEUE #82, E4 `#95`).
 
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
@@ -24,6 +24,13 @@ pub(crate) struct PeerPidRecord {
     pub root: String,
     pub listen: String,
     pub aira_bin: String,
+    /// Profile used when spawning peer (attach only when profile matches).
+    #[serde(default = "default_peer_pid_profile")]
+    pub network_profile: NetworkProfile,
+}
+
+fn default_peer_pid_profile() -> NetworkProfile {
+    NetworkProfile::P1
 }
 
 #[derive(Debug, Clone)]
@@ -34,21 +41,20 @@ pub struct PeerPidRecordView {
     pub listen: String,
 }
 
-/// Ensure peer is running when `network_profile=P1`; no-op on P0.
+/// Ensure peer is running when `network_profile` requires peer listen (P1/P2); no-op on P0.
 pub(crate) fn ensure_peer(
     paths: &DesktopPaths,
     settings: &DesktopSettings,
     aira_bin: Option<PathBuf>,
 ) -> Result<(Option<u32>, Option<String>, bool)> {
-    if settings.network_profile != NetworkProfile::P1 {
-        // P0: do not leave a stray peer from a previous P1 session.
+    if !settings.network_profile.requires_peer_listen() {
         let _ = stop_peer(paths);
         return Ok((None, None, false));
     }
     let listen = settings
         .peer_listen
         .as_deref()
-        .context("P1 requires peer_listen (normalize settings first)")?
+        .context("P1/P2 requires peer_listen (normalize settings first)")?
         .to_string();
     require_loopback_bind(&listen)?;
 
@@ -68,17 +74,19 @@ pub(crate) fn ensure_peer(
     let stdout = File::create(paths.log_dir.join("aira-peer.stdout.log"))?;
     let stderr = File::create(paths.log_dir.join("aira-peer.stderr.log"))?;
 
-    let mut child = Command::new(&aira_bin)
-        .arg("--root")
+    let mut cmd = Command::new(&aira_bin);
+    cmd.arg("--root")
         .arg(&paths.data_root)
         .arg("peer")
         .arg("listen")
         .arg("--bind")
-        .arg(&listen)
-        .arg("--recv")
-        .stdin(Stdio::null())
+        .arg(&listen);
+    append_profile_peer_flags(&mut cmd, settings.network_profile);
+    cmd.stdin(Stdio::null())
         .stdout(Stdio::from(stdout))
-        .stderr(Stdio::from(stderr))
+        .stderr(Stdio::from(stderr));
+
+    let mut child = cmd
         .spawn()
         .with_context(|| format!("spawn {} peer listen", aira_bin.display()))?;
 
@@ -91,6 +99,7 @@ pub(crate) fn ensure_peer(
             root: paths.data_root.display().to_string(),
             listen: listen.clone(),
             aira_bin: aira_bin.display().to_string(),
+            network_profile: settings.network_profile,
         },
     )?;
 
@@ -102,6 +111,13 @@ pub(crate) fn ensure_peer(
             clear_peer_runtime_files(paths);
             bail!("peer listen started but not bound: {e}");
         }
+    }
+}
+
+fn append_profile_peer_flags(cmd: &mut Command, profile: NetworkProfile) {
+    cmd.arg("--recv");
+    if profile == NetworkProfile::P2 {
+        cmd.arg("--dht").arg("--apply-book");
     }
 }
 
@@ -146,7 +162,7 @@ pub(crate) fn peer_status(
         return Ok(None);
     }
     if let Some(s) = settings {
-        if s.network_profile != NetworkProfile::P1 {
+        if !s.network_profile.requires_peer_listen() {
             // Unexpected peer while on P0 — still report live pid.
             return Ok(Some(view));
         }
@@ -164,16 +180,22 @@ fn try_attach_peer(
             && rec.instance_id == settings.instance_id
             && Path::new(&rec.root) == paths.data_root.as_path()
             && rec.listen == listen
-            && port_in_use(&rec.listen, Duration::from_millis(300))
         {
-            return Ok(Some(rec));
+            if rec.network_profile != settings.network_profile {
+                stop_peer(paths)?;
+                return Ok(None);
+            }
+            if port_in_use(&rec.listen, Duration::from_millis(300)) {
+                return Ok(Some(rec));
+            }
         }
         if pid_alive(rec.pid) {
             bail!(
-                "another AIRA peer is recorded (pid={}, instance={}, root={})",
+                "another AIRA peer is recorded (pid={}, instance={}, root={}, profile={:?})",
                 rec.pid,
                 rec.instance_id,
-                rec.root
+                rec.root,
+                rec.network_profile
             );
         }
         clear_peer_runtime_files(paths);
@@ -200,7 +222,7 @@ fn require_loopback_bind(bind: &str) -> Result<()> {
         return Ok(());
     }
     bail!(
-        "Desktop P1 peer_listen must be loopback (got `{bind}`); non-loopback needs peer --explicit (Out of #82)"
+        "Desktop peer_listen must be loopback (got `{bind}`); non-loopback needs peer --explicit (Out of #82)"
     );
 }
 
