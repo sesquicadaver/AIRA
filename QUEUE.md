@@ -199,14 +199,14 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 100 | **DONE** | ~~Analyze-135 — Settings P4 gossip~~ | runtime P4; P3\|P4 mutex; P5+ fail-closed | settings + mutex тести | peer `--gossip`; GUI |
 | 101 | **DONE** | ~~Analyze-136 — Lifecycle P4 gossip~~ | supervise `--gossip` (без `--relay`) | gossip forward-filter smoke | relay; GUI |
 | 102 | **DONE** | ~~Analyze-137 — GUI P4 Advanced~~ | gossip toggle/status у Advanced | GUI smoke P4 | P5; P6 |
-| 103 | **OPEN** | Analyze-138 — Federation join desktop | shared lib: descriptor file → `federation join`; membership read API | join pin + trust smoke | GUI wizard; Book II |
+| 103 | **DONE** | ~~Analyze-138 — Federation join desktop~~ | shared lib: descriptor file → `federation join`; membership read API | join pin + trust smoke | GUI wizard; Book II |
 | 104 | **OPEN** | Analyze-139 — GUI P5 federation | wizard import descriptor; membership status | GUI smoke P5 | P6; remote federation |
 | 105 | **OPEN** | Analyze-140 — P6 Advanced discovery | opt-in Dev panel: STUN/discv/FIND shortcuts; no public STUN default | operator smoke + docs hook | auto-trust; camera |
 | 106 | **OPEN** | Analyze-141 — E4 docs + RFC | `docs/desktop-network-profiles.md` + RFC-0043 | docs узгоджені з `#94`–`#105` | peer protocol change |
 
 ### Наступний цикл (E4)
 
-**Перший OPEN:** `#103` Federation join desktop. Порядок: `#103` → `#104` → … → `#106`.
+**Перший OPEN:** `#104` GUI P5 federation. Порядок: `#104` → `#105` → `#106`.
 
 > Mutex: P3 (relay) і P4 (gossip) — окремі lifecycle рядки; settings normalize fail-closed при одночасному виборі.
 

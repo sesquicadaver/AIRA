@@ -408,11 +408,15 @@ dependencies = [
  "aira-desktop-runtime",
  "aira-object",
  "aira-peer",
+ "aira-protocol",
  "anyhow",
  "clap",
+ "ed25519-dalek",
  "eframe",
  "egui",
+ "hex",
  "rfd",
+ "serde_json",
  "tempfile",
 ]
 
