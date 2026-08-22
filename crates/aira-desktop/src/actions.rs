@@ -8,21 +8,22 @@ use aira_desktop_runtime::{
     build_local_invite, encode_invite_rgba, ensure_bootstrap, export_invite_file,
     export_invite_qr_png, import_invite_file, import_invite_qr_file, normalize_settings,
     write_settings, DesktopPaths, DesktopSettings, ImportInviteOutcome, NetworkProfile, PeerInvite,
-    DEFAULT_PEER_LISTEN,
+    DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
-/// Apply P0, P1, or P2 profile; fill default `peer_listen` on P1/P2.
+/// Apply supported profile; fill defaults for `peer_listen` / `relay_ttl_days` on P1–P3.
 pub fn apply_network_profile(
     settings: &mut DesktopSettings,
     profile: NetworkProfile,
     peer_listen_edit: &str,
+    relay_ttl_days: Option<u32>,
 ) -> Result<()> {
     if !profile.is_supported() {
         anyhow::bail!("unsupported network_profile {profile:?}");
     }
     settings.network_profile = profile;
     match profile {
-        NetworkProfile::P1 | NetworkProfile::P2 => {
+        NetworkProfile::P1 | NetworkProfile::P2 | NetworkProfile::P3 => {
             let trimmed = peer_listen_edit.trim();
             settings.peer_listen = Some(if trimmed.is_empty() {
                 DEFAULT_PEER_LISTEN.to_string()
@@ -31,10 +32,12 @@ pub fn apply_network_profile(
             });
         }
         NetworkProfile::P0 => {
-            // Keep last peer_listen value on disk optional; clear for P0 UI clarity.
             settings.peer_listen = None;
         }
         _ => unreachable!("is_supported"),
+    }
+    if profile.is_relay_profile() {
+        settings.relay_ttl_days = Some(relay_ttl_days.unwrap_or(DEFAULT_RELAY_TTL_DAYS));
     }
     normalize_settings(settings)
 }
@@ -88,11 +91,30 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let paths = DesktopPaths::for_data_root(tmp.path());
         let mut settings = load_or_create_settings(&paths).unwrap();
-        apply_network_profile(&mut settings, NetworkProfile::P2, "127.0.0.1:19095").unwrap();
+        apply_network_profile(&mut settings, NetworkProfile::P2, "127.0.0.1:19095", None).unwrap();
         persist_settings(&paths, &settings).unwrap();
         let loaded = load_or_create_settings(&paths).unwrap();
         assert_eq!(loaded.network_profile, NetworkProfile::P2);
         assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:19095"));
+    }
+
+    #[test]
+    fn p3_profile_persist_relay_ttl() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = DesktopPaths::for_data_root(tmp.path());
+        let mut settings = load_or_create_settings(&paths).unwrap();
+        apply_network_profile(
+            &mut settings,
+            NetworkProfile::P3,
+            "127.0.0.1:19096",
+            Some(21),
+        )
+        .unwrap();
+        persist_settings(&paths, &settings).unwrap();
+        let loaded = load_or_create_settings(&paths).unwrap();
+        assert_eq!(loaded.network_profile, NetworkProfile::P3);
+        assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:19096"));
+        assert_eq!(loaded.relay_ttl_days, Some(21));
     }
 
     #[test]
@@ -104,7 +126,7 @@ mod tests {
         bob.ensure_dirs().unwrap();
 
         let mut settings = load_or_create_settings(&alice).unwrap();
-        apply_network_profile(&mut settings, NetworkProfile::P1, "127.0.0.1:19085").unwrap();
+        apply_network_profile(&mut settings, NetworkProfile::P1, "127.0.0.1:19085", None).unwrap();
         persist_settings(&alice, &settings).unwrap();
         assert_eq!(settings.network_profile, NetworkProfile::P1);
         assert_eq!(settings.peer_listen.as_deref(), Some("127.0.0.1:19085"));
@@ -152,7 +174,7 @@ mod tests {
             peer_listen: Some(DEFAULT_PEER_LISTEN.into()),
             relay_ttl_days: None,
         };
-        apply_network_profile(&mut s, NetworkProfile::P0, DEFAULT_PEER_LISTEN).unwrap();
+        apply_network_profile(&mut s, NetworkProfile::P0, DEFAULT_PEER_LISTEN, None).unwrap();
         assert_eq!(s.network_profile, NetworkProfile::P0);
         assert!(s.peer_listen.is_none());
     }

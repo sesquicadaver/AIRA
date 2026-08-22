@@ -9,15 +9,16 @@
 | Control | Behavior |
 |---------|----------|
 | Status | lifecycle label + pid/listen/instance |
-| Peer status | P1/P2 supervised `peer listen` pid/addr; P2 shows dht+apply-book (or off on P0) |
+| Peer status | P1/P2 supervised `peer listen` pid/addr; P2 shows dht+apply-book; P3 relay+TTL in Advanced |
 | Start / Stop / Refresh | shared `aira-desktop-runtime` |
-| Network profile | P0 / P1 / P2 selector; P1/P2 `peer_listen` edit (default `127.0.0.1:9797`) |
+| Network profile | P0 / P1 / P2 selector; P1/P2/P3 `peer_listen` edit (default `127.0.0.1:9797`) |
+| Advanced | P3 relay hub toggle; `relay_ttl_days` (default 31); mutex hint P3 vs P4 gossip |
 | Settings | `open_ui_on_start`, `autostart_on_login` (persisted) |
 | Friend invite | Export/Import JSON; Show/Export/Import QR PNG (no camera) |
 | Quit | stop node + close window |
 | Autostart | Linux: XDG `~/.config/autostart/aira-desktop.desktop`; macOS: LaunchAgent `~/Library/LaunchAgents/ai.aira.desktop.plist` (`#87`); Windows: Startup `AIRA Desktop.bat` (`#91`) |
 
-After profile/`peer_listen` change: **Stop → Start** to apply peer supervise.
+After profile/`peer_listen`/relay TTL change: **Stop → Start** to apply peer supervise.
 
 System tray StatusNotifier icon is **not** required for this slice: the native window is the primary UI. Autostart launches `aira-desktop`.
 

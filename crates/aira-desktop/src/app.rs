@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use aira_desktop_runtime::{
     load_or_create_settings, start, status, stop, sync_autostart_from_settings, DesktopPaths,
-    DesktopSettings, LifecycleStatus, NetworkProfile, DEFAULT_PEER_LISTEN,
+    DesktopSettings, LifecycleStatus, NetworkProfile, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
@@ -17,6 +17,7 @@ pub struct AiraDesktopApp {
     detail: String,
     peer_detail: String,
     peer_listen_edit: String,
+    relay_ttl_edit: String,
     invite_msg: Option<String>,
     last_error: Option<String>,
     qr_texture: Option<egui::TextureHandle>,
@@ -42,6 +43,10 @@ impl AiraDesktopApp {
             .peer_listen
             .clone()
             .unwrap_or_else(|| DEFAULT_PEER_LISTEN.to_string());
+        let relay_ttl_edit = settings
+            .relay_ttl_days
+            .map(|d| d.to_string())
+            .unwrap_or_else(|| DEFAULT_RELAY_TTL_DAYS.to_string());
         let mut app = Self {
             paths,
             node_bin,
@@ -50,6 +55,7 @@ impl AiraDesktopApp {
             detail: String::new(),
             peer_detail: String::new(),
             peer_listen_edit,
+            relay_ttl_edit,
             invite_msg: None,
             last_error,
             qr_texture: None,
@@ -74,9 +80,12 @@ impl AiraDesktopApp {
             Some(r) => {
                 self.detail = format!("pid {} · {} · {}", r.pid, r.listen, r.instance_id);
                 self.peer_detail = match (r.peer_pid, r.peer_listen.as_ref()) {
-                    (Some(pp), Some(pl)) => {
-                        format_peer_running(self.settings.network_profile, pp, pl)
-                    }
+                    (Some(pp), Some(pl)) => format_peer_running(
+                        self.settings.network_profile,
+                        pp,
+                        pl,
+                        self.settings.relay_ttl_days,
+                    ),
                     _ if self.settings.network_profile.requires_peer_listen() => {
                         format_peer_not_running(self.settings.network_profile)
                     }
@@ -89,6 +98,7 @@ impl AiraDesktopApp {
                     format_peer_configured(
                         self.settings.network_profile,
                         self.settings.peer_listen.as_deref(),
+                        self.settings.relay_ttl_days,
                     )
                 } else {
                     "peer off (P0)".into()
@@ -109,7 +119,12 @@ impl AiraDesktopApp {
             outcome.instance_id
         );
         self.peer_detail = match (outcome.peer_pid, outcome.peer_listen.as_ref()) {
-            (Some(pp), Some(pl)) => format_peer_running(self.settings.network_profile, pp, pl),
+            (Some(pp), Some(pl)) => format_peer_running(
+                self.settings.network_profile,
+                pp,
+                pl,
+                self.settings.relay_ttl_days,
+            ),
             _ if self.settings.network_profile.requires_peer_listen() => {
                 format_peer_not_running(self.settings.network_profile)
             }
@@ -137,7 +152,22 @@ impl AiraDesktopApp {
     }
 
     fn apply_profile(&mut self, profile: NetworkProfile) {
-        match actions::apply_network_profile(&mut self.settings, profile, &self.peer_listen_edit) {
+        let relay_ttl = if profile.is_relay_profile() {
+            Some(
+                self.relay_ttl_edit
+                    .trim()
+                    .parse()
+                    .unwrap_or(DEFAULT_RELAY_TTL_DAYS),
+            )
+        } else {
+            None
+        };
+        match actions::apply_network_profile(
+            &mut self.settings,
+            profile,
+            &self.peer_listen_edit,
+            relay_ttl,
+        ) {
             Ok(()) => {
                 if profile.requires_peer_listen() {
                     self.peer_listen_edit = self
@@ -145,6 +175,13 @@ impl AiraDesktopApp {
                         .peer_listen
                         .clone()
                         .unwrap_or_else(|| DEFAULT_PEER_LISTEN.to_string());
+                }
+                if profile.is_relay_profile() {
+                    self.relay_ttl_edit = self
+                        .settings
+                        .relay_ttl_days
+                        .map(|d| d.to_string())
+                        .unwrap_or_else(|| DEFAULT_RELAY_TTL_DAYS.to_string());
                 }
                 self.restart_hint = true;
                 if let Err(e) = self.persist_settings() {
@@ -160,7 +197,22 @@ impl AiraDesktopApp {
         if !profile.requires_peer_listen() {
             return;
         }
-        match actions::apply_network_profile(&mut self.settings, profile, &self.peer_listen_edit) {
+        let relay_ttl = if profile.is_relay_profile() {
+            Some(
+                self.relay_ttl_edit
+                    .trim()
+                    .parse()
+                    .unwrap_or(DEFAULT_RELAY_TTL_DAYS),
+            )
+        } else {
+            None
+        };
+        match actions::apply_network_profile(
+            &mut self.settings,
+            profile,
+            &self.peer_listen_edit,
+            relay_ttl,
+        ) {
             Ok(()) => {
                 self.restart_hint = true;
                 if let Err(e) = self.persist_settings() {
@@ -168,6 +220,39 @@ impl AiraDesktopApp {
                 }
             }
             Err(e) => self.last_error = Some(format!("{e:#}")),
+        }
+    }
+
+    fn save_relay_ttl(&mut self) {
+        if !self.settings.network_profile.is_relay_profile() {
+            return;
+        }
+        let days = self
+            .relay_ttl_edit
+            .trim()
+            .parse()
+            .unwrap_or(DEFAULT_RELAY_TTL_DAYS);
+        match actions::apply_network_profile(
+            &mut self.settings,
+            NetworkProfile::P3,
+            &self.peer_listen_edit,
+            Some(days),
+        ) {
+            Ok(()) => {
+                self.restart_hint = true;
+                if let Err(e) = self.persist_settings() {
+                    self.last_error = Some(format!("{e:#}"));
+                }
+            }
+            Err(e) => self.last_error = Some(format!("{e:#}")),
+        }
+    }
+
+    fn toggle_relay_profile(&mut self, enable: bool) {
+        if enable {
+            self.apply_profile(NetworkProfile::P3);
+        } else if self.settings.network_profile == NetworkProfile::P3 {
+            self.apply_profile(NetworkProfile::P2);
         }
     }
 
@@ -268,7 +353,7 @@ impl eframe::App for AiraDesktopApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("AIRA Desktop");
-                ui.label("Developer Preview · P0/P1/P2 local");
+                ui.label("Developer Preview · P0/P1/P2 local · P3 relay in Advanced");
                 ui.separator();
 
                 ui.horizontal(|ui| {
@@ -358,6 +443,32 @@ impl eframe::App for AiraDesktopApp {
                 }
 
                 ui.separator();
+                ui.heading("Advanced");
+                ui.label(
+                    "P3 relay hub (--relay) and P4 gossip (--gossip) are mutually exclusive on one peer listen.",
+                );
+                let mut relay_on = self.settings.network_profile.is_relay_profile();
+                if ui.checkbox(&mut relay_on, "P3 relay hub").changed() {
+                    self.toggle_relay_profile(relay_on);
+                }
+                if self.settings.network_profile.is_relay_profile() {
+                    ui.horizontal(|ui| {
+                        ui.label("relay_ttl_days:");
+                        let resp = ui.text_edit_singleline(&mut self.relay_ttl_edit);
+                        if ui.button("Save TTL").clicked()
+                            || (resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)))
+                        {
+                            self.save_relay_ttl();
+                        }
+                    });
+                    let ttl = self
+                        .settings
+                        .relay_ttl_days
+                        .unwrap_or(DEFAULT_RELAY_TTL_DAYS);
+                    ui.label(format!("relay status: enabled · TTL {ttl} days"));
+                }
+
+                ui.separator();
                 ui.heading("Settings");
                 let mut dirty = false;
                 dirty |= ui
@@ -428,8 +539,17 @@ fn status_label(st: LifecycleStatus) -> &'static str {
     }
 }
 
-fn format_peer_running(profile: NetworkProfile, pid: u32, listen: &str) -> String {
+fn format_peer_running(
+    profile: NetworkProfile,
+    pid: u32,
+    listen: &str,
+    relay_ttl_days: Option<u32>,
+) -> String {
     match profile {
+        NetworkProfile::P3 => {
+            let ttl = relay_ttl_days.unwrap_or(DEFAULT_RELAY_TTL_DAYS);
+            format!("peer running (relay · TTL {ttl}d) · pid {pid} @ {listen}")
+        }
         NetworkProfile::P2 => format!("peer running (dht+apply-book) · pid {pid} @ {listen}"),
         NetworkProfile::P1 => format!("peer running · pid {pid} @ {listen}"),
         _ => format!("peer running · pid {pid} @ {listen}"),
@@ -438,15 +558,24 @@ fn format_peer_running(profile: NetworkProfile, pid: u32, listen: &str) -> Strin
 
 fn format_peer_not_running(profile: NetworkProfile) -> String {
     match profile {
+        NetworkProfile::P3 => "peer not running (Start with P3 relay)".into(),
         NetworkProfile::P2 => "peer not running (Start with P2)".into(),
         NetworkProfile::P1 => "peer not running (Start with P1)".into(),
         _ => "peer not running".into(),
     }
 }
 
-fn format_peer_configured(profile: NetworkProfile, listen: Option<&str>) -> String {
+fn format_peer_configured(
+    profile: NetworkProfile,
+    listen: Option<&str>,
+    relay_ttl_days: Option<u32>,
+) -> String {
     let addr = listen.unwrap_or(DEFAULT_PEER_LISTEN);
     match profile {
+        NetworkProfile::P3 => {
+            let ttl = relay_ttl_days.unwrap_or(DEFAULT_RELAY_TTL_DAYS);
+            format!("peer configured (relay · TTL {ttl}d) · {addr}")
+        }
         NetworkProfile::P2 => format!("peer configured (dht+apply-book) · {addr}"),
         NetworkProfile::P1 => format!("peer configured · {addr}"),
         _ => format!("peer configured · {addr}"),
