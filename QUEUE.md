@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-22  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); E1.1 `#80`–`#85` **DONE**; Addendum E2 macOS `#86`–`#89` **DONE**; Addendum E3 Windows `#90`–`#93` **OPEN**.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); E1.1 `#80`–`#85` **DONE**; Addendum E2 macOS `#86`–`#89` **DONE**; Addendum E3 Windows `#90`–`#93` **DONE**.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-127 CLOSED @ 278da37 / PR #55; QUEUE #92 DONE; перший OPEN `#93` |
+| `main` | Analyze-128 CLOSED @ 3400f8f / PR #56; QUEUE #93 DONE; E3 **DONE**; OPEN-хвіст порожній |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase E Addendum **E3 Windows** — **перший OPEN `#93`** |
+| Активна черга | **порожня** — Phase E Desktop E0–E3 **COMPLETE** |
 
 ## Правила атомарності
 
@@ -177,11 +177,11 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 90 | **DONE** | ~~Analyze-125 — Windows DesktopPaths~~ | `%LOCALAPPDATA%` / `%APPDATA%` layout | unit тести layout | autostart; zip; MSI |
 | 91 | **DONE** | ~~Analyze-126 — Windows login autostart~~ | Startup/Registry за `autostart_on_login`; Linux/macOS лишаються | roundtrip тести hook | zip package; codesign |
 | 92 | **DONE** | ~~Analyze-127 — Windows zip package~~ | package script + `deploy/windows/` install | zip містить runnable layout | MSI; codesign; macOS |
-| 93 | **OPEN** | Analyze-128 — Windows docs | packaging/install docs + RFC | docs узгоджені з `#90`–`#92` | App Store; MSI |
+| 93 | **DONE** | ~~Analyze-128 — Windows docs~~ | packaging/install docs + RFC | docs узгоджені з `#90`–`#92` | App Store; MSI |
 
 ### Наступний цикл (E3)
 
-**Перший OPEN:** `#93` — Windows docs (останній атом E3).
+**E3 Windows DONE** (`#90`–`#93`). Phase E Desktop E0–E3 **COMPLETE**. OPEN-хвіст порожній.
 
 ---
 
