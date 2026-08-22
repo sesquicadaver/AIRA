@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Analyze-125 CLOSED @ 5e629cd / PR #53; QUEUE #90 DONE; перший OPEN `#91` |
+| `main` | Analyze-126 CLOSED @ 3b13d3e / PR #54; QUEUE #91 DONE; перший OPEN `#92` |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase E Addendum **E3 Windows** — **перший OPEN `#91`** |
+| Активна черга | Phase E Addendum **E3 Windows** — **перший OPEN `#92`** |
 
 ## Правила атомарності
 
@@ -175,7 +175,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
 | 90 | **DONE** | ~~Analyze-125 — Windows DesktopPaths~~ | `%LOCALAPPDATA%` / `%APPDATA%` layout | unit тести layout | autostart; zip; MSI |
-| 91 | **OPEN** | Analyze-126 — Windows login autostart | Startup/Registry за `autostart_on_login`; Linux/macOS лишаються | roundtrip тести hook | zip package; codesign |
+| 91 | **DONE** | ~~Analyze-126 — Windows login autostart~~ | Startup/Registry за `autostart_on_login`; Linux/macOS лишаються | roundtrip тести hook | zip package; codesign |
 | 92 | **OPEN** | Analyze-127 — Windows zip package | package script + `deploy/windows/` install | zip містить runnable layout | MSI; codesign; macOS |
 | 93 | **OPEN** | Analyze-128 — Windows docs | packaging/install docs + RFC | docs узгоджені з `#90`–`#92` | App Store; MSI |
 
