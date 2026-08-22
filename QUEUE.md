@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-134 CLOSED @ PR #62; **перший OPEN = `#100`** (Settings P4 gossip) |
+| `main` | Analyze-135 CLOSED @ PR #63; **перший OPEN = `#101`** (Lifecycle P4 gossip) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Addendum E4 `#94`–`#106` (P2→P6) |
@@ -196,7 +196,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 97 | **DONE** | ~~Analyze-132 — Settings P3 relay TTL~~ | runtime P3; `relay_ttl_days` default 31; P4+ fail-closed; P3\|P4 mutex у normalize | settings + mutex тести | peer `--relay`; GUI |
 | 98 | **DONE** | ~~Analyze-133 — Lifecycle P3 relay~~ | supervise `--relay --relay-ttl-days N` | relay register/deliver smoke | gossip; GUI |
 | 99 | **DONE** | ~~Analyze-134 — GUI P3 Advanced~~ | Advanced relay toggle/status; mutex hint P3 vs P4 | GUI smoke P3 | P4 gossip; P5 |
-| 100 | **OPEN** | Analyze-135 — Settings P4 gossip | runtime P4; P3\|P4 mutex; P5+ fail-closed | settings + mutex тести | peer `--gossip`; GUI |
+| 100 | **DONE** | ~~Analyze-135 — Settings P4 gossip~~ | runtime P4; P3\|P4 mutex; P5+ fail-closed | settings + mutex тести | peer `--gossip`; GUI |
 | 101 | **OPEN** | Analyze-136 — Lifecycle P4 gossip | supervise `--gossip` (без `--relay`) | gossip forward-filter smoke | relay; GUI |
 | 102 | **OPEN** | Analyze-137 — GUI P4 Advanced | gossip toggle/status у Advanced | GUI smoke P4 | P5; P6 |
 | 103 | **OPEN** | Analyze-138 — Federation join desktop | shared lib: descriptor file → `federation join`; membership read API | join pin + trust smoke | GUI wizard; Book II |
@@ -206,7 +206,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл (E4)
 
-**Перший OPEN:** `#100` Settings P4 gossip. Порядок: `#100` → `#101` → … → `#106`.
+**Перший OPEN:** `#101` Lifecycle P4 gossip. Порядок: `#101` → `#102` → … → `#106`.
 
 > Mutex: P3 (relay) і P4 (gossip) — окремі lifecycle рядки; settings normalize fail-closed при одночасному виборі.
 
