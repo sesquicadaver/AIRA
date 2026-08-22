@@ -160,12 +160,12 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 |---|--------|---------|-----------------|-----------|------------------|
 | 86 | **DONE** | ~~Analyze-121 — macOS DesktopPaths~~ | Application Support / Preferences / Logs layout | unit тести layout | LaunchAgent; `.app`; DMG |
 | 87 | **DONE** | ~~Analyze-122 — macOS LaunchAgent~~ | plist autostart за `autostart_on_login`; Linux XDG лишається | roundtrip тести plist | `.app` bundle; notarize |
-| 88 | **OPEN** | Analyze-123 — macOS `.app` tarball | package script + Info.plist + Contents/MacOS | tarball містить runnable layout | DMG; notarize; Windows |
+| 88 | **DONE** | ~~Analyze-123 — macOS `.app` tarball~~ | package script + Info.plist + Contents/MacOS | tarball містить runnable layout | DMG; notarize; Windows |
 | 89 | **OPEN** | Analyze-124 — macOS docs | packaging/install docs + RFC | docs узгоджені з `#86`–`#88` | E3; App Store |
 
 ### Наступний цикл (E2)
 
-**Перший OPEN:** `#88` — macOS `.app` tarball.
+**Перший OPEN:** `#89` — macOS docs (останній атом E2).
 
 ---
 
