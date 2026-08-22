@@ -9,9 +9,9 @@
 | Control | Behavior |
 |---------|----------|
 | Status | lifecycle label + pid/listen/instance |
-| Peer status | P1 supervised `peer listen` pid/addr (or off on P0) |
+| Peer status | P1/P2 supervised `peer listen` pid/addr; P2 shows dht+apply-book (or off on P0) |
 | Start / Stop / Refresh | shared `aira-desktop-runtime` |
-| Network profile | P0 ↔ P1 toggle; P1 `peer_listen` edit (default `127.0.0.1:9797`) |
+| Network profile | P0 / P1 / P2 selector; P1/P2 `peer_listen` edit (default `127.0.0.1:9797`) |
 | Settings | `open_ui_on_start`, `autostart_on_login` (persisted) |
 | Friend invite | Export/Import JSON; Show/Export/Import QR PNG (no camera) |
 | Quit | stop node + close window |

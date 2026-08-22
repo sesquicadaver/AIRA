@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-129 CLOSED @ PR #57; **перший OPEN = `#95`** (Lifecycle P2 DHT) |
+| `main` | Analyze-130 CLOSED @ PR #58; **перший OPEN = `#96`** (GUI P2) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Addendum E4 `#94`–`#106` (P2→P6) |
@@ -191,7 +191,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
 | 94 | **DONE** | ~~Analyze-129 — Settings P2~~ | runtime приймає P2; `peer_listen` як P1; P3+ fail-closed; docs | settings load/save P2 + тести | peer `--dht`; GUI |
-| 95 | **OPEN** | Analyze-130 — Lifecycle P2 DHT | supervise `peer listen --recv --dht --apply-book`; PID/lock | dual-root DHT→book smoke | P3 relay; GUI |
+| 95 | **DONE** | ~~Analyze-130 — Lifecycle P2 DHT~~ | supervise `peer listen --recv --dht --apply-book`; PID/lock | dual-root DHT→book smoke | P3 relay; GUI |
 | 96 | **OPEN** | Analyze-131 — GUI P2 | profile selector P0\|P1\|P2; peer status (dht) | GUI smoke P2 | P3+; camera |
 | 97 | **OPEN** | Analyze-132 — Settings P3 relay TTL | runtime P3; `relay_ttl_days` default 31; P4+ fail-closed; P3\|P4 mutex у normalize | settings + mutex тести | peer `--relay`; GUI |
 | 98 | **OPEN** | Analyze-133 — Lifecycle P3 relay | supervise `--relay --relay-ttl-days N` | relay register/deliver smoke | gossip; GUI |
@@ -206,7 +206,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл (E4)
 
-**Перший OPEN:** `#94` Settings P2. Порядок: `#94` → `#95` → … → `#106`.
+**Перший OPEN:** `#96` GUI P2. Порядок: `#96` → `#97` → … → `#106`.
 
 > Mutex: P3 (relay) і P4 (gossip) — окремі lifecycle рядки; settings normalize fail-closed при одночасному виборі.
 
