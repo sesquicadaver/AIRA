@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-137 CLOSED @ PR #65; **перший OPEN = `#103`** (Federation join desktop) |
+| `main` | Analyze-138 CLOSED @ PR #66; **перший OPEN = `#104`** (GUI P5 federation) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Addendum E4 `#94`–`#106` (P2→P6) |
