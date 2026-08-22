@@ -1,4 +1,4 @@
-# Desktop peer lifecycle (QUEUE #82, E4 `#95`)
+# Desktop peer lifecycle (QUEUE #82, E4 `#95`, `#98`)
 
 When `network_profile=P1`, `aira desktop start` supervises:
 
@@ -7,9 +7,11 @@ When `network_profile=P1`, `aira desktop start` supervises:
 
 When `network_profile=P2`, step 2 adds `--dht --apply-book` (opt-in DHT→address book).
 
-`PeerPidRecord` includes `network_profile` for attach; profile change forces a new peer process.
+When `network_profile=P3`, step 2 is `peer listen --bind <peer_listen> --relay --relay-ttl-days N` (no `--recv`; relay hub mode).
 
-Runtime files: `runtime/aira-peer.pid.json`, `aira-peer.lock`. Logs: `logs/aira-peer.*.log`.
+`PeerPidRecord` includes `network_profile` and P3 `relay_ttl_days` for attach; profile/TTL change forces a new peer process.
+
+Runtime files: `runtime/aira-peer.pid.json`, `aira-peer.lock`. Relay registry: `peers/relay_hub.json`. Logs: `logs/aira-peer.*.log`.
 
 `AIRA_BIN` or sibling of `aira-node` resolves the CLI. Stop tears down peer then node.
 
