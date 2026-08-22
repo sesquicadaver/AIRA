@@ -6,10 +6,12 @@ use anyhow::Result;
 
 use aira_desktop_runtime::{
     build_local_invite, encode_invite_rgba, ensure_bootstrap, export_invite_file,
-    export_invite_qr_png, import_invite_file, import_invite_qr_file, normalize_settings,
+    export_invite_qr_png, import_invite_file, import_invite_qr_file,
+    join_federation_descriptor_file, normalize_settings, read_federation_membership,
     write_settings, DesktopPaths, DesktopSettings, ImportInviteOutcome, NetworkProfile, PeerInvite,
     DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
+use aira_protocol::{FederationMembership, JoinOutcome};
 
 /// Apply supported profile; fill defaults for `peer_listen` / `relay_ttl_days` on P1–P4.
 pub fn apply_network_profile(
@@ -45,6 +47,19 @@ pub fn apply_network_profile(
 /// Persist settings after profile/listen edits.
 pub fn persist_settings(paths: &DesktopPaths, settings: &DesktopSettings) -> Result<()> {
     write_settings(paths, settings)
+}
+
+/// Join federation from a signed descriptor JSON file (P5 wizard backend).
+pub fn join_federation_descriptor(
+    paths: &DesktopPaths,
+    descriptor_path: &Path,
+) -> Result<JoinOutcome> {
+    join_federation_descriptor_file(paths, descriptor_path)
+}
+
+/// Read local federation membership for status display.
+pub fn federation_membership(paths: &DesktopPaths) -> Result<Option<FederationMembership>> {
+    read_federation_membership(paths)
 }
 
 /// Build local invite + RGBA QR preview for the GUI (bootstraps identity if needed).
@@ -190,5 +205,46 @@ mod tests {
         apply_network_profile(&mut s, NetworkProfile::P0, DEFAULT_PEER_LISTEN, None).unwrap();
         assert_eq!(s.network_profile, NetworkProfile::P0);
         assert!(s.peer_listen.is_none());
+    }
+
+    #[test]
+    fn p5_federation_join_roundtrip() {
+        use aira_object::AiraRef;
+        use aira_protocol::{
+            descriptor_canonical_bytes, FederationDescriptor, FEDERATION_DESCRIPTOR_DOMAIN,
+        };
+        use ed25519_dalek::SigningKey;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = DesktopPaths::for_data_root(tmp.path());
+        let sk = SigningKey::from_bytes(&[77; 32]);
+        let pk = hex::encode(sk.verifying_key().to_bytes());
+        let id = "aira:identity:fed-gui-104";
+        let fed = "aira:federation:gui-104";
+        let mut desc = FederationDescriptor {
+            schema: FEDERATION_DESCRIPTOR_DOMAIN.into(),
+            federation_id: fed.into(),
+            federation_type: "private".into(),
+            identity_ref: id.into(),
+            public_key_hex: pk,
+            signature: aira_object::Signature {
+                algorithm: "ed25519".into(),
+                key_ref: AiraRef::parse(id).unwrap(),
+                signature_value: String::new(),
+            },
+        };
+        desc.signature = aira_object::sign_with_key(
+            AiraRef::parse(id).unwrap(),
+            &sk,
+            &descriptor_canonical_bytes(&desc),
+        );
+        let desc_path = tmp.path().join("fed.json");
+        std::fs::write(&desc_path, serde_json::to_string_pretty(&desc).unwrap()).unwrap();
+
+        let out = join_federation_descriptor(&paths, &desc_path).unwrap();
+        assert!(!out.already_member);
+        let m = federation_membership(&paths).unwrap().unwrap();
+        assert_eq!(m.federation_id, fed);
+        assert_eq!(m.identity_ref, id);
     }
 }

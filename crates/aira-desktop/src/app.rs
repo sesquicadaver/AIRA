@@ -19,6 +19,7 @@ pub struct AiraDesktopApp {
     peer_listen_edit: String,
     relay_ttl_edit: String,
     invite_msg: Option<String>,
+    federation_detail: String,
     last_error: Option<String>,
     qr_texture: Option<egui::TextureHandle>,
     restart_hint: bool,
@@ -57,11 +58,13 @@ impl AiraDesktopApp {
             peer_listen_edit,
             relay_ttl_edit,
             invite_msg: None,
+            federation_detail: String::new(),
             last_error,
             qr_texture: None,
             restart_hint: false,
         };
         let _ = app.refresh_status();
+        app.refresh_federation_detail();
         if auto_start {
             if let Err(e) = app.do_start() {
                 app.last_error = Some(format!("{e:#}"));
@@ -106,6 +109,21 @@ impl AiraDesktopApp {
             }
         }
         Ok(())
+    }
+
+    fn refresh_federation_detail(&mut self) {
+        match actions::federation_membership(&self.paths) {
+            Ok(Some(m)) => {
+                self.federation_detail = format!(
+                    "joined {} · {} · since {}",
+                    m.federation_id, m.identity_ref, m.joined_at
+                );
+            }
+            Ok(None) => {
+                self.federation_detail = "not joined (import descriptor to pin federation)".into();
+            }
+            Err(e) => self.federation_detail = format!("federation read error: {e:#}"),
+        }
     }
 
     fn do_start(&mut self) -> anyhow::Result<()> {
@@ -264,6 +282,33 @@ impl AiraDesktopApp {
         }
     }
 
+    fn import_federation_descriptor_dialog(&mut self) {
+        let path = rfd::FileDialog::new()
+            .add_filter("Federation descriptor JSON", &["json"])
+            .pick_file();
+        if let Some(path) = path {
+            match actions::join_federation_descriptor(&self.paths, &path) {
+                Ok(out) => {
+                    self.invite_msg = Some(if out.already_member {
+                        format!(
+                            "already joined {} ({})",
+                            out.membership.federation_id,
+                            path.display()
+                        )
+                    } else {
+                        format!(
+                            "joined {} · trusted {}",
+                            out.membership.federation_id, out.membership.identity_ref
+                        )
+                    });
+                    self.last_error = None;
+                    self.refresh_federation_detail();
+                }
+                Err(e) => self.last_error = Some(format!("{e:#}")),
+            }
+        }
+    }
+
     fn load_qr_preview(&mut self, ctx: &egui::Context) {
         match actions::preview_invite_qr(&self.paths, &mut self.settings) {
             Ok((invite, w, h, rgba)) => {
@@ -361,7 +406,7 @@ impl eframe::App for AiraDesktopApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("AIRA Desktop");
-                ui.label("Developer Preview · P0/P1/P2 local · P3/P4 in Advanced");
+                ui.label("Developer Preview · P0–P4 network · P5 federation below");
                 ui.separator();
 
                 ui.horizontal(|ui| {
@@ -394,6 +439,7 @@ impl eframe::App for AiraDesktopApp {
                         if let Err(e) = self.refresh_status() {
                             self.last_error = Some(format!("{e:#}"));
                         }
+                        self.refresh_federation_detail();
                     }
                     if ui.button("Quit").clicked() {
                         let _ = self.do_stop();
@@ -481,6 +527,14 @@ impl eframe::App for AiraDesktopApp {
                 }
                 if self.settings.network_profile.is_gossip_profile() {
                     ui.label("gossip status: enabled (dht+apply-book+apply-trust)");
+                }
+
+                ui.separator();
+                ui.heading("Federation (P5)");
+                ui.label("Local pin: import signed federation descriptor JSON (no remote handshake).");
+                ui.label(&self.federation_detail);
+                if ui.button("Import federation descriptor…").clicked() {
+                    self.import_federation_descriptor_dialog();
                 }
 
                 ui.separator();
