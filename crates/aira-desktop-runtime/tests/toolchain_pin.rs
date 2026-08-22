@@ -23,11 +23,18 @@ fn rust_toolchain_pinned_version() {
 }
 
 #[test]
-fn ci_reads_rust_toolchain_file() {
-    let path = repo_root().join(".github/workflows/ci.yml");
-    let text = std::fs::read_to_string(&path).expect("read ci.yml");
+fn ci_toolchain_matches_pin() {
+    let toolchain = repo_root().join("rust-toolchain.toml");
+    let toolchain_text = std::fs::read_to_string(&toolchain).expect("read rust-toolchain.toml");
+    let ci_path = repo_root().join(".github/workflows/ci.yml");
+    let ci_text = std::fs::read_to_string(&ci_path).expect("read ci.yml");
+    let pin = "1.94.0";
     assert!(
-        text.contains("toolchain: none"),
-        "CI must install from rust-toolchain.toml (toolchain: none)"
+        toolchain_text.contains(pin),
+        "rust-toolchain.toml must pin {pin}"
+    );
+    assert!(
+        ci_text.contains(pin),
+        "ci.yml must reference pinned toolchain {pin}"
     );
 }
