@@ -181,7 +181,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл (E3)
 
-**Перший OPEN:** `#90` — Windows DesktopPaths.
+**Перший OPEN:** `#91` — Windows login autostart.
 
 ---
 
