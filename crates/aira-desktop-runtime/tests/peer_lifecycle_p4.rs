@@ -10,9 +10,7 @@ use aira_desktop_runtime::{
     NetworkProfile,
 };
 use aira_object::{AiraRef, ContentHash, Keyring};
-use aira_peer::{
-    gossip_forward_trust_delta, AddressBook, TrustDelta, TRUST_DELTA_MESSAGE_TYPE,
-};
+use aira_peer::{gossip_forward_trust_delta, AddressBook, TrustDelta, TRUST_DELTA_MESSAGE_TYPE};
 use aira_protocol::{ProtocolEnvelope, ProtocolId, ScopeDescriptor};
 
 fn workspace_root() -> PathBuf {
