@@ -6,7 +6,7 @@ Define Windows system layout for Desktop: `%LOCALAPPDATA%\AIRA` (data + runtime 
 
 ## 5. Non-Goals
 
-Windows autostart (`#91`); zip packaging (`#92`); MSI/codesign; macOS/Linux changes.
+Windows autostart (`#91`); zip packaging (`#92`); MSI/codesign; full docs (`#93`); macOS/Linux changes.
 
 ## 7. Change
 
