@@ -46,9 +46,9 @@ pub use paths::DesktopPaths;
 pub use peer::PeerPidRecordView;
 pub use process::{start, status, stop, LifecycleStatus, PidRecordView, StartOutcome};
 pub use settings::{
-    effective_peer_listen, load_or_create_settings, normalize_settings, validate_listen_addr,
-    write_settings, DesktopSettings, HttpAuthMode, NetworkProfile, DEFAULT_PEER_LISTEN,
-    SETTINGS_SCHEMA_ID,
+    effective_peer_listen, effective_relay_ttl_days, load_or_create_settings, normalize_settings,
+    validate_listen_addr, write_settings, DesktopSettings, HttpAuthMode, NetworkProfile,
+    DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS, SETTINGS_SCHEMA_ID,
 };
 
 /// Crate version for smoke tests.

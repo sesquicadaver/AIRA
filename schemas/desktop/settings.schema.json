@@ -19,7 +19,7 @@
     "network_profile": {
       "type": "string",
       "enum": ["P0", "P1", "P2", "P3", "P4", "P5", "P6"],
-      "description": "Desktop runtime E4 accepts P0|P1|P2; P3–P6 reserved (fail-closed in runtime)."
+      "description": "Desktop runtime E4 accepts P0|P1|P2|P3; P4–P6 reserved (fail-closed in runtime)."
     },
     "open_ui_on_start": {
       "type": "boolean",
@@ -51,7 +51,12 @@
     },
     "peer_listen": {
       "type": ["string", "null"],
-      "description": "Peer listen host:port. Unused/null on P0; required for P1 (runtime default 127.0.0.1:9797)."
+      "description": "Peer listen host:port. Unused/null on P0; required for P1+ (runtime default 127.0.0.1:9797)."
+    },
+    "relay_ttl_days": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "Relay hub offline registry TTL days; P3 only (runtime default 31)."
     }
   }
 }
