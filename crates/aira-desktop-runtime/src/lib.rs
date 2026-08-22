@@ -1,7 +1,8 @@
 //! AIRA Desktop lifecycle library (QUEUE #76 / Analyze-111).
 //!
 //! Shared by `aira desktop …` and the Desktop GUI. OS autostart is `#78` (Linux)
-//! / `#87` (macOS LaunchAgent); Linux packaging is `#79`. P1 peer supervise is `#82`.
+//! / `#87` (macOS LaunchAgent) / `#91` (Windows Startup). Linux packaging is `#79`.
+//! P1 peer supervise is `#82`. Invite file IO is `#83`; QR PNG is `#84`. macOS paths are `#86`.
 //! Invite file IO is `#83`; QR PNG is `#84`. macOS paths are `#86`.
 
 mod autostart;
@@ -17,10 +18,12 @@ mod settings;
 
 pub use autostart::{
     autostart_desktop_entry, is_autostart_enabled, is_autostart_enabled_in,
-    is_launch_agent_enabled_in, launch_agent_path_in, launch_agent_plist,
-    launch_agents_dir_for_home, resolve_desktop_program, set_autostart, set_autostart_in,
-    set_launch_agent_in, sync_autostart_from_settings, user_launch_agents_dir,
-    AIRA_AUTOSTART_FILENAME, AIRA_LAUNCH_AGENT_FILENAME, AIRA_LAUNCH_AGENT_LABEL,
+    is_launch_agent_enabled_in, is_windows_startup_enabled_in, launch_agent_path_in,
+    launch_agent_plist, launch_agents_dir_for_home, resolve_desktop_program, set_autostart,
+    set_autostart_in, set_launch_agent_in, set_windows_startup_in, sync_autostart_from_settings,
+    user_launch_agents_dir, user_windows_startup_dir, windows_startup_bat,
+    windows_startup_dir_for_app_data, windows_startup_path_in, AIRA_AUTOSTART_FILENAME,
+    AIRA_LAUNCH_AGENT_FILENAME, AIRA_LAUNCH_AGENT_LABEL, AIRA_WINDOWS_STARTUP_FILENAME,
 };
 pub use bootstrap::ensure_bootstrap;
 pub use invite::{
