@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-21  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); E1.1 `#80`–`#85` **DONE**; Addendum E2 macOS `#86`–`#87` **DONE**, `#88`–`#89` **OPEN**.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); E1.1 `#80`–`#85` **DONE**; Addendum E2 macOS `#86`–`#88` **DONE**, `#89` **OPEN**.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-122 CLOSED @ b1498d1 / PR #50; QUEUE #87 DONE; перший OPEN `#88` |
+| `main` | Analyze-123 CLOSED @ ea437a3 / PR #51; QUEUE #88 DONE; перший OPEN `#89` |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase E Addendum **E2 macOS** — **перший OPEN `#88`** |
+| Активна черга | Phase E Addendum **E2 macOS** — **перший OPEN `#89`** |
 
 ## Правила атомарності
 
