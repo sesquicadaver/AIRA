@@ -1,4 +1,4 @@
-//! Desktop filesystem layout (phase-e §2.1; E2 macOS `#86`).
+//! Desktop filesystem layout (phase-e §2.1; E2 macOS `#86`; E3 Windows `#90`).
 
 use std::path::{Path, PathBuf};
 
@@ -20,21 +20,35 @@ impl DesktopPaths {
     ///
     /// Linux: XDG (`~/.local/share`, `~/.config`, …).  
     /// macOS: `~/Library/Application Support|Preferences|Logs` (QUEUE #86).  
+    /// Windows: `%LOCALAPPDATA%` / `%APPDATA%` (QUEUE #90).  
     /// Other Unix: same XDG-style fallbacks as Linux.
     pub fn system() -> Self {
-        let home = std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("."));
-        Self::system_for_home(&home)
+        #[cfg(target_os = "windows")]
+        {
+            let local = windows_local_app_data_dir();
+            let roaming = windows_app_data_dir();
+            return Self::windows_for_profile(&local, &roaming);
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let home = std::env::var_os("HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from("."));
+            Self::system_for_home(&home)
+        }
     }
 
     /// System layout under an explicit home (tests / portable probes).
     pub fn system_for_home(home: &Path) -> Self {
+        #[cfg(target_os = "windows")]
+        {
+            Self::windows_for_home(home)
+        }
         #[cfg(target_os = "macos")]
         {
             Self::macos_for_home(home)
         }
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
         {
             Self::linux_xdg_for_home(home)
         }
@@ -77,6 +91,32 @@ impl DesktopPaths {
             runtime_dir: support.join("runtime"),
             log_dir: home.join("Library/Logs/AIRA"),
         }
+    }
+
+    /// Windows Developer Preview layout (phase-e E3).
+    ///
+    /// | Role | Path |
+    /// |------|------|
+    /// | Node root | `%LOCALAPPDATA%\AIRA` |
+    /// | Settings | `%APPDATA%\AIRA\desktop-settings.json` |
+    /// | Runtime | `%LOCALAPPDATA%\AIRA\runtime` |
+    /// | Logs | `%LOCALAPPDATA%\AIRA\logs` |
+    pub fn windows_for_profile(local_app_data: &Path, app_data: &Path) -> Self {
+        let support = local_app_data.join("AIRA");
+        Self {
+            data_root: support.clone(),
+            settings_file: app_data.join("AIRA").join("desktop-settings.json"),
+            runtime_dir: support.join("runtime"),
+            log_dir: support.join("logs"),
+        }
+    }
+
+    /// Windows layout derived from a profile home (`C:\Users\dev` → `AppData\Local|Roaming`).
+    pub fn windows_for_home(home: &Path) -> Self {
+        Self::windows_for_profile(
+            &home.join("AppData").join("Local"),
+            &home.join("AppData").join("Roaming"),
+        )
     }
 
     /// Dev / test layout colocated under an explicit root.
@@ -124,6 +164,27 @@ impl DesktopPaths {
 
 fn xdg_dir(var: &str, fallback: PathBuf) -> PathBuf {
     std::env::var_os(var).map(PathBuf::from).unwrap_or(fallback)
+}
+
+#[cfg(target_os = "windows")]
+fn windows_local_app_data_dir() -> PathBuf {
+    std::env::var_os("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("USERPROFILE").map(|p| PathBuf::from(p).join("AppData").join("Local"))
+        })
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
+#[cfg(target_os = "windows")]
+fn windows_app_data_dir() -> PathBuf {
+    std::env::var_os("APPDATA")
+        .map(PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("USERPROFILE")
+                .map(|p| PathBuf::from(p).join("AppData").join("Roaming"))
+        })
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 #[cfg(test)]
@@ -179,6 +240,60 @@ mod tests {
     fn macos_ensure_dirs_creates_tree() {
         let tmp = tempfile::tempdir().unwrap();
         let p = DesktopPaths::macos_for_home(tmp.path());
+        p.ensure_dirs().unwrap();
+        assert!(p.data_root.is_dir());
+        assert!(p.settings_file.parent().unwrap().is_dir());
+        assert!(p.runtime_dir.is_dir());
+        assert!(p.log_dir.is_dir());
+    }
+
+    #[test]
+    fn windows_layout_under_profile() {
+        let local = Path::new("C:/Users/dev/AppData/Local");
+        let roaming = Path::new("C:/Users/dev/AppData/Roaming");
+        let p = DesktopPaths::windows_for_profile(local, roaming);
+        assert_eq!(
+            p.data_root,
+            PathBuf::from("C:/Users/dev/AppData/Local/AIRA")
+        );
+        assert_eq!(
+            p.settings_file,
+            PathBuf::from("C:/Users/dev/AppData/Roaming/AIRA/desktop-settings.json")
+        );
+        assert_eq!(
+            p.runtime_dir,
+            PathBuf::from("C:/Users/dev/AppData/Local/AIRA/runtime")
+        );
+        assert_eq!(
+            p.log_dir,
+            PathBuf::from("C:/Users/dev/AppData/Local/AIRA/logs")
+        );
+        assert_eq!(
+            p.pid_file(),
+            PathBuf::from("C:/Users/dev/AppData/Local/AIRA/runtime/aira-node.pid.json")
+        );
+    }
+
+    #[test]
+    fn windows_for_home_derives_appdata_segments() {
+        let home = Path::new("C:/Users/dev");
+        let p = DesktopPaths::windows_for_home(home);
+        assert_eq!(
+            p.data_root,
+            PathBuf::from("C:/Users/dev/AppData/Local/AIRA")
+        );
+        assert_eq!(
+            p.settings_file,
+            PathBuf::from("C:/Users/dev/AppData/Roaming/AIRA/desktop-settings.json")
+        );
+    }
+
+    #[test]
+    fn windows_ensure_dirs_creates_tree() {
+        let tmp = tempfile::tempdir().unwrap();
+        let local = tmp.path().join("Local");
+        let roaming = tmp.path().join("Roaming");
+        let p = DesktopPaths::windows_for_profile(&local, &roaming);
         p.ensure_dirs().unwrap();
         assert!(p.data_root.is_dir());
         assert!(p.settings_file.parent().unwrap().is_dir());
