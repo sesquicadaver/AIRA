@@ -1,4 +1,4 @@
-//! Supervise `aira peer listen` for Desktop P1/P2 (QUEUE #82, E4 `#95`).
+//! Supervise `aira peer listen` for Desktop P1–P3 (QUEUE #82, E4 `#95`, `#98`).
 
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::health::port_in_use;
 use crate::paths::DesktopPaths;
 use crate::process::{pid_alive, signal_kill, signal_term};
-use crate::settings::{DesktopSettings, NetworkProfile};
+use crate::settings::{effective_relay_ttl_days, DesktopSettings, NetworkProfile};
 
 const PEER_READY_TIMEOUT: Duration = Duration::from_secs(10);
 const STOP_GRACE: Duration = Duration::from_secs(5);
@@ -27,6 +27,9 @@ pub(crate) struct PeerPidRecord {
     /// Profile used when spawning peer (attach only when profile matches).
     #[serde(default = "default_peer_pid_profile")]
     pub network_profile: NetworkProfile,
+    /// P3 relay TTL days at spawn (attach only when profile+TTL match).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relay_ttl_days: Option<u32>,
 }
 
 fn default_peer_pid_profile() -> NetworkProfile {
@@ -41,7 +44,7 @@ pub struct PeerPidRecordView {
     pub listen: String,
 }
 
-/// Ensure peer is running when `network_profile` requires peer listen (P1/P2); no-op on P0.
+/// Ensure peer is running when `network_profile` requires peer listen (P1–P3); no-op on P0.
 pub(crate) fn ensure_peer(
     paths: &DesktopPaths,
     settings: &DesktopSettings,
@@ -54,7 +57,7 @@ pub(crate) fn ensure_peer(
     let listen = settings
         .peer_listen
         .as_deref()
-        .context("P1/P2 requires peer_listen (normalize settings first)")?
+        .context("P1–P3 requires peer_listen (normalize settings first)")?
         .to_string();
     require_loopback_bind(&listen)?;
 
@@ -81,7 +84,7 @@ pub(crate) fn ensure_peer(
         .arg("listen")
         .arg("--bind")
         .arg(&listen);
-    append_profile_peer_flags(&mut cmd, settings.network_profile);
+    append_profile_peer_flags(&mut cmd, settings);
     cmd.stdin(Stdio::null())
         .stdout(Stdio::from(stdout))
         .stderr(Stdio::from(stderr));
@@ -100,6 +103,7 @@ pub(crate) fn ensure_peer(
             listen: listen.clone(),
             aira_bin: aira_bin.display().to_string(),
             network_profile: settings.network_profile,
+            relay_ttl_days: effective_relay_ttl_days(settings),
         },
     )?;
 
@@ -114,10 +118,21 @@ pub(crate) fn ensure_peer(
     }
 }
 
-fn append_profile_peer_flags(cmd: &mut Command, profile: NetworkProfile) {
-    cmd.arg("--recv");
-    if profile == NetworkProfile::P2 {
-        cmd.arg("--dht").arg("--apply-book");
+fn append_profile_peer_flags(cmd: &mut Command, settings: &DesktopSettings) {
+    match settings.network_profile {
+        NetworkProfile::P1 => {
+            cmd.arg("--recv");
+        }
+        NetworkProfile::P2 => {
+            cmd.arg("--recv").arg("--dht").arg("--apply-book");
+        }
+        NetworkProfile::P3 => {
+            cmd.arg("--relay");
+            if let Some(days) = effective_relay_ttl_days(settings) {
+                cmd.arg("--relay-ttl-days").arg(days.to_string());
+            }
+        }
+        NetworkProfile::P0 | NetworkProfile::P4 | NetworkProfile::P5 | NetworkProfile::P6 => {}
     }
 }
 
@@ -182,6 +197,12 @@ fn try_attach_peer(
             && rec.listen == listen
         {
             if rec.network_profile != settings.network_profile {
+                stop_peer(paths)?;
+                return Ok(None);
+            }
+            if rec.network_profile.is_relay_profile()
+                && rec.relay_ttl_days != effective_relay_ttl_days(settings)
+            {
                 stop_peer(paths)?;
                 return Ok(None);
             }
