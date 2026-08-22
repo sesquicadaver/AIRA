@@ -206,7 +206,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл (E4)
 
-**Перший OPEN:** `#104` GUI P5 federation. Порядок: `#104` → `#105` → `#106`.
+**Перший OPEN:** `#105` P6 Advanced discovery. Порядок: `#105` → `#106`.
 
 > Mutex: P3 (relay) і P4 (gossip) — окремі lifecycle рядки; settings normalize fail-closed при одночасному виборі.
 

@@ -7,6 +7,7 @@
 
 mod autostart;
 mod bootstrap;
+mod discovery;
 mod federation;
 mod health;
 mod invite;
@@ -27,6 +28,7 @@ pub use autostart::{
     AIRA_LAUNCH_AGENT_FILENAME, AIRA_LAUNCH_AGENT_LABEL, AIRA_WINDOWS_STARTUP_FILENAME,
 };
 pub use bootstrap::ensure_bootstrap;
+pub use discovery::{run_discv_announce, run_discv_find, run_stun_query, DiscoveryStunOutcome};
 pub use federation::{join_federation_descriptor_file, read_federation_membership};
 pub use invite::{
     build_local_invite, export_invite_file, import_invite, import_invite_file, load_invite_file,
