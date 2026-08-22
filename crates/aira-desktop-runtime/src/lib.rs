@@ -7,6 +7,7 @@
 
 mod autostart;
 mod bootstrap;
+mod federation;
 mod health;
 mod invite;
 mod invite_qr;
@@ -26,6 +27,7 @@ pub use autostart::{
     AIRA_LAUNCH_AGENT_FILENAME, AIRA_LAUNCH_AGENT_LABEL, AIRA_WINDOWS_STARTUP_FILENAME,
 };
 pub use bootstrap::ensure_bootstrap;
+pub use federation::{join_federation_descriptor_file, read_federation_membership};
 pub use invite::{
     build_local_invite, export_invite_file, import_invite, import_invite_file, load_invite_file,
     validate_peer_invite, ImportInviteOutcome, PeerInvite, PEER_INVITE_SCHEMA_ID,

@@ -19,6 +19,7 @@ ed25519-dalek = { workspace = true }
 aira-flow = { path = "../aira-flow" }
 aira-object = { path = "../aira-object" }
 aira-peer = { path = "../aira-peer" }
+aira-protocol = { path = "../aira-protocol" }
 time = { workspace = true }
 qrcode = { version = "0.14.1", default-features = false, features = ["image"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
@@ -29,3 +30,5 @@ tempfile = { workspace = true }
 tokio = { workspace = true }
 aira-protocol = { path = "../aira-protocol" }
 hex = { workspace = true }
+serde_json = { workspace = true }
+ed25519-dalek = { workspace = true }
