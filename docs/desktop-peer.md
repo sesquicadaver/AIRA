@@ -18,3 +18,5 @@ Runtime files: `runtime/aira-peer.pid.json`, `aira-peer.lock`. Relay registry: `
 `AIRA_BIN` or sibling of `aira-node` resolves the CLI. Stop tears down peer then node.
 
 Non-loopback `peer_listen` is fail-closed until peer CLI `--explicit` is wired (Out of `#82`).
+
+Profile matrix and RFC index: [`desktop-network-profiles.md`](desktop-network-profiles.md).
