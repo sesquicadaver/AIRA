@@ -120,10 +120,9 @@ pub fn normalize_settings(settings: &mut DesktopSettings) -> Result<()> {
             settings.peer_listen = Some(listen);
             Ok(())
         }
-        NetworkProfile::P3
-        | NetworkProfile::P4
-        | NetworkProfile::P5
-        | NetworkProfile::P6 => unreachable!("is_supported already rejected"),
+        NetworkProfile::P3 | NetworkProfile::P4 | NetworkProfile::P5 | NetworkProfile::P6 => {
+            unreachable!("is_supported already rejected")
+        }
     }
 }
 
