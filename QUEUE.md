@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-22  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); E1.1 `#80`–`#85` **DONE**; Addendum E2 macOS `#86`–`#89` **DONE**; Addendum E3 Windows `#90`–`#93` **DONE**.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); E1.1 `#80`–`#85` **DONE**; Addendum E2 macOS `#86`–`#89` **DONE**; Addendum E3 Windows `#90`–`#93` **DONE**; Addendum E4 P2–P6 `#94`–`#106` **OPEN** (2026-08-22).
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-128 CLOSED @ 3400f8f / PR #56; QUEUE #93 DONE; E3 **DONE**; OPEN-хвіст порожній |
+| `main` | E3 DONE; **перший OPEN = `#94`** (Addendum E4 P2 settings) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | **порожня** — Phase E Desktop E0–E3 **COMPLETE** |
+| Активна черга | Addendum E4 `#94`–`#106` (P2→P6) |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE. Phase E — [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#85` DONE; Addendum E2 `#86`–`#89` відкрито 2026-08-21.
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE. Phase E — [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#85` DONE; E2 `#86`–`#89` DONE; E3 `#90`–`#93` DONE; E4 `#94`–`#106` відкрито 2026-08-22.
 
 ---
 
@@ -181,7 +181,34 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл (E3)
 
-**E3 Windows DONE** (`#90`–`#93`). Phase E Desktop E0–E3 **COMPLETE**. OPEN-хвіст порожній.
+**E3 Windows DONE** (`#90`–`#93`). Див. Addendum E4 нижче.
+
+## Активна черга (лінійна) — Phase E Addendum E4: network profiles P2–P6
+
+План: [`docs/phase-e-plan.md`](docs/phase-e-plan.md) §4d. UX: [`docs/desktop-ux.md`](docs/desktop-ux.md) §3.  
+**Не** змішувати P3 relay + P4 gossip в одному рядку; **не** публічний STUN default; **не** auto-trust; **не** новий peer protocol.
+
+| # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
+|---|--------|---------|-----------------|-----------|------------------|
+| 94 | **OPEN** | Analyze-129 — Settings P2 | runtime приймає P2; `peer_listen` як P1; P3+ fail-closed; docs | settings load/save P2 + тести | peer `--dht`; GUI |
+| 95 | **OPEN** | Analyze-130 — Lifecycle P2 DHT | supervise `peer listen --recv --dht --apply-book`; PID/lock | dual-root DHT→book smoke | P3 relay; GUI |
+| 96 | **OPEN** | Analyze-131 — GUI P2 | profile selector P0\|P1\|P2; peer status (dht) | GUI smoke P2 | P3+; camera |
+| 97 | **OPEN** | Analyze-132 — Settings P3 relay TTL | runtime P3; `relay_ttl_days` default 31; P4+ fail-closed; P3\|P4 mutex у normalize | settings + mutex тести | peer `--relay`; GUI |
+| 98 | **OPEN** | Analyze-133 — Lifecycle P3 relay | supervise `--relay --relay-ttl-days N` | relay register/deliver smoke | gossip; GUI |
+| 99 | **OPEN** | Analyze-134 — GUI P3 Advanced | Advanced relay toggle/status | GUI smoke P3 | P4 gossip; P5 |
+| 100 | **OPEN** | Analyze-135 — Settings P4 gossip | runtime P4; P3\|P4 mutex; P5+ fail-closed | settings + mutex тести | peer `--gossip`; GUI |
+| 101 | **OPEN** | Analyze-136 — Lifecycle P4 gossip | supervise `--gossip` (без `--relay`) | gossip forward-filter smoke | relay; GUI |
+| 102 | **OPEN** | Analyze-137 — GUI P4 Advanced | gossip toggle/status у Advanced | GUI smoke P4 | P5; P6 |
+| 103 | **OPEN** | Analyze-138 — Federation join desktop | shared lib: descriptor file → `federation join`; membership read API | join pin + trust smoke | GUI wizard; Book II |
+| 104 | **OPEN** | Analyze-139 — GUI P5 federation | wizard import descriptor; membership status | GUI smoke P5 | P6; remote federation |
+| 105 | **OPEN** | Analyze-140 — P6 Advanced discovery | opt-in Dev panel: STUN/discv/FIND shortcuts; no public STUN default | operator smoke + docs hook | auto-trust; camera |
+| 106 | **OPEN** | Analyze-141 — E4 docs + RFC | `docs/desktop-network-profiles.md` + RFC-0043 | docs узгоджені з `#94`–`#105` | peer protocol change |
+
+### Наступний цикл (E4)
+
+**Перший OPEN:** `#94` Settings P2. Порядок: `#94` → `#95` → … → `#106`.
+
+> Mutex: P3 (relay) і P4 (gossip) — окремі lifecycle рядки; settings normalize fail-closed при одночасному виборі.
 
 ---
 
@@ -212,6 +239,6 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
-| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#85` DONE; E2 `#86`–`#89` DONE (2026-08-22) |
+| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#85` DONE; E2 `#86`–`#89` DONE; E3 `#90`–`#93` DONE; E4 `#94`–`#106` OPEN (2026-08-22) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
