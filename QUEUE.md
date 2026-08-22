@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-133 CLOSED @ PR #61; **перший OPEN = `#99`** (GUI P3 Advanced) |
+| `main` | Analyze-134 CLOSED @ PR #62; **перший OPEN = `#100`** (Settings P4 gossip) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Addendum E4 `#94`–`#106` (P2→P6) |
@@ -195,7 +195,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 96 | **DONE** | ~~Analyze-131 — GUI P2~~ | profile selector P0\|P1\|P2; peer status (dht) | GUI smoke P2 | P3+; camera |
 | 97 | **DONE** | ~~Analyze-132 — Settings P3 relay TTL~~ | runtime P3; `relay_ttl_days` default 31; P4+ fail-closed; P3\|P4 mutex у normalize | settings + mutex тести | peer `--relay`; GUI |
 | 98 | **DONE** | ~~Analyze-133 — Lifecycle P3 relay~~ | supervise `--relay --relay-ttl-days N` | relay register/deliver smoke | gossip; GUI |
-| 99 | **OPEN** | Analyze-134 — GUI P3 Advanced | Advanced relay toggle/status | GUI smoke P3 | P4 gossip; P5 |
+| 99 | **DONE** | ~~Analyze-134 — GUI P3 Advanced~~ | Advanced relay toggle/status; mutex hint P3 vs P4 | GUI smoke P3 | P4 gossip; P5 |
 | 100 | **OPEN** | Analyze-135 — Settings P4 gossip | runtime P4; P3\|P4 mutex; P5+ fail-closed | settings + mutex тести | peer `--gossip`; GUI |
 | 101 | **OPEN** | Analyze-136 — Lifecycle P4 gossip | supervise `--gossip` (без `--relay`) | gossip forward-filter smoke | relay; GUI |
 | 102 | **OPEN** | Analyze-137 — GUI P4 Advanced | gossip toggle/status у Advanced | GUI smoke P4 | P5; P6 |
