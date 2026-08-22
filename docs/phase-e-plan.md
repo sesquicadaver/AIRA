@@ -1,6 +1,6 @@
 # Phase E — Desktop UX & One-Click Start v0.1
 
-**Статус:** складено 2026-08-20; **Linux E1 (`#75`–`#79`) DONE**; **E1.1 (`#80`–`#85`) DONE** @ 2026-08-21; **Addendum E2 macOS (`#86`–`#89`) DONE** @ 2026-08-22; **Addendum E3 Windows (`#90`–`#93`) DONE** @ 2026-08-22; **Addendum E4 network profiles P2–P6 (`#94`–`#106`) OPEN** @ 2026-08-22.  
+**Статус:** складено 2026-08-20; **Linux E1 (`#75`–`#79`) DONE**; **E1.1 (`#80`–`#85`) DONE** @ 2026-08-21; **Addendum E2 macOS (`#86`–`#89`) DONE** @ 2026-08-22; **Addendum E3 Windows (`#90`–`#93`) DONE** @ 2026-08-22; **Addendum E4 network profiles P2–P6 (`#94`–`#106`) DONE** @ 2026-08-22.  
 **Рішення UX:** [`desktop-ux.md`](desktop-ux.md). Provenance проблеми: [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED**).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md). Поза цим планом / addendum поодинокі пункти в QUEUE не додавати.  
 **Не канон Book:** не змінює Core / C0–C1 / OperationalPlane semantics.  
@@ -211,7 +211,7 @@ Loopback ≠ authorization boundary. Unauthenticated P0 не повинен ек
 
 **Acceptance E3:** на Windows (або cross-check layout на Linux CI): paths коректні → autostart hook → розпакував zip → GUI start P0; P1 optional. Без codesign.
 
-### 4d. Addendum E4 — network profiles P2–P6 — **OPEN** (2026-08-22)
+### 4d. Addendum E4 — network profiles P2–P6 — **DONE** (2026-08-22)
 
 **Рішення розробника:** 2026-08-22 — відкрити **E4** після DONE E3 (`#93`). Лінійно P2 → P3 → P4 → P5 → P6; один OPEN = один Analyze-цикл. Stabilization атоми (branch protection, Handle opacity, verify-on-read, Policy Gate у dispatch, acquisition fail-closed, toolchain pin, `SECURITY.md` refresh, split `model-acquisition`) — **поза E4**, за окремим рішенням.
 
@@ -283,7 +283,7 @@ Loopback ≠ authorization boundary. Unauthenticated P0 не повинен ек
 - Desktop GUI + autostart: [`desktop-gui.md`](desktop-gui.md) + RFC-0027 (`#78`)
 - Addendum E2 (macOS): §4b → QUEUE `#86`–`#89`; RFC-0035 paths (`#86`); RFC-0036 LaunchAgent (`#87`); RFC-0037 `.app` tarball (`#88`); RFC-0038 docs (`#89`)
 - Addendum E3 (Windows): §4c → QUEUE `#90`–`#93`; RFC-0039 paths (`#90`); RFC-0040 autostart (`#91`); RFC-0041 zip (`#92`); RFC-0042 docs (`#93`)
-- Addendum E4 (P2–P6): §4d → QUEUE `#94`–`#106`; RFC-0043 network profiles docs (`#106`); per-profile RFC-E у відповідних атомах
+- Addendum E4 (P2–P6): §4d → QUEUE `#94`–`#106` **DONE**; [`desktop-network-profiles.md`](desktop-network-profiles.md) + RFC-0043 (`#106`); per-profile RFC-E у відповідних атомах
 
 ## 6. Acceptance E1 (Linux)
 

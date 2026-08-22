@@ -115,3 +115,5 @@ Non-loopback UDP bind requires `--explicit`. Untrusted / revoked / bad signature
 **WONT-NEED:** dedicated x25519 peer-notify after rotate (Analyze-54 / QUEUE #19) — hello v1 already Ed25519-binds `x25519_pub_hex` each dial; Noise remote static is checked against that hello. No durable remote Noise-static cache.
 
 See [`analysis/Analyze-43/provenance/ADR-connectivity-relay-first.md`](../analysis/Analyze-43/provenance/ADR-connectivity-relay-first.md).
+
+Desktop supervise mapping (P0–P6): [`desktop-network-profiles.md`](desktop-network-profiles.md).

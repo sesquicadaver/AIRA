@@ -3,13 +3,13 @@
 **Оновлено:** 2026-08-22  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); E1.1 `#80`–`#85` **DONE**; Addendum E2 macOS `#86`–`#89` **DONE**; Addendum E3 Windows `#90`–`#93` **DONE**; Addendum E4 P2–P6 `#94`–`#106` **OPEN** (2026-08-22).
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#79` **DONE** (Linux E1); E1.1 `#80`–`#85` **DONE**; Addendum E2 macOS `#86`–`#89` **DONE**; Addendum E3 Windows `#90`–`#93` **DONE**; Addendum E4 P2–P6 `#94`–`#106` **DONE** (2026-08-22).
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-139 CLOSED @ PR #67; **перший OPEN = `#105`** (P6 Advanced discovery) |
+| `main` | Analyze-141 CLOSED @ PR #69; **E4 `#94`–`#106` DONE** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Addendum E4 `#94`–`#106` (P2→P6) |
@@ -201,12 +201,12 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 102 | **DONE** | ~~Analyze-137 — GUI P4 Advanced~~ | gossip toggle/status у Advanced | GUI smoke P4 | P5; P6 |
 | 103 | **DONE** | ~~Analyze-138 — Federation join desktop~~ | shared lib: descriptor file → `federation join`; membership read API | join pin + trust smoke | GUI wizard; Book II |
 | 104 | **DONE** | ~~Analyze-139 — GUI P5 federation~~ | wizard import descriptor; membership status | GUI smoke P5 | P6; remote federation |
-| 105 | **OPEN** | Analyze-140 — P6 Advanced discovery | opt-in Dev panel: STUN/discv/FIND shortcuts; no public STUN default | operator smoke + docs hook | auto-trust; camera |
-| 106 | **OPEN** | Analyze-141 — E4 docs + RFC | `docs/desktop-network-profiles.md` + RFC-0043 | docs узгоджені з `#94`–`#105` | peer protocol change |
+| 105 | **DONE** | ~~Analyze-140 — P6 Advanced discovery~~ | opt-in Dev panel: STUN/discv/FIND shortcuts; no public STUN default | operator smoke + docs hook | auto-trust; camera |
+| 106 | **DONE** | ~~Analyze-141 — E4 docs + RFC~~ | `docs/desktop-network-profiles.md` + RFC-0043 | docs узгоджені з `#94`–`#105` | peer protocol change |
 
 ### Наступний цикл (E4)
 
-**Перший OPEN:** `#105` P6 Advanced discovery. Порядок: `#105` → `#106`.
+**E4 завершено** (`#94`–`#106` DONE). Наступні атоми — за окремим рішенням розробника (stabilization / post-E).
 
 > Mutex: P3 (relay) і P4 (gossip) — окремі lifecycle рядки; settings normalize fail-closed при одночасному виборі.
 
@@ -239,6 +239,6 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | EVO-2 OperationalPlane reference-local | #51 |
 | EVO-2 implementation-status matrix | #52 |
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
-| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#85` DONE; E2 `#86`–`#89` DONE; E3 `#90`–`#93` DONE; E4 `#94`–`#106` OPEN (2026-08-22) |
+| Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#79` DONE; E1.1 `#80`–`#85` DONE; E2 `#86`–`#89` DONE; E3 `#90`–`#93` DONE; E4 `#94`–`#106` DONE (2026-08-22) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

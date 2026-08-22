@@ -79,6 +79,7 @@ E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS (`#86`–`#89`) → E3
 - Local HTTP: [`local-node.md`](local-node.md)
 - Peer (для майбутніх P1+): [`peer-link.md`](peer-link.md)
 - Desktop P1 peer supervise: [`desktop-peer.md`](desktop-peer.md)
+- Network profiles P0–P6 (E4): [`desktop-network-profiles.md`](desktop-network-profiles.md)
 - PeerInvite file: [`desktop-invite.md`](desktop-invite.md)
 - systemd (сервери, не Desktop): [`runbook-systemd.md`](runbook-systemd.md)
 - Linux menu launcher: [`desktop-launcher.md`](desktop-launcher.md)
