@@ -1,7 +1,8 @@
 //! Desktop settings document (`aira:schema:desktop:settings:0.1`).
 //!
 //! E1.1 (`#81`): `network_profile` may be P0 or P1.
-//! E4 (`#94`): P2 accepted with the same `peer_listen` rules as P1. P3+ fail-closed.
+//! E4 (`#94`): P2 accepted with the same `peer_listen` rules as P1.
+//! E4 (`#97`): P3 + `relay_ttl_days` (default 31). P4+ fail-closed; P3|P4 mutex by profile enum.
 
 use std::fs;
 use std::net::SocketAddr;
@@ -15,8 +16,11 @@ use crate::paths::DesktopPaths;
 
 pub const SETTINGS_SCHEMA_ID: &str = "aira:schema:desktop:settings:0.1";
 
-/// Default peer listen for P1 (phase-e §4a; same-host Developer Preview).
+/// Default peer listen for P1+ (phase-e §4a; same-host Developer Preview).
 pub const DEFAULT_PEER_LISTEN: &str = "127.0.0.1:9797";
+
+/// Default relay hub offline registry TTL for P3 (phase-e §4d).
+pub const DEFAULT_RELAY_TTL_DAYS: u32 = 31;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
@@ -31,14 +35,24 @@ pub enum NetworkProfile {
 }
 
 impl NetworkProfile {
-    /// Profiles the Desktop runtime may load/persist (E4 `#94`: through P2).
+    /// Profiles the Desktop runtime may load/persist (E4 `#97`: through P3).
     pub fn is_supported(self) -> bool {
-        matches!(self, Self::P0 | Self::P1 | Self::P2)
+        matches!(self, Self::P0 | Self::P1 | Self::P2 | Self::P3)
     }
 
-    /// P1+ profiles that require validated `peer_listen` after normalize.
+    /// P1–P3 profiles that require validated `peer_listen` after normalize.
     pub fn requires_peer_listen(self) -> bool {
-        matches!(self, Self::P1 | Self::P2)
+        matches!(self, Self::P1 | Self::P2 | Self::P3)
+    }
+
+    /// Relay hub profile (mutex with P4 gossip at settings level).
+    pub fn is_relay_profile(self) -> bool {
+        matches!(self, Self::P3)
+    }
+
+    /// Gossip profile (mutex with P3 relay; accepted in `#100`).
+    pub fn is_gossip_profile(self) -> bool {
+        matches!(self, Self::P4)
     }
 }
 
@@ -62,6 +76,9 @@ pub struct DesktopSettings {
     pub http_token_ref: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub peer_listen: Option<String>,
+    /// Relay hub offline registry TTL days; used when `network_profile=P3`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relay_ttl_days: Option<u32>,
 }
 
 impl DesktopSettings {
@@ -78,6 +95,7 @@ impl DesktopSettings {
             http_auth_mode: HttpAuthMode::BearerToken,
             http_token_ref: Some(paths.token_file().display().to_string()),
             peer_listen: None,
+            relay_ttl_days: None,
         }
     }
 }
@@ -93,7 +111,7 @@ pub fn validate_listen_addr(listen: &str) -> Result<SocketAddr> {
         .with_context(|| format!("invalid listen address `{listen}` (want host:port)"))
 }
 
-/// Fail-closed profile + listen validation; fill P1/P2 `peer_listen` default when missing.
+/// Fail-closed profile + listen validation; fill defaults for P1–P3.
 pub fn normalize_settings(settings: &mut DesktopSettings) -> Result<()> {
     if settings.payload_schema != SETTINGS_SCHEMA_ID {
         bail!(
@@ -104,29 +122,59 @@ pub fn normalize_settings(settings: &mut DesktopSettings) -> Result<()> {
     }
     if !settings.network_profile.is_supported() {
         bail!(
-            "Desktop runtime supports network_profile=P0|P1|P2 only (got {:?}; P3+ Out of E4)",
+            "Desktop runtime supports network_profile=P0|P1|P2|P3 only (got {:?}; P4+ Out of E4)",
             settings.network_profile
         );
     }
+    if settings.network_profile.is_relay_profile() && settings.network_profile.is_gossip_profile() {
+        bail!("network_profile cannot combine P3 relay and P4 gossip");
+    }
     validate_listen_addr(&settings.http_listen).context("http_listen")?;
     match settings.network_profile {
-        NetworkProfile::P0 => Ok(()),
-        NetworkProfile::P1 | NetworkProfile::P2 => {
-            let listen = match settings.peer_listen.as_deref().map(str::trim) {
-                Some(s) if !s.is_empty() => s.to_string(),
-                _ => DEFAULT_PEER_LISTEN.to_string(),
-            };
-            validate_listen_addr(&listen).context("peer_listen")?;
-            settings.peer_listen = Some(listen);
+        NetworkProfile::P0 => {
+            settings.relay_ttl_days = None;
             Ok(())
         }
-        NetworkProfile::P3 | NetworkProfile::P4 | NetworkProfile::P5 | NetworkProfile::P6 => {
+        NetworkProfile::P1 | NetworkProfile::P2 => {
+            normalize_peer_listen(settings)?;
+            settings.relay_ttl_days = None;
+            Ok(())
+        }
+        NetworkProfile::P3 => {
+            normalize_peer_listen(settings)?;
+            let ttl = settings.relay_ttl_days.unwrap_or(DEFAULT_RELAY_TTL_DAYS);
+            if ttl == 0 {
+                bail!("relay_ttl_days must be >= 1");
+            }
+            settings.relay_ttl_days = Some(ttl);
+            Ok(())
+        }
+        NetworkProfile::P4 | NetworkProfile::P5 | NetworkProfile::P6 => {
             unreachable!("is_supported already rejected")
         }
     }
 }
 
-/// Effective peer listen for P1/P2 (after normalize), or `None` on P0.
+fn normalize_peer_listen(settings: &mut DesktopSettings) -> Result<()> {
+    let listen = match settings.peer_listen.as_deref().map(str::trim) {
+        Some(s) if !s.is_empty() => s.to_string(),
+        _ => DEFAULT_PEER_LISTEN.to_string(),
+    };
+    validate_listen_addr(&listen).context("peer_listen")?;
+    settings.peer_listen = Some(listen);
+    Ok(())
+}
+
+/// Effective relay TTL days for P3 (after normalize), or `None` off P3.
+pub fn effective_relay_ttl_days(settings: &DesktopSettings) -> Option<u32> {
+    if settings.network_profile.is_relay_profile() {
+        settings.relay_ttl_days
+    } else {
+        None
+    }
+}
+
+/// Effective peer listen for P1–P3 (after normalize), or `None` on P0.
 pub fn effective_peer_listen(settings: &DesktopSettings) -> Option<&str> {
     if settings.network_profile.requires_peer_listen() {
         settings.peer_listen.as_deref()
@@ -149,8 +197,9 @@ pub fn load_or_create_settings(paths: &DesktopPaths) -> Result<DesktopSettings> 
                 .map(str::trim)
                 .filter(|x| !x.is_empty())
                 .is_none();
+        let relay_ttl_missing = s.network_profile.is_relay_profile() && s.relay_ttl_days.is_none();
         normalize_settings(&mut s)?;
-        if peer_missing {
+        if peer_missing || relay_ttl_missing {
             write_settings(paths, &s)?;
         }
         return Ok(s);
@@ -211,6 +260,7 @@ mod unit {
             http_auth_mode: HttpAuthMode::BearerToken,
             http_token_ref: None,
             peer_listen: None,
+            relay_ttl_days: None,
         };
         normalize_settings(&mut s).unwrap();
         assert_eq!(s.peer_listen.as_deref(), Some(DEFAULT_PEER_LISTEN));
@@ -228,13 +278,14 @@ mod unit {
             http_auth_mode: HttpAuthMode::BearerToken,
             http_token_ref: None,
             peer_listen: None,
+            relay_ttl_days: None,
         };
         normalize_settings(&mut s).unwrap();
         assert_eq!(s.peer_listen.as_deref(), Some(DEFAULT_PEER_LISTEN));
     }
 
     #[test]
-    fn p3_rejected() {
+    fn p3_fills_default_relay_ttl() {
         let mut s = DesktopSettings {
             payload_schema: SETTINGS_SCHEMA_ID.into(),
             network_profile: NetworkProfile::P3,
@@ -245,9 +296,46 @@ mod unit {
             http_auth_mode: HttpAuthMode::BearerToken,
             http_token_ref: None,
             peer_listen: Some(DEFAULT_PEER_LISTEN.into()),
+            relay_ttl_days: None,
+        };
+        normalize_settings(&mut s).unwrap();
+        assert_eq!(s.relay_ttl_days, Some(DEFAULT_RELAY_TTL_DAYS));
+    }
+
+    #[test]
+    fn p4_rejected() {
+        let mut s = DesktopSettings {
+            payload_schema: SETTINGS_SCHEMA_ID.into(),
+            network_profile: NetworkProfile::P4,
+            open_ui_on_start: true,
+            autostart_on_login: false,
+            http_listen: "127.0.0.1:8787".into(),
+            instance_id: "aira:instance:test".into(),
+            http_auth_mode: HttpAuthMode::BearerToken,
+            http_token_ref: None,
+            peer_listen: Some(DEFAULT_PEER_LISTEN.into()),
+            relay_ttl_days: None,
         };
         let err = normalize_settings(&mut s).unwrap_err().to_string();
-        assert!(err.contains("P0|P1|P2"), "{err}");
+        assert!(err.contains("P0|P1|P2|P3"), "{err}");
+    }
+
+    #[test]
+    fn p1_clears_relay_ttl() {
+        let mut s = DesktopSettings {
+            payload_schema: SETTINGS_SCHEMA_ID.into(),
+            network_profile: NetworkProfile::P1,
+            open_ui_on_start: true,
+            autostart_on_login: false,
+            http_listen: "127.0.0.1:8787".into(),
+            instance_id: "aira:instance:test".into(),
+            http_auth_mode: HttpAuthMode::BearerToken,
+            http_token_ref: None,
+            peer_listen: Some(DEFAULT_PEER_LISTEN.into()),
+            relay_ttl_days: Some(31),
+        };
+        normalize_settings(&mut s).unwrap();
+        assert!(s.relay_ttl_days.is_none());
     }
 
     #[test]
@@ -262,6 +350,7 @@ mod unit {
             http_auth_mode: HttpAuthMode::BearerToken,
             http_token_ref: None,
             peer_listen: Some("not-an-addr".into()),
+            relay_ttl_days: None,
         };
         assert!(normalize_settings(&mut s).is_err());
     }

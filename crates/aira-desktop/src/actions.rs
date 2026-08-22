@@ -150,6 +150,7 @@ mod tests {
             http_auth_mode: aira_desktop_runtime::HttpAuthMode::BearerToken,
             http_token_ref: None,
             peer_listen: Some(DEFAULT_PEER_LISTEN.into()),
+            relay_ttl_days: None,
         };
         apply_network_profile(&mut s, NetworkProfile::P0, DEFAULT_PEER_LISTEN).unwrap();
         assert_eq!(s.network_profile, NetworkProfile::P0);
