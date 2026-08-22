@@ -181,7 +181,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл (E3)
 
-**Перший OPEN:** `#91` — Windows login autostart.
+**Перший OPEN:** `#92` — Windows zip package.
 
 ---
 
