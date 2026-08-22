@@ -1,4 +1,4 @@
-//! Supervise `aira peer listen` for Desktop P1–P3 (QUEUE #82, E4 `#95`, `#98`).
+//! Supervise `aira peer listen` for Desktop P1–P4 (QUEUE #82, E4 `#95`, `#98`, `#101`).
 
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
@@ -44,7 +44,7 @@ pub struct PeerPidRecordView {
     pub listen: String,
 }
 
-/// Ensure peer is running when `network_profile` requires peer listen (P1–P3); no-op on P0.
+/// Ensure peer is running when `network_profile` requires peer listen (P1–P4); no-op on P0.
 pub(crate) fn ensure_peer(
     paths: &DesktopPaths,
     settings: &DesktopSettings,
@@ -57,7 +57,7 @@ pub(crate) fn ensure_peer(
     let listen = settings
         .peer_listen
         .as_deref()
-        .context("P1–P3 requires peer_listen (normalize settings first)")?
+        .context("P1–P4 requires peer_listen (normalize settings first)")?
         .to_string();
     require_loopback_bind(&listen)?;
 
@@ -132,7 +132,14 @@ fn append_profile_peer_flags(cmd: &mut Command, settings: &DesktopSettings) {
                 cmd.arg("--relay-ttl-days").arg(days.to_string());
             }
         }
-        NetworkProfile::P0 | NetworkProfile::P4 | NetworkProfile::P5 | NetworkProfile::P6 => {}
+        NetworkProfile::P4 => {
+            cmd.arg("--recv")
+                .arg("--dht")
+                .arg("--apply-book")
+                .arg("--apply-trust")
+                .arg("--gossip");
+        }
+        NetworkProfile::P0 | NetworkProfile::P5 | NetworkProfile::P6 => {}
     }
 }
 

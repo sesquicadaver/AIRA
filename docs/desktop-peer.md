@@ -9,6 +9,8 @@ When `network_profile=P2`, step 2 adds `--dht --apply-book` (opt-in DHT→addres
 
 When `network_profile=P3`, step 2 is `peer listen --bind <peer_listen> --relay --relay-ttl-days N` (no `--recv`; relay hub mode).
 
+When `network_profile=P4`, step 2 is `peer listen --bind <peer_listen> --recv --dht --apply-book --apply-trust --gossip` (no `--relay`).
+
 `PeerPidRecord` includes `network_profile` and P3 `relay_ttl_days` for attach; profile/TTL change forces a new peer process.
 
 Runtime files: `runtime/aira-peer.pid.json`, `aira-peer.lock`. Relay registry: `peers/relay_hub.json`. Logs: `logs/aira-peer.*.log`.
