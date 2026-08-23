@@ -46,6 +46,8 @@ See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md`, `scripts/prepare-alpha.sh`, `scripts
 
 Long-running daemons: [`docs/runbook-systemd.md`](docs/runbook-systemd.md).
 
+CI merge policy: [`docs/ci-governance.md`](docs/ci-governance.md).
+
 ## Build
 
 Rust **1.94.0** (pinned in [`rust-toolchain.toml`](rust-toolchain.toml); `rustup` auto-selects via directory override).
