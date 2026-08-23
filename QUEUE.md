@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-147 CLOSED @ PR #75; **перший OPEN = `#113`** (verify-on-read Artifact) |
+| `main` | Analyze-148 CLOSED @ PR #76; **перший OPEN = `#114`** (Policy Gate dispatch) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase F stabilization `#107`–`#119` |
