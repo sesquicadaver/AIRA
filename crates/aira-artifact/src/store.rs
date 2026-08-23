@@ -40,6 +40,30 @@ pub fn is_private_artifact(descriptor: &ArtifactDescriptor) -> bool {
         .any(|r| r.as_str() == PRIVATE_ARTIFACT_POLICY)
 }
 
+/// Admit an artifact descriptor: cryptographic signature over canonical JSON.
+pub(crate) fn admit_artifact(descriptor: &ArtifactDescriptor) -> Result<(), ArtifactError> {
+    if descriptor.signature.signature_value.trim().is_empty() {
+        return Err(ArtifactError::Unsigned(descriptor.artifact_id.clone()));
+    }
+    match descriptor.verify_canonical() {
+        Ok(()) => Ok(()),
+        Err(aira_object::CryptoError::MissingOrLegacy) => {
+            Err(ArtifactError::Unsigned(descriptor.artifact_id.clone()))
+        }
+        Err(_) => Err(ArtifactError::InvalidSignature(
+            descriptor.artifact_id.clone(),
+        )),
+    }
+}
+
+/// Verify-on-read: re-check canonical signature before returning a stored descriptor.
+pub(crate) fn verify_stored_artifact(
+    descriptor: ArtifactDescriptor,
+) -> Result<ArtifactDescriptor, ArtifactError> {
+    admit_artifact(&descriptor)?;
+    Ok(descriptor)
+}
+
 /// Result of publishing an artifact.
 #[derive(Debug, Clone)]
 pub struct PublishResult {
@@ -163,20 +187,7 @@ impl ArtifactStore for CasArtifactStore {
         mut descriptor: ArtifactDescriptor,
         payload: &[u8],
     ) -> Result<PublishResult, ArtifactError> {
-        if descriptor.signature.signature_value.trim().is_empty() {
-            return Err(ArtifactError::Unsigned(descriptor.artifact_id));
-        }
-        match descriptor.verify_canonical() {
-            Ok(()) => {}
-            Err(aira_object::CryptoError::MissingOrLegacy) => {
-                return Err(ArtifactError::Unsigned(descriptor.artifact_id.clone()));
-            }
-            Err(_) => {
-                return Err(ArtifactError::InvalidSignature(
-                    descriptor.artifact_id.clone(),
-                ));
-            }
-        }
+        admit_artifact(&descriptor)?;
         let actual = ContentHash::sha256_bytes(payload);
         if actual != descriptor.content_hash {
             return Err(ArtifactError::HashMismatch {
@@ -254,6 +265,7 @@ impl CasArtifactStore {
             .get(artifact_id.as_str())
             .cloned()
             .ok_or_else(|| ArtifactError::NotFound(artifact_id.clone()))?;
+        let desc = verify_stored_artifact(desc)?;
         if is_private_artifact(&desc) && !allow_private {
             return Err(ArtifactError::AccessDenied(artifact_id.clone()));
         }
@@ -265,6 +277,20 @@ impl CasArtifactStore {
                 expected: desc.content_hash.as_str().to_string(),
                 actual: actual.as_str().to_string(),
             });
+        }
+        let meta_path = path.with_extension("json");
+        if meta_path.exists() {
+            let raw = fs::read_to_string(&meta_path)
+                .map_err(|e| ArtifactError::Storage(e.to_string()))?;
+            let sidecar: ArtifactDescriptor =
+                serde_json::from_str(&raw).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+            let sidecar = verify_stored_artifact(sidecar)?;
+            if sidecar.content_hash != desc.content_hash {
+                return Err(ArtifactError::HashMismatch {
+                    expected: desc.content_hash.as_str().to_string(),
+                    actual: sidecar.content_hash.as_str().to_string(),
+                });
+            }
         }
         Ok((desc, bytes))
     }
