@@ -6,7 +6,7 @@ use aira_object::{AiraRef, Handle, ObjectDescriptor};
 use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::error::CoreError;
-use crate::store::ObjectStore;
+use crate::store::{verify_stored_descriptor, ObjectStore};
 
 /// SQLite-backed immutable Object Store.
 pub struct SqliteObjectStore {
@@ -112,7 +112,9 @@ impl ObjectStore for SqliteObjectStore {
                 |r| r.get(0),
             )
             .map_err(|_| CoreError::NotFound(handle.object_ref().clone()))?;
-        serde_json::from_str(&json).map_err(|e| CoreError::Storage(e.to_string()))
+        let descriptor =
+            serde_json::from_str(&json).map_err(|e| CoreError::Storage(e.to_string()))?;
+        verify_stored_descriptor(descriptor)
     }
 
     fn get_by_object_id(&self, object_id: &AiraRef) -> Result<Option<ObjectDescriptor>, CoreError> {
@@ -127,9 +129,11 @@ impl ObjectStore for SqliteObjectStore {
             .map_err(|e| CoreError::Storage(e.to_string()))?;
         match json {
             None => Ok(None),
-            Some(j) => Ok(Some(
-                serde_json::from_str(&j).map_err(|e| CoreError::Storage(e.to_string()))?,
-            )),
+            Some(j) => {
+                let descriptor =
+                    serde_json::from_str(&j).map_err(|e| CoreError::Storage(e.to_string()))?;
+                Ok(Some(verify_stored_descriptor(descriptor)?))
+            }
         }
     }
 }

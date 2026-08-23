@@ -213,6 +213,7 @@ dependencies = [
  "aira-policy",
  "aira-protocol",
  "aira-schema",
+ "rusqlite",
  "serde",
  "serde_json",
  "tempfile",

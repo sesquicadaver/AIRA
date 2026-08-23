@@ -60,6 +60,14 @@ pub(crate) fn admit_object(descriptor: &ObjectDescriptor) -> Result<(), CoreErro
     }
 }
 
+/// Verify-on-read: re-check canonical signature before returning a stored descriptor.
+pub(crate) fn verify_stored_descriptor(
+    descriptor: ObjectDescriptor,
+) -> Result<ObjectDescriptor, CoreError> {
+    admit_object(&descriptor)?;
+    Ok(descriptor)
+}
+
 impl ObjectStore for MemoryObjectStore {
     fn create(&mut self, descriptor: ObjectDescriptor) -> Result<Handle, CoreError> {
         admit_object(&descriptor)?;
@@ -77,17 +85,51 @@ impl ObjectStore for MemoryObjectStore {
     }
 
     fn open(&self, handle: &Handle) -> Result<ObjectDescriptor, CoreError> {
-        self.by_token
+        let descriptor = self
+            .by_token
             .get(&handle.storage_token())
             .cloned()
-            .ok_or_else(|| CoreError::NotFound(handle.object_ref().clone()))
+            .ok_or_else(|| CoreError::NotFound(handle.object_ref().clone()))?;
+        verify_stored_descriptor(descriptor)
     }
 
     fn get_by_object_id(&self, object_id: &AiraRef) -> Result<Option<ObjectDescriptor>, CoreError> {
-        Ok(self
+        let descriptor = self
             .by_id
             .get(object_id.as_str())
             .and_then(|t| self.by_token.get(t))
-            .cloned())
+            .cloned();
+        match descriptor {
+            None => Ok(None),
+            Some(d) => Ok(Some(verify_stored_descriptor(d)?)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use aira_object::ObjectDescriptor;
+
+    use super::*;
+
+    #[test]
+    fn memory_open_and_get_reject_tampered_descriptor() {
+        let mut store = MemoryObjectStore::new();
+        let desc = ObjectDescriptor::example_problem();
+        let object_id = desc.object_id.clone();
+        let handle = store.create(desc).unwrap();
+        let token = handle.storage_token();
+        let mut tampered = ObjectDescriptor::example_problem();
+        tampered.schema_version = "0.2".into();
+        store.by_token.insert(token, tampered);
+
+        assert!(matches!(
+            store.open(&handle),
+            Err(CoreError::InvalidSignature(_))
+        ));
+        assert!(matches!(
+            store.get_by_object_id(&object_id),
+            Err(CoreError::InvalidSignature(_))
+        ));
     }
 }

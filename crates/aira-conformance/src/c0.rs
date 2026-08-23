@@ -6,7 +6,9 @@
 use std::path::Path;
 
 use aira_artifact::{ArtifactStore, ArtifactType, CasArtifactStore};
-use aira_core::{InvariantChecker, InvariantViolation, MemoryObjectStore, ObjectStore};
+use aira_core::{
+    InvariantChecker, InvariantViolation, MemoryObjectStore, ObjectStore, SqliteObjectStore,
+};
 use aira_csu::support::{local_identity, local_signature, make_artifact};
 use aira_event::{EventType, MemoryEventLog};
 use aira_object::{AiraRef, ObjectDescriptor, Timestamp};
@@ -22,6 +24,7 @@ pub fn run_c0(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_ontology_schemas(),
         test_object_immutability(),
         test_handle_opacity(),
+        test_object_verify_on_read(),
         test_artifact_immutability(artifact_root.as_ref()),
         test_event_causality(artifact_root.as_ref()),
         test_policy_gate(),
@@ -125,6 +128,62 @@ fn test_handle_opacity() -> CaseResult {
     }
     if handle.object_ref() != &object_ref {
         return fail(id, "object_ref mismatch on CSU-visible handle surface");
+    }
+    pass(id)
+}
+
+/// B1-001 verify-on-read — tampered stored descriptor fails on open / get_by_object_id.
+fn test_object_verify_on_read() -> CaseResult {
+    let id = "c0.object.verify_on_read";
+    let dir = match tempfile::tempdir() {
+        Ok(d) => d,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let path = dir.path().join("objects.db");
+    let mut store = match SqliteObjectStore::open(&path) {
+        Ok(s) => s,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let desc = ObjectDescriptor::example_problem();
+    let object_id = desc.object_id.clone();
+    let handle = match store.create(desc) {
+        Ok(h) => h,
+        Err(e) => return fail(id, e.to_string()),
+    };
+
+    let conn = match rusqlite::Connection::open(&path) {
+        Ok(c) => c,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let mut tampered = ObjectDescriptor::example_problem();
+    tampered.schema_version = "0.2".into();
+    let tampered_json = match serde_json::to_string(&tampered) {
+        Ok(j) => j,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if let Err(e) = conn.execute(
+        "UPDATE objects SET descriptor_json = ?1 WHERE object_id = ?2",
+        rusqlite::params![tampered_json, object_id.as_str()],
+    ) {
+        return fail(id, e.to_string());
+    }
+
+    let reopened = match SqliteObjectStore::open(&path) {
+        Ok(s) => s,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    match reopened.open(&handle) {
+        Err(aira_core::CoreError::InvalidSignature(_)) => {}
+        other => return fail(id, format!("open expected InvalidSignature, got {other:?}")),
+    }
+    match reopened.get_by_object_id(&object_id) {
+        Err(aira_core::CoreError::InvalidSignature(_)) => {}
+        other => {
+            return fail(
+                id,
+                format!("get_by_object_id expected InvalidSignature, got {other:?}"),
+            )
+        }
     }
     pass(id)
 }

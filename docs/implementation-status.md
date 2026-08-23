@@ -44,7 +44,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 
 | Requirement | Source | Implemented in | Tested by | Status | Notes |
 |-------------|--------|----------------|-----------|--------|-------|
-| Immutable Object Store | Book I §4–5; B1-001 | `aira-core` `MemoryObjectStore` / `SqliteObjectStore` | `c0.object.immutability`; `memory_rejects_in_place_mutation`; `create_rejects_unsigned_and_mutated_object_signature` | **DONE** | Canonical object signatures (QUEUE #42) |
+| Immutable Object Store | Book I §4–5; B1-001 | `aira-core` `MemoryObjectStore` / `SqliteObjectStore` | `c0.object.immutability`; `c0.object.verify_on_read`; `memory_rejects_in_place_mutation`; `create_rejects_unsigned_and_mutated_object_signature`; `open_and_get_by_id_reject_tampered_descriptor` | **DONE** | Verify-on-read re-checks canonical signature (QUEUE #112) |
 | Opaque Handle | Book I §6; B1-003 | `aira_object::Handle` | `c0.object.handle_opacity`; `handle_is_opaque` | **DONE** | Debug omits token/paths; C0 B1-003 case |
 | Event runtime, local causal order, no global total order | Book I §8–9; B1-004/005 | `aira-event` `MemoryEventLog` | `c0.event.causality`; `aira-event` unit tests | **DONE** | Plane drain is in-process demo (`drain_from` bound 256) |
 | Durable event log | Book I / Book IV §6.3 | `LocalSession` → `.aira/events/event-log.json` | `local_init_submit_status_and_artifact`; alpha layout | **PARTIAL** | JSON file, not a production event engine |
