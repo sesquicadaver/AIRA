@@ -21,6 +21,7 @@ pub fn run_c0(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
     let cases = vec![
         test_ontology_schemas(),
         test_object_immutability(),
+        test_handle_opacity(),
         test_artifact_immutability(artifact_root.as_ref()),
         test_event_causality(artifact_root.as_ref()),
         test_policy_gate(),
@@ -94,6 +95,36 @@ fn test_object_immutability() -> CaseResult {
         .any(|e| e.event_type == EventType::InvariantViolation)
     {
         return fail(id, "InvariantViolation event missing");
+    }
+    pass(id)
+}
+
+/// B1-003 — CSU cannot infer storage path / internal token from Handle debug output.
+fn test_handle_opacity() -> CaseResult {
+    let id = "c0.object.handle_opacity";
+    let object_ref = match AiraRef::parse("aira:problem:01OPACITY") {
+        Ok(r) => r,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let token = 0xDEADBEEF_u64;
+    let handle = aira_object::Handle::new(object_ref.clone(), token);
+    let dbg = format!("{handle:?}");
+    if dbg.contains(&token.to_string()) {
+        return fail(id, "Debug output leaks storage_token numeric value");
+    }
+    for needle in ["/", "\\", ".aira", "sqlite", "db/", "path"] {
+        if dbg.contains(needle) {
+            return fail(
+                id,
+                format!("Debug output leaks path-like substring: {needle}"),
+            );
+        }
+    }
+    if !dbg.contains("<opaque>") {
+        return fail(id, "Debug output must mark internal token as opaque");
+    }
+    if handle.object_ref() != &object_ref {
+        return fail(id, "object_ref mismatch on CSU-visible handle surface");
     }
     pass(id)
 }
