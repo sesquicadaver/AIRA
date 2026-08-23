@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-148 CLOSED @ PR #76; **перший OPEN = `#114`** (Policy Gate dispatch) |
+| `main` | Analyze-149 CLOSED @ PR #77; **перший OPEN = `#115`** (acquisition fail-closed audit) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase F stabilization `#107`–`#119` |
