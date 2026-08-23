@@ -99,7 +99,7 @@ mod tests {
     fn run_profile_dispatch() {
         let dir = tempfile::tempdir().unwrap();
         let suite = run_profile(ConformanceProfile::C0, dir.path().join("p")).unwrap();
-        assert_eq!(suite.cases.len(), 6);
+        assert_eq!(suite.cases.len(), 7);
         let suite2 = run_profile(ConformanceProfile::C2, dir.path().join("p2")).unwrap();
         assert_eq!(suite2.cases.len(), 5);
     }

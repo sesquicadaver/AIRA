@@ -114,6 +114,36 @@ mod tests {
     }
 
     #[test]
+    fn open_and_get_by_id_reject_tampered_descriptor() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("objects.db");
+        let mut store = SqliteObjectStore::open(&path).unwrap();
+        let desc = ObjectDescriptor::example_problem();
+        let object_id = desc.object_id.clone();
+        let handle = store.create(desc).unwrap();
+
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        let mut tampered = ObjectDescriptor::example_problem();
+        tampered.schema_version = "0.2".into();
+        let tampered_json = serde_json::to_string(&tampered).unwrap();
+        conn.execute(
+            "UPDATE objects SET descriptor_json = ?1 WHERE object_id = ?2",
+            rusqlite::params![tampered_json, object_id.as_str()],
+        )
+        .unwrap();
+
+        let reopened = SqliteObjectStore::open(&path).unwrap();
+        assert!(matches!(
+            reopened.open(&handle),
+            Err(CoreError::InvalidSignature(_))
+        ));
+        assert!(matches!(
+            reopened.get_by_object_id(&object_id),
+            Err(CoreError::InvalidSignature(_))
+        ));
+    }
+
+    #[test]
     fn invariant_checker_emits_event_on_policy_deny() {
         let mut log = MemoryEventLog::new();
         let mut checker =
