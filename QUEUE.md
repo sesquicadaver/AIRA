@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-143 CLOSED @ PR #71; **перший OPEN = `#109`** (CI governance doc) |
+| `main` | Analyze-144 CLOSED @ PR #72; **перший OPEN = `#110`** (SECURITY.md refresh) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase F stabilization `#107`–`#119` |
