@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-149 CLOSED @ PR #77; **перший OPEN = `#115`** (acquisition fail-closed audit) |
+| `main` | Analyze-150 CLOSED @ PR #78; **перший OPEN = `#116`** (split model-acquisition) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase F stabilization `#107`–`#119` |
