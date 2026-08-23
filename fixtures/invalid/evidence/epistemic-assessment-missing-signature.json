@@ -1,0 +1,13 @@
+{
+  "assessment_id": "aira:epistemic:01BAD",
+  "claim_ref": "aira:claim:01CLAIM",
+  "evidence_refs": [],
+  "counter_evidence_refs": [],
+  "epistemic_status": "Hypothesis",
+  "confidence": 0.5,
+  "scope": {
+    "scope_type": "local",
+    "description": "missing signature"
+  },
+  "revision_refs": []
+}

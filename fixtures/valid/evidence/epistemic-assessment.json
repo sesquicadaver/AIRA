@@ -1,0 +1,20 @@
+{
+  "assessment_id": "aira:epistemic:01ASSESS",
+  "claim_ref": "aira:claim:01CLAIM",
+  "evidence_refs": [
+    "aira:evidence:01EV1"
+  ],
+  "counter_evidence_refs": [],
+  "epistemic_status": "Hypothesis",
+  "confidence": 0.7,
+  "scope": {
+    "scope_type": "local",
+    "description": "fixture epistemic"
+  },
+  "revision_refs": [],
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}

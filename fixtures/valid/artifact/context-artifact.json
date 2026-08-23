@@ -1,0 +1,20 @@
+{
+  "context_id": "aira:context:01CTXFIX",
+  "problem_statement_ref": "aira:problem:01TESTPROBLEM",
+  "context_type": "session",
+  "resolved_factors": {
+    "domain": "math"
+  },
+  "unresolved_factors": [],
+  "confidence": 0.85,
+  "scope": {
+    "scope_type": "local",
+    "description": "fixture context"
+  },
+  "evidence_refs": [
+    "aira:evidence:01EV1"
+  ],
+  "provenance_refs": [
+    "aira:event:01E1"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "context_id": "aira:context:01BAD",
+  "problem_statement_ref": "aira:problem:01TESTPROBLEM",
+  "context_type": "session",
+  "resolved_factors": {},
+  "unresolved_factors": [],
+  "scope": {
+    "scope_type": "local",
+    "description": "missing confidence"
+  },
+  "evidence_refs": [],
+  "provenance_refs": []
+}
