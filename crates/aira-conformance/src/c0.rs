@@ -26,6 +26,7 @@ pub fn run_c0(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_handle_opacity(),
         test_object_verify_on_read(),
         test_artifact_immutability(artifact_root.as_ref()),
+        test_artifact_verify_on_read(artifact_root.as_ref()),
         test_event_causality(artifact_root.as_ref()),
         test_policy_gate(),
     ];
@@ -231,6 +232,120 @@ fn test_artifact_immutability(artifact_root: &Path) -> CaseResult {
         .any(|e| e.event_type == EventType::InvariantViolation)
     {
         return fail(id, "InvariantViolation/ArtifactInvalid event missing");
+    }
+    pass(id)
+}
+
+/// B1-002 verify-on-read — tampered index / sidecar / CAS bytes fail on resolve.
+fn test_artifact_verify_on_read(artifact_root: &Path) -> CaseResult {
+    let id = "c0.artifact.verify_on_read";
+    let dir = artifact_root.join("c0-artifact-verify");
+    let mut store = match CasArtifactStore::open(&dir) {
+        Ok(s) => s,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let payload = b"artifact-verify-on-read";
+    let desc = make_artifact(
+        "aira:artifact:conf_verify1",
+        ArtifactType::EvidenceArtifact,
+        payload,
+        vec![],
+    );
+    let artifact_id = desc.artifact_id.clone();
+    let published = match store.publish(desc.clone(), payload) {
+        Ok(p) => p,
+        Err(e) => return fail(id, e.to_string()),
+    };
+
+    let index_path = dir.join("index.json");
+    let raw = match std::fs::read_to_string(&index_path) {
+        Ok(r) => r,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let mut file: serde_json::Value = match serde_json::from_str(&raw) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let artifacts = match file.get_mut("artifacts").and_then(|v| v.as_object_mut()) {
+        Some(a) => a,
+        None => return fail(id, "index.json missing artifacts map"),
+    };
+    let key = artifact_id.as_str();
+    let entry = match artifacts.get(key) {
+        Some(v) => v.clone(),
+        None => return fail(id, "artifact missing from index"),
+    };
+    let mut tampered = entry;
+    if let Some(obj) = tampered.as_object_mut() {
+        obj.insert(
+            "schema_version".into(),
+            serde_json::Value::String("0.2".into()),
+        );
+    } else {
+        return fail(id, "index artifact entry is not an object");
+    }
+    artifacts.insert(key.to_string(), tampered);
+    if let Err(e) = std::fs::write(
+        &index_path,
+        serde_json::to_string_pretty(&file).unwrap_or_default(),
+    ) {
+        return fail(id, e.to_string());
+    }
+
+    let reopened = match CasArtifactStore::open(&dir) {
+        Ok(s) => s,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    match reopened.resolve(&artifact_id) {
+        Err(aira_artifact::ArtifactError::InvalidSignature(_)) => {}
+        other => {
+            return fail(
+                id,
+                format!("resolve expected InvalidSignature, got {other:?}"),
+            )
+        }
+    }
+
+    // Restore index, tamper sidecar.
+    if let Err(e) = std::fs::write(&index_path, raw) {
+        return fail(id, e.to_string());
+    }
+    let sidecar_path = published.cas_path.with_extension("json");
+    let mut sidecar = desc.clone();
+    sidecar.schema_version = "0.2".into();
+    if let Err(e) = std::fs::write(
+        &sidecar_path,
+        serde_json::to_string_pretty(&sidecar).unwrap_or_default(),
+    ) {
+        return fail(id, e.to_string());
+    }
+    match store.resolve(&artifact_id) {
+        Err(aira_artifact::ArtifactError::InvalidSignature(_)) => {}
+        other => {
+            return fail(
+                id,
+                format!("sidecar tamper expected InvalidSignature, got {other:?}"),
+            )
+        }
+    }
+
+    if let Err(e) = std::fs::write(
+        &sidecar_path,
+        serde_json::to_string_pretty(&desc).unwrap_or_default(),
+    ) {
+        return fail(id, e.to_string());
+    }
+    if let Err(e) = std::fs::write(&published.cas_path, b"tampered-cas") {
+        return fail(id, e.to_string());
+    }
+    match store.resolve(&artifact_id) {
+        Err(aira_artifact::ArtifactError::HashMismatch { .. }) => {}
+        other => {
+            return fail(
+                id,
+                format!("CAS tamper expected HashMismatch, got {other:?}"),
+            )
+        }
     }
     pass(id)
 }

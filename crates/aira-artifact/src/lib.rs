@@ -175,6 +175,61 @@ mod tests {
     }
 
     #[test]
+    fn resolve_rejects_tampered_index_descriptor() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let payload = b"verify-on-read";
+        let id =
+            "aira:artifact:sha256_6666666666666666666666666666666666666666666666666666666666666666";
+        let desc = descriptor_for(payload, id);
+        store.publish(desc.clone(), payload).unwrap();
+
+        let index_path = dir.path().join("index.json");
+        let raw = std::fs::read_to_string(&index_path).unwrap();
+        let mut file: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        let artifacts = file.get_mut("artifacts").unwrap().as_object_mut().unwrap();
+        let entry = artifacts.get(id).unwrap().clone();
+        let mut tampered = entry;
+        tampered.as_object_mut().unwrap().insert(
+            "schema_version".into(),
+            serde_json::Value::String("0.2".into()),
+        );
+        artifacts.insert(id.to_string(), tampered);
+        std::fs::write(&index_path, serde_json::to_string_pretty(&file).unwrap()).unwrap();
+
+        let reopened = CasArtifactStore::open(dir.path()).unwrap();
+        let err = reopened.resolve(&desc.artifact_id).unwrap_err();
+        assert!(matches!(err, ArtifactError::InvalidSignature(_)));
+    }
+
+    #[test]
+    fn resolve_rejects_tampered_sidecar_and_cas_bytes() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let payload = b"sidecar-bytes";
+        let id =
+            "aira:artifact:sha256_7777777777777777777777777777777777777777777777777777777777777777";
+        let desc = descriptor_for(payload, id);
+        let published = store.publish(desc.clone(), payload).unwrap();
+
+        let sidecar_path = published.cas_path.with_extension("json");
+        let mut sidecar = desc.clone();
+        sidecar.schema_version = "0.2".into();
+        std::fs::write(
+            &sidecar_path,
+            serde_json::to_string_pretty(&sidecar).unwrap(),
+        )
+        .unwrap();
+        let err = store.resolve(&desc.artifact_id).unwrap_err();
+        assert!(matches!(err, ArtifactError::InvalidSignature(_)));
+
+        std::fs::write(&sidecar_path, serde_json::to_string_pretty(&desc).unwrap()).unwrap();
+        std::fs::write(&published.cas_path, b"tampered-cas").unwrap();
+        let err = store.resolve(&desc.artifact_id).unwrap_err();
+        assert!(matches!(err, ArtifactError::HashMismatch { .. }));
+    }
+
+    #[test]
     fn canonical_verify_fails_when_artifact_fields_change() {
         let d = descriptor_for(
             b"canon",
