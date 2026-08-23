@@ -233,7 +233,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл (Phase F)
 
-**Перший OPEN:** `#112` verify-on-read Object. Порядок: `#112` → `#119`.
+**Перший OPEN:** `#113` verify-on-read Artifact. Порядок: `#113` → `#119`.
 
 ```text
 F0 stabilize CI (#107–#109)
