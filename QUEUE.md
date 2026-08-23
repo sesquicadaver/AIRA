@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-142 CLOSED @ PR #70; **перший OPEN = `#108`** (schema manifest gaps) |
+| `main` | Analyze-143 CLOSED @ PR #71; **перший OPEN = `#109`** (CI governance doc) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase F stabilization `#107`–`#119` |
@@ -218,7 +218,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
 | 107 | **DONE** | ~~Analyze-142 — toolchain pin~~ | pin stable у `rust-toolchain.toml`; CI/docs parity | локально + CI використовують pinned channel | нові фічі; clippy rule change |
-| 108 | **OPEN** | Analyze-143 — schema manifest gaps | `identifier`, `epistemic-assessment`, `context-artifact` fixtures + manifest | `schema validate --fixtures` зелений | семантика схем; C2 |
+| 108 | **DONE** | ~~Analyze-143 — schema manifest gaps~~ | `identifier`, `epistemic-assessment`, `context-artifact` fixtures + manifest | `schema validate --fixtures` зелений | семантика схем; C2 |
 | 109 | **OPEN** | Analyze-144 — CI governance doc | `docs/ci-governance.md`: required checks, merge policy для `main` | doc узгоджений з `.github/workflows/ci.yml` | GitHub UI-only settings без doc |
 | 110 | **OPEN** | Analyze-145 — SECURITY.md refresh | актуальна security posture (CSU isolation, Desktop, reporting) | не «skeleton only»; cross-links docs | нові security features |
 | 111 | **OPEN** | Analyze-146 — Handle opacity test | conformance: handle не розкриває storage internals | named test + implementation-status **DONE** для B1-003 | зміна Handle API |
