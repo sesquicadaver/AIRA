@@ -224,7 +224,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 111 | **DONE** | ~~Analyze-146 — Handle opacity test~~ | conformance: handle не розкриває storage internals | named test + implementation-status **DONE** для B1-003 | зміна Handle API |
 | 112 | **DONE** | ~~Analyze-147 — verify-on-read Object~~ | `open`/`get_by_object_id` re-verify signature; tamper fail | mutation/tamper тести | Sqlite migration; new fields |
 | 113 | **DONE** | ~~Analyze-148 — verify-on-read Artifact~~ | `resolve*` re-verify descriptor + content hash | tampered sidecar/CAS → fail | new artifact types |
-| 114 | **OPEN** | Analyze-149 — Policy Gate dispatch | `CsuRuntime::dispatch` bind policy; DENY без bypass | dispatch deny тести | new policies YAML |
+| 114 | **DONE** | ~~Analyze-149 — Policy Gate dispatch~~ | `CsuRuntime::dispatch` bind policy; DENY без bypass | dispatch deny тести | new policies YAML |
 | 115 | **OPEN** | Analyze-150 — acquisition fail-closed audit | regression: no ALLOW → DENY download/publish; docs | тести + docs/model layer | remote URL download |
 | 116 | **OPEN** | Analyze-151 — split model-acquisition | mechanical split `csu/model-acquisition/src/lib.rs` | `cargo test -p model-acquisition` зелений; behavior unchanged | semantic refactor |
 | 117 | **OPEN** | Analyze-152 — C2 CI job | GitHub Actions: `conformance run --profile C2` | job червоний при C2 fail; зелений на main | C2 semantic expansion |
@@ -233,7 +233,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл (Phase F)
 
-**Перший OPEN:** `#114` Policy Gate dispatch. Порядок: `#114` → `#119`.
+**Перший OPEN:** `#115` acquisition fail-closed audit. Порядок: `#115` → `#119`.
 
 ```text
 F0 stabilize CI (#107–#109)

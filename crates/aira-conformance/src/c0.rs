@@ -31,6 +31,7 @@ pub fn run_c0(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_event_causality(artifact_root.as_ref()),
         test_policy_gate(),
         test_csu_dispatch_policy(),
+        test_acquisition_fail_closed(),
     ];
     finalize_suite(ConformanceProfile::C0, cases, artifact_root)
 }
@@ -551,6 +552,59 @@ fn test_csu_dispatch_policy() -> CaseResult {
     }
     if received.load(Ordering::SeqCst) != 1 {
         return fail(id, "CSU not invoked after ALLOW");
+    }
+    pass(id)
+}
+
+/// D4 / F2 — acquisition download/publish default DENY without explicit policy ALLOW.
+fn test_acquisition_fail_closed() -> CaseResult {
+    let id = "c0.acquisition.fail_closed";
+    let dir = match tempfile::tempdir() {
+        Ok(d) => d,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let root = dir.path();
+    for sub in ["artifacts", "events", "models", "identity"] {
+        if let Err(e) = std::fs::create_dir_all(root.join(sub)) {
+            return fail(id, e.to_string());
+        }
+    }
+    if let Err(e) = std::fs::write(root.join("events/event-log.json"), "{\"events\":[]}") {
+        return fail(id, e.to_string());
+    }
+    if let Err(e) = std::fs::write(
+        root.join("config.json"),
+        r#"{"node":{"mode":"local","profile":"C1"},"security":{"allow_network_for_csu":false,"allow_shell_for_csu":false,"require_signed_artifacts":true,"require_signed_events":true,"require_signed_csu_manifests":true},"storage":{"object_store":"sqlite","event_log":"json","artifact_store":"filesystem"},"csu":{"autoload":[]}}"#,
+    ) {
+        return fail(id, e.to_string());
+    }
+
+    let model_ref = "aira:model:conf-acq-audit";
+    let dl = match aira_csu_model_acquisition::request_download(root, model_ref) {
+        Ok(o) => o,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if dl.decision != aira_csu_model_acquisition::GateDecision::Deny {
+        return fail(id, "download expected DENY without policy");
+    }
+    let pub_gate = match aira_csu_model_acquisition::request_publish(root, model_ref) {
+        Ok(o) => o,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if pub_gate.decision != aira_csu_model_acquisition::GateDecision::Deny {
+        return fail(id, "publish expected DENY without policy");
+    }
+    if !root
+        .join(aira_csu_model_acquisition::DECISION_POINTER_REL)
+        .exists()
+    {
+        return fail(id, "download decision pointer missing");
+    }
+    if !root
+        .join(aira_csu_model_acquisition::SHARE_DECISION_POINTER_REL)
+        .exists()
+    {
+        return fail(id, "publish decision pointer missing");
     }
     pass(id)
 }
