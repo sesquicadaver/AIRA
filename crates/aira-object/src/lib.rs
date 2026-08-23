@@ -100,6 +100,8 @@ mod tests {
         assert!(!dbg.contains("sqlite"));
         assert!(!dbg.contains("/"));
         assert!(!dbg.contains("path"));
+        assert!(!dbg.contains("42"));
+        assert!(dbg.contains("<opaque>"));
         // Public API exposes only the logical ref, not storage internals.
         assert_eq!(h.object_ref(), &object_ref);
         assert!(h.storage_token_for_tests() > 0);

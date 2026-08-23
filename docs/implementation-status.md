@@ -45,7 +45,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Requirement | Source | Implemented in | Tested by | Status | Notes |
 |-------------|--------|----------------|-----------|--------|-------|
 | Immutable Object Store | Book I §4–5; B1-001 | `aira-core` `MemoryObjectStore` / `SqliteObjectStore` | `c0.object.immutability`; `memory_rejects_in_place_mutation`; `create_rejects_unsigned_and_mutated_object_signature` | **DONE** | Canonical object signatures (QUEUE #42) |
-| Opaque Handle | Book I §6; B1-003 | `aira_object::Handle` | crate Debug omits paths; `memory_create_open` | **PARTIAL** | `storage_token` is an internal id, not a path; no dedicated CSU “infer path” attack test |
+| Opaque Handle | Book I §6; B1-003 | `aira_object::Handle` | `c0.object.handle_opacity`; `handle_is_opaque` | **DONE** | Debug omits token/paths; C0 B1-003 case |
 | Event runtime, local causal order, no global total order | Book I §8–9; B1-004/005 | `aira-event` `MemoryEventLog` | `c0.event.causality`; `aira-event` unit tests | **DONE** | Plane drain is in-process demo (`drain_from` bound 256) |
 | Durable event log | Book I / Book IV §6.3 | `LocalSession` → `.aira/events/event-log.json` | `local_init_submit_status_and_artifact`; alpha layout | **PARTIAL** | JSON file, not a production event engine |
 | Policy Gate ALLOW/DENY/REQUIRE | Book I §10; B1-006/007 | `aira-policy` | `c0.policy.gate`; `invariant_checker_emits_event_on_policy_deny` | **DONE** | |
@@ -158,7 +158,7 @@ Conformance spec §19 lists extra fixture *names* (event chain, policy deny, res
 
 | Profile | Spec | Runner | Cases | CI | Status |
 |---------|------|--------|-------|----|--------|
-| C0 | Local Core | `run_c0` | `c0.ontology.schemas`, `c0.object.immutability`, `c0.artifact.immutability`, `c0.event.causality`, `c0.policy.gate` | **yes** (QUEUE #38) | **DONE** |
+| C0 | Local Core | `run_c0` | `c0.ontology.schemas`, `c0.object.immutability`, `c0.object.handle_opacity`, `c0.artifact.immutability`, `c0.event.causality`, `c0.policy.gate` | **yes** (QUEUE #38) | **DONE** |
 | C1 | Local operational node | `run_c1` | `c1.pipeline.calculate_2_plus_2`, `c1.csu.manifests`, `c1.result.verified_completeness`, `c1.failure.to_evidence` | **yes** | **DONE** |
 | C2 | Protocol-compatible | `run_c2` | envelope/response/identity schemas; discovery ≠ Node; UNSUPPORTED_VERSION | **no** | **PARTIAL** |
 | C3–C5 | Federated / settlement / research | — | — | no | **ABSENT** / **RESEARCH** |
