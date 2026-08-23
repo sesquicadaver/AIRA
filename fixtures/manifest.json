@@ -21,6 +21,10 @@
       "file": "fixtures/valid/common/scope-descriptor.json"
     },
     {
+      "schema": "aira:schema:common:identifier:0.1",
+      "file": "fixtures/valid/common/identifier.json"
+    },
+    {
       "schema": "aira:schema:core:object-descriptor:0.1",
       "file": "fixtures/valid/core/object-descriptor.json"
     },
@@ -31,6 +35,10 @@
     {
       "schema": "aira:schema:artifact:artifact-descriptor:0.1",
       "file": "fixtures/valid/artifact/artifact-descriptor.json"
+    },
+    {
+      "schema": "aira:schema:artifact:context-artifact:0.1",
+      "file": "fixtures/valid/artifact/context-artifact.json"
     },
     {
       "schema": "aira:schema:event:event-descriptor:0.1",
@@ -59,6 +67,10 @@
     {
       "schema": "aira:schema:evidence:evidence-artifact:0.1",
       "file": "fixtures/valid/evidence/evidence-artifact.json"
+    },
+    {
+      "schema": "aira:schema:epistemic:assessment:0.1",
+      "file": "fixtures/valid/evidence/epistemic-assessment.json"
     },
     {
       "schema": "aira:schema:result:verified-result-artifact:0.1",
@@ -135,12 +147,24 @@
       "file": "fixtures/invalid/common/hash.json"
     },
     {
+      "schema": "aira:schema:common:identifier:0.1",
+      "file": "fixtures/invalid/common/identifier.json"
+    },
+    {
       "schema": "aira:schema:core:object-descriptor:0.1",
       "file": "fixtures/invalid/core/object-descriptor-gpu.json"
     },
     {
+      "schema": "aira:schema:artifact:context-artifact:0.1",
+      "file": "fixtures/invalid/artifact/context-artifact-missing-confidence.json"
+    },
+    {
       "schema": "aira:schema:csu:manifest:0.1",
       "file": "fixtures/invalid/csu/manifest-unsigned.json"
+    },
+    {
+      "schema": "aira:schema:epistemic:assessment:0.1",
+      "file": "fixtures/invalid/evidence/epistemic-assessment-missing-signature.json"
     },
     {
       "schema": "aira:schema:result:verified-result-artifact:0.1",
