@@ -114,7 +114,10 @@ fn test_handle_opacity() -> CaseResult {
     }
     for needle in ["/", "\\", ".aira", "sqlite", "db/", "path"] {
         if dbg.contains(needle) {
-            return fail(id, format!("Debug output leaks path-like substring: {needle}"));
+            return fail(
+                id,
+                format!("Debug output leaks path-like substring: {needle}"),
+            );
         }
     }
     if !dbg.contains("<opaque>") {
