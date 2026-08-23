@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-146 CLOSED @ PR #74; **перший OPEN = `#112`** (verify-on-read Object) |
+| `main` | Analyze-147 CLOSED @ PR #75; **перший OPEN = `#113`** (verify-on-read Artifact) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase F stabilization `#107`–`#119` |
@@ -222,7 +222,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 109 | **DONE** | ~~Analyze-144 — CI governance doc~~ | `docs/ci-governance.md`: required checks, merge policy для `main` | doc узгоджений з `.github/workflows/ci.yml` | GitHub UI-only settings без doc |
 | 110 | **DONE** | ~~Analyze-145 — SECURITY.md refresh~~ | актуальна security posture (CSU isolation, Desktop, reporting) | не «skeleton only»; cross-links docs | нові security features |
 | 111 | **DONE** | ~~Analyze-146 — Handle opacity test~~ | conformance: handle не розкриває storage internals | named test + implementation-status **DONE** для B1-003 | зміна Handle API |
-| 112 | **OPEN** | Analyze-147 — verify-on-read Object | `open`/`get_by_object_id` re-verify signature; tamper fail | mutation/tamper тести | Sqlite migration; new fields |
+| 112 | **DONE** | ~~Analyze-147 — verify-on-read Object~~ | `open`/`get_by_object_id` re-verify signature; tamper fail | mutation/tamper тести | Sqlite migration; new fields |
 | 113 | **OPEN** | Analyze-148 — verify-on-read Artifact | `resolve*` re-verify descriptor + content hash | tampered sidecar/CAS → fail | new artifact types |
 | 114 | **OPEN** | Analyze-149 — Policy Gate dispatch | `CsuRuntime::dispatch` bind policy; DENY без bypass | dispatch deny тести | new policies YAML |
 | 115 | **OPEN** | Analyze-150 — acquisition fail-closed audit | regression: no ALLOW → DENY download/publish; docs | тести + docs/model layer | remote URL download |
