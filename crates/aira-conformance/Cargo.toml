@@ -23,6 +23,7 @@ aira-csu-execution-basic = { path = "../../csu/execution-basic" }
 aira-csu-verification-basic = { path = "../../csu/verification-basic" }
 aira-csu-evidence-basic = { path = "../../csu/evidence-basic" }
 aira-csu-artifact-basic = { path = "../../csu/artifact-basic" }
+aira-csu-model-acquisition = { path = "../../csu/model-acquisition" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

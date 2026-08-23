@@ -90,6 +90,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Verification CSU | VER-001 | `csu/verification-basic` | `verifies_math_output_as_verified_result` | **DONE** | |
 | Evidence CSU | EVD-001 | `csu/evidence-basic` | crate + C1 failure path | **DONE** | Does not assign Epistemic Status |
 | Artifact CSU publish/resolve/supersede | ART-001 | `csu/artifact-basic` | `publish_resolve_supersede_events` | **DONE** | |
+| Model acquisition policy gate | D4; QUEUE #60/#115 | `csu/model-acquisition` | `deny_without_policy_*`; `fail_closed_audit_*`; `c0.acquisition.fail_closed` | **DONE** | Default DENY download/publish; see `docs/model-acquisition-policy.md` |
 | Epistemic CSU | EPI-001; Book III §16; Book IV §13.7 | schema only | — | **ABSENT** | Not in `csu/` |
 | Discovery / Federation / Settlement / Optimization / PHM / Evolution / Research / Human Interaction CSUs | Book III §20–27 | — | — | **ABSENT** / **RESEARCH** | Human collapse is plane STUB, not HUM CSU |
 | Durable per-CSU tenant signing | Book III identity; crypto docs | `aira-object` `tenant/` | tenant module tests; CLI tenant_secret tests | **POST-MVP** | Beyond C1 basic set |
@@ -158,7 +159,7 @@ Conformance spec §19 lists extra fixture *names* (event chain, policy deny, res
 
 | Profile | Spec | Runner | Cases | CI | Status |
 |---------|------|--------|-------|----|--------|
-| C0 | Local Core | `run_c0` | `c0.ontology.schemas`, `c0.object.immutability`, `c0.object.handle_opacity`, `c0.artifact.immutability`, `c0.event.causality`, `c0.policy.gate` | **yes** (QUEUE #38) | **DONE** |
+| C0 | Local Core | `run_c0` | `c0.ontology.schemas`, `c0.object.immutability`, `c0.object.handle_opacity`, `c0.object.verify_on_read`, `c0.artifact.immutability`, `c0.artifact.verify_on_read`, `c0.event.causality`, `c0.policy.gate`, `c0.csu.dispatch_policy`, `c0.acquisition.fail_closed` | **yes** (QUEUE #38) | **DONE** |
 | C1 | Local operational node | `run_c1` | `c1.pipeline.calculate_2_plus_2`, `c1.csu.manifests`, `c1.result.verified_completeness`, `c1.failure.to_evidence` | **yes** | **DONE** |
 | C2 | Protocol-compatible | `run_c2` | envelope/response/identity schemas; discovery ≠ Node; UNSUPPORTED_VERSION | **no** | **PARTIAL** |
 | C3–C5 | Federated / settlement / research | — | — | no | **ABSENT** / **RESEARCH** |

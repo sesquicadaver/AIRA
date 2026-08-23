@@ -2130,6 +2130,51 @@ mod tests {
     }
 
     #[test]
+    fn fail_closed_audit_download_and_publish_without_allow() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        let model_ref = "aira:model:audit-fail-closed";
+
+        let dl = request_download(dir.path(), model_ref).unwrap();
+        assert_eq!(dl.decision, GateDecision::Deny);
+        assert_eq!(dl.reason_ref, "aira:reason:no-acquisition-policy");
+        assert!(dir.path().join(DECISION_POINTER_REL).exists());
+
+        let pub_gate = request_publish(dir.path(), model_ref).unwrap();
+        assert_eq!(pub_gate.decision, GateDecision::Deny);
+        assert_eq!(pub_gate.reason_ref, "aira:reason:no-acquisition-policy");
+        assert!(dir.path().join(SHARE_DECISION_POINTER_REL).exists());
+
+        let src = dir.path().join("weights.gguf");
+        fs::write(&src, b"blocked-by-policy").unwrap();
+        assert!(matches!(
+            fetch_to_quarantine(dir.path(), model_ref, &src),
+            Ok(FetchOutcome::Denied(_))
+        ));
+        assert!(matches!(
+            publish_local(dir.path(), model_ref, "local", false),
+            Ok(PublishOutcome::Denied(_))
+        ));
+        assert!(!dir.path().join("models/quarantine").exists());
+        assert!(!dir.path().join(SHARE_OFFER_POINTER_REL).exists());
+
+        let log: Value = serde_json::from_str(
+            &fs::read_to_string(dir.path().join("events/event-log.json")).unwrap(),
+        )
+        .unwrap();
+        let payloads: String = log
+            .get("events")
+            .and_then(|e| e.as_array())
+            .unwrap()
+            .iter()
+            .filter_map(|e| e.get("payload_ref").and_then(|v| v.as_str()))
+            .collect::<Vec<_>>()
+            .join("|");
+        assert!(payloads.contains("op:policy-denied:download:"));
+        assert!(payloads.contains("op:policy-denied:publish:"));
+    }
+
+    #[test]
     fn publish_local_deny_skips_capability_ad() {
         let dir = tempfile::tempdir().unwrap();
         init_min_root(dir.path());
