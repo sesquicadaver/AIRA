@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-144 CLOSED @ PR #72; **перший OPEN = `#110`** (SECURITY.md refresh) |
+| `main` | Analyze-145 CLOSED @ PR #73; **перший OPEN = `#111`** (Handle opacity test) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase F stabilization `#107`–`#119` |
@@ -220,7 +220,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 107 | **DONE** | ~~Analyze-142 — toolchain pin~~ | pin stable у `rust-toolchain.toml`; CI/docs parity | локально + CI використовують pinned channel | нові фічі; clippy rule change |
 | 108 | **DONE** | ~~Analyze-143 — schema manifest gaps~~ | `identifier`, `epistemic-assessment`, `context-artifact` fixtures + manifest | `schema validate --fixtures` зелений | семантика схем; C2 |
 | 109 | **DONE** | ~~Analyze-144 — CI governance doc~~ | `docs/ci-governance.md`: required checks, merge policy для `main` | doc узгоджений з `.github/workflows/ci.yml` | GitHub UI-only settings без doc |
-| 110 | **OPEN** | Analyze-145 — SECURITY.md refresh | актуальна security posture (CSU isolation, Desktop, reporting) | не «skeleton only»; cross-links docs | нові security features |
+| 110 | **DONE** | ~~Analyze-145 — SECURITY.md refresh~~ | актуальна security posture (CSU isolation, Desktop, reporting) | не «skeleton only»; cross-links docs | нові security features |
 | 111 | **OPEN** | Analyze-146 — Handle opacity test | conformance: handle не розкриває storage internals | named test + implementation-status **DONE** для B1-003 | зміна Handle API |
 | 112 | **OPEN** | Analyze-147 — verify-on-read Object | `open`/`get_by_object_id` re-verify signature; tamper fail | mutation/tamper тести | Sqlite migration; new fields |
 | 113 | **OPEN** | Analyze-148 — verify-on-read Artifact | `resolve*` re-verify descriptor + content hash | tampered sidecar/CAS → fail | new artifact types |
@@ -233,7 +233,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл (Phase F)
 
-**Перший OPEN:** `#110` SECURITY.md refresh. Порядок: `#110` → `#119`.
+**Перший OPEN:** `#111` Handle opacity test. Порядок: `#111` → `#119`.
 
 ```text
 F0 stabilize CI (#107–#109)
