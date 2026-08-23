@@ -9,7 +9,8 @@ use aira_artifact::{ArtifactStore, ArtifactType, CasArtifactStore};
 use aira_core::{
     InvariantChecker, InvariantViolation, MemoryObjectStore, ObjectStore, SqliteObjectStore,
 };
-use aira_csu::support::{local_identity, local_signature, make_artifact};
+use aira_csu::support::{local_identity, local_signature, make_artifact, make_event};
+use aira_csu::{CsuRuntime, DISPATCH_POLICY_ACTION};
 use aira_event::{EventType, MemoryEventLog};
 use aira_object::{AiraRef, ObjectDescriptor, Timestamp};
 use aira_policy::{PolicyDecisionKind, PolicyGate, PolicyQuery};
@@ -29,6 +30,7 @@ pub fn run_c0(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_artifact_verify_on_read(artifact_root.as_ref()),
         test_event_causality(artifact_root.as_ref()),
         test_policy_gate(),
+        test_csu_dispatch_policy(),
     ];
     finalize_suite(ConformanceProfile::C0, cases, artifact_root)
 }
@@ -453,6 +455,102 @@ fn test_policy_gate() -> CaseResult {
         if !matches!(s, "ALLOW" | "DENY" | "REQUIRE") {
             return fail(id, format!("unexpected decision encoding {s}"));
         }
+    }
+    pass(id)
+}
+
+/// B1-006 — dispatch fail-closed without bound policy gate or ALLOW on `csu.dispatch`.
+fn test_csu_dispatch_policy() -> CaseResult {
+    let id = "c0.csu.dispatch_policy";
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    struct EchoCsu {
+        manifest: aira_csu::CsuManifest,
+        received: Arc<AtomicUsize>,
+    }
+
+    impl aira_csu::Csu for EchoCsu {
+        fn manifest(&self) -> &aira_csu::CsuManifest {
+            &self.manifest
+        }
+
+        fn on_event(
+            &mut self,
+            _event: &aira_event::EventDescriptor,
+            _ctx: &mut aira_csu::CsuExecutionContext<'_, '_>,
+        ) -> Result<Vec<aira_csu::CsuOutput>, aira_csu::CsuHandlerError> {
+            self.received.fetch_add(1, Ordering::SeqCst);
+            Ok(vec![])
+        }
+    }
+
+    let mut log = MemoryEventLog::new();
+    let mut rt = CsuRuntime::new(local_identity(), local_signature());
+    let mut manifest = aira_csu::support::basic_manifest(
+        "aira:csu:conf.dispatch",
+        "dispatch-echo",
+        aira_csu::CsuType::Execution,
+        &[],
+        &[],
+    );
+    manifest.event_subscriptions = vec![serde_json::json!({"event_type": "ProblemSubmitted"})];
+    if let Err(e) = manifest.resign_canonical() {
+        return fail(id, e.to_string());
+    }
+    let csu_id = manifest.csu_id.clone();
+    let received = Arc::new(AtomicUsize::new(0));
+    if let Err(e) = rt.register_handler(
+        Box::new(EchoCsu {
+            manifest,
+            received: received.clone(),
+        }),
+        Some(&mut log),
+    ) {
+        return fail(id, e.to_string());
+    }
+    if let Err(e) = rt.activate(&csu_id, Some(&mut log)) {
+        return fail(id, e.to_string());
+    }
+
+    let ev = make_event(
+        "aira:event:conf_dispatch1",
+        EventType::ProblemSubmitted,
+        vec![],
+        vec![],
+        vec![],
+        None,
+    );
+    match rt.dispatch(&ev, &mut log) {
+        Err(aira_csu::CsuError::Isolation(_)) => {}
+        other => {
+            return fail(
+                id,
+                format!("expected Isolation without gate, got {other:?}"),
+            )
+        }
+    }
+    if received.load(Ordering::SeqCst) != 0 {
+        return fail(id, "CSU invoked without policy gate");
+    }
+
+    rt.bind_policy_gate(PolicyGate::new(local_signature()));
+    match rt.dispatch(&ev, &mut log) {
+        Err(aira_csu::CsuError::Dispatch(_)) => {}
+        other => return fail(id, format!("expected Dispatch on DENY, got {other:?}")),
+    }
+    if received.load(Ordering::SeqCst) != 0 {
+        return fail(id, "CSU invoked on policy DENY");
+    }
+
+    rt.policy_gate_mut()
+        .unwrap()
+        .allow_action(DISPATCH_POLICY_ACTION);
+    if let Err(e) = rt.dispatch(&ev, &mut log) {
+        return fail(id, e.to_string());
+    }
+    if received.load(Ordering::SeqCst) != 1 {
+        return fail(id, "CSU not invoked after ALLOW");
     }
     pass(id)
 }

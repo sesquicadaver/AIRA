@@ -6,7 +6,7 @@ use std::fmt;
 use aira_artifact::{ArtifactDescriptor, ArtifactStore};
 use aira_event::{EventDescriptor, EventSink, EventType};
 use aira_object::{AiraRef, Signature};
-use aira_policy::{PolicyDecision, PolicyGate, PolicyQuery};
+use aira_policy::{PolicyDecision, PolicyDecisionKind, PolicyGate, PolicyQuery};
 
 use crate::error::CsuError;
 use crate::lifecycle::CsuLifecycleState;
@@ -164,23 +164,44 @@ pub trait Csu: Send {
     ) -> Result<Vec<CsuOutput>, CsuHandlerError>;
 }
 
+/// Controlled action evaluated before delivering an event to a CSU handler.
+pub const DISPATCH_POLICY_ACTION: &str = "csu.dispatch";
+
 /// Runtime that binds registry entries to in-process handlers and dispatches events.
 pub struct CsuRuntime {
     pub registry: CsuRegistry,
     handlers: HashMap<String, Box<dyn Csu>>,
     producer: AiraRef,
+    signer: Signature,
+    policy_gate: Option<PolicyGate>,
     fail_seq: u64,
 }
 
 impl CsuRuntime {
     pub fn new(producer: AiraRef, signer: Signature) -> Self {
-        let registry = CsuRegistry::new().with_event_identity(producer.clone(), signer);
+        let registry = CsuRegistry::new().with_event_identity(producer.clone(), signer.clone());
         Self {
             registry,
             handlers: HashMap::new(),
             producer,
+            signer,
+            policy_gate: None,
             fail_seq: 0,
         }
+    }
+
+    /// Bind a Policy Gate for dispatch enforcement and CSU `check_policy` (fail-closed when unset).
+    pub fn bind_policy_gate(&mut self, gate: PolicyGate) {
+        self.policy_gate = Some(gate);
+    }
+
+    /// Bind Policy Gate using the runtime signer (default-deny until actions are allowed).
+    pub fn bind_policy_gate_from_signer(&mut self) {
+        self.policy_gate = Some(PolicyGate::new(self.signer.clone()));
+    }
+
+    pub fn policy_gate_mut(&mut self) -> Option<&mut PolicyGate> {
+        self.policy_gate.as_mut()
     }
 
     /// Register manifest + bind handler instance.
@@ -233,6 +254,7 @@ impl CsuRuntime {
         let ids = self.active_subscribers(event);
         let mut all = Vec::new();
         for csu_id in ids {
+            self.check_dispatch_policy(&csu_id, event, events)?;
             all.extend(self.invoke(&csu_id, event, events, None)?);
         }
         Ok(all)
@@ -269,9 +291,44 @@ impl CsuRuntime {
         let Some(csu_id) = ids.pop() else {
             return Ok(vec![]);
         };
+        self.check_dispatch_policy(&csu_id, event, events)?;
         let mut outs = self.invoke(&csu_id, event, events, Some(artifacts))?;
         outs.extend(self.dispatch_ids_with_artifacts(ids, event, events, artifacts)?);
         Ok(outs)
+    }
+
+    fn check_dispatch_policy(
+        &mut self,
+        csu_id: &AiraRef,
+        event: &EventDescriptor,
+        events: &mut dyn EventSink,
+    ) -> Result<(), CsuError> {
+        let gate = self
+            .policy_gate
+            .as_mut()
+            .ok_or_else(|| CsuError::Isolation("policy gate not bound".into()))?;
+        let query = PolicyQuery {
+            subject: csu_id.clone(),
+            csu_ref: Some(csu_id.as_str().to_string()),
+            action: DISPATCH_POLICY_ACTION.into(),
+            object_refs: event.object_refs.clone(),
+            artifact_refs: event.artifact_refs.clone(),
+            context_refs: vec![],
+            evidence_refs: vec![],
+            requested_at: event.created_at.clone(),
+        };
+        let decision = gate
+            .check(query, Some(events))
+            .map_err(|e| CsuError::Dispatch(e.to_string()))?;
+        match decision.decision {
+            PolicyDecisionKind::Allow => Ok(()),
+            PolicyDecisionKind::Deny => {
+                Err(CsuError::Dispatch("policy DENY blocks csu dispatch".into()))
+            }
+            PolicyDecisionKind::Require => Err(CsuError::Dispatch(
+                "policy REQUIRE blocks csu dispatch".into(),
+            )),
+        }
     }
 
     fn active_subscribers(&self, event: &EventDescriptor) -> Vec<AiraRef> {

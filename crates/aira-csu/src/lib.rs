@@ -13,7 +13,9 @@ pub use error::CsuError;
 pub use lifecycle::CsuLifecycleState;
 pub use manifest::{CapabilityDescriptor, CsuManifest, CsuSandbox, CsuType, SUPPORTED_ABI_VERSION};
 pub use registry::{CsuRegistry, RegisteredCsu};
-pub use runtime::{Csu, CsuExecutionContext, CsuHandlerError, CsuOutput, CsuRuntime};
+pub use runtime::{
+    Csu, CsuExecutionContext, CsuHandlerError, CsuOutput, CsuRuntime, DISPATCH_POLICY_ACTION,
+};
 
 /// Crate version string.
 pub fn crate_version() -> &'static str {
@@ -34,6 +36,13 @@ mod tests {
 
     fn sig() -> Signature {
         aira_object::local_test_signature(aira_object::LOCAL_TEST_DOMAIN_MSG)
+    }
+
+    fn bind_dispatch_policy(rt: &mut CsuRuntime) {
+        rt.bind_policy_gate_from_signer();
+        rt.policy_gate_mut()
+            .unwrap()
+            .allow_action(DISPATCH_POLICY_ACTION);
     }
 
     fn sample_manifest() -> CsuManifest {
@@ -187,6 +196,7 @@ mod tests {
     fn dispatch_active_only_and_failure_event() {
         let mut log = MemoryEventLog::new();
         let mut rt = CsuRuntime::new(producer(), sig());
+        bind_dispatch_policy(&mut rt);
         let mut manifest = sample_manifest();
         manifest.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
         manifest.resign_canonical().unwrap();
@@ -213,6 +223,7 @@ mod tests {
 
         // Failure path
         let mut rt2 = CsuRuntime::new(producer(), sig());
+        bind_dispatch_policy(&mut rt2);
         let mut m2 = sample_manifest();
         m2.csu_id = AiraRef::parse("aira:csu:fail.basic").unwrap();
         m2.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
@@ -249,6 +260,7 @@ mod tests {
 
         let mut log = MemoryEventLog::new();
         let mut rt = CsuRuntime::new(producer(), sig());
+        bind_dispatch_policy(&mut rt);
         let mut m = sample_manifest();
         m.csu_id = AiraRef::parse("aira:csu:fail.publisher").unwrap();
         m.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
@@ -288,6 +300,7 @@ mod tests {
 
         // Missing signing key → fail closed (no CSUFailed with wrong producer).
         let mut rt2 = CsuRuntime::new(producer(), sig());
+        bind_dispatch_policy(&mut rt2);
         let mut m2 = sample_manifest();
         m2.csu_id = AiraRef::parse("aira:csu:fail.nosign").unwrap();
         m2.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
@@ -332,6 +345,46 @@ mod tests {
         unregister_csu_tenant(&AiraRef::parse("aira:csu:fail.nosign").unwrap());
         unregister_csu_tenant(&id3);
         reset_primary_signer();
+    }
+
+    #[test]
+    fn dispatch_fail_closed_without_policy_gate_and_on_deny() {
+        let mut log = MemoryEventLog::new();
+        let mut rt = CsuRuntime::new(producer(), sig());
+        let mut manifest = sample_manifest();
+        manifest.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
+        manifest.resign_canonical().unwrap();
+        let id = manifest.csu_id.clone();
+        let received = Arc::new(AtomicUsize::new(0));
+        rt.register_handler(
+            Box::new(EchoCsu {
+                manifest,
+                received: received.clone(),
+            }),
+            Some(&mut log),
+        )
+        .unwrap();
+        rt.activate(&id, Some(&mut log)).unwrap();
+        let ev = sample_event(EventType::ProblemSubmitted);
+
+        let err = rt.dispatch(&ev, &mut log).unwrap_err();
+        assert!(matches!(err, CsuError::Isolation(_)));
+        assert_eq!(received.load(Ordering::SeqCst), 0);
+
+        rt.bind_policy_gate_from_signer();
+        let err = rt.dispatch(&ev, &mut log).unwrap_err();
+        assert!(matches!(err, CsuError::Dispatch(_)));
+        assert_eq!(received.load(Ordering::SeqCst), 0);
+        assert!(log
+            .all()
+            .iter()
+            .any(|e| e.event_type == EventType::PolicyEvaluated));
+
+        rt.policy_gate_mut()
+            .unwrap()
+            .allow_action(DISPATCH_POLICY_ACTION);
+        rt.dispatch(&ev, &mut log).unwrap();
+        assert_eq!(received.load(Ordering::SeqCst), 1);
     }
 
     #[test]

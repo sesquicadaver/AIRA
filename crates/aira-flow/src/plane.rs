@@ -12,7 +12,7 @@ use std::path::Path;
 use aira_artifact::{ArtifactStore, ArtifactType, CasArtifactStore};
 use aira_core::{MemoryObjectStore, ObjectStore};
 use aira_csu::support::{json_bytes, local_identity, local_signature, make_artifact, make_event};
-use aira_csu::{Csu, CsuRuntime};
+use aira_csu::{Csu, CsuRuntime, DISPATCH_POLICY_ACTION};
 use aira_csu_context_basic::ContextBasicCsu;
 use aira_csu_evidence_basic::EvidenceBasicCsu;
 use aira_csu_execution_basic::ExecutionBasicCsu;
@@ -84,6 +84,11 @@ impl OperationalPlane {
         let artifacts =
             CasArtifactStore::open(root).map_err(|e| FlowError::Artifact(e.to_string()))?;
         let mut runtime = CsuRuntime::new(local_identity(), local_signature());
+        runtime.bind_policy_gate_from_signer();
+        runtime
+            .policy_gate_mut()
+            .unwrap()
+            .allow_action(DISPATCH_POLICY_ACTION);
         let mut events = MemoryEventLog::new();
 
         let mut reduction = ReductionBasicCsu::new().with_run_nonce(run_nonce);
