@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Analyze-151 CLOSED @ PR #79; **перший OPEN = `#117`** (C2 CI job) |
+| `main` | Analyze-152 CLOSED @ PR #80; **перший OPEN = `#118`** (flaky desktop P2 test) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase F stabilization `#107`–`#119` |
