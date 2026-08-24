@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-24  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24).
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#146` **OPEN** (2026-08-24).
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-154 CLOSED @ PR #82; **Phase F `#107`–`#119` DONE** — немає OPEN у лінійній черзі |
+| `main` | Phase F DONE @ PR #82; **перший OPEN = `#120`** (CI branch protection sync) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | **немає OPEN** (Phase F завершено 2026-08-24) |
+| Активна черга | Phase G reference v0.2 `#120`–`#146` |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE. Phase E — [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#106` DONE. Phase F — [`docs/phase-f-plan.md`](docs/phase-f-plan.md); `#107`–`#119` DONE (2026-08-24).
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#146` OPEN (2026-08-24).
 
 ---
 
@@ -233,7 +233,7 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 
 ### Наступний цикл (Phase F)
 
-**Phase F завершено** (`#107`–`#119` DONE @ PR #82, RFC-0068). Нові рядки — лише за рішенням розробника (Phase G / окремий план).
+**Phase F завершено** (`#107`–`#119` DONE @ PR #82, RFC-0068).
 
 ```text
 F0 stabilize CI (#107–#109)
@@ -242,6 +242,59 @@ F0 stabilize CI (#107–#109)
       → F3 modularize (#116)
         → F4 harden CI (#117–#118)
           → F5 docs (#119) ✓
+```
+
+## Активна черга (лінійна) — Phase G: Reference completion v0.2
+
+План: [`docs/phase-g-plan.md`](docs/phase-g-plan.md). Джерела: [`implementation-status.md`](docs/implementation-status.md); EVO-2 local C2→C3→CSU SDK; Phase F §3 post-F deferrals.  
+**Не** CRP/settlement/PHM/HIE runtime; **не** production distributed plane.
+
+| # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
+|---|--------|---------|-----------------|-----------|------------------|
+| 120 | **OPEN** | Analyze-155 — CI branch protection sync | `conformance-c2` у required checks doc + contract test | doc/checklist узгоджені з `.github/workflows/ci.yml` | GitHub API automation |
+| 121 | **OPEN** | Analyze-156 — Living spec smoke | C0 ids у `implementation-status` ↔ `run_c0` | test/script green; missing id fails | full matrix autogen |
+| 122 | **OPEN** | Analyze-157 — C2 event idempotency | conformance `c2.event.publish_idempotent` | C2 job green; duplicate publish safe | wire network |
+| 123 | **OPEN** | Analyze-158 — C2 artifact hash mismatch | conformance `c2.artifact.hash_mismatch` | hash tamper → fail | new artifact types |
+| 124 | **OPEN** | Analyze-159 — C2 envelope unsigned | conformance `c2.protocol.envelope_unsigned` | unsigned envelope → fail | envelope semantics change |
+| 125 | **OPEN** | Analyze-160 — Claim/Assumption fixtures | valid/invalid JSON + manifest | `schema validate --fixtures` зелений | Epistemic CSU impl |
+| 126 | **OPEN** | Analyze-161 — VRA extended fields | conformance VRA field coverage | named test green | full Book I 1:1 fields |
+| 127 | **OPEN** | Analyze-162 — split crypto mod | mechanical `aira-object/src/crypto/mod.rs` | `cargo test -p aira-object` green | crypto behavior change |
+| 128 | **OPEN** | Analyze-163 — split aira-peer lib | mechanical `aira-peer/src/lib.rs` | `cargo test -p aira-peer` green | protocol change |
+| 129 | **OPEN** | Analyze-164 — split cli peer | mechanical `aira-cli/commands/peer.rs` | peer CLI tests green | new peer commands |
+| 130 | **OPEN** | Analyze-165 — split desktop app | mechanical `aira-desktop/src/app.rs` | desktop tests green | GUI redesign |
+| 131 | **OPEN** | Analyze-166 — stabilize peer_lifecycle_p3 | CI-stable P3 lifecycle test | 3 consecutive CI green | P4; relay semantics |
+| 132 | **OPEN** | Analyze-167 — stabilize peer_lifecycle_p4 | CI-stable P4 gossip lifecycle | 3 consecutive CI green | P5 federation GUI |
+| 133 | **OPEN** | Analyze-168 — invite QR camera | GUI camera → invite import | roundtrip smoke | non-loopback peer |
+| 134 | **OPEN** | Analyze-169 — federation leave | CLI `federation leave` | membership cleared; tests | Join Request protocol |
+| 135 | **OPEN** | Analyze-170 — federation join hardening | join edge cases + audit | regression tests green | remote federation |
+| 136 | **OPEN** | Analyze-171 — C3 conformance scaffold | `run_c3` minimal local cases | runner + doc; optional CI note | full C3 wire |
+| 137 | **OPEN** | Analyze-172 — event log durability | JSON log corruption recovery test | test + doc note | production event engine |
+| 138 | **OPEN** | Analyze-173 — SQLite object path | integrity/migration smoke | test + status doc | new object fields |
+| 139 | **OPEN** | Analyze-174 — external CSU fixture | third-party manifest loads | registry smoke green | CSU marketplace |
+| 140 | **OPEN** | Analyze-175 — CSU SDK doc | `docs/csu-sdk.md` + conformance case | doc + named test | SDK distribution |
+| 141 | **OPEN** | Analyze-176 — epistemic-basic CSU | `csu/epistemic-basic` EPI-001 | crate tests green | full Epistemic plane |
+| 142 | **OPEN** | Analyze-177 — epistemic assessment path | epistemic artifact roundtrip smoke | CLI/plane test | normative split CSU |
+| 143 | **OPEN** | Analyze-178 — macOS codesign | notarization script + doc update | script dry-run doc | App Store |
+| 144 | **OPEN** | Analyze-179 — Windows MSI | MSI build script + doc | artifact builds on CI runner | codesign enterprise |
+| 145 | **OPEN** | Analyze-180 — Linux deb metapackage | deb production path doc + script | package smoke | AppImage |
+| 146 | **OPEN** | Analyze-181 — Phase G docs closure | README + implementation-status v0.2; RFC-0069 | G scope documented; QUEUE G closed | Phase H planning |
+
+### Наступний цикл (Phase G)
+
+**Перший OPEN:** `#120` CI branch protection sync. Порядок: `#120` → `#146`.
+
+```text
+G0 govern (#120–#121)
+  → G1 deepen C2 (#122–#124)
+    → G2 evidence gaps (#125–#126)
+      → G3 modularize (#127–#130)
+        → G4 desktop peer (#131–#133)
+          → G5 federation/C3 (#134–#136)
+            → G6 durable stores (#137–#138)
+              → G7 CSU SDK (#139–#140)
+                → G8 epistemic (#141–#142)
+                  → G9 packaging (#143–#145)
+                    → G10 docs (#146)
 ```
 
 ---
@@ -275,5 +328,6 @@ F0 stabilize CI (#107–#109)
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
 | Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#106` DONE (2026-08-22) |
 | Post-E stabilization (phase-e §Пізніше; EVO-2) | [`docs/phase-f-plan.md`](docs/phase-f-plan.md); `#107`–`#119` **DONE** (2026-08-24) |
+| Reference v0.2 (local C2 depth, C3 scaffold, SDK, packaging) | [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#146` OPEN (2026-08-24) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
