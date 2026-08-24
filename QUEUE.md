@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#121` DONE @ PR #84; **перший OPEN = `#122`** (C2 event idempotency) |
+| `main` | Phase G `#122` DONE @ PR #85; **перший OPEN = `#123`** (C2 artifact hash mismatch) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#146` |
@@ -253,7 +253,7 @@ F0 stabilize CI (#107–#109)
 |---|--------|---------|-----------------|-----------|------------------|
 | 120 | **DONE** | ~~Analyze-155 — CI branch protection sync~~ | `conformance-c2` у required checks doc + contract test | doc/checklist узгоджені з `.github/workflows/ci.yml` | GitHub API automation |
 | 121 | **DONE** | ~~Analyze-156 — Living spec smoke~~ | C0 ids у `implementation-status` ↔ `run_c0` | test/script green; missing id fails | full matrix autogen |
-| 122 | **OPEN** | Analyze-157 — C2 event idempotency | conformance `c2.event.publish_idempotent` | C2 job green; duplicate publish safe | wire network |
+| 122 | **DONE** | ~~Analyze-157 — C2 event idempotency~~ | conformance `c2.event.publish_idempotent` | C2 job green; duplicate publish safe | wire network |
 | 123 | **OPEN** | Analyze-158 — C2 artifact hash mismatch | conformance `c2.artifact.hash_mismatch` | hash tamper → fail | new artifact types |
 | 124 | **OPEN** | Analyze-159 — C2 envelope unsigned | conformance `c2.protocol.envelope_unsigned` | unsigned envelope → fail | envelope semantics change |
 | 125 | **OPEN** | Analyze-160 — Claim/Assumption fixtures | valid/invalid JSON + manifest | `schema validate --fixtures` зелений | Epistemic CSU impl |

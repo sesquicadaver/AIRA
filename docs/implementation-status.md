@@ -2,7 +2,7 @@
 
 **Status (Analyze-87 / QUEUE #52; Phase F `#119`; Phase G `#120`–`#146` OPEN):** map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#122`) · **Phase G plan:** [`phase-g-plan.md`](phase-g-plan.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#123`) · **Phase G plan:** [`phase-g-plan.md`](phase-g-plan.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -231,7 +231,8 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 |-------|------|-------------------|
 | #120 | CI branch protection sync | `ci-governance.md` + `ci_governance_doc.rs`; RFC-0070 | **DONE** @ PR #83 |
 | #121 | Living spec smoke | `living_spec_smoke.rs`; RFC-0071 | **DONE** @ PR #84 |
-| #122–#124 | C2 depth cases | idempotency, hash mismatch, unsigned envelope |
+| #122 | C2 event idempotency | `c2.event.publish_idempotent`; RFC-0072 | **DONE** @ PR #85 |
+| #123–#124 | C2 depth cases | hash mismatch; unsigned envelope |
 | #125–#126 | Evidence gaps | Claim/Assumption fixtures; VRA extended fields |
 | #127–#130 | Mechanical splits | crypto, peer lib, cli peer, desktop app |
 | #131–#133 | Desktop peer CI + QR camera | P3/P4 stable; GUI camera invite |
