@@ -40,7 +40,10 @@ fn phase_f_implementation_status_contract() {
         "Phase F",
         "#117",
     ] {
-        assert!(text.contains(needle), "implementation-status missing: {needle}");
+        assert!(
+            text.contains(needle),
+            "implementation-status missing: {needle}"
+        );
     }
 }
 
