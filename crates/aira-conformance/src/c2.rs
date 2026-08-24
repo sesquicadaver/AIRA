@@ -3,9 +3,14 @@
 use std::fs;
 use std::path::Path;
 
-use aira_csu::support::make_event;
+use aira_artifact::ArtifactType;
+use aira_csu::support::{make_artifact, make_event};
 use aira_event::EventType;
-use aira_protocol::{DiscoveryRegistry, EventProtocolAdapter, ProtocolStatus, EP_VERSION};
+use aira_object::ContentHash;
+use aira_protocol::{
+    ArtifactProtocolAdapter, DiscoveryRegistry, EventProtocolAdapter, ProtocolStatus, AP_VERSION,
+    EP_VERSION,
+};
 use aira_schema::SchemaRegistry;
 use serde_json::Value;
 
@@ -21,6 +26,7 @@ pub fn run_c2(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_discovery_returns_capability_not_node(),
         test_unsupported_version_no_side_effects(),
         test_event_publish_idempotent(),
+        test_artifact_hash_mismatch(),
     ];
     finalize_suite(ConformanceProfile::C2, cases, artifact_root)
 }
@@ -223,6 +229,70 @@ fn test_event_publish_idempotent() -> CaseResult {
             id,
             "duplicate publish must be idempotent (no second append)",
         );
+    }
+    pass(id)
+}
+
+/// B2-007 — tampered descriptor hash vs payload bytes → INVALID_ARTIFACT.
+fn test_artifact_hash_mismatch() -> CaseResult {
+    let id = "c2.artifact.hash_mismatch";
+    let dir = match tempfile::tempdir() {
+        Ok(d) => d,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let mut ap = match ArtifactProtocolAdapter::open(dir.path()) {
+        Ok(a) => a,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let payload = b"c2-hash-mismatch-payload";
+    let desc = make_artifact(
+        "aira:artifact:c2-hash-ok",
+        ArtifactType::EvidenceArtifact,
+        payload,
+        vec![],
+    );
+    let good = match ap.publish(desc.clone(), payload, AP_VERSION) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if good.response.status != ProtocolStatus::Accepted {
+        return fail(
+            id,
+            format!(
+                "valid publish expected ACCEPTED, got {:?}",
+                good.response.status
+            ),
+        );
+    }
+    if good.published.is_none() {
+        return fail(id, "valid publish did not store artifact");
+    }
+
+    let tampered = {
+        let mut d = desc.clone();
+        d.content_hash = match ContentHash::parse(
+            "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        ) {
+            Ok(h) => h,
+            Err(e) => return fail(id, e.to_string()),
+        };
+        d
+    };
+    let bad = match ap.publish(tampered, payload, AP_VERSION) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if bad.response.status != ProtocolStatus::InvalidArtifact {
+        return fail(
+            id,
+            format!(
+                "tampered hash expected INVALID_ARTIFACT, got {:?}",
+                bad.response.status
+            ),
+        );
+    }
+    if bad.published.is_some() {
+        return fail(id, "tampered hash must not publish artifact");
     }
     pass(id)
 }

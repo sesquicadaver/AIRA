@@ -91,8 +91,8 @@ mod tests {
             "failures={:?}",
             suite.report.failures
         );
-        assert_eq!(suite.report.results.passed, 6);
-        assert_eq!(suite.cases.len(), 6);
+        assert_eq!(suite.report.results.passed, 7);
+        assert_eq!(suite.cases.len(), 7);
     }
 
     #[test]
@@ -101,7 +101,7 @@ mod tests {
         let suite = run_profile(ConformanceProfile::C0, dir.path().join("p")).unwrap();
         assert_eq!(suite.cases.len(), 10);
         let suite2 = run_profile(ConformanceProfile::C2, dir.path().join("p2")).unwrap();
-        assert_eq!(suite2.cases.len(), 6);
+        assert_eq!(suite2.cases.len(), 7);
     }
 
     #[test]
