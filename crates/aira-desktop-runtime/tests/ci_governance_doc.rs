@@ -17,6 +17,8 @@ fn ci_governance_doc_contract() {
         "schema validate",
         "conformance run --profile C0",
         "conformance run --profile C1",
+        "conformance-c2",
+        "conformance run --profile C2",
         "1.94.0",
         "main",
         "develop",
@@ -33,4 +35,5 @@ fn ci_workflow_matches_governance_job_name() {
     let ci = std::fs::read_to_string(repo_root().join(".github/workflows/ci.yml")).unwrap();
     assert!(doc.contains("fmt-clippy-test-schema-c0-c1"));
     assert!(ci.contains("name: fmt-clippy-test-schema-c0-c1"));
+    assert!(ci.contains("name: conformance-c2"));
 }

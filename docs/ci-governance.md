@@ -7,11 +7,12 @@ Canonical mapping between GitHub Actions and merge policy for `main`. Workflow s
 | Check name | Job | Blocks merge when |
 |------------|-----|-------------------|
 | `fmt-clippy-test-schema-c0-c1` | `check` | fmt, clippy, tests, schema fixtures, or C0/C1 conformance fail |
+| `conformance-c2` | `conformance-c2` | C2 conformance fails (QUEUE #117) |
 
 Configure on `main` (GitHub **Settings → Branches → Branch protection**):
 
 1. **Require a pull request before merging** (recommended).
-2. **Require status checks to pass** → select `fmt-clippy-test-schema-c0-c1`.
+2. **Require status checks to pass** → select `fmt-clippy-test-schema-c0-c1` and `conformance-c2`.
 3. **Require branches to be up to date before merging** (recommended; matches autopilot rebase policy).
 
 `develop` uses the same workflow on push/PR but branch protection is optional.
@@ -38,7 +39,9 @@ pull_request: main, develop
 6. `conformance run --profile C0`
 7. `conformance run --profile C1`
 
-C2 is **not** in this job (Phase F `#117`).
+## Job `conformance-c2` (QUEUE #117)
+
+1. `conformance run --profile C2` — partial local protocol regression gate; separate job from C0/C1.
 
 ## External checks
 
