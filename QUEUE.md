@@ -277,7 +277,7 @@ F0 stabilize CI (#107–#109)
 | 143 | **OPEN** | Analyze-178 — macOS codesign | notarization script + doc update | script dry-run doc | App Store |
 | 144 | **OPEN** | Analyze-179 — Windows MSI | MSI build script + doc | artifact builds on CI runner | codesign enterprise |
 | 145 | **OPEN** | Analyze-180 — Linux deb metapackage | deb production path doc + script | package smoke | AppImage |
-| 146 | **OPEN** | Analyze-181 — Phase G docs closure | README + implementation-status v0.2; RFC-0069 | G scope documented; QUEUE G closed | Phase H planning |
+| 146 | **OPEN** | Analyze-181 — Phase G docs closure | README + implementation-status v0.2; RFC-0069 | G scope documented; QUEUE G closed | post-G RFC track; анти-місія README |
 
 ### Наступний цикл (Phase G)
 

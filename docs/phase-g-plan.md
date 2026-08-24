@@ -18,7 +18,7 @@ Phase F DONE (#107–#119)
 
 ## 1. Мета
 
-Підняти reference з **hardened local preview** до **v0.2 reference completion**: глибші local C2 conformance, закриття документованих Book 0 gaps, mechanical de-monolith великих модулів, стабільність Desktop peer lifecycle, мінімальний federation/C3 scaffold, основа CSU SDK і Epistemic basic CSU, production packaging scripts — **без** CRP/settlement/marketplace.
+Підняти reference з **hardened local preview** до **v0.2 reference completion**: глибші local C2 conformance, закриття документованих Book 0 gaps, mechanical de-monolith великих модулів, стабільність Desktop peer lifecycle, мінімальний federation/C3 scaffold, основа CSU SDK і Epistemic basic CSU, production packaging scripts — **без** CRP/settlement як product pivot і **без** анти-місії README (GPU marketplace, LLM runtime, blockchain, scheduler).
 
 ```text
 govern (CI truth, living spec)
@@ -44,17 +44,34 @@ govern (CI truth, living spec)
 6. `OperationalPlane` — reference-local; не production distributed runtime.
 7. Peer/DHT/relay/gossip — лише стабілізація і документовані edge cases; не discv5/ICE/TURN.
 
-## 3. Свідомо не входить (Phase H / RFC-A/B)
+## 3. Анти-місія AIRA (ніколи в Reference, не в QUEUE)
+
+Канон: README §«What AIRA is not»; Book I Core boundaries. **Не** відкладені фази — **заборона продукту/архітектури.**
 
 ```text
-CRP (B2-006)
-Settlement / Audit protocol (B2-011)
-PHM / HIE / KnowledgeOps / Goal Compiler / DSM
-production event scheduler / distributed plane
-GPU/LLM marketplace / blockchain settlement
+GPU marketplace / GPU rental / compute marketplace
+LLM runtime (Core як inference host)
+blockchain network / blockchain-required settlement
+scheduler / distributed job orchestration (Core)
+Core що «вирішує задачі» замість CSU contracts
+```
+
+У лінійній черзі й планах етапів **не з’являються** як «Phase H», «backlog» або «later». Колонка «Не в цьому рядку» у QUEUE = той самий клас відсічення (напр. `#68` marketplace, `#139` CSU marketplace).
+
+## 3.1. Поза scope Phase G / лише Book V або RFC-A/B
+
+Відкладені **в межах місії AIRA** (Problem→VRA, protocols, CSU), але не в `#120`–`#146`:
+
+```text
+CRP (B2-006) — protocol spec; не marketplace
+Settlement / Audit protocol (B2-011) — не blockchain ledger product
+PHM / HIE / KnowledgeOps / Goal Compiler / DSM — Book V / Research track
+production event scheduler / distributed OperationalPlane
 full Book II wire network / discv5 production mesh
 Universal Intent Theory у Reference
 ```
+
+Додавання в QUEUE — лише новий **план етапу** + RFC, без анти-місії з §3.
 
 ## 4. Атоми → QUEUE
 
@@ -121,14 +138,18 @@ implementation-status відображає v0.2 posture; Phase G RFC closure.
 - Consolidating atom: [`AIRA-RFC-0069`](../../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (`#146`).
 - Per-atom RFC-G лише при контрактній зміні (C3 scaffold, epistemic CSU, federation leave).
 
-## 7. Phase H (preview, не в QUEUE)
+## 7. Post-G (лише за RFC + новий план; не в лінійній черзі)
+
+**Не** «Phase H» з GPU/marketplace — такі теми з §3 анти-місії заборонені.
+
+Потенційні **AIRA-вирівняні** напрями після DONE `#146` (кожен — окремий план, не автоматичний backlog):
 
 ```text
-CRP protocol design (RFC only)
-Settlement ledger prototype
-PHM / HIE research promotion (Book V track)
-Production distributed OperationalPlane
-Full C3–C5 conformance + CI
+CRP protocol (Book II B2-006) — design/RFC, не compute marketplace
+Settlement protocol (B2-011) — audit receipts, не blockchain product
+Controlled federation expansion (C3–C5 local conformance depth)
+Research promotion discipline (Book V → RFC-P)
+Production-grade event/object stores (без scheduler у Core)
 ```
 
-Додавання Phase H — лише новий план + новий хвіст QUEUE після DONE `#146`.
+Додавання в QUEUE — лише новий план етапу після закриття G; анти-місія з §3 **ніколи**.
