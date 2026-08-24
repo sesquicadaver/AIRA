@@ -29,6 +29,7 @@ rqrr = "0.10"
 tempfile = { workspace = true }
 serial_test = { workspace = true }
 tokio = { workspace = true }
+aira-conformance = { path = "../aira-conformance" }
 aira-protocol = { path = "../aira-protocol" }
 hex = { workspace = true }
 serde_json = { workspace = true }

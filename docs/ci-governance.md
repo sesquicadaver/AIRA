@@ -2,7 +2,7 @@
 
 Canonical mapping between GitHub Actions and merge policy for `main`. Workflow source: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
-**Contract tests:** `crates/aira-desktop-runtime/tests/ci_governance_doc.rs` (`cargo test -p aira-desktop-runtime ci_governance`).
+**Contract tests:** `crates/aira-desktop-runtime/tests/ci_governance_doc.rs` (`cargo test -p aira-desktop-runtime ci_governance`); living spec C0 smoke `living_spec_smoke.rs` (`#121`).
 
 ## Required status check (merge gate)
 
