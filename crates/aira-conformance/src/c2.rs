@@ -20,6 +20,7 @@ pub fn run_c2(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_identity_descriptor_schema(),
         test_discovery_returns_capability_not_node(),
         test_unsupported_version_no_side_effects(),
+        test_event_publish_idempotent(),
     ];
     finalize_suite(ConformanceProfile::C2, cases, artifact_root)
 }
@@ -173,6 +174,55 @@ fn test_unsupported_version_no_side_effects() -> CaseResult {
     }
     if ep.events().len() != before + 1 {
         return fail(id, "supported publish did not append");
+    }
+    pass(id)
+}
+
+/// B2-008 — duplicate Event Protocol publish is idempotent (no second append).
+fn test_event_publish_idempotent() -> CaseResult {
+    let id = "c2.event.publish_idempotent";
+    let mut ep = EventProtocolAdapter::new();
+    let event = make_event(
+        "aira:event:c2-idempotent",
+        EventType::ProblemSubmitted,
+        vec![aira_object::AiraRef::parse("aira:problem:c2-idem").unwrap()],
+        vec![],
+        vec![],
+        Some("dup".into()),
+    );
+    let before = ep.events().len();
+    let (_env, resp) = match ep.publish_event(event.clone(), EP_VERSION) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if resp.status != ProtocolStatus::Accepted {
+        return fail(
+            id,
+            format!("first publish expected ACCEPTED, got {:?}", resp.status),
+        );
+    }
+    if ep.events().len() != before + 1 {
+        return fail(id, "first publish did not append");
+    }
+
+    let (_env2, resp2) = match ep.publish_event(event, EP_VERSION) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if resp2.status != ProtocolStatus::Accepted {
+        return fail(
+            id,
+            format!(
+                "duplicate publish expected ACCEPTED, got {:?}",
+                resp2.status
+            ),
+        );
+    }
+    if ep.events().len() != before + 1 {
+        return fail(
+            id,
+            "duplicate publish must be idempotent (no second append)",
+        );
     }
     pass(id)
 }
