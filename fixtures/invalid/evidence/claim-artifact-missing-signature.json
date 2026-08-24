@@ -1,0 +1,14 @@
+{
+  "claim_id": "aira:claim:01NOSIG",
+  "claim_kind": "Hypothesis",
+  "statement": "hypothesis missing signature",
+  "evidence_refs": [],
+  "counter_evidence_refs": [],
+  "epistemic_status": "Hypothesis",
+  "confidence": 0.6,
+  "scope": {
+    "scope_type": "local"
+  },
+  "revision_refs": [],
+  "created_at": "2026-07-10T12:03:00Z"
+}

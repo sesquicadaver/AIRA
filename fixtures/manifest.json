@@ -69,6 +69,14 @@
       "file": "fixtures/valid/evidence/evidence-artifact.json"
     },
     {
+      "schema": "aira:schema:evidence:claim-artifact:0.1",
+      "file": "fixtures/valid/evidence/claim-artifact.json"
+    },
+    {
+      "schema": "aira:schema:evidence:claim-artifact:0.1",
+      "file": "fixtures/valid/evidence/assumption-artifact.json"
+    },
+    {
       "schema": "aira:schema:epistemic:assessment:0.1",
       "file": "fixtures/valid/evidence/epistemic-assessment.json"
     },
@@ -165,6 +173,14 @@
     {
       "schema": "aira:schema:epistemic:assessment:0.1",
       "file": "fixtures/invalid/evidence/epistemic-assessment-missing-signature.json"
+    },
+    {
+      "schema": "aira:schema:evidence:claim-artifact:0.1",
+      "file": "fixtures/invalid/evidence/claim-artifact-no-evidence.json"
+    },
+    {
+      "schema": "aira:schema:evidence:claim-artifact:0.1",
+      "file": "fixtures/invalid/evidence/claim-artifact-missing-signature.json"
     },
     {
       "schema": "aira:schema:result:verified-result-artifact:0.1",

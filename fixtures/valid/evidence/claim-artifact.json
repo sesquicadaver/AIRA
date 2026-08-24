@@ -1,0 +1,22 @@
+{
+  "claim_id": "aira:claim:01CLAIM",
+  "claim_kind": "Claim",
+  "statement": "fixture claim with execution evidence",
+  "evidence_refs": [
+    "aira:evidence:01EV1"
+  ],
+  "counter_evidence_refs": [],
+  "epistemic_status": "Observation",
+  "confidence": 0.85,
+  "scope": {
+    "scope_type": "local",
+    "description": "fixture claim"
+  },
+  "revision_refs": [],
+  "created_at": "2026-07-10T12:00:00Z",
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}
