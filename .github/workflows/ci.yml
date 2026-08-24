@@ -41,7 +41,7 @@ jobs:
         run: cargo test --workspace
 
       # QUEUE #38 / Analyze-73: AIRA contract, not only Rust.
-      # Non-zero exit if fixtures fail or C0/C1 report failed > 0. C2 is out of this row.
+      # Non-zero exit if fixtures fail or C0/C1 report failed > 0. C2 is a separate job (#117).
       - name: schema fixtures
         run: cargo run -p aira-cli --locked -- schema validate --fixtures fixtures
 
@@ -50,3 +50,19 @@ jobs:
 
       - name: conformance C1
         run: cargo run -p aira-cli --locked -- conformance run --profile C1 --out "${{ runner.temp }}/aira-c1"
+
+  conformance-c2:
+    name: conformance-c2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.94.0
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      # QUEUE #117 / Analyze-152: partial C2 regression gate (Phase F F4).
+      - name: conformance C2
+        run: cargo run -p aira-cli --locked -- conformance run --profile C2 --out "${{ runner.temp }}/aira-c2"
