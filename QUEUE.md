@@ -228,12 +228,12 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 115 | **DONE** | ~~Analyze-150 — acquisition fail-closed audit~~ | regression: no ALLOW → DENY download/publish; docs | тести + docs/model layer | remote URL download |
 | 116 | **DONE** | ~~Analyze-151 — split model-acquisition~~ | mechanical split `csu/model-acquisition/src/lib.rs` | `cargo test -p model-acquisition` зелений; behavior unchanged | semantic refactor |
 | 117 | **DONE** | ~~Analyze-152 — C2 CI job~~ | GitHub Actions: `conformance run --profile C2` | job червоний при C2 fail; зелений на main | C2 semantic expansion |
-| 118 | **OPEN** | Analyze-153 — flaky desktop P2 test | стабілізувати `peer_lifecycle_p2` на CI | 3 consecutive CI green без flake | P3/P4 lifecycle |
+| 118 | **DONE** | ~~Analyze-153 — flaky desktop P2 test~~ | стабілізувати `peer_lifecycle_p2` на CI | 3 consecutive CI green без flake | P3/P4 lifecycle |
 | 119 | **OPEN** | Analyze-154 — Phase F docs + RFC | README + `implementation-status.md` sync; RFC-F; close F | E4 DONE + F scope documented | Phase G planning |
 
 ### Наступний цикл (Phase F)
 
-**Перший OPEN:** `#118` flaky desktop P2 test. Порядок: `#118` → `#119`.
+**Перший OPEN:** `#119` Phase F docs closure. Порядок: `#119` (фінал F).
 
 ```text
 F0 stabilize CI (#107–#109)
