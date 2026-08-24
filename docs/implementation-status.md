@@ -67,7 +67,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 |-------------|--------|----------------|-----------|--------|-------|
 | Common envelope + signature | Book II §6; B2-001/002 | `aira-protocol` + schemas | `c2.protocol.envelope_schema`; `envelope_rejects_local_test_domain_fallback` | **PARTIAL** | Local C2; not a wire network |
 | Unsupported version without side effects | B2-003 | `EventProtocolAdapter` | `c2.ep.unsupported_version_no_side_effects` | **PARTIAL** | Local adapter |
-| Event Protocol publish idempotency | Book II §12; B2-008 | `aira-protocol` event adapter | `event_protocol_publish_idempotent_and_unsupported_version` | **PARTIAL** | In-process |
+| Event Protocol publish idempotency | Book II §12; B2-008 | `aira-protocol` event adapter | `c2.event.publish_idempotent`; `event_protocol_publish_idempotent_and_unsupported_version` | **PARTIAL** | In-process; C2 case #122 |
 | Artifact Protocol publish/resolve + hash | Book II §11; B2-007 | `aira-protocol` artifact adapter | `artifact_protocol_publish_resolve_and_hash_check` | **PARTIAL** | In-process |
 | Identity descriptor | Book II §13 | schema + `aira-object` keyring | `c2.identity.descriptor_schema`; `aira-object` crypto/keyring tests | **PARTIAL** | Local identity; rotation is node/tenant CLI |
 | Discovery by Capability, not Node | Book II §8; B2-004 | `DiscoveryRegistry` | `c2.discovery.capability_not_node`; `discovery_returns_capability_not_node` | **PARTIAL** | Local registry file |
@@ -163,7 +163,7 @@ Conformance spec §19 lists extra fixture *names* (event chain, policy deny, res
 |---------|------|--------|-------|----|--------|
 | C0 | Local Core | `run_c0` | `c0.ontology.schemas`, `c0.object.immutability`, `c0.object.handle_opacity`, `c0.object.verify_on_read`, `c0.artifact.immutability`, `c0.artifact.verify_on_read`, `c0.event.causality`, `c0.policy.gate`, `c0.csu.dispatch_policy`, `c0.acquisition.fail_closed` | **yes** (QUEUE #38) | **DONE** |
 | C1 | Local operational node | `run_c1` | `c1.pipeline.calculate_2_plus_2`, `c1.csu.manifests`, `c1.result.verified_completeness`, `c1.failure.to_evidence` | **yes** | **DONE** |
-| C2 | Protocol-compatible | `run_c2` | envelope/response/identity schemas; discovery ≠ Node; UNSUPPORTED_VERSION | **yes** (`conformance-c2`, #117) | **DONE** |
+| C2 | Protocol-compatible | `run_c2` | `c2.protocol.envelope_schema`, `c2.protocol.response_schema`, `c2.identity.descriptor_schema`, `c2.discovery.capability_not_node`, `c2.ep.unsupported_version_no_side_effects`, `c2.event.publish_idempotent` | **yes** (`conformance-c2`, #117) | **DONE** |
 | C3–C5 | Federated / settlement / research | — | — | no | **ABSENT** / **RESEARCH** |
 | Security baseline | Conformance §14 subset | `run_security_baseline` | unsigned CSU/artifact; private deny; secret in events | crate tests | **DONE** |
 | Alpha acceptance | MVP | `run_alpha_acceptance` | init layout, 2+2, failure evidence, C0/C1 | crate tests | **DONE** |
