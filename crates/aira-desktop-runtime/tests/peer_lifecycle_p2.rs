@@ -119,20 +119,11 @@ fn start_p2_with_ports(
     panic!("start P2 failed after {PORT_RETRY_ATTEMPTS} port retries");
 }
 
-fn wait_book_addr(
-    data_root: &Path,
-    identity_id: &str,
-    expected_addr: &str,
-    timeout: Duration,
-) {
+fn wait_book_addr(data_root: &Path, identity_id: &str, expected_addr: &str, timeout: Duration) {
     let start = Instant::now();
     while start.elapsed() < timeout {
         let book = AddressBook::load(data_root).unwrap();
-        if let Some(ep) = book
-            .peers
-            .iter()
-            .find(|p| p.identity_id == identity_id)
-        {
+        if let Some(ep) = book.peers.iter().find(|p| p.identity_id == identity_id) {
             if ep.addr == expected_addr {
                 return;
             }
