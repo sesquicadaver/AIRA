@@ -233,7 +233,7 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #121 | Living spec smoke | `living_spec_smoke.rs`; RFC-0071 | **DONE** @ PR #84 |
 | #122 | C2 event idempotency | `c2.event.publish_idempotent`; RFC-0072 | **DONE** @ PR #85 |
 | #123 | C2 artifact hash mismatch | `c2.artifact.hash_mismatch`; RFC-0073 | **DONE** @ PR #86 |
-| #124 | C2 envelope unsigned | `c2.protocol.envelope_unsigned`; RFC-0074 |
+| #124 | C2 envelope unsigned | `c2.protocol.envelope_unsigned`; RFC-0074 | **DONE** @ PR #87 |
 | #125–#126 | Evidence gaps | Claim/Assumption fixtures; VRA extended fields |
 | #127–#130 | Mechanical splits | crypto, peer lib, cli peer, desktop app |
 | #131–#133 | Desktop peer CI + QR camera | P3/P4 stable; GUI camera invite |
