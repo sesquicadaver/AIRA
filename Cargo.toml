@@ -63,6 +63,7 @@ x509-parser = "0.16"
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 tempfile = "3"
+serial_test = "3"
 snow = { version = "0.10", features = ["default-resolver"] }
 x25519-dalek = { version = "2", features = ["static_secrets"] }
 time = { version = "0.3", default-features = false, features = ["std", "parsing", "formatting"] }
