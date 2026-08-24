@@ -34,7 +34,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Operational pipeline PS → Interpret → Reduce → Materialize → Verify → VRA | Book 0 §4; B0-003; OP-001 | `aira_flow::OperationalPlane` (C1 **reference/demo**) | `c1.pipeline.calculate_2_plus_2`; `aira-flow` `calculate_two_plus_two_demo` | **DONE** | Plane is not production event/scheduler/federation runtime |
 | Human Final Collapse / no silent pick | Book 0 A6; B0-004 | `is_normative_split` string heuristic + OperationalArtifact | `normative_split_stub_does_not_autocollapse` | **STUB** | Not a full Differentiated Solution Field CSU |
 | Evidence primacy | Book 0 A5; B0-005 | `csu/evidence-basic`; failure evidence path | `c1.failure.to_evidence`; `failure_creates_failure_evidence` | **PARTIAL** | Failure→evidence for C1; no standalone Claim/Assumption suite |
-| Epistemic Status as distinct coordinate | Book 0 §6 | `schemas/evidence/epistemic-assessment.schema.json` | schema load only (no fixture in manifest) | **PARTIAL** | No Epistemic CSU (`csu/` has no epistemic crate) |
+| Epistemic Status as distinct coordinate | Book 0 §6 | `schemas/evidence/epistemic-assessment.schema.json` | schema fixtures (#108) | **PARTIAL** | No Epistemic CSU (`csu/` has no epistemic crate) |
 | Evolution / Research plane | Book 0 §10; Book V | — | — | **RESEARCH** | Isolated; not mixed into Core |
 | Cost / escalation / Goal Compiler | Book 0 §8–9; Book V | — | — | **RESEARCH** | Out of MVP |
 
@@ -73,7 +73,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | CRP | Book II §10; B2-006 | — | — | **ABSENT** | Explicit Phase C Out |
 | Federation protocol (full) | Book II §14; B2-010 | join prototype only | `aira-protocol` `federation::join_*` | **POST-MVP** | Local pin + trust; no leave/Join Request/CRP |
 | Settlement / Audit protocol | Book II §15; B2-011 | — | — | **ABSENT** | Trust audit JSONL is node identity, not settlement receipts |
-| C2 profile in CI | Conformance C2 | `run_c2` exists | local `aira-conformance` tests; **not** GitHub Actions | **PARTIAL** | QUEUE #38 Out: C2 not required CI |
+| C2 profile in CI | Conformance C2 | `run_c2` | GitHub Actions job `conformance-c2` (#117); local `aira-conformance` | **DONE** | C0/C1 remain primary gate; C2 is additional regression |
 
 ---
 
@@ -103,7 +103,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 |-------------|--------|----------------|-----------|--------|-------|
 | R0 Minimal Local Core | Book IV §23 R0 | `aira-core`, `aira-event`, `aira-artifact`, `aira-policy`, `aira-schema` | C0 + crate tests | **DONE** | |
 | R1 Minimal Operational Node | Book IV §23 R1 | `aira-flow`, `aira-cli`, basic CSUs, `.aira` layout | C1; `local_init_submit_status_and_artifact`; `run_alpha_acceptance` | **DONE** | `config.node.profile = "C1"` |
-| R2 Local Protocol Node | Book IV §23 R2 | `aira-protocol` | `run_c2` (local) | **PARTIAL** | Partial C2; not CI-gated |
+| R2 Local Protocol Node | Book IV §23 R2 | `aira-protocol` | `run_c2` + CI `conformance-c2` (#117) | **PARTIAL** | Partial C2 local; CI regression gate |
 | R3 Federation-Capable Node | Book IV §23 R3 | join prototype | federation tests | **POST-MVP** | Not a federation runtime |
 | R4 Research-Capable Node | Book IV §23 R4 | — | — | **RESEARCH** | Book V |
 | Object / Artifact / Event stores | Book IV §6 | memory + SQLite objects; CAS artifacts; memory+JSON events | core/artifact/flow tests | **PARTIAL** | Plane itself uses memory object/event stores |
@@ -124,7 +124,7 @@ CI: `cargo run -p aira-cli -- schema validate --fixtures fixtures` (QUEUE #38).
 
 | Schema `$id` | File | Fixture in `fixtures/manifest.json` | Status |
 |--------------|------|--------------------------------------|--------|
-| `aira:schema:common:identifier:0.1` | `schemas/common/identifier.schema.json` | file exists, **not** listed in manifest | **PARTIAL** |
+| `aira:schema:common:identifier:0.1` | `schemas/common/identifier.schema.json` | valid + invalid | **DONE** |
 | `aira:schema:common:ref:0.1` | `common/ref.schema.json` | valid + invalid | **DONE** |
 | `aira:schema:common:hash:0.1` | `common/hash.schema.json` | valid + invalid | **DONE** |
 | `aira:schema:common:timestamp:0.1` | `common/timestamp.schema.json` | valid | **DONE** |
@@ -133,7 +133,7 @@ CI: `cargo run -p aira-cli -- schema validate --fixtures fixtures` (QUEUE #38).
 | `aira:schema:core:object-descriptor:0.1` | `core/object-descriptor.schema.json` | valid + GPU invalid | **DONE** |
 | `aira:schema:core:problem-statement:0.1` | `core/problem-statement.schema.json` | valid | **DONE** |
 | `aira:schema:artifact:artifact-descriptor:0.1` | `artifact/artifact-descriptor.schema.json` | valid | **DONE** |
-| `aira:schema:artifact:context-artifact:0.1` | `artifact/context-artifact.schema.json` | **no** manifest entry | **PARTIAL** |
+| `aira:schema:artifact:context-artifact:0.1` | `artifact/context-artifact.schema.json` | valid + invalid | **DONE** |
 | `aira:schema:event:event-descriptor:0.1` | `event/event-descriptor.schema.json` | valid | **DONE** |
 | `aira:schema:policy:query:0.1` | `policy/query.schema.json` (+ duplicate `policy-query.schema.json`) | valid | **DONE** |
 | `aira:schema:policy:decision:0.1` | `policy/decision.schema.json` (+ duplicate `policy-decision.schema.json`) | valid | **DONE** |
@@ -141,7 +141,7 @@ CI: `cargo run -p aira-cli -- schema validate --fixtures fixtures` (QUEUE #38).
 | `aira:schema:csu:manifest:0.1` | `csu/manifest.schema.json` | valid + unsigned invalid | **DONE** |
 | `aira:schema:execution:capsule:0.1` | `execution/capsule.schema.json` | valid | **DONE** |
 | `aira:schema:evidence:evidence-artifact:0.1` | `evidence/evidence-artifact.schema.json` | valid | **DONE** |
-| `aira:schema:epistemic:assessment:0.1` | `evidence/epistemic-assessment.schema.json` | **no** manifest entry | **PARTIAL** |
+| `aira:schema:epistemic:assessment:0.1` | `evidence/epistemic-assessment.schema.json` | valid + invalid | **DONE** |
 | `aira:schema:result:verified-result-artifact:0.1` | `result/verified-result-artifact.schema.json` | valid + missing-evidence invalid | **DONE** |
 | `aira:schema:conformance:report:0.1` | `conformance/report.schema.json` | valid | **DONE** |
 | `aira:schema:protocol:envelope:0.1` | `protocol/envelope.schema.json` | valid + unsigned invalid | **DONE** |
@@ -161,12 +161,14 @@ Conformance spec §19 lists extra fixture *names* (event chain, policy deny, res
 |---------|------|--------|-------|----|--------|
 | C0 | Local Core | `run_c0` | `c0.ontology.schemas`, `c0.object.immutability`, `c0.object.handle_opacity`, `c0.object.verify_on_read`, `c0.artifact.immutability`, `c0.artifact.verify_on_read`, `c0.event.causality`, `c0.policy.gate`, `c0.csu.dispatch_policy`, `c0.acquisition.fail_closed` | **yes** (QUEUE #38) | **DONE** |
 | C1 | Local operational node | `run_c1` | `c1.pipeline.calculate_2_plus_2`, `c1.csu.manifests`, `c1.result.verified_completeness`, `c1.failure.to_evidence` | **yes** | **DONE** |
-| C2 | Protocol-compatible | `run_c2` | envelope/response/identity schemas; discovery ≠ Node; UNSUPPORTED_VERSION | **no** | **PARTIAL** |
+| C2 | Protocol-compatible | `run_c2` | envelope/response/identity schemas; discovery ≠ Node; UNSUPPORTED_VERSION | **yes** (`conformance-c2`, #117) | **DONE** |
 | C3–C5 | Federated / settlement / research | — | — | no | **ABSENT** / **RESEARCH** |
 | Security baseline | Conformance §14 subset | `run_security_baseline` | unsigned CSU/artifact; private deny; secret in events | crate tests | **DONE** |
 | Alpha acceptance | MVP | `run_alpha_acceptance` | init layout, 2+2, failure evidence, C0/C1 | crate tests | **DONE** |
 
-C0/C1 are a **minimal** encoding of B0/B1/OP/CSU MUST tests, not a 1:1 clone of every Conformance `B*-*` id. Gaps (handle-opacity attack, full VRA field list, B0-005 Claim artifacts, B2 network) stay documented here; filling them is out of this row.
+C0/C1 are a **minimal** encoding of B0/B1/OP/CSU MUST tests, not a 1:1 clone of every Conformance `B*-*` id. Remaining gaps (full VRA field list, B0-005 Claim artifacts, B2 network wire) stay documented here.
+
+RFC: [`AIRA-RFC-0068`](../specs/rfc/AIRA-RFC-0068-phase-f-stabilization.md) (Phase F closure `#119`).
 
 ---
 
@@ -199,6 +201,28 @@ Not part of C0/C1. Do not treat as production distributed runtime.
 
 ---
 
+## Phase F gates (DONE)
+
+| QUEUE | Gate | Evidence |
+|-------|------|----------|
+| #107 | Rust 1.94.0 pinned | `rust-toolchain.toml`; CI `dtolnay/rust-toolchain@1.94.0` |
+| #108 | Schema manifest gaps closed | `fixtures/manifest.json` identifier/epistemic/context-artifact |
+| #109 | CI governance documented | [`docs/ci-governance.md`](ci-governance.md) |
+| #110 | SECURITY.md posture | [`SECURITY.md`](../SECURITY.md); RFC-0059 |
+| #111 | Handle opacity C0 | `c0.object.handle_opacity` |
+| #112 | Object verify-on-read | `c0.object.verify_on_read` |
+| #113 | Artifact verify-on-read | `c0.artifact.verify_on_read` |
+| #114 | Policy Gate dispatch | `c0.csu.dispatch_policy` |
+| #115 | Acquisition fail-closed | `c0.acquisition.fail_closed`; [`model-acquisition-policy.md`](model-acquisition-policy.md) |
+| #116 | model-acquisition split | modular `csu/model-acquisition/src/*` |
+| #117 | C2 CI job | `.github/workflows/ci.yml` job `conformance-c2` |
+| #118 | peer_lifecycle_p2 stable | `serial_test` + port retry in integration tests |
+| #119 | Phase F docs + RFC | this file + README; RFC-0068 |
+
+Plan: [`phase-f-plan.md`](phase-f-plan.md).
+
+---
+
 ## Explicitly not this reference
 
 ```text
@@ -206,7 +230,6 @@ production event runtime / scheduler / distributed plane
 CRP, settlement ledger, PHM, HIE, KnowledgeOps, Goal Compiler, DSM
 GPU/LLM marketplace, blockchain-required settlement
 CSU SDK / new basic CSU roles to “complete” Book III
-C2 as merge-blocking CI
 ```
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).

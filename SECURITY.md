@@ -55,10 +55,10 @@ Required check `fmt-clippy-test-schema-c0-c1` ([`docs/ci-governance.md`](docs/ci
 
 - `dependency firewall`, `cargo test --workspace`
 - `schema validate --fixtures`
-- conformance **C0** + **C1**
+- conformance **C0** + **C1** + **C2** (job `conformance-c2`; QUEUE `#117`)
 - Rust **1.94.0** pinned ([`rust-toolchain.toml`](rust-toolchain.toml))
 
-C2 and extended hardening atoms are Phase F `#117`+.
+See [`docs/ci-governance.md`](docs/ci-governance.md) for required checks on `main`.
 
 ## Out of scope (not security guarantees today)
 
