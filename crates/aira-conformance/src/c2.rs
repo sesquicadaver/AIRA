@@ -6,10 +6,11 @@ use std::path::Path;
 use aira_artifact::ArtifactType;
 use aira_csu::support::{make_artifact, make_event};
 use aira_event::EventType;
-use aira_object::ContentHash;
+use aira_object::{AiraRef, ContentHash, Signature};
 use aira_protocol::{
-    ArtifactProtocolAdapter, DiscoveryRegistry, EventProtocolAdapter, ProtocolStatus, AP_VERSION,
-    EP_VERSION,
+    local_identity, mvp_timestamp, signature_over_payload_hash, ArtifactProtocolAdapter,
+    DiscoveryRegistry, EventProtocolAdapter, ProtocolEnvelope, ProtocolError, ProtocolId,
+    ProtocolStatus, ScopeDescriptor, AP_VERSION, EP_VERSION,
 };
 use aira_schema::SchemaRegistry;
 use serde_json::Value;
@@ -27,6 +28,7 @@ pub fn run_c2(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_unsupported_version_no_side_effects(),
         test_event_publish_idempotent(),
         test_artifact_hash_mismatch(),
+        test_protocol_envelope_unsigned(),
     ];
     finalize_suite(ConformanceProfile::C2, cases, artifact_root)
 }
@@ -294,5 +296,90 @@ fn test_artifact_hash_mismatch() -> CaseResult {
     if bad.published.is_some() {
         return fail(id, "tampered hash must not publish artifact");
     }
+    pass(id)
+}
+
+/// B2-001/002 — unsigned or invalid protocol envelope signature is rejected.
+fn test_protocol_envelope_unsigned() -> CaseResult {
+    let id = "c2.protocol.envelope_unsigned";
+    let reg = match load_registry() {
+        Ok(r) => r,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let unsigned_fixture = match load_fixture("fixtures/invalid/protocol/envelope-unsigned.json") {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if reg
+        .validate("aira:schema:protocol:envelope:0.1", &unsigned_fixture)
+        .is_ok()
+    {
+        return fail(id, "unsigned envelope fixture must fail schema validate");
+    }
+
+    let hash = match ContentHash::parse(
+        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    ) {
+        Ok(h) => h,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let issuer = local_identity();
+    let message_id = match AiraRef::parse("aira:message:c2-unsigned") {
+        Ok(r) => r,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let policy = match AiraRef::parse("aira:policy:default") {
+        Ok(r) => r,
+        Err(e) => return fail(id, e.to_string()),
+    };
+
+    let unsigned = ProtocolEnvelope {
+        protocol_id: ProtocolId::Event,
+        protocol_version: EP_VERSION.into(),
+        message_type: "EventPublish".into(),
+        message_id,
+        correlation_id: None,
+        causal_refs: vec![],
+        issuer_identity: issuer.clone(),
+        target_scope: ScopeDescriptor::local("event-protocol"),
+        policy_refs: vec![policy],
+        payload_hash: hash.clone(),
+        payload_ref: None,
+        created_at: mvp_timestamp(),
+        expires_at: None,
+        signature: Signature {
+            algorithm: "ed25519".into(),
+            key_ref: issuer,
+            signature_value: String::new(),
+        },
+    };
+    match unsigned.validate_signature() {
+        Err(ProtocolError::InvalidSignature) => {}
+        other => {
+            return fail(
+                id,
+                format!("empty signature_value must fail, got {:?}", other),
+            );
+        }
+    }
+
+    let mut testsig = unsigned.clone();
+    testsig.signature.signature_value = "TESTSIG".into();
+    match testsig.validate_signature() {
+        Err(ProtocolError::InvalidSignature) => {}
+        other => {
+            return fail(
+                id,
+                format!("TESTSIG must fail validate_signature, got {:?}", other),
+            );
+        }
+    }
+
+    let mut signed = unsigned;
+    signed.signature = signature_over_payload_hash(&hash);
+    if signed.validate_signature().is_err() {
+        return fail(id, "payload-hash signature must pass validate_signature");
+    }
+
     pass(id)
 }
