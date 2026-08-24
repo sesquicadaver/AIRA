@@ -6,8 +6,7 @@ fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-const REQUIRED_MERGE_CHECKS: &[&str] =
-    &["fmt-clippy-test-schema-c0-c1", "conformance-c2"];
+const REQUIRED_MERGE_CHECKS: &[&str] = &["fmt-clippy-test-schema-c0-c1", "conformance-c2"];
 
 #[test]
 fn ci_governance_doc_contract() {
