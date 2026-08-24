@@ -1,18 +1,18 @@
 # AIRA — лінійна черга задач
 
-**Оновлено:** 2026-08-22  
+**Оновлено:** 2026-08-24  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **OPEN** (2026-08-22).
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24).
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Analyze-153 CLOSED @ PR #81; **перший OPEN = `#119`** (Phase F docs closure) |
+| `main` | Analyze-154 CLOSED @ PR #82; **Phase F `#107`–`#119` DONE** — немає OPEN у лінійній черзі |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase F stabilization `#107`–`#119` |
+| Активна черга | **немає OPEN** (Phase F завершено 2026-08-24) |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE. Phase E — [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#106` DONE. Phase F — [`docs/phase-f-plan.md`](docs/phase-f-plan.md); `#107`–`#119` відкрито 2026-08-22.
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D — [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE. Phase E — [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#106` DONE. Phase F — [`docs/phase-f-plan.md`](docs/phase-f-plan.md); `#107`–`#119` DONE (2026-08-24).
 
 ---
 
@@ -229,11 +229,11 @@ E1 = **лише P0** / Developer Preview; P1+QR = Addendum E1.1 після `#79`
 | 116 | **DONE** | ~~Analyze-151 — split model-acquisition~~ | mechanical split `csu/model-acquisition/src/lib.rs` | `cargo test -p model-acquisition` зелений; behavior unchanged | semantic refactor |
 | 117 | **DONE** | ~~Analyze-152 — C2 CI job~~ | GitHub Actions: `conformance run --profile C2` | job червоний при C2 fail; зелений на main | C2 semantic expansion |
 | 118 | **DONE** | ~~Analyze-153 — flaky desktop P2 test~~ | стабілізувати `peer_lifecycle_p2` на CI | 3 consecutive CI green без flake | P3/P4 lifecycle |
-| 119 | **OPEN** | Analyze-154 — Phase F docs + RFC | README + `implementation-status.md` sync; RFC-F; close F | E4 DONE + F scope documented | Phase G planning |
+| 119 | **DONE** | ~~Analyze-154 — Phase F docs + RFC~~ | README + `implementation-status.md` sync; RFC-F; close F | E4 DONE + F scope documented | Phase G planning |
 
 ### Наступний цикл (Phase F)
 
-**Перший OPEN:** `#119` Phase F docs closure. Порядок: `#119` (фінал F).
+**Phase F завершено** (`#107`–`#119` DONE @ PR #82, RFC-0068). Нові рядки — лише за рішенням розробника (Phase G / окремий план).
 
 ```text
 F0 stabilize CI (#107–#109)
@@ -241,7 +241,7 @@ F0 stabilize CI (#107–#109)
     → F2 verify (#111–#115)
       → F3 modularize (#116)
         → F4 harden CI (#117–#118)
-          → F5 docs (#119)
+          → F5 docs (#119) ✓
 ```
 
 ---
@@ -274,6 +274,6 @@ F0 stabilize CI (#107–#109)
 | EVO-2 implementation-status matrix | #52 |
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
 | Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#106` DONE (2026-08-22) |
-| Post-E stabilization (phase-e §Пізніше; EVO-2) | [`docs/phase-f-plan.md`](docs/phase-f-plan.md); `#107`–`#119` OPEN (2026-08-22) |
+| Post-E stabilization (phase-e §Пізніше; EVO-2) | [`docs/phase-f-plan.md`](docs/phase-f-plan.md); `#107`–`#119` **DONE** (2026-08-24) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
