@@ -2,6 +2,8 @@
 
 Local **C1 reference/demo** flow (`aira-flow` / CLI). [`OperationalPlane`](operational-plane.md) is not a production event runtime, scheduler, or federation runtime.
 
+**Queue:** Phase G OPEN `#120`–`#146` — [`phase-g-plan.md`](phase-g-plan.md).
+
 ## Prerequisites
 
 ```bash
@@ -42,3 +44,13 @@ Expected events:
 - no successful `VerificationCompleted` for that failure path
 
 CLI path: inject via library / tests (`failure_to_evidence_demo`). Operational CLI focuses on happy-path submit; failure path is covered by conformance C1 and alpha acceptance.
+
+## Conformance smoke (C0 / C1 / C2)
+
+```bash
+cargo run -p aira-cli -- conformance run --profile C0 --out /tmp/aira-c0
+cargo run -p aira-cli -- conformance run --profile C1 --out /tmp/aira-c1
+cargo run -p aira-cli -- conformance run --profile C2 --out /tmp/aira-c2
+```
+
+C0/C1 are the primary MVP gate; C2 runs in CI job `conformance-c2` ([`ci-governance.md`](ci-governance.md), [`conformance.md`](conformance.md)).

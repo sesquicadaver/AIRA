@@ -1,7 +1,8 @@
 # AIRA Desktop — macOS packaging (QUEUE #89)
 
 **Status:** Developer Preview. **Not** a production distributed AIRA runtime.  
-**Format:** **`AIRA Desktop.app`** inside a versioned **`.tar.gz`** (not DMG). Codesign / notarize / App Store are **Out** of E2.
+**Format:** **`AIRA Desktop.app`** inside a versioned **`.tar.gz`** (not DMG). Codesign / notarize / App Store are **Out** of E2.  
+**Phase G `#143`:** codesign doc + notarization helper script (production path).
 
 ## End-user install (no `cargo`)
 

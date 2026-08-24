@@ -1,6 +1,7 @@
 # Phase F — Post-E Stabilization v0.1
 
 **Статус:** **DONE** (2026-08-24) → QUEUE `#107`–`#119` closed @ RFC-0068.  
+**Наступний етап:** Phase G [`phase-g-plan.md`](phase-g-plan.md) `#120`–`#146` **OPEN**.  
 **Джерела:** [`phase-e-plan.md`](phase-e-plan.md) §«Пізніше»; [`implementation-status.md`](implementation-status.md); `EVO-1.md` / `EVO-2.md` (stabilize → verify → modularize → harden C2).  
 **Не канон backlog:** канон виконання — [`QUEUE.md`](../QUEUE.md).  
 **Не змінює:** Book 0–IV semantics; peer protocol; нові network/federation фічі.

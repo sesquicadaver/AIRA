@@ -1,6 +1,6 @@
 # AIRA Desktop UX — канон рішень
 
-**Статус:** зафіксовано 2026-08-20 (рішення розробника); уточнено 2026-08-20 (CLI, layout, GUI tech, port/HTTP).  
+**Статус:** зафіксовано 2026-08-20; Phase E `#75`–`#106` **DONE** (2026-08-22); Phase F stabilization **DONE** (`#107`–`#119`, 2026-08-24). Активна черга: Phase G [`phase-g-plan.md`](phase-g-plan.md) `#120`–`#146`.  
 **План виконання:** [`phase-e-plan.md`](phase-e-plan.md). Канон черги: [`QUEUE.md`](../QUEUE.md).  
 **Provenance:** [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED**).  
 **Не змінює** Book 0–IV / C0–C1 / Core.  
@@ -39,7 +39,8 @@
 **Онбординг P1:** обмін файлом/QR (pubkey + опційно addr) — Addendum E1.1 (`#80`–`#85`).  
 **Рішення 2026-08-20:** варіант **C** — E1 = лише **P0 + GUI**; P1 = E1.1.  
 **Рішення E1.1 (2026-08-20):** default `peer_listen=127.0.0.1:9797`; non-loopback лише explicit; QR = PNG файл (без камери).  
-**Рішення E4 (2026-08-22):** P2–P6 відкрито в [`phase-e-plan.md`](phase-e-plan.md) §4d → QUEUE `#94`–`#106` (лінійно P2→P6).
+**Рішення E4 (2026-08-22):** P2–P6 відкрито в [`phase-e-plan.md`](phase-e-plan.md) §4d → QUEUE `#94`–`#106` — **DONE**.
+**Phase G (2026-08-24):** peer lifecycle P3/P4 CI stabilization (`#131`–`#132`); invite QR **camera** capture (`#133`); production packaging scripts (`#143`–`#145`).
 
 Заборонено в default Desktop: `--allow-public-bind`, публічний STUN default, авто-trust невідомих peers, прихований auto-increment порту.
 

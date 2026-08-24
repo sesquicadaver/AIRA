@@ -1,5 +1,7 @@
 # Desktop peer lifecycle (QUEUE #82, E4 `#95`, `#98`)
 
+**Phase G:** CI stabilization for P3/P4 integration tests (`#131`–`#132`); see [`phase-g-plan.md`](phase-g-plan.md).
+
 When `network_profile=P1`, `aira desktop start` supervises:
 
 1. `aira-node --http` (unchanged)

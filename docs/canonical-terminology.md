@@ -1,7 +1,20 @@
 # Canonical Terminology Guardrail
 
 **Issue:** #8  
-**Purpose:** Prevent regression into superseded GPU/Node/Driver/Scheduler-first vocabulary in Core.
+**Purpose:** Prevent regression into superseded GPU/Node/Driver/Scheduler-first vocabulary in Core.  
+**Queue / plans:** [`QUEUE.md`](../QUEUE.md) Phase G **OPEN** `#120`–`#146`. Anti-mission list: README §«What AIRA is not»; [`phase-g-plan.md`](phase-g-plan.md) §3.
+
+## Anti-mission (product / architecture — never in QUEUE)
+
+These are **not** deferred phases or «Phase H» backlog items:
+
+| Forbidden product | README |
+|-------------------|--------|
+| GPU marketplace / compute rental | AIRA is **not** a GPU marketplace |
+| LLM runtime (Core as inference host) | AIRA is **not** an LLM runtime |
+| Blockchain network | AIRA is **not** a blockchain network |
+| Scheduler / job orchestration in Core | AIRA is **not** a scheduler |
+| Core solving tasks | Core enables CSU through contracts |
 
 ## Forbidden as Core / ontology terms
 

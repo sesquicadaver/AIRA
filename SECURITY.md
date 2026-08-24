@@ -63,10 +63,11 @@ See [`docs/ci-governance.md`](docs/ci-governance.md) for required checks on `mai
 ## Out of scope (not security guarantees today)
 
 ```text
-production distributed runtime / settlement / CRP
-production STUN/discv5 mesh / marketplace
-codesign / App Store / MSI enterprise deployment
-epistemic CSU / PHM / Book V research tracks
+production distributed runtime / settlement product / CRP product pivot
+production STUN/discv5 mesh
+GPU marketplace · LLM runtime · blockchain network · scheduler (README anti-mission)
+codesign / App Store / MSI enterprise deployment (Phase G `#143`–`#145` = doc/scripts track)
+full epistemic plane / PHM / Book V research tracks (Phase G `#141`–`#142` = basic CSU only)
 ```
 
 ## Related

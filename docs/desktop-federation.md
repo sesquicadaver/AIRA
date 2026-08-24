@@ -1,5 +1,7 @@
 # Desktop federation join (QUEUE #103)
 
+**Phase G:** `federation leave` CLI (`#134`); join hardening (`#135`). **Out:** remote federation runtime; settlement/CRP.
+
 Local operator ceremony: signed federation descriptor JSON → TrustStore pin + `federation/membership.json`. Same semantics as `aira federation join --descriptor`.
 
 ## Runtime API

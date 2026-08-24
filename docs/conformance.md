@@ -1,19 +1,19 @@
 # Conformance guide
 
+Repo-level ТЗ → module → tests map: [implementation-status.md](implementation-status.md). Merge gate: [ci-governance.md](ci-governance.md).
+
 ## Profiles
 
-| Profile | Runner | Focus |
-|---------|--------|-------|
-| C0 | `run_c0` | ontology, object/artifact immutability, event causality, policy gate |
-| C1 | `run_c1` | pipeline 2+2, CSU manifests, verified result completeness, failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) |
-| C2 | `run_c2` | partial local protocols (M13): envelope/response/identity schemas, discovery Capability≠Node, UNSUPPORTED_VERSION without side effects |
+| Profile | Runner | Focus | CI on `main` |
+|---------|--------|-------|----------------|
+| C0 | `run_c0` | ontology, object/artifact immutability, event causality, policy gate, CSU dispatch, acquisition fail-closed | **yes** (job `check`) |
+| C1 | `run_c1` | pipeline 2+2, CSU manifests, verified result completeness, failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) | **yes** |
+| C2 | `run_c2` | partial **local** protocols (M13): envelope/response/identity schemas, discovery Capability≠Node, UNSUPPORTED_VERSION without side effects | **yes** (job `conformance-c2`, QUEUE #117) |
+| C3–C5 | — | federated / settlement / research | no (C3 scaffold planned Phase G `#136`) |
 
 Reports validate against `aira:schema:conformance:report:0.1` and are published as immutable `ConformanceArtifact`.
 
-CI (QUEUE #38 / Analyze-73) runs C0 and C1 after `cargo test`. C2 stays optional / local until a later plan.
-
-Repo-level ТЗ → module → tests map: [implementation-status.md](implementation-status.md).
-
+Phase G `#122`–`#124` adds named local C2 cases (idempotency, hash mismatch, unsigned envelope). See [phase-g-plan.md](phase-g-plan.md).
 
 ## CLI
 
@@ -48,4 +48,4 @@ let alpha = run_alpha_acceptance("/tmp/alpha")?;
 
 ## Partial C2 (Analyze-46 / Roadmap M13)
 
-Local-only protocol compatibility gate. Network C2 / federation / DHT remain out of scope.
+Local-only protocol compatibility gate. Wire network C2 / production federation / DHT remain **post-MVP** and out of C0/C1/C2 CI contract.

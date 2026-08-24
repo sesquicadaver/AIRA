@@ -463,3 +463,20 @@ AIRA Conformance Test Specification v0.1
 перевірити failure → evidence behavior;
 перевірити Operational / Evolution separation.
 ```
+
+---
+
+# Appendix A — Repository implementation pointer (non-normative)
+
+Цей appendix **не** змінює нормативний корпус. Вказує на живий reference tree у репозиторії.
+
+| Artifact | Path |
+|----------|------|
+| Execution queue | [`QUEUE.md`](../QUEUE.md) — Phase G `#120`–`#146` OPEN |
+| Implementation matrix | [`docs/implementation-status.md`](../docs/implementation-status.md) |
+| Documentation index | [`docs/README.md`](../docs/README.md) |
+| Phase plans | [`docs/phase-c-plan.md`](../docs/phase-c-plan.md) … [`docs/phase-g-plan.md`](../docs/phase-g-plan.md) |
+| Conformance runners | `crates/aira-conformance/`; CI [`docs/ci-governance.md`](../docs/ci-governance.md) |
+| Anti-mission | README §«What AIRA is not»; [`docs/phase-g-plan.md`](../docs/phase-g-plan.md) §3 |
+
+**Оновлено:** 2026-08-24 (Phase F DONE; Phase G OPEN).

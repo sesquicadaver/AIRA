@@ -1,5 +1,7 @@
 # Desktop PeerInvite file + QR (QUEUE #83 / #84)
 
+**Phase G `#133`:** GUI camera capture → invite import (roundtrip smoke). File/PNG paths below remain the current contract.
+
 ## File export / import
 
 ```bash

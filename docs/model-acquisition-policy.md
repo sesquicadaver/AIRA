@@ -1,6 +1,6 @@
 # Model acquisition policy (fail-closed)
 
-Phase D/F reference rules for `csu/model-acquisition` (`aira:csu:model.acquisition`).
+Phase D/F reference rules for `csu/model-acquisition` (`aira:csu:model.acquisition`). **Not** a marketplace; local policy gate only ([`phase-d-plan.md`](phase-d-plan.md) D4).
 
 ## Policy file
 

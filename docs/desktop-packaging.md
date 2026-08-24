@@ -1,6 +1,7 @@
 # AIRA Desktop — Linux packaging (QUEUE #79)
 
 **Status:** Developer Preview. **Not** a production distributed AIRA runtime.  
+**Phase G `#145`:** Linux deb metapackage + production path doc/script (beyond Developer Preview tarball).  
 **Format:** **tarball + `.desktop`** (not AppImage) so `#78` XDG autostart (`Exec=aira-desktop`) and menu entries (`Exec=aira` / `Exec=aira-desktop`) stay PATH-compatible.
 
 ## End-user install (no `cargo`)

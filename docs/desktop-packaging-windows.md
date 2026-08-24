@@ -1,7 +1,8 @@
 # AIRA Desktop — Windows packaging (QUEUE #93)
 
 **Status:** Developer Preview. **Not** a production distributed AIRA runtime.  
-**Format:** versioned **`.zip`** with `bin/*.exe` (not MSI). Codesign / SmartScreen / Store are **Out** of E3.
+**Format:** versioned **`.zip`** with `bin/*.exe` (not MSI). Codesign / SmartScreen / Store are **Out** of E3.  
+**Phase G `#144`:** MSI pipeline doc + build script (production path).
 
 ## End-user install (no `cargo`)
 

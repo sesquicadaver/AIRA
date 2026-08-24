@@ -49,6 +49,7 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 
 ## Related
 
-- Phase F plan: [`phase-f-plan.md`](phase-f-plan.md) F0
+- Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
+- Phase G plan (OPEN `#120`): [`phase-g-plan.md`](phase-g-plan.md) G0 — branch protection checklist sync
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
 - RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md)

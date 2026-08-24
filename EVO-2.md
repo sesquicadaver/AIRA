@@ -1,6 +1,8 @@
 # Рекомендаційний план еволюції AIRA
 
-Поточний стан: репозиторій уже вийшов за межі чистого MVP. README фіксує AIRA як локальну/федеративну систему `Problem Statement → Verified Result Artifact → Evidence`, а не GPU/LLM/blockchain-платформу; водночас у статусі вже згадані post-MVP peer/federation/trust напрями.  Черга задач закрита: Phase B #18–#37 DONE, OPEN немає. 
+**Сніпшот:** складено до Phase F; частина P0 stabilization **виконана** (`#107`–`#119`, 2026-08-24). Активна черга: Phase G [`docs/phase-g-plan.md`](docs/phase-g-plan.md) `#120`–`#146`. Канон виконання: [`QUEUE.md`](QUEUE.md).
+
+Поточний стан: репозиторій уже вийшов за межі чистого MVP. README фіксує AIRA як локальну/федеративну систему `Problem Statement → Verified Result Artifact → Evidence`, а не GPU/LLM/blockchain-платформу (README §«What AIRA is not» — **анти-місія**, не backlog). У статусі згадані post-MVP peer/federation/trust і Desktop Developer Preview (Phase E DONE). 
 
 Отже наступний етап — **не нова функціональність**, а **стабілізація Reference Implementation і захист архітектури від розростання**.
 
@@ -256,7 +258,7 @@ DONE
 
 # 5. Рекомендована нова черга задач
 
-Оскільки поточна `QUEUE.md` не має OPEN, нові задачі треба додавати тільки в кінець, зберігаючи правило “один рядок = один Analyze-cycle”. 
+Нові задачі додаються **лише в кінець OPEN-хвоста** через новий план етапу (див. Phase G [`docs/phase-g-plan.md`](docs/phase-g-plan.md)), зберігаючи правило «один рядок = один Analyze-cycle». Анти-місія README (GPU marketplace, LLM runtime, blockchain, scheduler) **ніколи** входить у QUEUE. 
 
 ```text
 #38 CI schema/conformance gate

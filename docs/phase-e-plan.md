@@ -4,7 +4,7 @@
 **Рішення UX:** [`desktop-ux.md`](desktop-ux.md). Provenance проблеми: [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED**).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md). Поза цим планом / addendum поодинокі пункти в QUEUE не додавати.  
 **Не канон Book:** не змінює Core / C0–C1 / OperationalPlane semantics.  
-**Product posture:** Linux E1 = **Developer Preview** shell над reference local plane (не production distributed AIRA). Stabilization P0/P1 поза Desktop (Handle, verify-on-read, CI branch protection тощо) — **окремі майбутні атоми після або паралельно за рішенням розробника**, не блокують і не переставляють `#75`.
+**Product posture:** Linux E1 = **Developer Preview** shell над reference local plane (не production distributed AIRA). Stabilization (Handle, verify-on-read, CI branch protection, acquisition fail-closed, C2 CI, …) — Phase F **DONE** [`phase-f-plan.md`](phase-f-plan.md) `#107`–`#119`.
 
 ## 0. Порядок
 
@@ -270,7 +270,7 @@ Loopback ≠ authorization boundary. Unauthenticated P0 не повинен ек
 
 ### Пізніше (не нумерувати зараз)
 
-Окремі stabilization атоми (branch protection, Handle opacity, verify-on-read, Policy Gate у dispatch, acquisition fail-closed, toolchain pin, `SECURITY.md` refresh, split `model-acquisition`) — **поза Phase E планом**, за окремим рішенням розробника в QUEUE.
+Stabilization атоми (branch protection, Handle opacity, verify-on-read, Policy Gate у dispatch, acquisition fail-closed, toolchain pin, `SECURITY.md` refresh, split `model-acquisition`) — **виконано** у Phase F [`phase-f-plan.md`](phase-f-plan.md) `#107`–`#119` (**DONE**, 2026-08-24). Далі — Phase G [`phase-g-plan.md`](phase-g-plan.md) `#120`–`#146`.
 
 ## 5. RFC / артефакти
 

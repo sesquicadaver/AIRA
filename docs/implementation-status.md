@@ -1,6 +1,8 @@
 # Implementation status
 
-**Status (Analyze-87 / QUEUE #52):** map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps.
+**Status (Analyze-87 / QUEUE #52; Phase F `#119`; Phase G `#120`–`#146` OPEN):** map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps.
+
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#120`) · **Phase G plan:** [`phase-g-plan.md`](phase-g-plan.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -112,7 +114,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Local HTTP API surface | Book IV §16 | `aira-node` `http/` | `http` module tests | **POST-MVP** | Roadmap M11; same reference plane |
 | CLI (`init`, identity, csu, problem, result, artifact, event, conformance) | Book IV §17 | `aira-cli` `commands/` | CLI tests; alpha | **DONE** | Extra post-MVP: peer, federation, tenant |
 | Security defaults (unsigned reject, private deny) | Book IV §19 | artifact + CSU + events | `run_security_baseline` | **DONE** | |
-| Conformance harness + report artifact | Book IV §21–22 | `aira-conformance` | C0/C1 CI; report schema | **DONE** | C2 optional |
+| Conformance harness + report artifact | Book IV §21–22 | `aira-conformance` | C0/C1 CI; C2 job `conformance-c2` (#117) | **DONE** | C2 additional regression gate |
 | Suggested crate layout | Book IV §25–26 | `crates/`, `csu/` | firewall | **DONE** | |
 | `OperationalPlane` ≠ production runtime | Book IV + EVO-2 §3.3 | rustdoc + docs | docs review Analyze-86 | **DONE** | QUEUE #51 |
 
@@ -223,14 +225,45 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 
 ---
 
-## Explicitly not this reference
+## Phase G gates (OPEN)
+
+| QUEUE | Gate | Evidence (target) |
+|-------|------|-------------------|
+| #120 | CI branch protection sync | `ci-governance.md` + contract test for `conformance-c2` |
+| #121 | Living spec smoke | C0 ids in this file ↔ `run_c0` |
+| #122–#124 | C2 depth cases | idempotency, hash mismatch, unsigned envelope |
+| #125–#126 | Evidence gaps | Claim/Assumption fixtures; VRA extended fields |
+| #127–#130 | Mechanical splits | crypto, peer lib, cli peer, desktop app |
+| #131–#133 | Desktop peer CI + QR camera | P3/P4 stable; GUI camera invite |
+| #134–#136 | Federation + C3 scaffold | leave CLI; join hardening; `run_c3` local |
+| #137–#138 | Durable stores audit | event log recovery; SQLite object path |
+| #139–#140 | CSU SDK | external fixture; `docs/csu-sdk.md` (not marketplace) |
+| #141–#142 | Epistemic basic | `csu/epistemic-basic`; assessment roundtrip |
+| #143–#145 | Production packaging | macOS codesign; Windows MSI; Linux deb |
+| #146 | Phase G docs + RFC | README + this file v0.2; RFC-0069; QUEUE G closed |
+
+Plan: [`phase-g-plan.md`](phase-g-plan.md).
+
+---
+
+## Explicitly not this reference (anti-mission + out-of-scope)
+
+README §«What AIRA is not» — **ніколи** в QUEUE / phase plans як «later phase»:
 
 ```text
-production event runtime / scheduler / distributed plane
-CRP, settlement ledger, PHM, HIE, KnowledgeOps, Goal Compiler, DSM
-GPU/LLM marketplace, blockchain-required settlement
-CSU SDK / new basic CSU roles to “complete” Book III
+GPU marketplace · LLM runtime · blockchain network · scheduler
+Core що «вирішує задачі» замість CSU contracts
 ```
+
+Навмисно **не** production reference (Book IV posture):
+
+```text
+production event runtime / scheduler / distributed OperationalPlane
+CRP product pivot · settlement ledger product · PHM/HIE runtime
+KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
+```
+
+**Phase G `#120`–`#146` IN SCOPE** (не змінює anti-mission): deeper local C2, mechanical splits, desktop peer CI, federation leave, local C3 scaffold, CSU SDK doc, `epistemic-basic`, production packaging scripts. Plan: [`phase-g-plan.md`](phase-g-plan.md).
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 

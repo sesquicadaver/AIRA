@@ -1,5 +1,7 @@
 # CSU development guide
 
+See also: [model-acquisition-policy.md](model-acquisition-policy.md) (local model layer). Phase G `#140` will add [`csu-sdk.md`](csu-sdk.md) (third-party CSU contract doc; **not** a CSU marketplace).
+
 ## What a CSU is
 
 A Computational Service Unit implements a narrow contract: subscribe to events, optionally read/write artifacts, emit further events. Core does **not** solve tasks; CSUs do.
@@ -37,7 +39,7 @@ Implement `aira_csu::Csu`:
 
 Use `aira_csu::support::{basic_manifest, make_event, make_artifact}` for MVP helpers.
 
-Basic set under `csu/`:
+## Basic set under `csu/`
 
 | Crate | Role |
 |-------|------|
@@ -47,9 +49,20 @@ Basic set under `csu/`:
 | verification-basic | Verified Result |
 | evidence-basic | failure/result evidence |
 | artifact-basic | publish/resolve/supersede ops |
+| model-acquisition | local model download/publish policy gate (not marketplace) |
+| model-rating | contextual rating evidence (local-only) |
+| model-recommendation | advisory upgrade recommendation (local-only) |
+
+**Planned Phase G `#141`:** `epistemic-basic` (EPI-001 smoke).
 
 ## Isolation baseline
 
 Default sandbox: no filesystem/network/device/secret access; in-process only. Do not emit secret material into `payload_ref` (event log rejects obvious secret patterns).
 
+`scripts/dep_firewall.py` enforces `aira-core` ↛ node/peer/CSU and CSU ↛ CSU (QUEUE `#45`).
+
 CSU `on_event` is invoked by the local C1 **reference/demo** `OperationalPlane` ([operational-plane.md](operational-plane.md)), not a production event, scheduler, or federation runtime.
+
+## Anti-mission
+
+AIRA is **not** a GPU marketplace, LLM runtime host, blockchain network, or scheduler. Model/GPU references belong in **Artifacts** and model-layer CSUs, not Core ontology. README §«What AIRA is not»; [canonical-terminology.md](canonical-terminology.md).

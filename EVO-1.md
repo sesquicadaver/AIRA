@@ -28,9 +28,9 @@
 
 У `Cargo.toml` уже є не тільки MVP crates, а й `aira-protocol`, `aira-peer`, `aira-flow`, `aira-node`, `aira-cli`, а також TLS/Noise/X25519/SQLite/HTTP-залежності. 
 
-Це нормально, бо `QUEUE.md` показує, що Phase B #18–#37 уже закриті, включно з STUN, UDP announce, iterative FIND_NODE, federation join prototype, tenant secrets, HTTP authz, mTLS-related work. Черга зараз не має OPEN задач. 
+Це нормально, бо `QUEUE.md` показує закриті Phase B–F і **активну** Phase G `#120`–`#146` (перший OPEN = `#120`). Проєкт — **після MVP Alpha** і **після Desktop Developer Preview**, у фазі Reference v0.2 completion. 
 
-Тобто проект фактично перебуває **після MVP Alpha**, а не перед MVP.
+Тобто проект фактично перебуває **після MVP Alpha і Phase E Desktop**, з активною лінійною чергою Phase G.
 
 ---
 
