@@ -35,10 +35,10 @@ Problem Statement
 ## Status
 
 **Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha**.
-**Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing; Trust; Peer P0–P2 + DHT/relay/gossip (`docs/crypto.md`, `docs/peer-link.md`, `docs/local-node.md`).
+**Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing; Trust; Peer P0–P6 + DHT/relay/gossip (`docs/crypto.md`, `docs/peer-link.md`, `docs/local-node.md`, [`docs/desktop-network-profiles.md`](docs/desktop-network-profiles.md)).
 **OperationalPlane:** C1 reference/demo only — [`docs/operational-plane.md`](docs/operational-plane.md) (not production event/scheduler/federation runtime).
-**Implementation status:** [`docs/implementation-status.md`](docs/implementation-status.md) — Book 0–IV / schemas / C0–C1 / CSU basic; HTTP/peer = post-MVP.
-**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C **#38–#52 DONE**. Phase D **#53–#74 DONE**. Phase E Desktop **#75–#93 DONE** (Linux E1 + E1.1 + E2 macOS + E3 Windows); **E4 P2–P6 `#94`–`#106` OPEN** — [`docs/phase-e-plan.md`](docs/phase-e-plan.md).
+**Implementation status:** [`docs/implementation-status.md`](docs/implementation-status.md) — Book 0–IV / schemas / C0–C2 / CSU basic; HTTP/peer = post-MVP.
+**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C **#38–#52 DONE**. Phase D **#53–#74 DONE**. Phase E Desktop **#75–#106 DONE** (E4 P0–P6). Phase F Post-E stabilization **#107–#119 DONE** — [`docs/phase-f-plan.md`](docs/phase-f-plan.md).
 
 Останні закриті slices: A-56…A-63; A-64 multi-tenant HTTP CSU authz.
 
@@ -71,6 +71,7 @@ cargo run -p aira-node -- --root /tmp/aira-demo --text "Calculate 2 + 2"
 cargo run -p aira-node -- --root /tmp/aira-demo --http --listen 127.0.0.1:8787
 cargo run -p aira-cli -- conformance run --profile C0 --out /tmp/aira-c0
 cargo run -p aira-cli -- conformance run --profile C1 --out /tmp/aira-c1
+cargo run -p aira-cli -- conformance run --profile C2 --out /tmp/aira-c2
 ```
 
 ```bash

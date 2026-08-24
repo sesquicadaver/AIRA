@@ -1,6 +1,6 @@
 # Phase F — Post-E Stabilization v0.1
 
-**Статус:** складено 2026-08-22; **OPEN** → QUEUE `#107`–`#119`.  
+**Статус:** **DONE** (2026-08-24) → QUEUE `#107`–`#119` closed @ RFC-0068.  
 **Джерела:** [`phase-e-plan.md`](phase-e-plan.md) §«Пізніше»; [`implementation-status.md`](implementation-status.md); `EVO-1.md` / `EVO-2.md` (stabilize → verify → modularize → harden C2).  
 **Не канон backlog:** канон виконання — [`QUEUE.md`](../QUEUE.md).  
 **Не змінює:** Book 0–IV semantics; peer protocol; нові network/federation фічі.
@@ -93,5 +93,5 @@ No new OPEN stabilization rows without new developer decision.
 
 ## 6. RFC
 
-- Consolidating docs atom: RFC-F Phase F stabilization (`#119`).
+- Consolidating docs atom: [`AIRA-RFC-0068`](../specs/rfc/AIRA-RFC-0068-phase-f-stabilization.md) Phase F stabilization (`#119`).
 - Per-atom RFC-E лише якщо атом торкається контракту (verify-on-read, dispatch policy).
