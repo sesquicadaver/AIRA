@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#124` DONE @ PR #87; **перший OPEN = `#125`** (Claim/Assumption fixtures) |
+| `main` | Phase G `#125` DONE @ PR #88; **перший OPEN = `#126`** (VRA extended fields) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#146` |
@@ -256,7 +256,7 @@ F0 stabilize CI (#107–#109)
 | 122 | **DONE** | ~~Analyze-157 — C2 event idempotency~~ | conformance `c2.event.publish_idempotent` | C2 job green; duplicate publish safe | wire network |
 | 123 | **DONE** | ~~Analyze-158 — C2 artifact hash mismatch~~ | conformance `c2.artifact.hash_mismatch` | hash tamper → fail | new artifact types |
 | 124 | **DONE** | ~~Analyze-159 — C2 envelope unsigned~~ | conformance `c2.protocol.envelope_unsigned` | unsigned envelope → fail | envelope semantics change |
-| 125 | **OPEN** | Analyze-160 — Claim/Assumption fixtures | valid/invalid JSON + manifest | `schema validate --fixtures` зелений | Epistemic CSU impl |
+| 125 | **DONE** | ~~Analyze-160 — Claim/Assumption fixtures~~ | valid/invalid JSON + manifest | `schema validate --fixtures` зелений | Epistemic CSU impl |
 | 126 | **OPEN** | Analyze-161 — VRA extended fields | conformance VRA field coverage | named test green | full Book I 1:1 fields |
 | 127 | **OPEN** | Analyze-162 — split crypto mod | mechanical `aira-object/src/crypto/mod.rs` | `cargo test -p aira-object` green | crypto behavior change |
 | 128 | **OPEN** | Analyze-163 — split aira-peer lib | mechanical `aira-peer/src/lib.rs` | `cargo test -p aira-peer` green | protocol change |

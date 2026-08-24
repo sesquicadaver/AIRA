@@ -40,7 +40,7 @@ Problem Statement
 **OperationalPlane:** C1 reference/demo only — [`docs/operational-plane.md`](docs/operational-plane.md) (not production event/scheduler/federation runtime).
 **Implementation status:** [`docs/implementation-status.md`](docs/implementation-status.md) — Book 0–IV / schemas / C0–C2 / CSU basic; HTTP/peer = post-MVP.
 **Documentation index:** [`docs/README.md`](docs/README.md).
-**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C **#38–#52 DONE**. Phase D **#53–#74 DONE**. Phase E **#75–#106 DONE**. Phase F stabilization **#107–#119 DONE** ([`docs/phase-f-plan.md`](docs/phase-f-plan.md)). Phase G Reference v0.2 **#120–#146 OPEN** — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); **перший OPEN = `#120`**.
+**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C **#38–#52 DONE**. Phase D **#53–#74 DONE**. Phase E **#75–#106 DONE**. Phase F stabilization **#107–#119 DONE** ([`docs/phase-f-plan.md`](docs/phase-f-plan.md)). Phase G Reference v0.2 **#120–#146 OPEN** — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); **перший OPEN = `#126`**.
 
 Останні закриті slices: Phase F `#107`–`#119` (Rust 1.94, C2 CI job, verify-on-read, acquisition fail-closed, `peer_lifecycle_p2` CI stable, RFC-0068).
 

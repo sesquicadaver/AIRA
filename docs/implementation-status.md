@@ -2,7 +2,7 @@
 
 **Status (Analyze-87 / QUEUE #52; Phase F `#119`; Phase G `#120`–`#146` OPEN):** map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#125`) · **Phase G plan:** [`phase-g-plan.md`](phase-g-plan.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#126`) · **Phase G plan:** [`phase-g-plan.md`](phase-g-plan.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -234,8 +234,8 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #122 | C2 event idempotency | `c2.event.publish_idempotent`; RFC-0072 | **DONE** @ PR #85 |
 | #123 | C2 artifact hash mismatch | `c2.artifact.hash_mismatch`; RFC-0073 | **DONE** @ PR #86 |
 | #124 | C2 envelope unsigned | `c2.protocol.envelope_unsigned`; RFC-0074 | **DONE** @ PR #87 |
-| #125 | Claim/Assumption fixtures | `claim-artifact.schema.json` + fixtures; RFC-0075 | **OPEN** |
-| #126 | VRA extended fields | schema + fixtures |
+| #125 | Claim/Assumption fixtures | `claim-artifact.schema.json` + fixtures; RFC-0075 | **DONE** @ PR #88 |
+| #126 | VRA extended fields | schema + fixtures | **OPEN** |
 | #127–#130 | Mechanical splits | crypto, peer lib, cli peer, desktop app |
 | #131–#133 | Desktop peer CI + QR camera | P3/P4 stable; GUI camera invite |
 | #134–#136 | Federation + C3 scaffold | leave CLI; join hardening; `run_c3` local |

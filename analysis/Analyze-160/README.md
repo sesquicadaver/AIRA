@@ -1,7 +1,7 @@
 # Analyze-160 — Claim/Assumption fixtures (QUEUE #125)
 
 ## Status
-OPEN — branch `queue-125-claim-assumption-fixtures`.
+CLOSED @ 9a2bc5a / PR #88 (QUEUE #125 DONE).
 
 ## Done when
 `schemas/evidence/claim-artifact.schema.json`; valid claim + assumption fixtures; invalid claim-without-evidence + missing-signature; `fixtures/manifest.json` entries; `schema validate --fixtures` green; B0-005 partial closed.
