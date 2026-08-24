@@ -2,7 +2,7 @@
 
 **Status (Analyze-87 / QUEUE #52; Phase F `#119`; Phase G `#120`–`#146` OPEN):** map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#124`) · **Phase G plan:** [`phase-g-plan.md`](phase-g-plan.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#125`) · **Phase G plan:** [`phase-g-plan.md`](phase-g-plan.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -35,7 +35,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Forbidden Core entities (GPU/LLM/Node/Driver/Scheduler/…) | Book 0 §3.2; B0-002 | Schema + fixture reject | `fixtures/invalid/core/object-descriptor-gpu.json`; `scripts/dep_firewall.py` | **DONE** | Core must not import node/peer/concrete CSU |
 | Operational pipeline PS → Interpret → Reduce → Materialize → Verify → VRA | Book 0 §4; B0-003; OP-001 | `aira_flow::OperationalPlane` (C1 **reference/demo**) | `c1.pipeline.calculate_2_plus_2`; `aira-flow` `calculate_two_plus_two_demo` | **DONE** | Plane is not production event/scheduler/federation runtime |
 | Human Final Collapse / no silent pick | Book 0 A6; B0-004 | `is_normative_split` string heuristic + OperationalArtifact | `normative_split_stub_does_not_autocollapse` | **STUB** | Not a full Differentiated Solution Field CSU |
-| Evidence primacy | Book 0 A5; B0-005 | `csu/evidence-basic`; failure evidence path | `c1.failure.to_evidence`; `failure_creates_failure_evidence` | **PARTIAL** | Failure→evidence for C1; no standalone Claim/Assumption suite |
+| Evidence primacy | Book 0 A5; B0-005 | `schemas/evidence/claim-artifact.schema.json`; `csu/evidence-basic`; failure evidence path | `schema validate --fixtures` claim/assumption (#125); `c1.failure.to_evidence`; `failure_creates_failure_evidence` | **PARTIAL** | B0-005 schema gate for Claim vs Assumption; no runtime Epistemic CSU |
 | Epistemic Status as distinct coordinate | Book 0 §6 | `schemas/evidence/epistemic-assessment.schema.json` | schema fixtures (#108) | **PARTIAL** | No Epistemic CSU (`csu/` has no epistemic crate) |
 | Evolution / Research plane | Book 0 §10; Book V | — | — | **RESEARCH** | Isolated; not mixed into Core |
 | Cost / escalation / Goal Compiler | Book 0 §8–9; Book V | — | — | **RESEARCH** | Out of MVP |
@@ -168,7 +168,7 @@ Conformance spec §19 lists extra fixture *names* (event chain, policy deny, res
 | Security baseline | Conformance §14 subset | `run_security_baseline` | unsigned CSU/artifact; private deny; secret in events | crate tests | **DONE** |
 | Alpha acceptance | MVP | `run_alpha_acceptance` | init layout, 2+2, failure evidence, C0/C1 | crate tests | **DONE** |
 
-C0/C1 are a **minimal** encoding of B0/B1/OP/CSU MUST tests, not a 1:1 clone of every Conformance `B*-*` id. Remaining gaps (full VRA field list, B0-005 Claim artifacts, B2 network wire) stay documented here.
+C0/C1 are a **minimal** encoding of B0/B1/OP/CSU MUST tests, not a 1:1 clone of every Conformance `B*-*` id. Remaining gaps (full VRA field list, B0-005 runtime enforcement, B2 network wire) stay documented here.
 
 RFC: [`AIRA-RFC-0068`](../specs/rfc/AIRA-RFC-0068-phase-f-stabilization.md) (Phase F closure `#119`).
 
@@ -234,7 +234,8 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #122 | C2 event idempotency | `c2.event.publish_idempotent`; RFC-0072 | **DONE** @ PR #85 |
 | #123 | C2 artifact hash mismatch | `c2.artifact.hash_mismatch`; RFC-0073 | **DONE** @ PR #86 |
 | #124 | C2 envelope unsigned | `c2.protocol.envelope_unsigned`; RFC-0074 | **DONE** @ PR #87 |
-| #125–#126 | Evidence gaps | Claim/Assumption fixtures; VRA extended fields |
+| #125 | Claim/Assumption fixtures | `claim-artifact.schema.json` + fixtures; RFC-0075 | **OPEN** |
+| #126 | VRA extended fields | schema + fixtures |
 | #127–#130 | Mechanical splits | crypto, peer lib, cli peer, desktop app |
 | #131–#133 | Desktop peer CI + QR camera | P3/P4 stable; GUI camera invite |
 | #134–#136 | Federation + C3 scaffold | leave CLI; join hardening; `run_c3` local |

@@ -1,0 +1,19 @@
+{
+  "claim_id": "aira:claim:01BAD",
+  "claim_kind": "Claim",
+  "statement": "claim without evidence violates B0-005",
+  "evidence_refs": [],
+  "counter_evidence_refs": [],
+  "epistemic_status": "Observation",
+  "confidence": 0.5,
+  "scope": {
+    "scope_type": "local"
+  },
+  "revision_refs": [],
+  "created_at": "2026-07-10T12:02:00Z",
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}
