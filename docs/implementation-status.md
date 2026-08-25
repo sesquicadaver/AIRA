@@ -237,14 +237,14 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #125 | Claim/Assumption fixtures | `claim-artifact.schema.json` + fixtures; RFC-0075 | **DONE** @ PR #88 |
 | #126 | VRA extended fields | `c1.result.extended_fields`; RFC-0076 | **DONE** @ PR #89 |
 | #127 | Split crypto mod | mechanical `aira-object/crypto` | **OPEN** |
-| #127–#130 | Mechanical splits | crypto, peer lib, cli peer, desktop app |
 | #131–#133 | Desktop peer CI + QR camera | P3/P4 stable; GUI camera invite |
-| #134–#136 | Federation + C3 scaffold | leave CLI; join hardening; `run_c3` local |
-| #137–#138 | Durable stores audit | event log recovery; SQLite object path |
-| #139–#140 | CSU SDK | external fixture; `docs/csu-sdk.md` (not marketplace) |
-| #141–#142 | Epistemic basic | `csu/epistemic-basic`; assessment roundtrip |
-| #143–#145 | Production packaging | macOS codesign; Windows MSI; Linux deb |
-| #146 | Phase G docs + RFC | README + this file v0.2; RFC-0069; QUEUE G closed |
+| #134–#138 | SEC hardening (audit) | local-test trust; envelope sign; identity bind; equivocation; artifact admission |
+| #139–#141 | Federation + C3 scaffold | leave CLI; join hardening; `run_c3` local |
+| #142–#143 | Durable stores audit | event log recovery; SQLite object path |
+| #144–#145 | CSU SDK | external fixture; `docs/csu-sdk.md` (not marketplace) |
+| #146–#147 | Epistemic basic | `csu/epistemic-basic`; assessment roundtrip |
+| #148–#150 | Production packaging | macOS codesign; Windows MSI; Linux deb |
+| #151 | Phase G docs + RFC | README + this file v0.2; RFC-0069; QUEUE G closed |
 
 Plan: [`phase-g-plan.md`](phase-g-plan.md).
 

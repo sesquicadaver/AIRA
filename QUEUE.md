@@ -3,7 +3,7 @@
 **Оновлено:** 2026-08-24  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#146` **OPEN** (2026-08-24).
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **OPEN** (2026-08-26).
 
 ## Стан
 
@@ -12,7 +12,7 @@
 | `main` | Phase G `#126` DONE @ PR #89; **перший OPEN = `#127`** (split crypto mod) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase G reference v0.2 `#120`–`#146` |
+| Активна черга | Phase G reference v0.2 `#120`–`#151` |
 
 ## Правила атомарності
 
@@ -265,23 +265,28 @@ F0 stabilize CI (#107–#109)
 | 131 | **OPEN** | Analyze-166 — stabilize peer_lifecycle_p3 | CI-stable P3 lifecycle test | 3 consecutive CI green | P4; relay semantics |
 | 132 | **OPEN** | Analyze-167 — stabilize peer_lifecycle_p4 | CI-stable P4 gossip lifecycle | 3 consecutive CI green | P5 federation GUI |
 | 133 | **OPEN** | Analyze-168 — invite QR camera | GUI camera → invite import | roundtrip smoke | non-loopback peer |
-| 134 | **OPEN** | Analyze-169 — federation leave | CLI `federation leave` | membership cleared; tests | Join Request protocol |
-| 135 | **OPEN** | Analyze-170 — federation join hardening | join edge cases + audit | regression tests green | remote federation |
-| 136 | **OPEN** | Analyze-171 — C3 conformance scaffold | `run_c3` minimal local cases | runner + doc; optional CI note | full C3 wire |
-| 137 | **OPEN** | Analyze-172 — event log durability | JSON log corruption recovery test | test + doc note | production event engine |
-| 138 | **OPEN** | Analyze-173 — SQLite object path | integrity/migration smoke | test + status doc | new object fields |
-| 139 | **OPEN** | Analyze-174 — external CSU fixture | third-party manifest loads | registry smoke green | CSU marketplace |
-| 140 | **OPEN** | Analyze-175 — CSU SDK doc | `docs/csu-sdk.md` + conformance case | doc + named test | SDK distribution |
-| 141 | **OPEN** | Analyze-176 — epistemic-basic CSU | `csu/epistemic-basic` EPI-001 | crate tests green | full Epistemic plane |
-| 142 | **OPEN** | Analyze-177 — epistemic assessment path | epistemic artifact roundtrip smoke | CLI/plane test | normative split CSU |
-| 143 | **OPEN** | Analyze-178 — macOS codesign | notarization script + doc update | script dry-run doc | App Store |
-| 144 | **OPEN** | Analyze-179 — Windows MSI | MSI build script + doc | artifact builds on CI runner | codesign enterprise |
-| 145 | **OPEN** | Analyze-180 — Linux deb metapackage | deb production path doc + script | package smoke | AppImage |
-| 146 | **OPEN** | Analyze-181 — Phase G docs closure | README + implementation-status v0.2; RFC-0069 | G scope documented; QUEUE G closed | post-G RFC track; анти-місія README |
+| 134 | **OPEN** | Analyze-182 — SEC-1 local-test trust hardening | `local-test` не в runtime trust; peer reject test identity; migration note | conformance/peer negative test green | full identity ceremony |
+| 135 | **OPEN** | Analyze-183 — SEC-2 canonical envelope signature | full envelope + response canonical sign/verify; `key_ref == issuer` | C2 mutation tests per field green | wire protocol version bump |
+| 136 | **OPEN** | Analyze-184 — SEC-3 producer identity binding | `signature.key_ref == producer_identity` on Object/Event/Artifact | store + conformance reject cross-identity | delegation artifacts |
+| 137 | **OPEN** | Analyze-185 — SEC-4 event equivocation | same `event_id` + diff hash → conflict; C2 case | idempotent same-hash ACCEPT | global total order |
+| 138 | **OPEN** | Analyze-186 — SEC-5 artifact admission | immutable descriptor admission; supersession persist on reopen | artifact store tests green | new artifact types |
+| 139 | **OPEN** | Analyze-169 — federation leave | CLI `federation leave` | membership cleared; tests | Join Request protocol |
+| 140 | **OPEN** | Analyze-170 — federation join hardening | join edge cases + audit | regression tests green | remote federation |
+| 141 | **OPEN** | Analyze-171 — C3 conformance scaffold | `run_c3` minimal local cases | runner + doc; optional CI note | full C3 wire |
+| 142 | **OPEN** | Analyze-172 — event log durability | JSON log corruption recovery test | test + doc note | production event engine |
+| 143 | **OPEN** | Analyze-173 — SQLite object path | integrity/migration smoke | test + status doc | new object fields |
+| 144 | **OPEN** | Analyze-174 — external CSU fixture | third-party manifest loads | registry smoke green | CSU marketplace |
+| 145 | **OPEN** | Analyze-175 — CSU SDK doc | `docs/csu-sdk.md` + conformance case | doc + named test | SDK distribution |
+| 146 | **OPEN** | Analyze-176 — epistemic-basic CSU | `csu/epistemic-basic` EPI-001 | crate tests green | full Epistemic plane |
+| 147 | **OPEN** | Analyze-177 — epistemic assessment path | epistemic artifact roundtrip smoke | CLI/plane test | normative split CSU |
+| 148 | **OPEN** | Analyze-178 — macOS codesign | notarization script + doc update | script dry-run doc | App Store |
+| 149 | **OPEN** | Analyze-179 — Windows MSI | MSI build script + doc | artifact builds on CI runner | codesign enterprise |
+| 150 | **OPEN** | Analyze-180 — Linux deb metapackage | deb production path doc + script | package smoke | AppImage |
+| 151 | **OPEN** | Analyze-181 — Phase G docs closure | README + implementation-status v0.2; RFC-0069 | G scope documented; QUEUE G closed | post-G RFC track; анти-місія README |
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#120` CI branch protection sync. Порядок: `#120` → `#146`.
+**Перший OPEN:** `#127` split crypto mod. Порядок: `#127` → `#151` (SEC `#134`–`#138` перед federation).
 
 ```text
 G0 govern (#120–#121)
@@ -289,12 +294,13 @@ G0 govern (#120–#121)
     → G2 evidence gaps (#125–#126)
       → G3 modularize (#127–#130)
         → G4 desktop peer (#131–#133)
-          → G5 federation/C3 (#134–#136)
-            → G6 durable stores (#137–#138)
-              → G7 CSU SDK (#139–#140)
-                → G8 epistemic (#141–#142)
-                  → G9 packaging (#143–#145)
-                    → G10 docs (#146)
+          → G-SEC hardening (#134–#138) — audit blockers before peer/federation
+            → G5 federation/C3 (#139–#141)
+              → G6 durable stores (#142–#143)
+                → G7 CSU SDK (#144–#145)
+                  → G8 epistemic (#146–#147)
+                    → G9 packaging (#148–#150)
+                      → G10 docs (#151)
 ```
 
 ---
@@ -328,6 +334,6 @@ G0 govern (#120–#121)
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
 | Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#106` DONE (2026-08-22) |
 | Post-E stabilization (phase-e §Пізніше; EVO-2) | [`docs/phase-f-plan.md`](docs/phase-f-plan.md); `#107`–`#119` **DONE** (2026-08-24) |
-| Reference v0.2 (local C2 depth, C3 scaffold, SDK, packaging) | [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#146` OPEN (2026-08-24) |
+| Reference v0.2 (local C2 depth, SEC hardening, C3 scaffold, SDK, packaging) | [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` OPEN (2026-08-26) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

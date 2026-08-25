@@ -1,6 +1,6 @@
 # Phase G — Reference completion v0.2
 
-**Статус:** складено 2026-08-24; **OPEN** → QUEUE `#120`–`#146`.  
+**Статус:** складено 2026-08-24; **OPEN** → QUEUE `#120`–`#151` (2026-08-26: SEC `#134`–`#138` перед federation).  
 **Джерела:** [`implementation-status.md`](implementation-status.md) (PARTIAL/STUB/ABSENT); [`phase-f-plan.md`](phase-f-plan.md) §3 post-F; EVO-2 (local C2 → controlled C3 → CSU SDK); [`peer-link.md`](peer-link.md) Out.  
 **Не канон backlog:** канон виконання — [`QUEUE.md`](../QUEUE.md).  
 **Не змінює:** Book 0–III semantics без RFC; не додає CRP/settlement/PHM/HIE як runtime dependency.
@@ -26,6 +26,7 @@ govern (CI truth, living spec)
   → close evidence gaps (Claim/VRA)
   → modularize (crypto, peer, cli peer, desktop app)
   → harden desktop peer CI + camera QR
+  → SEC hardening (trust, envelope, identity binding, equivocation, artifact admission)
   → federation minimal (leave, join audit, C3 scaffold)
   → durable stores audit
   → CSU SDK smoke
@@ -91,19 +92,24 @@ Universal Intent Theory у Reference
 | `#131` | G4 | Stabilize `peer_lifecycle_p3` | serial/retry pattern як #118; CI stable |
 | `#132` | G4 | Stabilize `peer_lifecycle_p4` | serial/retry pattern; CI stable |
 | `#133` | G4 | Invite QR camera | GUI capture → import invite; roundtrip smoke |
-| `#134` | G5 | Federation leave | CLI `federation leave`; membership cleared; tests |
-| `#135` | G5 | Federation join hardening | edge cases (wrong pin, rejoin); audit tests |
-| `#136` | G5 | C3 conformance scaffold | `run_c3` minimal local cases; optional CI job doc |
-| `#137` | G6 | Event log durability audit | corruption/partial JSON recovery test; doc note |
-| `#138` | G6 | SQLite object store path | migration/integrity smoke; doc in implementation-status |
-| `#139` | G7 | External CSU fixture | third-party manifest JSON loads in registry smoke |
-| `#140` | G7 | CSU SDK doc + conformance | `docs/csu-sdk.md` + named third-party CSU case |
-| `#141` | G8 | `epistemic-basic` CSU | `csu/epistemic-basic`; EPI-001 smoke test |
-| `#142` | G8 | Epistemic assessment path | plane/CLI smoke: epistemic artifact roundtrip |
-| `#143` | G9 | macOS codesign doc+script | `desktop-packaging-macos.md` + notarization helper |
-| `#144` | G9 | Windows MSI pipeline | `desktop-packaging-windows.md` + build script |
-| `#145` | G9 | Linux deb metapackage | deb/.desktop production path doc + script |
-| `#146` | G10 | Phase G docs closure | README + `implementation-status` v0.2; RFC-0069; QUEUE close G |
+| `#134` | G-SEC | SEC-1 local-test trust hardening | runtime trust без `local-test`; peer reject; negative test |
+| `#135` | G-SEC | SEC-2 canonical envelope signature | full envelope/response sign; C2 field mutation tests |
+| `#136` | G-SEC | SEC-3 producer identity binding | `signature.key_ref == producer_identity`; store rejects |
+| `#137` | G-SEC | SEC-4 event equivocation | same id + diff hash → conflict; C2 case |
+| `#138` | G-SEC | SEC-5 artifact admission | immutable descriptor admission; supersession persist |
+| `#139` | G5 | Federation leave | CLI `federation leave`; membership cleared; tests |
+| `#140` | G5 | Federation join hardening | edge cases (wrong pin, rejoin); audit tests |
+| `#141` | G5 | C3 conformance scaffold | `run_c3` minimal local cases; optional CI job doc |
+| `#142` | G6 | Event log durability audit | corruption/partial JSON recovery test; doc note |
+| `#143` | G6 | SQLite object store path | migration/integrity smoke; doc in implementation-status |
+| `#144` | G7 | External CSU fixture | third-party manifest JSON loads in registry smoke |
+| `#145` | G7 | CSU SDK doc + conformance | `docs/csu-sdk.md` + named third-party CSU case |
+| `#146` | G8 | `epistemic-basic` CSU | `csu/epistemic-basic`; EPI-001 smoke test |
+| `#147` | G8 | Epistemic assessment path | plane/CLI smoke: epistemic artifact roundtrip |
+| `#148` | G9 | macOS codesign doc+script | `desktop-packaging-macos.md` + notarization helper |
+| `#149` | G9 | Windows MSI pipeline | `desktop-packaging-windows.md` + build script |
+| `#150` | G9 | Linux deb metapackage | deb/.desktop production path doc + script |
+| `#151` | G10 | Phase G docs closure | README + `implementation-status` v0.2; RFC-0069; QUEUE close G |
 
 ```text
 #120 branch protection
@@ -112,12 +118,13 @@ Universal Intent Theory у Reference
       → #125–#126 evidence gaps
         → #127–#130 splits
           → #131–#133 desktop peer
-            → #134–#136 federation/C3
-              → #137–#138 durable stores
-                → #139–#140 CSU SDK
-                  → #141–#142 epistemic
-                    → #143–#145 packaging
-                      → #146 docs RFC
+            → #134–#138 SEC hardening
+              → #139–#141 federation/C3
+                → #142–#143 durable stores
+                  → #144–#145 CSU SDK
+                    → #146–#147 epistemic
+                      → #148–#150 packaging
+                        → #151 docs RFC
 ```
 
 ## 5. Acceptance Phase G
