@@ -2,7 +2,7 @@
 
 **Status (Analyze-87 / QUEUE #52; Phase F `#119`; Phase G `#120`–`#146` OPEN):** map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#130`) · **Phase G plan:** [`phase-g-plan.md`](phase-g-plan.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#131`) · **Phase G plan:** [`phase-g-plan.md`](phase-g-plan.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -239,7 +239,7 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #127 | Split crypto mod | `crypto/smoke_tests.rs` mechanical split | **DONE** @ PR #90 |
 | #128 | Split aira-peer lib | `smoke_tests.rs` mechanical split | **DONE** @ PR #91 |
 | #129 | Split cli peer | `commands/peer/` mechanical split | **DONE** @ PR #92 |
-| #130 | Split desktop app | mechanical `aira-desktop/src/app.rs` | **OPEN** |
+| #130 | Split desktop app | `app/` mechanical split | **DONE** @ PR #93 |
 | #131–#133 | Desktop peer CI + QR camera | P3/P4 stable; GUI camera invite |
 | #134–#138 | SEC hardening (audit) | local-test trust; envelope sign; identity bind; equivocation; artifact admission |
 | #139–#141 | Federation + C3 scaffold | leave CLI; join hardening; `run_c3` local |

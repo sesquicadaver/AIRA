@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#129` DONE @ PR #92; **перший OPEN = `#130`** (split desktop app) |
+| `main` | Phase G `#130` DONE @ PR #93; **перший OPEN = `#131`** (stabilize peer_lifecycle_p3) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
@@ -261,7 +261,7 @@ F0 stabilize CI (#107–#109)
 | 127 | **DONE** | ~~Analyze-162 — split crypto mod~~ | mechanical `aira-object/src/crypto/mod.rs` | `cargo test -p aira-object` green | crypto behavior change |
 | 128 | **DONE** | ~~Analyze-163 — split aira-peer lib~~ | mechanical `aira-peer/src/lib.rs` | `cargo test -p aira-peer` green | protocol change |
 | 129 | **DONE** | ~~Analyze-164 — split cli peer~~ | mechanical `aira-cli/commands/peer/` | peer CLI tests green | new peer commands |
-| 130 | **OPEN** | Analyze-165 — split desktop app | mechanical `aira-desktop/src/app.rs` | desktop tests green | GUI redesign |
+| 130 | **DONE** | ~~Analyze-165 — split desktop app~~ | mechanical `aira-desktop/src/app/` | desktop tests green | GUI redesign |
 | 131 | **OPEN** | Analyze-166 — stabilize peer_lifecycle_p3 | CI-stable P3 lifecycle test | 3 consecutive CI green | P4; relay semantics |
 | 132 | **OPEN** | Analyze-167 — stabilize peer_lifecycle_p4 | CI-stable P4 gossip lifecycle | 3 consecutive CI green | P5 federation GUI |
 | 133 | **OPEN** | Analyze-168 — invite QR camera | GUI camera → invite import | roundtrip smoke | non-loopback peer |
@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#130` split desktop app. Порядок: `#130` → `#151` (SEC `#134`–`#138` перед federation).
+**Перший OPEN:** `#131` stabilize peer_lifecycle_p3. Порядок: `#131` → `#151` (SEC `#134`–`#138` перед federation).
 
 ```text
 G0 govern (#120–#121)
