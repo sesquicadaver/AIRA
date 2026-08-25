@@ -1,10 +1,10 @@
 # Analyze-166 — Stabilize peer_lifecycle_p3 (QUEUE #131)
 
 ## Status
-OPEN — `serial_test` + port retry + settle/wait helpers for P3 integration tests.
+CLOSED @ 2397389 / PR #94 (QUEUE #131 DONE).
 
 ## Done when
-3 consecutive CI green; `cargo test -p aira-desktop-runtime --test peer_lifecycle_p3`.
+`serial_test` + port retry + `wait_relay_hub`; CI green; RFC-0067 updated.
 
 ## Out
 P4 lifecycle; relay semantics change.
