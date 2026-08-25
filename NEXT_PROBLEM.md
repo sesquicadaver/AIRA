@@ -103,4 +103,4 @@
 
 - Desktop acceptance / profiles — [`docs/phase-e-plan.md`](docs/phase-e-plan.md), [`docs/desktop-network-profiles.md`](docs/desktop-network-profiles.md).
 - Post-E stabilization — [`docs/phase-f-plan.md`](docs/phase-f-plan.md) (**DONE**).
-- Активна лінійна черга — Phase G [`docs/phase-g-plan.md`](docs/phase-g-plan.md); виконання — перший OPEN `#132` у [`QUEUE.md`](QUEUE.md).
+- Активна лінійна черга — Phase G [`docs/phase-g-plan.md`](docs/phase-g-plan.md); виконання — перший OPEN `#133` у [`QUEUE.md`](QUEUE.md).

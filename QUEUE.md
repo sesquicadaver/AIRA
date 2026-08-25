@@ -263,7 +263,7 @@ F0 stabilize CI (#107–#109)
 | 129 | **DONE** | ~~Analyze-164 — split cli peer~~ | mechanical `aira-cli/commands/peer/` | peer CLI tests green | new peer commands |
 | 130 | **DONE** | ~~Analyze-165 — split desktop app~~ | mechanical `aira-desktop/src/app/` | desktop tests green | GUI redesign |
 | 131 | **DONE** | ~~Analyze-166 — stabilize peer_lifecycle_p3~~ | CI-stable P3 lifecycle test | 3 consecutive CI green | P4; relay semantics |
-| 132 | **OPEN** | Analyze-167 — stabilize peer_lifecycle_p4 | CI-stable P4 gossip lifecycle | 3 consecutive CI green | P5 federation GUI |
+| 132 | **DONE** | ~~Analyze-167 — stabilize peer_lifecycle_p4~~ | CI-stable P4 gossip lifecycle | 3 consecutive CI green | P5 federation GUI |
 | 133 | **OPEN** | Analyze-168 — invite QR camera | GUI camera → invite import | roundtrip smoke | non-loopback peer |
 | 134 | **OPEN** | Analyze-182 — SEC-1 local-test trust hardening | `local-test` не в runtime trust; peer reject test identity; migration note | conformance/peer negative test green | full identity ceremony |
 | 135 | **OPEN** | Analyze-183 — SEC-2 canonical envelope signature | full envelope + response canonical sign/verify; `key_ref == issuer` | C2 mutation tests per field green | wire protocol version bump |
@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#132` stabilize peer_lifecycle_p4. Порядок: `#132` → `#151` (SEC `#134`–`#138` перед federation).
+**Перший OPEN:** `#133` invite QR camera. Порядок: `#133` → `#151` (SEC `#134`–`#138` перед federation).
 
 ```text
 G0 govern (#120–#121)
