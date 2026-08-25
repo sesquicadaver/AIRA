@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#128` DONE @ PR #91; **перший OPEN = `#129`** (split cli peer) |
+| `main` | Phase G `#129` DONE @ PR #92; **перший OPEN = `#130`** (split desktop app) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
@@ -260,7 +260,7 @@ F0 stabilize CI (#107–#109)
 | 126 | **DONE** | ~~Analyze-161 — VRA extended fields~~ | conformance VRA field coverage | named test green | full Book I 1:1 fields |
 | 127 | **DONE** | ~~Analyze-162 — split crypto mod~~ | mechanical `aira-object/src/crypto/mod.rs` | `cargo test -p aira-object` green | crypto behavior change |
 | 128 | **DONE** | ~~Analyze-163 — split aira-peer lib~~ | mechanical `aira-peer/src/lib.rs` | `cargo test -p aira-peer` green | protocol change |
-| 129 | **OPEN** | Analyze-164 — split cli peer | mechanical `aira-cli/commands/peer.rs` | peer CLI tests green | new peer commands |
+| 129 | **DONE** | ~~Analyze-164 — split cli peer~~ | mechanical `aira-cli/commands/peer/` | peer CLI tests green | new peer commands |
 | 130 | **OPEN** | Analyze-165 — split desktop app | mechanical `aira-desktop/src/app.rs` | desktop tests green | GUI redesign |
 | 131 | **OPEN** | Analyze-166 — stabilize peer_lifecycle_p3 | CI-stable P3 lifecycle test | 3 consecutive CI green | P4; relay semantics |
 | 132 | **OPEN** | Analyze-167 — stabilize peer_lifecycle_p4 | CI-stable P4 gossip lifecycle | 3 consecutive CI green | P5 federation GUI |
@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#129` split cli peer. Порядок: `#129` → `#151` (SEC `#134`–`#138` перед federation).
+**Перший OPEN:** `#130` split desktop app. Порядок: `#130` → `#151` (SEC `#134`–`#138` перед federation).
 
 ```text
 G0 govern (#120–#121)

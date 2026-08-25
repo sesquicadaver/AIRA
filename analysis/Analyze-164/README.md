@@ -1,10 +1,10 @@
 # Analyze-164 — Split cli peer (QUEUE #129)
 
 ## Status
-OPEN — mechanical split `aira-cli/commands/peer.rs` → `peer/{mod,book,dht,stun,discv,session}.rs`.
+CLOSED @ eff14c5 / PR #92 (QUEUE #129 DONE).
 
 ## Done when
-Peer CLI tests green: `cargo test -p aira-cli`; clippy `-D warnings` on `aira-cli`.
+Mechanical split: `commands/peer/{mod,book,dht,stun,discv,session}.rs`; `cargo test -p aira-cli` + clippy green.
 
 ## Out
 New peer commands; protocol/behavior change.

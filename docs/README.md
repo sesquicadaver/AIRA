@@ -1,6 +1,6 @@
 # AIRA documentation index
 
-**Оновлено:** 2026-08-26. Канон виконання: [`QUEUE.md`](../QUEUE.md) (перший OPEN = `#129`). Статус реалізації: [`implementation-status.md`](implementation-status.md).
+**Оновлено:** 2026-08-26. Канон виконання: [`QUEUE.md`](../QUEUE.md) (перший OPEN = `#130`). Статус реалізації: [`implementation-status.md`](implementation-status.md).
 
 ## Anti-mission (ніколи в product / QUEUE)
 
