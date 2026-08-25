@@ -1,1 +1,0 @@
-{"artifact_kind":"VerifiedResultArtifact","confidence":1.0,"evidence_refs":[],"provenance_refs":["aira:event:exec0_2","aira:artifact:exec0_1"],"result":4.0,"scope":{"description":"verification-basic","scope_type":"local"},"source_output_ref":"aira:artifact:exec0_1","verification_status":"VERIFIED"}

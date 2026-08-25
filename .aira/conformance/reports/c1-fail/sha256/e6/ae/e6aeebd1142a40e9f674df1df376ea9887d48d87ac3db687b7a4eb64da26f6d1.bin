@@ -1,1 +1,0 @@
-{"artifact_refs":["aira:artifact:missing_conf_70"],"assigns_final_truth":false,"evidence_kind":"failure","note":"missing capsule artifact: dispatch failure: artifact not found: aira:artifact:missing_conf_70","object_refs":["aira:problem:conf_fail1"],"source_event":"aira:event:exec0_1","source_event_type":"CapsuleFailed"}
