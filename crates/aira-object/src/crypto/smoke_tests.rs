@@ -533,9 +533,8 @@ fn node_rotate_requires_existing_identity() {
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
-    let err =
-        rotate_node_signing_secret(root, SigningKey::from_bytes(&[35u8; 32]), false, None)
-            .unwrap_err();
+    let err = rotate_node_signing_secret(root, SigningKey::from_bytes(&[35u8; 32]), false, None)
+        .unwrap_err();
     assert!(matches!(err, CryptoError::Io(_)));
 }
 
@@ -624,8 +623,7 @@ fn node_rotate_backup_archives_prior_slot() {
 
     let secret2 = format!("{}\n", hex::encode(sk2.to_bytes()));
     rotate_node_signing_secret(root, sk3.clone(), true, None).unwrap();
-    let latest =
-        fs::read_to_string(root.join("identity").join(NODE_SECRET_BACKUP_FILE)).unwrap();
+    let latest = fs::read_to_string(root.join("identity").join(NODE_SECRET_BACKUP_FILE)).unwrap();
     assert_eq!(latest, secret2);
     assert_ne!(latest, secret1);
 
