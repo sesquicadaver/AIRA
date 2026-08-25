@@ -1,0 +1,27 @@
+{
+  "result_id": "aira:result:01RBAD",
+  "problem_statement_ref": "aira:problem:01TESTPROBLEM",
+  "context_ref": "aira:context:01CTX",
+  "solution_refs": [
+    "aira:artifact:sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  ],
+  "evidence_refs": [
+    "aira:evidence:01EV1"
+  ],
+  "verification_status": "VERIFIED",
+  "confidence": 1.0,
+  "contextual_fitness": 1.5,
+  "scope": {
+    "scope_type": "local"
+  },
+  "provenance_refs": [
+    "aira:event:01E1"
+  ],
+  "artifact_hash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  },
+  "created_at": "2026-07-10T12:06:00Z"
+}

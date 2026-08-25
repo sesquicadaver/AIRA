@@ -4,6 +4,7 @@
 //! plane, not as a production event/scheduler/federation runtime
 //! (`docs/operational-plane.md`).
 
+use std::fs;
 use std::path::Path;
 
 use aira_artifact::{ArtifactStore, ArtifactType};
@@ -19,7 +20,7 @@ use aira_event::EventType;
 use aira_flow::{OperationalPlane, SubmitOutcome};
 use aira_object::AiraRef;
 use aira_schema::SchemaRegistry;
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::report::ConformanceProfile;
 use crate::runner::{fail, finalize_suite, pass, CaseResult, ConformanceError, SuiteResult};
@@ -30,6 +31,7 @@ pub fn run_c1(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_operational_pipeline(artifact_root.as_ref()),
         test_csu_manifests(),
         test_verified_result_completeness(artifact_root.as_ref()),
+        test_verified_result_extended_fields(),
         test_failure_to_evidence(artifact_root.as_ref()),
     ];
     finalize_suite(ConformanceProfile::C1, cases, artifact_root)
@@ -120,6 +122,8 @@ fn test_verified_result_completeness(artifact_root: &Path) -> CaseResult {
         "confidence",
         "evidence_refs",
         "provenance_refs",
+        "scope",
+        "source_output_ref",
     ] {
         if result.get(key).is_none() {
             return fail(id, format!("missing field {key}"));
@@ -137,6 +141,77 @@ fn test_verified_result_completeness(artifact_root: &Path) -> CaseResult {
             }
         }
         Err(e) => return fail(id, e.to_string()),
+    }
+    pass(id)
+}
+
+/// Extended VRA schema fields + B1-010 required coverage (QUEUE #126).
+fn test_verified_result_extended_fields() -> CaseResult {
+    let id = "c1.result.extended_fields";
+    let reg = match load_registry() {
+        Ok(r) => r,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let root = match aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")) {
+        Ok(r) => r,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let schema_id = "aira:schema:result:verified-result-artifact:0.1";
+    let extended = root.join("fixtures/valid/result/verified-result-extended.json");
+    if let Err(e) = reg.validate_file(schema_id, &extended) {
+        return fail(id, format!("extended fixture: {e}"));
+    }
+    let text = match fs::read_to_string(&extended) {
+        Ok(t) => t,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let value: Value = match serde_json::from_str(&text) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    for key in [
+        "counter_evidence_refs",
+        "claim_refs",
+        "revision_refs",
+        "epistemic_status",
+        "contextual_fitness",
+        "source_output_ref",
+    ] {
+        if value.get(key).is_none() {
+            return fail(id, format!("extended fixture missing {key}"));
+        }
+    }
+    let schema_path = root.join("schemas/result/verified-result-artifact.schema.json");
+    let schema_text = match fs::read_to_string(&schema_path) {
+        Ok(t) => t,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let schema: Value = match serde_json::from_str(&schema_text) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let required = schema
+        .get("required")
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
+        .unwrap_or_default();
+    for key in [
+        "problem_statement_ref",
+        "context_ref",
+        "evidence_refs",
+        "verification_status",
+        "confidence",
+        "scope",
+        "provenance_refs",
+        "artifact_hash",
+        "signature",
+        "result_id",
+        "solution_refs",
+        "created_at",
+    ] {
+        if !required.contains(&key) {
+            return fail(id, format!("schema required missing B1-010 field {key}"));
+        }
     }
     pass(id)
 }

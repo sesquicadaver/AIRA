@@ -71,6 +71,54 @@
     },
     "created_at": {
       "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "counter_evidence_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "claim_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "revision_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "epistemic_status": {
+      "type": "string",
+      "enum": [
+        "Contradicted",
+        "Absurd",
+        "Myth",
+        "Legend",
+        "Anecdote",
+        "Observation",
+        "Assumption",
+        "Hypothesis",
+        "WorkingModel",
+        "ValidatedModel",
+        "Theory",
+        "EmpiricalFact",
+        "ProtocolFact",
+        "Axiom"
+      ]
+    },
+    "contextual_fitness": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "source_output_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
     }
   }
 }

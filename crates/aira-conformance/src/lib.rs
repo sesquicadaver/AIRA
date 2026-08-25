@@ -77,7 +77,8 @@ mod tests {
             "failures={:?}",
             suite.report.failures
         );
-        assert!(suite.report.results.passed >= 4);
+        assert!(suite.report.results.passed >= 5);
+        assert_eq!(suite.cases.len(), 5);
     }
 
     #[test]

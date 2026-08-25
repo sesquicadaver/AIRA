@@ -552,6 +552,25 @@ mod tests {
     }
 
     #[test]
+    fn verified_result_extended_schema_loads() {
+        let reg = registry();
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        reg.validate_file(
+            "aira:schema:result:verified-result-artifact:0.1",
+            root.join("fixtures/valid/result/verified-result-extended.json"),
+        )
+        .unwrap();
+        assert!(reg
+            .validate_file(
+                "aira:schema:result:verified-result-artifact:0.1",
+                root.join(
+                    "fixtures/invalid/result/verified-result-contextual-fitness-overflow.json"
+                ),
+            )
+            .is_err());
+    }
+
+    #[test]
     fn desktop_settings_schema_loads() {
         let reg = registry();
         assert!(reg
