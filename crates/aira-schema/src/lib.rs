@@ -563,7 +563,9 @@ mod tests {
         assert!(reg
             .validate_file(
                 "aira:schema:result:verified-result-artifact:0.1",
-                root.join("fixtures/invalid/result/verified-result-contextual-fitness-overflow.json"),
+                root.join(
+                    "fixtures/invalid/result/verified-result-contextual-fitness-overflow.json"
+                ),
             )
             .is_err());
     }

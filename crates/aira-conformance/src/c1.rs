@@ -193,11 +193,7 @@ fn test_verified_result_extended_fields() -> CaseResult {
     let required = schema
         .get("required")
         .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str())
-                .collect::<Vec<_>>()
-        })
+        .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
         .unwrap_or_default();
     for key in [
         "problem_statement_ref",
