@@ -209,7 +209,7 @@ fn test_verified_result_extended_fields() -> CaseResult {
         "solution_refs",
         "created_at",
     ] {
-        if !required.iter().any(|r| *r == key) {
+        if !required.contains(&key) {
             return fail(id, format!("schema required missing B1-010 field {key}"));
         }
     }
