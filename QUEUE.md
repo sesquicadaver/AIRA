@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#127` DONE @ PR #90; **перший OPEN = `#128`** (split aira-peer lib) |
+| `main` | Phase G `#128` DONE @ PR #91; **перший OPEN = `#129`** (split cli peer) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
@@ -259,7 +259,7 @@ F0 stabilize CI (#107–#109)
 | 125 | **DONE** | ~~Analyze-160 — Claim/Assumption fixtures~~ | valid/invalid JSON + manifest | `schema validate --fixtures` зелений | Epistemic CSU impl |
 | 126 | **DONE** | ~~Analyze-161 — VRA extended fields~~ | conformance VRA field coverage | named test green | full Book I 1:1 fields |
 | 127 | **DONE** | ~~Analyze-162 — split crypto mod~~ | mechanical `aira-object/src/crypto/mod.rs` | `cargo test -p aira-object` green | crypto behavior change |
-| 128 | **OPEN** | Analyze-163 — split aira-peer lib | mechanical `aira-peer/src/lib.rs` | `cargo test -p aira-peer` green | protocol change |
+| 128 | **DONE** | ~~Analyze-163 — split aira-peer lib~~ | mechanical `aira-peer/src/lib.rs` | `cargo test -p aira-peer` green | protocol change |
 | 129 | **OPEN** | Analyze-164 — split cli peer | mechanical `aira-cli/commands/peer.rs` | peer CLI tests green | new peer commands |
 | 130 | **OPEN** | Analyze-165 — split desktop app | mechanical `aira-desktop/src/app.rs` | desktop tests green | GUI redesign |
 | 131 | **OPEN** | Analyze-166 — stabilize peer_lifecycle_p3 | CI-stable P3 lifecycle test | 3 consecutive CI green | P4; relay semantics |
