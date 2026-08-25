@@ -6,12 +6,15 @@ Phase F `#118`: reduce flake in `peer_lifecycle_p2` via `serial_test` group `des
 
 Phase G `#131`: same pattern applied to `peer_lifecycle_p3` (relay hub wait loop + serial/retry).
 
+Phase G `#132`: same pattern applied to `peer_lifecycle_p4` (gossip lifecycle + forward-filter smoke).
+
 ## 5. Non-Goals
 
-P4 lifecycle changes (`#132`); semantic peer protocol changes.
+Semantic peer/gossip protocol changes.
 
 ## 15. Tests
 
 `cargo test -p aira-desktop-runtime --test peer_lifecycle_p2`
 `cargo test -p aira-desktop-runtime --test peer_lifecycle_p3`
+`cargo test -p aira-desktop-runtime --test peer_lifecycle_p4`
 `cargo test -p aira-desktop-runtime --test peer_lifecycle_p2 --test peer_lifecycle --test peer_lifecycle_p3 --test peer_lifecycle_p4 -- --test-threads=8`
