@@ -1,7 +1,8 @@
 //! P4 gossip peer lifecycle (QUEUE #101).
+//! Stabilized for CI parallel workspace tests (QUEUE #132): serial execution + port retry.
 
 use std::net::TcpListener;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 
@@ -12,6 +13,11 @@ use aira_desktop_runtime::{
 use aira_object::{AiraRef, ContentHash, Keyring};
 use aira_peer::{gossip_forward_trust_delta, AddressBook, TrustDelta, TRUST_DELTA_MESSAGE_TYPE};
 use aira_protocol::{ProtocolEnvelope, ProtocolId, ScopeDescriptor};
+use serial_test::serial;
+
+const PORT_RETRY_ATTEMPTS: usize = 8;
+const STOP_SETTLE: Duration = Duration::from_millis(300);
+const PEER_START_WAIT: Duration = Duration::from_millis(500);
 
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -83,11 +89,44 @@ fn free_listen() -> String {
     format!("127.0.0.1:{port}")
 }
 
+fn stop_and_settle(paths: &DesktopPaths) {
+    let _ = stop(paths);
+    std::thread::sleep(STOP_SETTLE);
+}
+
+fn start_err_port_conflict(err: &anyhow::Error) -> bool {
+    let msg = format!("{err:#}").to_lowercase();
+    msg.contains("occupied") || msg.contains("listen") || msg.contains("bind")
+}
+
+/// Start P4 stack with ephemeral loopback ports; retry when another test grabbed the port.
+fn start_p4_with_ports(
+    paths: &DesktopPaths,
+    node: &Path,
+) -> (aira_desktop_runtime::StartOutcome, String, String) {
+    for attempt in 0..PORT_RETRY_ATTEMPTS {
+        let http = free_listen();
+        let peer = free_listen();
+        let mut settings = load_or_create_settings(paths).unwrap();
+        settings.http_listen = http.clone();
+        settings.network_profile = NetworkProfile::P4;
+        settings.peer_listen = Some(peer.clone());
+        write_settings(paths, &settings).unwrap();
+
+        match start(paths, Some(node.to_path_buf())) {
+            Ok(outcome) => return (outcome, http, peer),
+            Err(e) if start_err_port_conflict(&e) && attempt + 1 < PORT_RETRY_ATTEMPTS => {
+                stop_and_settle(paths);
+                continue;
+            }
+            Err(e) => panic!("start P4 failed: {e:#}"),
+        }
+    }
+    panic!("start P4 failed after {PORT_RETRY_ATTEMPTS} port retries");
+}
+
 /// Hostile trust-delta envelope (subject ≠ issuer) for forward-filter smoke (Analyze-53).
-fn craft_hostile_trust_delta_envelope(
-    root: &std::path::Path,
-    delta: &TrustDelta,
-) -> ProtocolEnvelope {
+fn craft_hostile_trust_delta_envelope(root: &Path, delta: &TrustDelta) -> ProtocolEnvelope {
     use rand::rngs::OsRng;
     use rand::RngCore;
     delta.validate_shape().unwrap();
@@ -122,6 +161,7 @@ fn craft_hostile_trust_delta_envelope(
 }
 
 #[test]
+#[serial(desktop_peer_integration)]
 fn p4_starts_http_and_gossip_peer() {
     let (node, aira) = ensure_bins();
     std::env::set_var("AIRA_BIN", &aira);
@@ -129,15 +169,8 @@ fn p4_starts_http_and_gossip_peer() {
     let tmp = tempfile::tempdir().unwrap();
     let paths = DesktopPaths::for_data_root(tmp.path());
     paths.ensure_dirs().unwrap();
-    let http = free_listen();
-    let peer = free_listen();
-    let mut settings = load_or_create_settings(&paths).unwrap();
-    settings.http_listen = http.clone();
-    settings.network_profile = NetworkProfile::P4;
-    settings.peer_listen = Some(peer.clone());
-    write_settings(&paths, &settings).unwrap();
 
-    let outcome = start(&paths, Some(node)).expect("start P4");
+    let (outcome, _http, peer) = start_p4_with_ports(&paths, &node);
     assert_eq!(outcome.status, LifecycleStatus::Running);
     assert_eq!(outcome.peer_listen.as_deref(), Some(peer.as_str()));
     assert!(outcome.peer_pid.is_some());
@@ -152,10 +185,11 @@ fn p4_starts_http_and_gossip_peer() {
         "P4 pid should not store relay TTL: {pid_text}"
     );
 
-    let _ = stop(&paths);
+    stop_and_settle(&paths);
 }
 
 #[tokio::test]
+#[serial(desktop_peer_integration)]
 async fn p4_gossip_forward_filter_smoke() {
     let (node, aira) = ensure_bins();
     std::env::set_var("AIRA_BIN", &aira);
@@ -163,14 +197,9 @@ async fn p4_gossip_forward_filter_smoke() {
     let tmp = tempfile::tempdir().unwrap();
     let paths = DesktopPaths::for_data_root(tmp.path());
     paths.ensure_dirs().unwrap();
-    let mut settings = load_or_create_settings(&paths).unwrap();
-    settings.http_listen = free_listen();
-    settings.network_profile = NetworkProfile::P4;
-    settings.peer_listen = Some(free_listen());
-    write_settings(&paths, &settings).unwrap();
 
-    start(&paths, Some(node)).expect("start P4 gossip peer");
-    std::thread::sleep(Duration::from_millis(400));
+    start_p4_with_ports(&paths, &node);
+    std::thread::sleep(PEER_START_WAIT);
 
     let mut book = AddressBook::default();
     book.upsert("aira:identity:would-dial", "127.0.0.1:1");
@@ -191,5 +220,5 @@ async fn p4_gossip_forward_filter_smoke() {
         Some("non-self-sovereign trust-delta")
     );
 
-    let _ = stop(&paths);
+    stop_and_settle(&paths);
 }
