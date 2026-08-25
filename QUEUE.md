@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#131` DONE @ PR #94; **перший OPEN = `#132`** (stabilize peer_lifecycle_p4) |
+| `main` | Phase G `#132` DONE @ PR #95; **перший OPEN = `#133`** (invite QR camera) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
