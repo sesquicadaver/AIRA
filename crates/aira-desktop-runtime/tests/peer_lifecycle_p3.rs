@@ -1,14 +1,20 @@
 //! P3 relay peer lifecycle (QUEUE #98).
+//! Stabilized for CI parallel workspace tests (QUEUE #131): serial execution + port retry.
 
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use aira_desktop_runtime::{
     load_or_create_settings, start, stop, write_settings, DesktopPaths, LifecycleStatus,
     NetworkProfile, DEFAULT_RELAY_TTL_DAYS,
 };
+use serial_test::serial;
+
+const PORT_RETRY_ATTEMPTS: usize = 8;
+const STOP_SETTLE: Duration = Duration::from_millis(300);
+const RELAY_HUB_WAIT: Duration = Duration::from_secs(2);
 
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -84,7 +90,58 @@ fn relay_hub_path(root: &Path) -> PathBuf {
     root.join("peers").join("relay_hub.json")
 }
 
+fn stop_and_settle(paths: &DesktopPaths) {
+    let _ = stop(paths);
+    std::thread::sleep(STOP_SETTLE);
+}
+
+fn start_err_port_conflict(err: &anyhow::Error) -> bool {
+    let msg = format!("{err:#}").to_lowercase();
+    msg.contains("occupied") || msg.contains("listen") || msg.contains("bind")
+}
+
+/// Start P3 stack with ephemeral loopback ports; retry when another test grabbed the port.
+fn start_p3_with_ports(
+    paths: &DesktopPaths,
+    node: &Path,
+    relay_ttl_days: Option<u32>,
+) -> (aira_desktop_runtime::StartOutcome, String, String) {
+    for attempt in 0..PORT_RETRY_ATTEMPTS {
+        let http = free_listen();
+        let peer = free_listen();
+        let mut settings = load_or_create_settings(paths).unwrap();
+        settings.http_listen = http.clone();
+        settings.network_profile = NetworkProfile::P3;
+        settings.peer_listen = Some(peer.clone());
+        settings.relay_ttl_days = relay_ttl_days;
+        write_settings(paths, &settings).unwrap();
+
+        match start(paths, Some(node.to_path_buf())) {
+            Ok(outcome) => return (outcome, http, peer),
+            Err(e) if start_err_port_conflict(&e) && attempt + 1 < PORT_RETRY_ATTEMPTS => {
+                stop_and_settle(paths);
+                continue;
+            }
+            Err(e) => panic!("start P3 failed: {e:#}"),
+        }
+    }
+    panic!("start P3 failed after {PORT_RETRY_ATTEMPTS} port retries");
+}
+
+fn wait_relay_hub(data_root: &Path, timeout: Duration) {
+    let hub = relay_hub_path(data_root);
+    let start = Instant::now();
+    while start.elapsed() < timeout {
+        if hub.is_file() {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    panic!("relay_hub.json missing after {:?}", timeout);
+}
+
 #[test]
+#[serial(desktop_peer_integration)]
 fn p3_starts_http_and_relay_peer() {
     let (node, aira) = ensure_bins();
     std::env::set_var("AIRA_BIN", &aira);
@@ -92,16 +149,8 @@ fn p3_starts_http_and_relay_peer() {
     let tmp = tempfile::tempdir().unwrap();
     let paths = DesktopPaths::for_data_root(tmp.path());
     paths.ensure_dirs().unwrap();
-    let http = free_listen();
-    let peer = free_listen();
-    let mut settings = load_or_create_settings(&paths).unwrap();
-    settings.http_listen = http.clone();
-    settings.network_profile = NetworkProfile::P3;
-    settings.peer_listen = Some(peer.clone());
-    settings.relay_ttl_days = Some(14);
-    write_settings(&paths, &settings).unwrap();
 
-    let outcome = start(&paths, Some(node)).expect("start P3");
+    let (outcome, _http, peer) = start_p3_with_ports(&paths, &node, Some(14));
     assert_eq!(outcome.status, LifecycleStatus::Running);
     assert_eq!(outcome.peer_listen.as_deref(), Some(peer.as_str()));
     assert!(outcome.peer_pid.is_some());
@@ -113,16 +162,13 @@ fn p3_starts_http_and_relay_peer() {
     );
     assert!(pid_text.contains("\"relay_ttl_days\": 14"), "{pid_text}");
 
-    std::thread::sleep(Duration::from_millis(300));
-    assert!(
-        relay_hub_path(&paths.data_root).is_file(),
-        "relay_hub.json missing"
-    );
+    wait_relay_hub(&paths.data_root, RELAY_HUB_WAIT);
 
-    let _ = stop(&paths);
+    stop_and_settle(&paths);
 }
 
 #[test]
+#[serial(desktop_peer_integration)]
 fn p3_relay_registry_survives_restart() {
     let (node, aira) = ensure_bins();
     std::env::set_var("AIRA_BIN", &aira);
@@ -130,26 +176,18 @@ fn p3_relay_registry_survives_restart() {
     let tmp = tempfile::tempdir().unwrap();
     let paths = DesktopPaths::for_data_root(tmp.path());
     paths.ensure_dirs().unwrap();
-    let mut settings = load_or_create_settings(&paths).unwrap();
-    settings.http_listen = free_listen();
-    settings.network_profile = NetworkProfile::P3;
-    settings.peer_listen = Some(free_listen());
-    settings.relay_ttl_days = Some(DEFAULT_RELAY_TTL_DAYS);
-    write_settings(&paths, &settings).unwrap();
 
-    start(&paths, Some(node.clone())).expect("first start");
-    std::thread::sleep(Duration::from_millis(300));
+    start_p3_with_ports(&paths, &node, Some(DEFAULT_RELAY_TTL_DAYS));
+    wait_relay_hub(&paths.data_root, RELAY_HUB_WAIT);
     let hub = relay_hub_path(&paths.data_root);
-    assert!(hub.is_file());
     let before = std::fs::read_to_string(&hub).unwrap();
-    stop(&paths).unwrap();
-    std::thread::sleep(Duration::from_millis(200));
+    stop_and_settle(&paths);
 
     let again = start(&paths, Some(node)).expect("second start");
     assert!(again.peer_attached || again.peer_pid.is_some());
-    std::thread::sleep(Duration::from_millis(200));
+    wait_relay_hub(&paths.data_root, RELAY_HUB_WAIT);
     let after = std::fs::read_to_string(&hub).unwrap();
     assert_eq!(before, after, "registry should reload from disk");
 
-    let _ = stop(&paths);
+    stop_and_settle(&paths);
 }
