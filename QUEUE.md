@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#128` split aira-peer lib. Порядок: `#128` → `#151` (SEC `#134`–`#138` перед federation).
+**Перший OPEN:** `#129` split cli peer. Порядок: `#129` → `#151` (SEC `#134`–`#138` перед federation).
 
 ```text
 G0 govern (#120–#121)

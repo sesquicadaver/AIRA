@@ -237,7 +237,8 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #125 | Claim/Assumption fixtures | `claim-artifact.schema.json` + fixtures; RFC-0075 | **DONE** @ PR #88 |
 | #126 | VRA extended fields | `c1.result.extended_fields`; RFC-0076 | **DONE** @ PR #89 |
 | #127 | Split crypto mod | `crypto/smoke_tests.rs` mechanical split | **DONE** @ PR #90 |
-| #128 | Split aira-peer lib | mechanical `aira-peer` | **OPEN** |
+| #128 | Split aira-peer lib | `smoke_tests.rs` mechanical split | **DONE** @ PR #91 |
+| #129 | Split cli peer | mechanical `aira-cli/commands/peer.rs` | **OPEN** |
 | #131–#133 | Desktop peer CI + QR camera | P3/P4 stable; GUI camera invite |
 | #134–#138 | SEC hardening (audit) | local-test trust; envelope sign; identity bind; equivocation; artifact admission |
 | #139–#141 | Federation + C3 scaffold | leave CLI; join hardening; `run_c3` local |
