@@ -1,0 +1,26 @@
+{
+  "artifacts": {
+    "aira:artifact:evi0_1": {
+      "artifact_id": "aira:artifact:evi0_1",
+      "artifact_type": "EvidenceArtifact",
+      "schema_version": "0.1",
+      "content_hash": "sha256:e6aeebd1142a40e9f674df1df376ea9887d48d87ac3db687b7a4eb64da26f6d1",
+      "content_ref": "cas://sha256:e6aeebd1142a40e9f674df1df376ea9887d48d87ac3db687b7a4eb64da26f6d1",
+      "producer_identity": "aira:identity:local-test",
+      "provenance_refs": [
+        "aira:event:exec0_1"
+      ],
+      "dependency_refs": [],
+      "policy_refs": [
+        "aira:policy:default"
+      ],
+      "signature": {
+        "algorithm": "ed25519",
+        "key_ref": "aira:identity:local-test",
+        "signature_value": "8a7eebd1a7e412a04f5b5a836496510058dabb767946e0926935fb402bf5075f7e5c5c49ee331ab866820087dd59bd9d8468b279c921a380d96682d7b7bd5a02"
+      },
+      "created_at": "2026-07-10T12:00:00Z"
+    }
+  },
+  "supersessions": {}
+}

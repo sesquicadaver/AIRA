@@ -1,0 +1,1 @@
+{"action":"math.eval.safe","capsule_id":"aira:capsule:red2","constraints":{"network":"none","shell":false},"context_ref":"aira:artifact:ctx0_1","expression":"2+2","input_artifact_refs":["aira:artifact:ctx0_1"],"policy_refs":["aira:policy:default"],"problem_statement_ref":"aira:problem:flow0_2","provenance_refs":["aira:event:ctx0_2"],"required_capabilities":["math.eval.safe"]}

@@ -54,7 +54,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Invariant Checker can block | Book I §11; B1-008 | `aira-core` `InvariantChecker` | C0 immutability cases | **DONE** | |
 | Security boundary (no Core memory / foreign CSU / secrets) | Book I §12; B1-009; B3-004 | `aira-csu` isolation + event secret scan | `isolation_baseline_denies_direct_mutation_and_peer_call`; `run_security_baseline` | **DONE** | MVP sandbox: in-process, no FS/net |
 | Artifact runtime + immutability | Book I §16; B1-002 | `aira-artifact` CAS | `c0.artifact.immutability`; `c0.artifact.verify_on_read`; `mutation_fails_supersession_keeps_old`; `unsigned_artifact_rejected_and_private_denied`; `resolve_rejects_tampered_index_descriptor` | **DONE** | Verify-on-read re-checks signature + CAS hash (QUEUE #113) |
-| Verified Result completeness | Book I §17; B1-010 | verification-basic + plane | `c1.result.verified_completeness` | **PARTIAL** | C1 checks result/verification_status/confidence/evidence_refs/provenance_refs; not every Book field name 1:1 |
+| Verified Result completeness | Book I §17; B1-010 | `schemas/result/verified-result-artifact.schema.json`; verification-basic + plane | `c1.result.verified_completeness`; `c1.result.extended_fields` (#126) | **PARTIAL** | Schema + C1 cover B1-010 required + extended optional fields; runtime payload still minimal |
 | CSU runtime + lifecycle | Book I §13–14 | `aira-csu` `CsuRuntime` / registry | `lifecycle_transitions_and_events`; `dispatch_active_only_and_failure_event`; `dispatch_fail_closed_without_policy_gate_and_on_deny`; `c0.csu.dispatch_policy` | **DONE** | Policy gate required for dispatch (QUEUE #114) |
 | Canonical descriptor signatures | Book I security; EVO-2 | `aira_object::canonical` + Event/Artifact/Object/CSU | mutation tests in those crates | **DONE** | QUEUE #39–#44; no runtime `LOCAL_TEST_DOMAIN_MSG` fallback |
 | Federated Core (C2+/C3) | Book I §22 L2 | `aira-protocol`, `aira-peer`, federation join | C2 local; `federation::join_*` | **POST-MVP** | Not C0/C1 CI |
@@ -144,7 +144,7 @@ CI: `cargo run -p aira-cli -- schema validate --fixtures fixtures` (QUEUE #38).
 | `aira:schema:execution:capsule:0.1` | `execution/capsule.schema.json` | valid | **DONE** |
 | `aira:schema:evidence:evidence-artifact:0.1` | `evidence/evidence-artifact.schema.json` | valid | **DONE** |
 | `aira:schema:epistemic:assessment:0.1` | `evidence/epistemic-assessment.schema.json` | valid + invalid | **DONE** |
-| `aira:schema:result:verified-result-artifact:0.1` | `result/verified-result-artifact.schema.json` | valid + missing-evidence invalid | **DONE** |
+| `aira:schema:result:verified-result-artifact:0.1` | `result/verified-result-artifact.schema.json` | valid + extended + invalid fixtures | **DONE** |
 | `aira:schema:conformance:report:0.1` | `conformance/report.schema.json` | valid | **DONE** |
 | `aira:schema:protocol:envelope:0.1` | `protocol/envelope.schema.json` | valid + unsigned invalid | **DONE** |
 | `aira:schema:protocol:response:0.1` | `protocol/response.schema.json` | valid | **DONE** |
@@ -162,13 +162,13 @@ Conformance spec §19 lists extra fixture *names* (event chain, policy deny, res
 | Profile | Spec | Runner | Cases | CI | Status |
 |---------|------|--------|-------|----|--------|
 | C0 | Local Core | `run_c0` | `c0.ontology.schemas`, `c0.object.immutability`, `c0.object.handle_opacity`, `c0.object.verify_on_read`, `c0.artifact.immutability`, `c0.artifact.verify_on_read`, `c0.event.causality`, `c0.policy.gate`, `c0.csu.dispatch_policy`, `c0.acquisition.fail_closed` | **yes** (QUEUE #38) | **DONE** |
-| C1 | Local operational node | `run_c1` | `c1.pipeline.calculate_2_plus_2`, `c1.csu.manifests`, `c1.result.verified_completeness`, `c1.failure.to_evidence` | **yes** | **DONE** |
+| C1 | Local operational node | `run_c1` | `c1.pipeline.calculate_2_plus_2`, `c1.csu.manifests`, `c1.result.verified_completeness`, `c1.result.extended_fields`, `c1.failure.to_evidence` | **yes** | **DONE** |
 | C2 | Protocol-compatible | `run_c2` | `c2.protocol.envelope_schema`, `c2.protocol.response_schema`, `c2.identity.descriptor_schema`, `c2.discovery.capability_not_node`, `c2.ep.unsupported_version_no_side_effects`, `c2.event.publish_idempotent`, `c2.artifact.hash_mismatch`, `c2.protocol.envelope_unsigned` | **yes** (`conformance-c2`, #117) | **DONE** |
 | C3–C5 | Federated / settlement / research | — | — | no | **ABSENT** / **RESEARCH** |
 | Security baseline | Conformance §14 subset | `run_security_baseline` | unsigned CSU/artifact; private deny; secret in events | crate tests | **DONE** |
 | Alpha acceptance | MVP | `run_alpha_acceptance` | init layout, 2+2, failure evidence, C0/C1 | crate tests | **DONE** |
 
-C0/C1 are a **minimal** encoding of B0/B1/OP/CSU MUST tests, not a 1:1 clone of every Conformance `B*-*` id. Remaining gaps (full VRA field list, B0-005 runtime enforcement, B2 network wire) stay documented here.
+C0/C1 are a **minimal** encoding of B0/B1/OP/CSU MUST tests, not a 1:1 clone of every Conformance `B*-*` id. Remaining gaps (runtime full VRA payload vs schema, B0-005 runtime enforcement, B2 network wire) stay documented here.
 
 RFC: [`AIRA-RFC-0068`](../specs/rfc/AIRA-RFC-0068-phase-f-stabilization.md) (Phase F closure `#119`).
 

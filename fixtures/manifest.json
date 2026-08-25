@@ -85,6 +85,10 @@
       "file": "fixtures/valid/result/verified-result-artifact.json"
     },
     {
+      "schema": "aira:schema:result:verified-result-artifact:0.1",
+      "file": "fixtures/valid/result/verified-result-extended.json"
+    },
+    {
       "schema": "aira:schema:conformance:report:0.1",
       "file": "fixtures/valid/conformance/report.json"
     },
@@ -185,6 +189,10 @@
     {
       "schema": "aira:schema:result:verified-result-artifact:0.1",
       "file": "fixtures/invalid/result/verified-result-missing-evidence.json"
+    },
+    {
+      "schema": "aira:schema:result:verified-result-artifact:0.1",
+      "file": "fixtures/invalid/result/verified-result-contextual-fitness-overflow.json"
     },
     {
       "schema": "aira:schema:protocol:envelope:0.1",
