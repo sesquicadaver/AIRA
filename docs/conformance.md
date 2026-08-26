@@ -44,6 +44,7 @@ let alpha = run_alpha_acceptance("/tmp/alpha")?;
 - **`sec.trust_excludes_local_test`** (SEC-1 / QUEUE #134): runtime `trust.json` excludes `aira:identity:local-test`; upsert refused; legacy entry stripped on `ensure_trust_defaults`
 - **`sec.producer_identity_binding`** (SEC-3 / QUEUE #136): Object/Event/Artifact require `signature.key_ref == producer_identity`; stores reject cross-identity descriptors
 - **`sec.event_equivocation`** (SEC-4 / QUEUE #137): same `event_id` + different canonical hash → `EventError::Equivocation`; C2 `c2.event.publish_equivocation` → `EQUIVOCATION`
+- **`sec.artifact_admission`** (SEC-5 / QUEUE #138): no post-verify descriptor mutation; `content_ref` mismatch rejected; supersession persists on reopen
 
 ## Alpha acceptance (#80)
 

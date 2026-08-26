@@ -40,6 +40,7 @@ Report vulnerabilities **privately** via [GitHub Security Advisories](https://gi
 - **SEC-1 (QUEUE #134):** `aira:identity:local-test` is excluded from runtime `trust.json`; peer handshake and discv reject it; legacy entries are stripped on session open ([`docs/crypto.md`](docs/crypto.md)).
 - **SEC-3 (QUEUE #136):** Object/Event/Artifact stores require `signature.key_ref == producer_identity`; cross-identity descriptors fail closed ([`docs/crypto.md`](docs/crypto.md)).
 - **SEC-4 (QUEUE #137):** same `event_id` with different canonical descriptor hash → equivocation conflict; idempotent when hash matches ([`docs/crypto.md`](docs/crypto.md)).
+- **SEC-5 (QUEUE #138):** artifact admission is immutable post-verify; `content_ref` must match `cas://content_hash`; supersession index persists on reopen ([`docs/crypto.md`](docs/crypto.md)).
 - DHT/relay/gossip/STUN/discv are **prototypes**, not production mesh security.
 - Desktop network profiles P0–P6: fail-closed rules in [`docs/desktop-network-profiles.md`](docs/desktop-network-profiles.md).
 

@@ -258,6 +258,49 @@ mod tests {
     }
 
     #[test]
+    fn publish_rejects_content_ref_mismatch_without_mutation() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let payload = b"admission-test";
+        let mut desc = descriptor_for(
+            payload,
+            "aira:artifact:sha256_8888888888888888888888888888888888888888888888888888888888888888",
+        );
+        desc.content_ref = "cas://sha256:wrong".into();
+        desc = desc
+            .attach_canonical_signature()
+            .expect("sign mismatched content_ref");
+        assert!(matches!(
+            store.publish(desc, payload).unwrap_err(),
+            ArtifactError::ContentRefMismatch(_)
+        ));
+    }
+
+    #[test]
+    fn supersession_mapping_persists_across_reopen() {
+        let dir = tempfile::tempdir().unwrap();
+        let payload1 = b"v1";
+        let id1 =
+            "aira:artifact:sha256_1111111111111111111111111111111111111111111111111111111111111111";
+        let payload2 = b"v2";
+        let id2 =
+            "aira:artifact:sha256_2222222222222222222222222222222222222222222222222222222222222222";
+        {
+            let mut store = CasArtifactStore::open(dir.path()).unwrap();
+            let d1 = descriptor_for(payload1, id1);
+            store.publish(d1.clone(), payload1).unwrap();
+            let d2 = descriptor_for(payload2, id2);
+            let meta = store.supersede(&d1.artifact_id, d2, payload2).unwrap();
+            assert_eq!(meta.current.as_str(), id2);
+        }
+        let store = CasArtifactStore::open(dir.path()).unwrap();
+        let current = store
+            .supersession_current(&AiraRef::parse(id1).unwrap())
+            .expect("supersession must persist in index.json");
+        assert_eq!(current.as_str(), id2);
+    }
+
+    #[test]
     fn store_rejects_cross_identity_key_ref() {
         let dir = tempfile::tempdir().unwrap();
         let mut store = CasArtifactStore::open(dir.path()).unwrap();

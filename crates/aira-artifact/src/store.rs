@@ -23,6 +23,8 @@ pub enum ArtifactError {
     Unsigned(AiraRef),
     #[error("invalid artifact signature: {0}")]
     InvalidSignature(AiraRef),
+    #[error("content_ref mismatch for {0}")]
+    ContentRefMismatch(AiraRef),
     #[error("private artifact access denied: {0}")]
     AccessDenied(AiraRef),
     #[error("storage error: {0}")]
@@ -40,20 +42,33 @@ pub fn is_private_artifact(descriptor: &ArtifactDescriptor) -> bool {
         .any(|r| r.as_str() == PRIVATE_ARTIFACT_POLICY)
 }
 
-/// Admit an artifact descriptor: cryptographic signature over canonical JSON.
+/// Expected CAS URI for a content hash (SEC-5 admission).
+pub(crate) fn expected_content_ref(hash: &ContentHash) -> String {
+    format!("cas://{}", hash.as_str())
+}
+
+/// Admit an artifact descriptor: cryptographic signature + immutable CAS content_ref.
 pub(crate) fn admit_artifact(descriptor: &ArtifactDescriptor) -> Result<(), ArtifactError> {
     if descriptor.signature.signature_value.trim().is_empty() {
         return Err(ArtifactError::Unsigned(descriptor.artifact_id.clone()));
     }
     match descriptor.verify_canonical() {
-        Ok(()) => Ok(()),
+        Ok(()) => {}
         Err(aira_object::CryptoError::MissingOrLegacy) => {
-            Err(ArtifactError::Unsigned(descriptor.artifact_id.clone()))
+            return Err(ArtifactError::Unsigned(descriptor.artifact_id.clone()));
         }
-        Err(_) => Err(ArtifactError::InvalidSignature(
-            descriptor.artifact_id.clone(),
-        )),
+        Err(_) => {
+            return Err(ArtifactError::InvalidSignature(
+                descriptor.artifact_id.clone(),
+            ));
+        }
     }
+    if descriptor.content_ref != expected_content_ref(&descriptor.content_hash) {
+        return Err(ArtifactError::ContentRefMismatch(
+            descriptor.artifact_id.clone(),
+        ));
+    }
+    Ok(())
 }
 
 /// Verify-on-read: re-check canonical signature before returning a stored descriptor.
@@ -184,7 +199,7 @@ impl CasArtifactStore {
 impl ArtifactStore for CasArtifactStore {
     fn publish(
         &mut self,
-        mut descriptor: ArtifactDescriptor,
+        descriptor: ArtifactDescriptor,
         payload: &[u8],
     ) -> Result<PublishResult, ArtifactError> {
         admit_artifact(&descriptor)?;
@@ -207,7 +222,6 @@ impl ArtifactStore for CasArtifactStore {
         if !cas_path.exists() {
             fs::write(&cas_path, payload).map_err(|e| ArtifactError::Storage(e.to_string()))?;
         }
-        descriptor.content_ref = format!("cas://{}", descriptor.content_hash.as_str());
 
         let meta_path = cas_path.with_extension("json");
         // Only write descriptor sidecar if absent (same CAS content may be shared).
@@ -246,6 +260,7 @@ impl ArtifactStore for CasArtifactStore {
             previous.as_str().to_string(),
             published.descriptor.artifact_id.as_str().to_string(),
         );
+        self.save_index()?;
         Ok(SupersessionMeta {
             previous: previous.clone(),
             current: published.descriptor.artifact_id,
@@ -254,6 +269,13 @@ impl ArtifactStore for CasArtifactStore {
 }
 
 impl CasArtifactStore {
+    /// Resolve supersession chain head for a previous artifact id (local index only).
+    pub fn supersession_current(&self, previous: &AiraRef) -> Option<AiraRef> {
+        self.supersessions
+            .get(previous.as_str())
+            .and_then(|current| AiraRef::parse(current).ok())
+    }
+
     /// Resolve with explicit private-access grant (default deny for private artifacts).
     pub fn resolve_with_access(
         &self,
