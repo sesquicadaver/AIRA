@@ -107,31 +107,30 @@ pub fn make_relay_deliver_envelope(
     let payload = serde_json::to_string(&deliver)?;
     let (local_id, ring) = Keyring::load_node_identity(root)?;
     let hash = ContentHash::sha256_bytes(payload.as_bytes());
-    let signature = ring
-        .sign(&local_id, hash.as_str().as_bytes())
-        .map_err(|e| PeerError::Crypto(e.to_string()))?;
     let mut nonce = [0u8; 8];
     OsRng.fill_bytes(&mut nonce);
     let message_id =
         aira_object::AiraRef::parse(format!("aira:message:relay-{}", hex::encode(nonce)))
             .map_err(|e| PeerError::Protocol(e.to_string()))?;
     let created = utc_now_rfc3339()?;
-    Ok(ProtocolEnvelope {
+    ProtocolEnvelope {
         protocol_id: ProtocolId::Identity,
         protocol_version: "0.1".into(),
         message_type: RELAY_DELIVER_MESSAGE_TYPE.into(),
         message_id,
         correlation_id: None,
         causal_refs: vec![],
-        issuer_identity: local_id,
+        issuer_identity: local_id.clone(),
         target_scope: ScopeDescriptor::local("peer-relay"),
         policy_refs: vec![],
         payload_hash: hash,
         payload_ref: Some(payload),
         created_at: Timestamp::parse(created).map_err(|e| PeerError::Protocol(e.to_string()))?,
         expires_at: None,
-        signature,
-    })
+        signature: ProtocolEnvelope::placeholder_signature(&local_id),
+    }
+    .attach_canonical_signature_with_keyring(&ring, &local_id)
+    .map_err(|e| PeerError::Protocol(e.to_string()))
 }
 
 /// One durable hub membership row (Analyze-58).

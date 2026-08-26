@@ -133,7 +133,6 @@ fn craft_hostile_trust_delta_envelope(root: &Path, delta: &TrustDelta) -> Protoc
     let (local_id, ring) = Keyring::load_node_identity(root).unwrap();
     let json = String::from_utf8(delta.canonical_bytes().unwrap()).unwrap();
     let hash = ContentHash::sha256_bytes(json.as_bytes());
-    let signature = ring.sign(&local_id, hash.as_str().as_bytes()).unwrap();
     let mut nonce = [0u8; 8];
     OsRng.fill_bytes(&mut nonce);
     let message_id = AiraRef::parse(format!(
@@ -149,15 +148,17 @@ fn craft_hostile_trust_delta_envelope(root: &Path, delta: &TrustDelta) -> Protoc
         message_id,
         correlation_id: None,
         causal_refs: vec![],
-        issuer_identity: local_id,
+        issuer_identity: local_id.clone(),
         target_scope: ScopeDescriptor::local("peer-trust-delta"),
         policy_refs: vec![],
         payload_hash: hash,
         payload_ref: Some(json),
         created_at: aira_object::Timestamp::parse(created).unwrap(),
         expires_at: None,
-        signature,
+        signature: ProtocolEnvelope::placeholder_signature(&local_id),
     }
+    .attach_canonical_signature_with_keyring(&ring, &local_id)
+    .unwrap()
 }
 
 #[test]

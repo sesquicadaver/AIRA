@@ -14,8 +14,8 @@ pub use discovery::{
     CapabilityDescriptor, DiscoveryHit, DiscoveryRegistry, DISCOVERY_REGISTRY_SCHEMA,
 };
 pub use envelope::{
-    local_identity, local_signature, mvp_timestamp, signature_over_payload_hash, ProtocolEnvelope,
-    ProtocolError, ProtocolId, ProtocolResponse, ProtocolStatus, ScopeDescriptor,
+    local_identity, local_signature, mvp_timestamp, ProtocolEnvelope, ProtocolError, ProtocolId,
+    ProtocolResponse, ProtocolStatus, ScopeDescriptor,
 };
 pub use event_adapter::{EventProtocolAdapter, EP_VERSION};
 pub use federation::{
@@ -61,8 +61,7 @@ mod tests {
         let env: ProtocolEnvelope = serde_json::from_value(v).unwrap();
         assert_eq!(env.protocol_id, ProtocolId::Event);
         // Schema fixtures are not live crypto objects (same rule as CSU manifest fixtures).
-        let mut live = env;
-        live.signature = signature_over_payload_hash(&live.payload_hash);
+        let live = env.attach_canonical_signature().unwrap();
         live.validate_signature().unwrap();
 
         let bad =
@@ -204,8 +203,7 @@ mod tests {
         };
         assert!(env.validate_signature().is_err());
 
-        let mut signed = env;
-        signed.signature = signature_over_payload_hash(&hash);
+        let signed = env.attach_canonical_signature().unwrap();
         signed.validate_signature().unwrap();
     }
 

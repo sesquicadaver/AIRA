@@ -8,8 +8,8 @@ use aira_csu::support::{make_artifact, make_event};
 use aira_event::EventType;
 use aira_object::{AiraRef, ContentHash, Signature};
 use aira_protocol::{
-    local_identity, mvp_timestamp, signature_over_payload_hash, ArtifactProtocolAdapter,
-    DiscoveryRegistry, EventProtocolAdapter, ProtocolEnvelope, ProtocolError, ProtocolId,
+    local_identity, mvp_timestamp, ArtifactProtocolAdapter, DiscoveryRegistry,
+    EventProtocolAdapter, ProtocolEnvelope, ProtocolError, ProtocolId, ProtocolResponse,
     ProtocolStatus, ScopeDescriptor, AP_VERSION, EP_VERSION,
 };
 use aira_schema::SchemaRegistry;
@@ -29,6 +29,8 @@ pub fn run_c2(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_event_publish_idempotent(),
         test_artifact_hash_mismatch(),
         test_protocol_envelope_unsigned(),
+        test_protocol_envelope_canonical_mutations(),
+        test_protocol_response_canonical_mutations(),
     ];
     finalize_suite(ConformanceProfile::C2, cases, artifact_root)
 }
@@ -375,10 +377,150 @@ fn test_protocol_envelope_unsigned() -> CaseResult {
         }
     }
 
-    let mut signed = unsigned;
-    signed.signature = signature_over_payload_hash(&hash);
+    let signed = unsigned.attach_canonical_signature().unwrap();
     if signed.validate_signature().is_err() {
-        return fail(id, "payload-hash signature must pass validate_signature");
+        return fail(
+            id,
+            "canonical envelope signature must pass validate_signature",
+        );
+    }
+
+    pass(id)
+}
+
+fn sample_signed_envelope() -> Result<ProtocolEnvelope, String> {
+    let hash = ContentHash::parse(
+        "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    )
+    .map_err(|e| e.to_string())?;
+    let issuer = local_identity();
+    let message_id = AiraRef::parse("aira:message:c2-canonical").map_err(|e| e.to_string())?;
+    let policy = AiraRef::parse("aira:policy:default").map_err(|e| e.to_string())?;
+    ProtocolEnvelope {
+        protocol_id: ProtocolId::Event,
+        protocol_version: EP_VERSION.into(),
+        message_type: "EventPublish".into(),
+        message_id,
+        correlation_id: Some("aira:event:mut".into()),
+        causal_refs: vec![AiraRef::parse("aira:problem:p-mut").map_err(|e| e.to_string())?],
+        issuer_identity: issuer.clone(),
+        target_scope: ScopeDescriptor::local("event-protocol"),
+        policy_refs: vec![policy],
+        payload_hash: hash,
+        payload_ref: Some("event:mut".into()),
+        created_at: mvp_timestamp(),
+        expires_at: Some("2099-01-01T00:00:00Z".into()),
+        signature: ProtocolEnvelope::placeholder_signature(&issuer),
+    }
+    .attach_canonical_signature()
+    .map_err(|e| e.to_string())
+}
+
+/// SEC-2 — each semantic envelope field mutation breaks canonical verify.
+fn test_protocol_envelope_canonical_mutations() -> CaseResult {
+    let id = "c2.protocol.envelope_canonical_mutations";
+    let base = match sample_signed_envelope() {
+        Ok(e) => e,
+        Err(e) => return fail(id, e),
+    };
+    if base.validate_signature().is_err() {
+        return fail(id, "base envelope signature invalid");
+    }
+
+    let mut wrong_key = base.clone();
+    wrong_key.signature.key_ref = AiraRef::parse("aira:identity:other-signer")
+        .unwrap_or_else(|_| base.issuer_identity.clone());
+    if wrong_key.validate_signature().is_ok() {
+        return fail(id, "key_ref != issuer_identity must fail");
+    }
+
+    let mut tampered = base.clone();
+    tampered.message_type = "EventTamper".into();
+    if tampered.validate_signature().is_ok() {
+        return fail(id, "message_type mutation must fail verify");
+    }
+
+    tampered = base.clone();
+    tampered.protocol_version = "9.9".into();
+    if tampered.validate_signature().is_ok() {
+        return fail(id, "protocol_version mutation must fail verify");
+    }
+
+    tampered = base.clone();
+    tampered.payload_hash = ContentHash::parse(
+        "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    )
+    .unwrap();
+    if tampered.validate_signature().is_ok() {
+        return fail(id, "payload_hash mutation must fail verify");
+    }
+
+    tampered = base.clone();
+    tampered.payload_ref = Some("tampered".into());
+    if tampered.validate_signature().is_ok() {
+        return fail(id, "payload_ref mutation must fail verify");
+    }
+
+    tampered = base.clone();
+    tampered.correlation_id = Some("corr-tamper".into());
+    if tampered.validate_signature().is_ok() {
+        return fail(id, "correlation_id mutation must fail verify");
+    }
+
+    tampered = base.clone();
+    tampered.target_scope.description = Some("other-scope".into());
+    if tampered.validate_signature().is_ok() {
+        return fail(id, "target_scope mutation must fail verify");
+    }
+
+    pass(id)
+}
+
+fn sample_signed_response() -> Result<ProtocolResponse, String> {
+    let issuer = local_identity();
+    let message_id = AiraRef::parse("aira:message:c2-resp").map_err(|e| e.to_string())?;
+    let reason = AiraRef::parse("aira:event:resp-reason").map_err(|e| e.to_string())?;
+    ProtocolResponse {
+        message_id,
+        correlation_id: Some("aira:message:corr".into()),
+        status: ProtocolStatus::Accepted,
+        reason_refs: vec![reason],
+        created_at: mvp_timestamp(),
+        signature: ProtocolResponse::placeholder_signature(&issuer),
+    }
+    .attach_canonical_signature(&issuer)
+    .map_err(|e| e.to_string())
+}
+
+/// SEC-2 — response canonical verify + field mutations fail closed.
+fn test_protocol_response_canonical_mutations() -> CaseResult {
+    let id = "c2.protocol.response_canonical_mutations";
+    let issuer = local_identity();
+    let base = match sample_signed_response() {
+        Ok(r) => r,
+        Err(e) => return fail(id, e),
+    };
+    if base.validate_signature(&issuer).is_err() {
+        return fail(id, "base response signature invalid");
+    }
+
+    let mut wrong_key = base.clone();
+    wrong_key.signature.key_ref =
+        AiraRef::parse("aira:identity:other-responder").unwrap_or_else(|_| issuer.clone());
+    if wrong_key.validate_signature(&issuer).is_ok() {
+        return fail(id, "response key_ref mismatch must fail");
+    }
+
+    let mut tampered = base.clone();
+    tampered.status = ProtocolStatus::Rejected;
+    if tampered.validate_signature(&issuer).is_ok() {
+        return fail(id, "status mutation must fail verify");
+    }
+
+    tampered = base.clone();
+    tampered.correlation_id = Some("tampered-corr".into());
+    if tampered.validate_signature(&issuer).is_ok() {
+        return fail(id, "response correlation_id mutation must fail verify");
     }
 
     pass(id)

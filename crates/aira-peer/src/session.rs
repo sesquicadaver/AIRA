@@ -132,7 +132,7 @@ impl AuthenticatedPeer {
         let direct = env.issuer_identity == self.peer_id && env.signature.key_ref == self.peer_id;
         if direct {
             let ring = trust.to_keyring()?;
-            ring.verify(&env.signature, env.payload_hash.as_str().as_bytes())
+            env.validate_signature_with_keyring(&ring)
                 .map_err(|_| PeerError::InvalidSignature)?;
             return Ok(env);
         }
@@ -146,7 +146,7 @@ impl AuthenticatedPeer {
                 return Err(PeerError::Untrusted(issuer.into()));
             }
             let ring = trust.to_keyring()?;
-            ring.verify(&env.signature, env.payload_hash.as_str().as_bytes())
+            env.validate_signature_with_keyring(&ring)
                 .map_err(|_| PeerError::InvalidSignature)?;
             return Ok(env);
         }
