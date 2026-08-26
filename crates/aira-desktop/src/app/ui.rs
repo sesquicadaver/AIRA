@@ -192,7 +192,15 @@ impl eframe::App for AiraDesktopApp {
 
                 ui.separator();
                 ui.heading("Friend invite");
-                ui.label("File or QR PNG (no camera). Import → trust + address book.");
+                ui.label("File, QR PNG, or camera scan. Import → trust + address book.");
+                if self.qr_camera.is_some() {
+                    if let Some(msg) = &self.qr_camera_status {
+                        ui.colored_label(egui::Color32::from_rgb(80, 140, 200), msg);
+                    }
+                    if ui.button("Stop camera scan").clicked() {
+                        self.stop_qr_camera_scan();
+                    }
+                }
                 ui.horizontal(|ui| {
                     if ui.button("Export JSON…").clicked() {
                         self.export_json_dialog();
@@ -211,7 +219,11 @@ impl eframe::App for AiraDesktopApp {
                     if ui.button("Import QR…").clicked() {
                         self.import_qr_dialog();
                     }
+                    if self.qr_camera.is_none() && ui.button("Scan QR (camera)").clicked() {
+                        self.start_qr_camera_scan();
+                    }
                 });
+                self.poll_qr_camera_scan(ctx);
                 if let Some(msg) = &self.invite_msg {
                     ui.label(msg);
                 }

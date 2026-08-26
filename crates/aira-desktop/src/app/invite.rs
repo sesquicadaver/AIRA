@@ -1,4 +1,5 @@
 use crate::actions;
+use crate::camera;
 
 use super::AiraDesktopApp;
 
@@ -90,6 +91,55 @@ impl AiraDesktopApp {
                     self.last_error = None;
                 }
                 Err(e) => self.last_error = Some(format!("{e:#}")),
+            }
+        }
+    }
+
+    pub(super) fn start_qr_camera_scan(&mut self) {
+        self.stop_qr_camera_scan();
+        match camera::InviteQrCamera::open_default() {
+            Ok(cam) => {
+                self.qr_camera = Some(cam);
+                self.qr_camera_status = Some("Scanning — point camera at PeerInvite QR…".into());
+                self.last_error = None;
+            }
+            Err(e) => {
+                self.last_error = Some(format!("camera: {e:#}"));
+            }
+        }
+    }
+
+    pub(super) fn stop_qr_camera_scan(&mut self) {
+        self.qr_camera = None;
+        self.qr_camera_status = None;
+    }
+
+    pub(super) fn poll_qr_camera_scan(&mut self, ctx: &egui::Context) {
+        if self.qr_camera.is_none() {
+            return;
+        }
+        let luma = match self
+            .qr_camera
+            .as_mut()
+            .and_then(|c| c.grab_luma_frame().ok())
+        {
+            Some(l) => l,
+            None => {
+                ctx.request_repaint_after(std::time::Duration::from_millis(200));
+                return;
+            }
+        };
+        match actions::import_qr_luma(&self.paths, luma) {
+            Ok(out) => {
+                self.invite_msg = Some(format!(
+                    "imported via camera {} (book={})",
+                    out.identity_ref, out.book_updated
+                ));
+                self.last_error = None;
+                self.stop_qr_camera_scan();
+            }
+            Err(_) => {
+                ctx.request_repaint_after(std::time::Duration::from_millis(200));
             }
         }
     }

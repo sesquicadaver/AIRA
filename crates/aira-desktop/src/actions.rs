@@ -6,7 +6,7 @@ use anyhow::Result;
 
 use aira_desktop_runtime::{
     build_local_invite, encode_invite_rgba, ensure_bootstrap, export_invite_file,
-    export_invite_qr_png, import_invite_file, import_invite_qr_file,
+    export_invite_qr_png, import_invite_file, import_invite_qr_file, import_invite_qr_luma,
     join_federation_descriptor_file, normalize_settings, read_federation_membership,
     run_discv_announce, run_discv_find, run_stun_query, write_settings, DesktopPaths,
     DesktopSettings, DiscoveryStunOutcome, ImportInviteOutcome, NetworkProfile, PeerInvite,
@@ -123,6 +123,11 @@ pub fn import_qr(paths: &DesktopPaths, file: &Path) -> Result<ImportInviteOutcom
     import_invite_qr_file(paths, file)
 }
 
+/// Import invite from a camera / in-memory luma QR frame.
+pub fn import_qr_luma(paths: &DesktopPaths, img: image::GrayImage) -> Result<ImportInviteOutcome> {
+    import_invite_qr_luma(paths, img)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -215,6 +220,28 @@ mod tests {
             .peers
             .iter()
             .any(|p| p.identity_id == invite.identity_ref));
+    }
+
+    #[test]
+    fn invite_qr_from_luma_roundtrip_smoke() {
+        let tmp = tempfile::tempdir().unwrap();
+        let alice = DesktopPaths::for_data_root(tmp.path().join("alice"));
+        let bob = DesktopPaths::for_data_root(tmp.path().join("bob"));
+        alice.ensure_dirs().unwrap();
+        bob.ensure_dirs().unwrap();
+
+        let mut settings = load_or_create_settings(&alice).unwrap();
+        apply_network_profile(&mut settings, NetworkProfile::P1, "127.0.0.1:19088", None).unwrap();
+        persist_settings(&alice, &settings).unwrap();
+
+        let png = tmp.path().join("alice.png");
+        let invite = export_qr(&alice, &png, None).unwrap();
+        let luma = aira_desktop_runtime::encode_invite_luma(&invite).unwrap();
+
+        let applied = import_qr_luma(&bob, luma).unwrap();
+        assert!(applied.trusted);
+        assert!(applied.book_updated);
+        assert_eq!(applied.identity_ref, invite.identity_ref);
     }
 
     #[test]

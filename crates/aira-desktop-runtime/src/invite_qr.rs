@@ -1,13 +1,13 @@
 //! PeerInvite QR PNG encode/decode (QUEUE #84 / Analyze-119).
 //!
 //! Payload is compact JSON of the same `PeerInvite` schema as file IO.
-//! Camera / live scan is Out — decode only from an image file on disk.
+//! GUI camera scan (`#133`) decodes from in-memory luma frames via `decode_invite_luma`.
 
 use std::fs;
 use std::path::Path;
 
 use anyhow::{bail, Context, Result};
-use image::Luma;
+use image::{GrayImage, Luma};
 use qrcode::QrCode;
 
 use crate::bootstrap::ensure_bootstrap;
@@ -56,15 +56,12 @@ pub fn encode_invite_png(invite: &PeerInvite, out_path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Decode the first QR found in a PNG/image file into a validated PeerInvite.
-pub fn decode_invite_png(path: &Path) -> Result<PeerInvite> {
-    let img = image::open(path)
-        .with_context(|| format!("open image {}", path.display()))?
-        .to_luma8();
+/// Decode the first QR found in a grayscale image into a validated PeerInvite.
+pub fn decode_invite_luma(img: GrayImage) -> Result<PeerInvite> {
     let mut prep = rqrr::PreparedImage::prepare(img);
     let grids = prep.detect_grids();
     if grids.is_empty() {
-        bail!("no QR code found in {}", path.display());
+        bail!("no QR code found in image");
     }
     let mut last_err = None;
     for grid in &grids {
@@ -86,6 +83,14 @@ pub fn decode_invite_png(path: &Path) -> Result<PeerInvite> {
     Err(last_err.unwrap_or_else(|| anyhow::anyhow!("QR decode failed")))
 }
 
+/// Decode the first QR found in a PNG/image file into a validated PeerInvite.
+pub fn decode_invite_png(path: &Path) -> Result<PeerInvite> {
+    let img = image::open(path)
+        .with_context(|| format!("open image {}", path.display()))?
+        .to_luma8();
+    decode_invite_luma(img)
+}
+
 /// Export local invite as a PNG QR file.
 pub fn export_invite_qr_png(
     paths: &DesktopPaths,
@@ -103,6 +108,12 @@ pub fn export_invite_qr_png(
 /// Import PeerInvite from a QR PNG/image file → trust + optional address book.
 pub fn import_invite_qr_file(paths: &DesktopPaths, path: &Path) -> Result<ImportInviteOutcome> {
     let invite = decode_invite_png(path)?;
+    import_invite(paths, &invite)
+}
+
+/// Import PeerInvite decoded from a camera / in-memory luma frame.
+pub fn import_invite_qr_luma(paths: &DesktopPaths, img: GrayImage) -> Result<ImportInviteOutcome> {
+    let invite = decode_invite_luma(img)?;
     import_invite(paths, &invite)
 }
 
@@ -149,5 +160,21 @@ mod tests {
         let payload = invite_qr_payload(&invite).unwrap();
         assert!(!payload.contains('\n'));
         assert!(payload.starts_with('{'));
+    }
+
+    #[test]
+    fn luma_encode_decode_roundtrip() {
+        let invite = PeerInvite {
+            payload_schema: PEER_INVITE_SCHEMA_ID.to_string(),
+            identity_ref: "aira:identity:desktop".into(),
+            public_key_hex: "d4295b4daeeb41c8dcc7ab0823210104b257a68f38f79d26bdd66875265e0444"
+                .into(),
+            addr: Some("127.0.0.1:9797".into()),
+            display_name: None,
+            created_at: None,
+        };
+        let luma = encode_invite_luma(&invite).unwrap();
+        let again = decode_invite_luma(luma).unwrap();
+        assert_eq!(again, invite);
     }
 }
