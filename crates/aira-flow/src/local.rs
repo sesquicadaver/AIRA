@@ -178,9 +178,56 @@ struct ProblemsIndex {
     problems: BTreeMap<String, ProblemRecord>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-struct EventLogFile {
-    events: Vec<EventDescriptor>,
+/// JSON event log file shape (`events/event-log.json`).
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+pub struct EventLogFile {
+    pub events: Vec<EventDescriptor>,
+}
+
+/// Outcome of reading `events/event-log.json` with corruption recovery (#142).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EventLogReadOutcome {
+    pub log: EventLogFile,
+    pub recovered_from_corruption: bool,
+}
+
+/// Backup suffix when `event-log.json` is corrupt and reset.
+pub const EVENT_LOG_CORRUPT_BACKUP: &str = "event-log.json.corrupt";
+
+/// Read event log; on corrupt JSON backup file and reset to empty (fail-safe recovery).
+pub fn read_event_log_resilient(path: &Path) -> Result<EventLogReadOutcome, FlowError> {
+    if !path.exists() {
+        return Ok(EventLogReadOutcome {
+            log: EventLogFile::default(),
+            recovered_from_corruption: false,
+        });
+    }
+    let raw = fs::read_to_string(path).map_err(|e| FlowError::Other(e.to_string()))?;
+    if let Ok(log) = serde_json::from_str::<EventLogFile>(&raw) {
+        return Ok(EventLogReadOutcome {
+            log,
+            recovered_from_corruption: false,
+        });
+    }
+    let parent = match path.parent() {
+        Some(p) => p,
+        None => {
+            return Err(FlowError::Other(
+                "event log path has no parent directory".into(),
+            ));
+        }
+    };
+    let backup = parent.join(EVENT_LOG_CORRUPT_BACKUP);
+    if backup.exists() {
+        fs::remove_file(&backup).map_err(|e| FlowError::Other(e.to_string()))?;
+    }
+    fs::rename(path, &backup).map_err(|e| FlowError::Other(e.to_string()))?;
+    let empty = EventLogFile::default();
+    write_json(path, &empty)?;
+    Ok(EventLogReadOutcome {
+        log: empty,
+        recovered_from_corruption: true,
+    })
 }
 
 /// Initialize `.aira` layout (#57).
@@ -321,7 +368,8 @@ impl LocalSession {
         outcome: &SubmitOutcome,
     ) -> Result<(), FlowError> {
         // Artifact index already flushed by CasArtifactStore::publish.
-        let mut log = read_json::<EventLogFile>(&self.paths.event_log()).unwrap_or_default();
+        let read = read_event_log_resilient(&self.paths.event_log())?;
+        let mut log = read.log;
         for ev in self.plane.events() {
             if !log
                 .events
@@ -407,7 +455,8 @@ impl LocalSession {
     }
 
     pub fn event_tail(&self, limit: usize) -> Result<Vec<EventDescriptor>, FlowError> {
-        let log = read_json::<EventLogFile>(&self.paths.event_log()).unwrap_or_default();
+        let read = read_event_log_resilient(&self.paths.event_log())?;
+        let log = read.log;
         let n = log.events.len();
         let start = n.saturating_sub(limit);
         Ok(log.events[start..].to_vec())
