@@ -1,6 +1,6 @@
 # Desktop federation join (QUEUE #103)
 
-**Phase G:** `federation leave` CLI (`#134`); join hardening (`#135`). **Out:** remote federation runtime; settlement/CRP.
+**Phase G:** `federation leave` CLI (`#139`); join hardening (`#140`). **Out:** remote federation runtime; settlement/CRP.
 
 Local operator ceremony: signed federation descriptor JSON → TrustStore pin + `federation/membership.json`. Same semantics as `aira federation join --descriptor`.
 
@@ -9,6 +9,7 @@ Local operator ceremony: signed federation descriptor JSON → TrustStore pin + 
 ```rust
 join_federation_descriptor_file(&paths, descriptor_path) -> JoinOutcome
 read_federation_membership(&paths) -> Option<FederationMembership>
+leave_federation_local(&paths) -> LeaveOutcome
 ```
 
 Bootstrap runs before join (identity + dirs). GUI wizard is `#104`.
@@ -17,6 +18,7 @@ Bootstrap runs before join (identity + dirs). GUI wizard is `#104`.
 
 ```bash
 aira federation join --descriptor ./fed.json
+aira federation leave
 ```
 
 ## Related

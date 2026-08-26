@@ -53,6 +53,13 @@ pub struct JoinOutcome {
     pub already_member: bool,
 }
 
+/// Result of [`leave_federation`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LeaveOutcome {
+    pub federation_id: Option<String>,
+    pub was_member: bool,
+}
+
 /// Path to `.aira/federation/membership.json`.
 pub fn membership_path(root: impl AsRef<Path>) -> PathBuf {
     root.as_ref().join("federation").join("membership.json")
@@ -201,7 +208,7 @@ pub fn join_federation(
     if let Some(m) = existing {
         if m.federation_id != desc.federation_id {
             return Err(FederationError::Failed(format!(
-                "already joined {} — different federation_id refused (leave is out of this slice)",
+                "already joined {} — run `federation leave` before joining a different federation_id",
                 m.federation_id
             )));
         }
@@ -236,6 +243,27 @@ pub fn join_federation(
     Ok(JoinOutcome {
         membership,
         already_member: false,
+    })
+}
+
+/// Clear local federation membership (TrustStore pins are not removed).
+pub fn leave_federation(root: impl AsRef<Path>) -> Result<LeaveOutcome, FederationError> {
+    let root = root.as_ref();
+    let existing = load_membership(root)?;
+    let Some(m) = existing else {
+        return Ok(LeaveOutcome {
+            federation_id: None,
+            was_member: false,
+        });
+    };
+    let federation_id = m.federation_id.clone();
+    let path = membership_path(root);
+    if path.exists() {
+        fs::remove_file(&path).map_err(|e| FederationError::Failed(e.to_string()))?;
+    }
+    Ok(LeaveOutcome {
+        federation_id: Some(federation_id),
+        was_member: true,
     })
 }
 
@@ -422,6 +450,41 @@ mod tests {
         let desc = signed(LOCAL_TEST_KEY_REF, "aira:federation:home", &sk, &pk);
         let err = join_federation(dir.path(), &desc).unwrap_err().to_string();
         assert!(err.contains("local-test"), "{err}");
+    }
+
+    #[test]
+    fn leave_clears_membership_and_allows_different_federation() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let (sk, pk) = keypair(14);
+        let a = signed("aira:identity:fed-home", "aira:federation:home", &sk, &pk);
+        join_federation(root, &a).unwrap();
+        let out = leave_federation(root).unwrap();
+        assert!(out.was_member);
+        assert_eq!(out.federation_id.as_deref(), Some("aira:federation:home"));
+        assert!(!membership_path(root).exists());
+        assert!(load_membership(root).unwrap().is_none());
+
+        let (sk2, pk2) = keypair(15);
+        let b = signed(
+            "aira:identity:fed-other",
+            "aira:federation:other",
+            &sk2,
+            &pk2,
+        );
+        join_federation(root, &b).unwrap();
+        assert_eq!(
+            load_membership(root).unwrap().unwrap().federation_id,
+            "aira:federation:other"
+        );
+    }
+
+    #[test]
+    fn leave_is_idempotent_when_not_joined() {
+        let dir = tempdir().unwrap();
+        let out = leave_federation(dir.path()).unwrap();
+        assert!(!out.was_member);
+        assert!(out.federation_id.is_none());
     }
 
     #[test]

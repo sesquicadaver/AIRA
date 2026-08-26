@@ -19,9 +19,10 @@ pub use envelope::{
 };
 pub use event_adapter::{EventProtocolAdapter, EP_VERSION};
 pub use federation::{
-    descriptor_canonical_bytes, join_federation, load_federation_membership, membership_path,
-    verify_federation_descriptor, FederationDescriptor, FederationError, FederationMembership,
-    JoinOutcome, FEDERATION_DESCRIPTOR_DOMAIN, FEDERATION_MEMBERSHIP_SCHEMA,
+    descriptor_canonical_bytes, join_federation, leave_federation, load_federation_membership,
+    membership_path, verify_federation_descriptor, FederationDescriptor, FederationError,
+    FederationMembership, JoinOutcome, LeaveOutcome, FEDERATION_DESCRIPTOR_DOMAIN,
+    FEDERATION_MEMBERSHIP_SCHEMA,
 };
 pub use identity::{IdentityDescriptor, IdentityType, PublicKeyEntry};
 
