@@ -8,6 +8,9 @@ use rusqlite::{params, Connection, OptionalExtension};
 use crate::error::CoreError;
 use crate::store::{verify_stored_descriptor, ObjectStore};
 
+/// SQLite `objects` table schema token (migration smoke / doc anchor #143).
+pub const OBJECTS_SCHEMA_VERSION: u32 = 1;
+
 /// SQLite-backed immutable Object Store.
 pub struct SqliteObjectStore {
     conn: Connection,
@@ -37,9 +40,51 @@ impl SqliteObjectStore {
                     signature_json TEXT NOT NULL,
                     rowid_token INTEGER NOT NULL UNIQUE
                 );
+                CREATE TABLE IF NOT EXISTS schema_meta (
+                    key TEXT PRIMARY KEY NOT NULL,
+                    value TEXT NOT NULL
+                );
                 "#,
             )
             .map_err(|e| CoreError::Storage(e.to_string()))?;
+        self.verify_objects_table_integrity()?;
+        self.conn
+            .execute(
+                "INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('objects_schema_version', ?1)",
+                params![OBJECTS_SCHEMA_VERSION.to_string()],
+            )
+            .map_err(|e| CoreError::Storage(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Fail closed if migrate did not produce the expected `objects` table (#143).
+    fn verify_objects_table_integrity(&self) -> Result<(), CoreError> {
+        let table_count: i64 = self
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'objects'",
+                [],
+                |r| r.get(0),
+            )
+            .map_err(|e| CoreError::Storage(e.to_string()))?;
+        if table_count != 1 {
+            return Err(CoreError::Storage(
+                "objects table missing after migrate".into(),
+            ));
+        }
+        let column_count: i64 = self
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('objects')",
+                [],
+                |r| r.get(0),
+            )
+            .map_err(|e| CoreError::Storage(e.to_string()))?;
+        if column_count != 8 {
+            return Err(CoreError::Storage(format!(
+                "objects table has {column_count} columns, expected 8"
+            )));
+        }
         Ok(())
     }
 

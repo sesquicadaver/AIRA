@@ -46,7 +46,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 
 | Requirement | Source | Implemented in | Tested by | Status | Notes |
 |-------------|--------|----------------|-----------|--------|-------|
-| Immutable Object Store | Book I §4–5; B1-001 | `aira-core` `MemoryObjectStore` / `SqliteObjectStore` | `c0.object.immutability`; `c0.object.verify_on_read`; `memory_rejects_in_place_mutation`; `create_rejects_unsigned_and_mutated_object_signature`; `open_and_get_by_id_reject_tampered_descriptor` | **DONE** | Verify-on-read re-checks canonical signature (QUEUE #112) |
+| Immutable Object Store | Book I §4–5; B1-001 | `aira-core` `MemoryObjectStore` / `SqliteObjectStore` | `c0.object.immutability`; `c0.object.verify_on_read`; `sqlite_migrate_idempotent_reopen_preserves_rows`; `sqlite_corrupt_descriptor_json_integrity`; `init_node_sqlite_object_path_migrate_and_persist` | **DONE** | Verify-on-read (#112); SQLite migrate/integrity smoke (#143) |
 | Opaque Handle | Book I §6; B1-003 | `aira_object::Handle` | `c0.object.handle_opacity`; `handle_is_opaque` | **DONE** | Debug omits token/paths; C0 B1-003 case |
 | Event runtime, local causal order, no global total order | Book I §8–9; B1-004/005 | `aira-event` `MemoryEventLog` | `c0.event.causality`; `aira-event` unit tests | **DONE** | Plane drain is in-process demo (`drain_from` bound 256) |
 | Durable event log | Book I / Book IV §6.3 | `LocalSession` → `.aira/events/event-log.json` | `corrupt_event_log_recovered_and_writable`; alpha layout | **PARTIAL** | JSON file; corrupt log backed up as `event-log.json.corrupt` and reset (#142) |
@@ -245,7 +245,8 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #133 | Invite QR camera | GUI camera + `import_invite_qr_luma` | **DONE** @ PR #96 |
 | #134–#138 | SEC hardening (audit) | local-test trust; envelope sign; identity bind; equivocation; artifact admission |
 | #139–#141 | Federation + C3 scaffold | leave CLI; join hardening; `run_c3` local |
-| #142–#143 | Durable stores audit | event log recovery; SQLite object path |
+| #142 | Event log durability | corrupt JSON backup + reset (`event-log.json.corrupt`); test in `aira-flow` | **DONE** @ PR #105 |
+| #143 | SQLite object path | `init_node` `db/aira.sqlite` migrate idempotent; corrupt JSON fail-closed; tests | **IN PROGRESS** |
 | #144–#145 | CSU SDK | external fixture; `docs/csu-sdk.md` (not marketplace) |
 | #146–#147 | Epistemic basic | `csu/epistemic-basic`; assessment roundtrip |
 | #148–#150 | Production packaging | macOS codesign; Windows MSI; Linux deb |

@@ -397,6 +397,29 @@ mod tests {
     }
 
     #[test]
+    fn init_node_sqlite_object_path_migrate_and_persist() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let sqlite_path = root.join("db/aira.sqlite");
+        assert!(sqlite_path.exists());
+
+        let desc = aira_object::ObjectDescriptor::example_problem();
+        let object_id = desc.object_id.clone();
+        let mut store = aira_core::SqliteObjectStore::open(&sqlite_path).unwrap();
+        store.create(desc.clone()).unwrap();
+        drop(store);
+
+        let reopened = aira_core::SqliteObjectStore::open(&sqlite_path).unwrap();
+        let loaded = reopened.get_by_object_id(&object_id).unwrap().unwrap();
+        assert_eq!(loaded, desc);
+
+        let again = aira_core::SqliteObjectStore::open(&sqlite_path).unwrap();
+        assert_eq!(again.get_by_object_id(&object_id).unwrap().unwrap(), desc);
+    }
+
+    #[test]
     fn corrupt_event_log_recovered_and_writable() {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();

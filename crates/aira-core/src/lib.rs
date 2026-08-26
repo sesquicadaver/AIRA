@@ -82,6 +82,48 @@ mod tests {
     }
 
     #[test]
+    fn sqlite_migrate_idempotent_reopen_preserves_rows() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("objects.db");
+        let desc = ObjectDescriptor::example_problem();
+        let object_id = desc.object_id.clone();
+
+        let mut store = SqliteObjectStore::open(&path).unwrap();
+        store.create(desc.clone()).unwrap();
+        drop(store);
+
+        for _ in 0..3 {
+            let reopened = SqliteObjectStore::open(&path).unwrap();
+            let loaded = reopened.get_by_object_id(&object_id).unwrap().unwrap();
+            assert_eq!(loaded, desc);
+        }
+    }
+
+    #[test]
+    fn sqlite_corrupt_descriptor_json_integrity() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("objects.db");
+        let mut store = SqliteObjectStore::open(&path).unwrap();
+        let desc = ObjectDescriptor::example_problem();
+        let object_id = desc.object_id.clone();
+        let handle = store.create(desc).unwrap();
+
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        conn.execute(
+            "UPDATE objects SET descriptor_json = ?1 WHERE object_id = ?2",
+            rusqlite::params!["not-json", object_id.as_str()],
+        )
+        .unwrap();
+
+        let reopened = SqliteObjectStore::open(&path).unwrap();
+        assert!(matches!(reopened.open(&handle), Err(CoreError::Storage(_))));
+        assert!(matches!(
+            reopened.get_by_object_id(&object_id),
+            Err(CoreError::Storage(_))
+        ));
+    }
+
+    #[test]
     fn sqlite_duplicate_insert_deterministic() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("objects.db");
