@@ -4,6 +4,7 @@ mod alpha;
 mod c0;
 mod c1;
 mod c2;
+mod c3;
 mod report;
 mod runner;
 mod security;
@@ -12,6 +13,7 @@ pub use alpha::run_alpha_acceptance;
 pub use c0::run_c0;
 pub use c1::run_c1;
 pub use c2::run_c2;
+pub use c3::run_c3;
 pub use report::{
     AiraInfo, ConformanceProfile, ConformanceReport, FailureRecord, ImplementationInfo,
     ResultCounters,
@@ -33,6 +35,7 @@ pub fn run_profile(
         ConformanceProfile::C0 => run_c0(artifact_root),
         ConformanceProfile::C1 => run_c1(artifact_root),
         ConformanceProfile::C2 => run_c2(artifact_root),
+        ConformanceProfile::C3 => run_c3(artifact_root),
         other => Err(ConformanceError::Test(format!(
             "profile {} not implemented in this MVP",
             other.as_str()
@@ -97,12 +100,29 @@ mod tests {
     }
 
     #[test]
+    fn c3_suite_passes_and_emits_report() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("reports");
+        let suite = run_c3(&root).unwrap();
+        assert_eq!(suite.report.aira.profile, ConformanceProfile::C3);
+        assert_eq!(
+            suite.report.results.failed, 0,
+            "failures={:?}",
+            suite.report.failures
+        );
+        assert_eq!(suite.report.results.passed, 4);
+        assert_eq!(suite.cases.len(), 4);
+    }
+
+    #[test]
     fn run_profile_dispatch() {
         let dir = tempfile::tempdir().unwrap();
         let suite = run_profile(ConformanceProfile::C0, dir.path().join("p")).unwrap();
         assert_eq!(suite.cases.len(), 10);
         let suite2 = run_profile(ConformanceProfile::C2, dir.path().join("p2")).unwrap();
         assert_eq!(suite2.cases.len(), 11);
+        let suite3 = run_profile(ConformanceProfile::C3, dir.path().join("p3")).unwrap();
+        assert_eq!(suite3.cases.len(), 4);
     }
 
     #[test]

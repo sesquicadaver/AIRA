@@ -650,7 +650,7 @@ pub(crate) enum FederationCommands {
 pub(crate) enum ConformanceCommands {
     /// Run a conformance profile suite and emit a report artifact.
     Run {
-        /// Profile: C0 or C1.
+        /// Profile: C0, C1, C2, or C3.
         #[arg(long, default_value = "C0")]
         profile: String,
         /// Directory for suite artifacts / report (default: <root>/conformance/reports).
