@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#132` DONE @ PR #95; **перший OPEN = `#133`** (invite QR camera) |
+| `main` | Phase G `#133` DONE @ PR #96; **перший OPEN = `#134`** (SEC-1 local-test trust) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
@@ -264,7 +264,7 @@ F0 stabilize CI (#107–#109)
 | 130 | **DONE** | ~~Analyze-165 — split desktop app~~ | mechanical `aira-desktop/src/app/` | desktop tests green | GUI redesign |
 | 131 | **DONE** | ~~Analyze-166 — stabilize peer_lifecycle_p3~~ | CI-stable P3 lifecycle test | 3 consecutive CI green | P4; relay semantics |
 | 132 | **DONE** | ~~Analyze-167 — stabilize peer_lifecycle_p4~~ | CI-stable P4 gossip lifecycle | 3 consecutive CI green | P5 federation GUI |
-| 133 | **OPEN** | Analyze-168 — invite QR camera | GUI camera → invite import | roundtrip smoke | non-loopback peer |
+| 133 | **DONE** | ~~Analyze-168 — invite QR camera~~ | GUI camera → invite import | roundtrip smoke | non-loopback peer |
 | 134 | **OPEN** | Analyze-182 — SEC-1 local-test trust hardening | `local-test` не в runtime trust; peer reject test identity; migration note | conformance/peer negative test green | full identity ceremony |
 | 135 | **OPEN** | Analyze-183 — SEC-2 canonical envelope signature | full envelope + response canonical sign/verify; `key_ref == issuer` | C2 mutation tests per field green | wire protocol version bump |
 | 136 | **OPEN** | Analyze-184 — SEC-3 producer identity binding | `signature.key_ref == producer_identity` on Object/Event/Artifact | store + conformance reject cross-identity | delegation artifacts |
@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#133` invite QR camera. Порядок: `#133` → `#151` (SEC `#134`–`#138` перед federation).
+**Перший OPEN:** `#134` SEC-1 local-test trust hardening. Порядок: `#134` → `#151` (SEC `#134`–`#138` перед federation).
 
 ```text
 G0 govern (#120–#121)
