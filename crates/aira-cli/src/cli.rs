@@ -642,6 +642,8 @@ pub(crate) enum FederationCommands {
         #[arg(long)]
         descriptor: PathBuf,
     },
+    /// Clear local federation membership (TrustStore pins remain).
+    Leave,
 }
 
 #[derive(Subcommand, Debug)]

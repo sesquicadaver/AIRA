@@ -3,8 +3,8 @@
 use std::path::Path;
 
 use aira_protocol::{
-    join_federation, load_federation_membership, FederationDescriptor, FederationMembership,
-    JoinOutcome,
+    join_federation, leave_federation, load_federation_membership, FederationDescriptor,
+    FederationMembership, JoinOutcome, LeaveOutcome,
 };
 use anyhow::{Context, Result};
 
@@ -30,4 +30,10 @@ pub fn join_federation_descriptor_file(
 /// Read persisted federation membership for this Desktop data root.
 pub fn read_federation_membership(paths: &DesktopPaths) -> Result<Option<FederationMembership>> {
     load_federation_membership(&paths.data_root).map_err(|e| anyhow::anyhow!("{e}"))
+}
+
+/// Clear local federation membership (same semantics as `aira federation leave`).
+pub fn leave_federation_local(paths: &DesktopPaths) -> Result<LeaveOutcome> {
+    paths.ensure_dirs().context("desktop dirs")?;
+    leave_federation(&paths.data_root).map_err(|e| anyhow::anyhow!("{e}"))
 }

@@ -29,7 +29,9 @@ pub use autostart::{
 };
 pub use bootstrap::ensure_bootstrap;
 pub use discovery::{run_discv_announce, run_discv_find, run_stun_query, DiscoveryStunOutcome};
-pub use federation::{join_federation_descriptor_file, read_federation_membership};
+pub use federation::{
+    join_federation_descriptor_file, leave_federation_local, read_federation_membership,
+};
 pub use invite::{
     build_local_invite, export_invite_file, import_invite, import_invite_file, load_invite_file,
     validate_peer_invite, ImportInviteOutcome, PeerInvite, PEER_INVITE_SCHEMA_ID,

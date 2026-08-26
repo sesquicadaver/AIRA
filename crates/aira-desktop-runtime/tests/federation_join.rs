@@ -64,6 +64,36 @@ fn join_descriptor_file_pins_trust_and_membership() {
 }
 
 #[test]
+fn leave_clears_membership() {
+    let tmp = tempfile::tempdir().unwrap();
+    let paths = DesktopPaths::for_data_root(tmp.path());
+    let desc = signed_descriptor(
+        "aira:identity:fed-desktop-leave",
+        "aira:federation:desktop-leave",
+        43,
+    );
+    let desc_path = tmp.path().join("fed.json");
+    std::fs::write(&desc_path, serde_json::to_string_pretty(&desc).unwrap()).unwrap();
+    join_federation_descriptor_file(&paths, &desc_path).unwrap();
+    assert!(read_federation_membership(&paths).unwrap().is_some());
+
+    let out = aira_desktop_runtime::leave_federation_local(&paths).unwrap();
+    assert!(out.was_member);
+    assert_eq!(
+        out.federation_id.as_deref(),
+        Some("aira:federation:desktop-leave")
+    );
+    assert!(read_federation_membership(&paths).unwrap().is_none());
+    assert!(!membership_path(&paths.data_root).exists());
+
+    let store = TrustStore::load(&paths.data_root).unwrap();
+    assert!(store
+        .entries
+        .iter()
+        .any(|e| e.identity_id == "aira:identity:fed-desktop-leave"));
+}
+
+#[test]
 fn join_invalid_descriptor_fails_closed() {
     let tmp = tempfile::tempdir().unwrap();
     let paths = DesktopPaths::for_data_root(tmp.path());

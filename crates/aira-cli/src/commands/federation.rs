@@ -35,5 +35,15 @@ pub(crate) fn run(root: &Path, command: FederationCommands) -> Result<ExitCode> 
             );
             Ok(ExitCode::SUCCESS)
         }
+        FederationCommands::Leave => {
+            ensure_init(root)?;
+            let out = aira_protocol::leave_federation(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+            if out.was_member {
+                println!("left {}", out.federation_id.unwrap_or_default());
+            } else {
+                println!("not joined");
+            }
+            Ok(ExitCode::SUCCESS)
+        }
     }
 }
