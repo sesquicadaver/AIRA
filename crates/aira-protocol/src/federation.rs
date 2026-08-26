@@ -6,7 +6,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use aira_object::{utc_now_rfc3339, AiraRef, Keyring, Signature, TrustStore, LOCAL_TEST_KEY_REF};
+use aira_object::{
+    record_trust_audit, utc_now_rfc3339, AiraRef, Keyring, Signature, TrustAuditAction,
+    TrustAuditEntry, TrustStore, LOCAL_TEST_KEY_REF,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -155,6 +158,50 @@ fn already_pinned(store: &TrustStore, identity_ref: &str, public_key_hex: &str) 
         .any(|e| e.identity_id == identity_ref && hex_eq(&e.public_key_hex, public_key_hex))
 }
 
+/// Ensure on-disk membership matches the verified descriptor (SEC-5 / join hardening).
+fn membership_matches_descriptor(
+    m: &FederationMembership,
+    desc: &FederationDescriptor,
+) -> Result<(), FederationError> {
+    if m.federation_id != desc.federation_id {
+        return Err(FederationError::Failed(format!(
+            "membership federation_id mismatch: {} vs {}",
+            m.federation_id, desc.federation_id
+        )));
+    }
+    if m.federation_type != desc.federation_type {
+        return Err(FederationError::Failed(
+            "membership federation_type mismatch".into(),
+        ));
+    }
+    if m.identity_ref != desc.identity_ref {
+        return Err(FederationError::Failed(
+            "membership identity_ref mismatch".into(),
+        ));
+    }
+    if !hex_eq(&m.public_key_hex, &desc.public_key_hex) {
+        return Err(FederationError::Failed(
+            "membership public_key_hex mismatch".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn record_federation_audit(
+    root: &Path,
+    action: TrustAuditAction,
+    federation_id: &str,
+    identity_ref: &str,
+    public_key_hex: Option<&str>,
+) -> Result<(), FederationError> {
+    let entry = TrustAuditEntry::new(action, federation_id, Some("federation"))
+        .map_err(FederationError::Crypto)?
+        .with_reason(Some(identity_ref))
+        .with_pubkey_hex(public_key_hex);
+    record_trust_audit(root, entry).map_err(FederationError::Crypto)?;
+    Ok(())
+}
+
 /// Persist TrustStore only when the identity is not already pinned with this key.
 fn pin_identity(
     root: &Path,
@@ -212,11 +259,7 @@ pub fn join_federation(
                 m.federation_id
             )));
         }
-        if m.identity_ref != desc.identity_ref || !hex_eq(&m.public_key_hex, &desc.public_key_hex) {
-            return Err(FederationError::Failed(
-                "same federation_id with a different key is refused".into(),
-            ));
-        }
+        membership_matches_descriptor(&m, desc)?;
         if !store
             .entries
             .iter()
@@ -240,6 +283,13 @@ pub fn join_federation(
         joined_at: utc_now_rfc3339()?,
     };
     save_membership(root, &membership)?;
+    record_federation_audit(
+        root,
+        TrustAuditAction::FederationJoin,
+        &desc.federation_id,
+        &desc.identity_ref,
+        Some(&membership.public_key_hex),
+    )?;
     Ok(JoinOutcome {
         membership,
         already_member: false,
@@ -257,10 +307,19 @@ pub fn leave_federation(root: impl AsRef<Path>) -> Result<LeaveOutcome, Federati
         });
     };
     let federation_id = m.federation_id.clone();
+    let identity_ref = m.identity_ref.clone();
+    let pubkey = m.public_key_hex.clone();
     let path = membership_path(root);
     if path.exists() {
         fs::remove_file(&path).map_err(|e| FederationError::Failed(e.to_string()))?;
     }
+    record_federation_audit(
+        root,
+        TrustAuditAction::FederationLeave,
+        &federation_id,
+        &identity_ref,
+        Some(&pubkey),
+    )?;
     Ok(LeaveOutcome {
         federation_id: Some(federation_id),
         was_member: true,
@@ -485,6 +544,54 @@ mod tests {
         let out = leave_federation(dir.path()).unwrap();
         assert!(!out.was_member);
         assert!(out.federation_id.is_none());
+    }
+
+    #[test]
+    fn join_records_audit_and_rejoin_after_leave() {
+        use aira_object::{TrustAuditAction, TrustAuditLog};
+
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let (sk, pk) = keypair(16);
+        let desc = signed("aira:identity:fed-home", "aira:federation:home", &sk, &pk);
+        let out = join_federation(root, &desc).unwrap();
+        assert!(!out.already_member);
+        let audit = TrustAuditLog::load(root).unwrap();
+        assert_eq!(audit.len(), 1);
+        assert_eq!(audit[0].action, TrustAuditAction::FederationJoin);
+        let joined_at1 = out.membership.joined_at.clone();
+        join_federation(root, &desc).unwrap();
+        assert_eq!(
+            TrustAuditLog::load(root).unwrap().len(),
+            1,
+            "idempotent rejoin"
+        );
+
+        leave_federation(root).unwrap();
+        let audit = TrustAuditLog::load(root).unwrap();
+        assert_eq!(audit.len(), 2);
+        assert_eq!(audit[1].action, TrustAuditAction::FederationLeave);
+
+        let rejoined = join_federation(root, &desc).unwrap();
+        assert!(!rejoined.already_member);
+        assert_ne!(rejoined.membership.joined_at, joined_at1);
+        assert_eq!(TrustAuditLog::load(root).unwrap().len(), 3);
+    }
+
+    #[test]
+    fn tampered_membership_federation_type_rejected() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let (sk, pk) = keypair(17);
+        let desc = signed("aira:identity:fed-home", "aira:federation:home", &sk, &pk);
+        join_federation(root, &desc).unwrap();
+        let path = membership_path(root);
+        let raw = fs::read_to_string(&path).unwrap();
+        let mut m: FederationMembership = serde_json::from_str(&raw).unwrap();
+        m.federation_type = "tampered".into();
+        fs::write(&path, serde_json::to_string_pretty(&m).unwrap()).unwrap();
+        let err = join_federation(root, &desc).unwrap_err().to_string();
+        assert!(err.contains("federation_type mismatch"), "{err}");
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # Desktop federation join (QUEUE #103)
 
-**Phase G:** `federation leave` CLI (`#139`); join hardening (`#140`). **Out:** remote federation runtime; settlement/CRP.
+**Phase G:** federation join hardening (`#140`); C3 scaffold (`#141`). **Out:** remote federation runtime; settlement/CRP.
 
 Local operator ceremony: signed federation descriptor JSON → TrustStore pin + `federation/membership.json`. Same semantics as `aira federation join --descriptor`.
 
@@ -12,7 +12,7 @@ read_federation_membership(&paths) -> Option<FederationMembership>
 leave_federation_local(&paths) -> LeaveOutcome
 ```
 
-Bootstrap runs before join (identity + dirs). GUI wizard is `#104`.
+Join verifies descriptor signature, pins TrustStore, writes membership, and appends `federation_join` to `identity/trust-audit.jsonl`. Rejoin with the same descriptor is idempotent (no duplicate audit). After `federation leave`, re-join writes fresh membership and a new audit entry.
 
 ## CLI parity
 

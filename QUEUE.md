@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#138` DONE @ PR #101; **перший OPEN = `#139`** (federation leave) |
+| `main` | Phase G `#139` DONE @ PR #102; **перший OPEN = `#140`** (federation join hardening) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
@@ -270,7 +270,7 @@ F0 stabilize CI (#107–#109)
 | 136 | **DONE** | ~~Analyze-184 — SEC-3 producer identity binding~~ | `signature.key_ref == producer_identity` on Object/Event/Artifact | store + conformance reject cross-identity | delegation artifacts |
 | 137 | **DONE** | ~~Analyze-185 — SEC-4 event equivocation~~ | same `event_id` + diff hash → conflict; C2 case | idempotent same-hash ACCEPT | global total order |
 | 138 | **DONE** | ~~Analyze-186 — SEC-5 artifact admission~~ | immutable descriptor admission; supersession persist on reopen | artifact store tests green | new artifact types |
-| 139 | **OPEN** | Analyze-169 — federation leave | CLI `federation leave` | membership cleared; tests | Join Request protocol |
+| 139 | **DONE** | ~~Analyze-169 — federation leave~~ | CLI `federation leave` | membership cleared; tests | Join Request protocol |
 | 140 | **OPEN** | Analyze-170 — federation join hardening | join edge cases + audit | regression tests green | remote federation |
 | 141 | **OPEN** | Analyze-171 — C3 conformance scaffold | `run_c3` minimal local cases | runner + doc; optional CI note | full C3 wire |
 | 142 | **OPEN** | Analyze-172 — event log durability | JSON log corruption recovery test | test + doc note | production event engine |
@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#139` federation leave. Порядок: `#139` → `#151`.
+**Перший OPEN:** `#140` federation join hardening. Порядок: `#140` → `#151`.
 
 ```text
 G0 govern (#120–#121)
