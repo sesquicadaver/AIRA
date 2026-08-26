@@ -273,7 +273,7 @@ mod tests {
         assert_eq!(st, StatusCode::OK, "{v}");
         assert_eq!(v["profile"], "C2");
         assert_eq!(v["results"]["failed"], 0);
-        assert_eq!(v["results"]["passed"], 8);
+        assert_eq!(v["results"]["passed"], 10);
     }
 
     #[tokio::test]
