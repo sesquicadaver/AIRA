@@ -226,6 +226,10 @@ pub fn apply_trust_delta(
     let (local_id, _) = Keyring::load_node_identity(root)?;
     let local = local_id.as_str();
 
+    if issuer.as_str() == LOCAL_TEST_KEY_REF {
+        return Err(PeerError::Untrusted(LOCAL_TEST_KEY_REF.into()));
+    }
+
     // Issuer must already be trusted (and not revoked) at apply time.
     let trust_check = TrustStore::load(root)?;
     if trust_check.is_revoked(issuer.as_str()) {

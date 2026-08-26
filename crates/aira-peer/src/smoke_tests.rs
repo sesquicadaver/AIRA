@@ -284,6 +284,64 @@ fn noise_static_rotate_without_prior_creates_fresh() {
 }
 
 #[tokio::test]
+async fn local_test_identity_rejected_at_handshake() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+    init_node(root).unwrap();
+    let (_id, _pub) = write_node_identity(root, "victim-lt", [29u8; 32]);
+
+    // Legacy trust.json that still lists local-test (pre-SEC-1 installs).
+    let legacy = serde_json::json!({
+        "entries": [{
+            "identity_id": aira_object::LOCAL_TEST_KEY_REF,
+            "algorithm": "ed25519",
+            "public_key_hex": aira_object::local_test_public_key_hex()
+        }],
+        "revoked": []
+    });
+    fs::write(
+        NodePaths::new(root).trust_json(),
+        format!("{}\n", serde_json::to_string_pretty(&legacy).unwrap()),
+    )
+    .unwrap();
+
+    let listener = listen("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let root_v = root.to_path_buf();
+    let accept_task = tokio::spawn(async move {
+        let stream = accept_tcp(&listener).await.unwrap();
+        complete_accept(stream, &root_v).await
+    });
+
+    let nonce_hex = "00112233445566778899001122334455";
+    let x25519_pub_hex = "00".repeat(64);
+    let hello_bytes = format!(
+        "{}|client|{}|{}|{}",
+        crate::handshake::HELLO_DOMAIN,
+        aira_object::LOCAL_TEST_KEY_REF,
+        nonce_hex,
+        x25519_pub_hex
+    );
+    let hello = crate::handshake::HelloMessage {
+        role: "client".into(),
+        identity_id: aira_object::LOCAL_TEST_KEY_REF.into(),
+        nonce_hex: nonce_hex.into(),
+        peer_nonce_hex: None,
+        x25519_pub_hex,
+        signature: aira_object::local_test_signature(hello_bytes.as_bytes()),
+    };
+
+    let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+    crate::frame::write_json(&mut stream, &hello).await.unwrap();
+
+    let err = accept_task.await.unwrap().unwrap_err();
+    assert!(
+        matches!(err, PeerError::Untrusted(_)),
+        "legacy local-test trust must not admit handshake: {err:?}"
+    );
+}
+
+#[tokio::test]
 async fn untrusted_peer_rejected_at_handshake() {
     let dir_a = tempdir().unwrap();
     let dir_b = tempdir().unwrap();
@@ -489,11 +547,19 @@ fn trust_delta_refuses_local_test_and_local_node() {
     let peer = "aira:identity:peer-td";
     let peer_sk = SigningKey::from_bytes(&[73u8; 32]);
     let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
-    let lt_sk = SigningKey::from_bytes(&[74u8; 32]);
-    let lt_pub = hex::encode(lt_sk.verifying_key().to_bytes());
+    let lt_pub = hex::encode(
+        SigningKey::from_bytes(&[74u8; 32])
+            .verifying_key()
+            .to_bytes(),
+    );
     let mut t = TrustStore::load(root).unwrap();
     t.upsert(peer, &peer_pub).unwrap();
-    t.upsert(aira_object::LOCAL_TEST_KEY_REF, &lt_pub).unwrap();
+    assert_eq!(
+        t.upsert(aira_object::LOCAL_TEST_KEY_REF, &lt_pub),
+        Err(aira_object::CryptoError::ProtectedIdentity(
+            aira_object::LOCAL_TEST_KEY_REF.into()
+        ))
+    );
     t.save(root).unwrap();
     let _ = id_pub;
 
@@ -510,7 +576,7 @@ fn trust_delta_refuses_local_test_and_local_node() {
         apply_trust_delta(root, &peer_issuer, &TrustDelta::revoke(id.as_str(), None)).unwrap_err();
     assert!(matches!(err, PeerError::IdentityMismatch));
 
-    // Self-sovereign local-test / local-node still refused as protected.
+    // Self-sovereign local-test issuer is untrusted (SEC-1); local-node still refused as protected.
     let lt_issuer = AiraRef::parse(aira_object::LOCAL_TEST_KEY_REF).unwrap();
     let err = apply_trust_delta(
         root,
@@ -518,7 +584,7 @@ fn trust_delta_refuses_local_test_and_local_node() {
         &TrustDelta::revoke(aira_object::LOCAL_TEST_KEY_REF, None),
     )
     .unwrap_err();
-    assert!(matches!(err, PeerError::Protocol(_)));
+    assert!(matches!(err, PeerError::Untrusted(_)));
     let err = apply_trust_delta(root, &id, &TrustDelta::revoke(id.as_str(), None)).unwrap_err();
     assert!(matches!(err, PeerError::Protocol(_)));
 }

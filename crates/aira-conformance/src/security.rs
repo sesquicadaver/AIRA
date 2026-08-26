@@ -11,6 +11,9 @@ use aira_csu::{Csu, CsuRegistry};
 use aira_csu_context_basic::ContextBasicCsu;
 use aira_event::{payload_contains_secret, EventError, EventSink, EventType, MemoryEventLog};
 use aira_object::AiraRef;
+use aira_object::{
+    ensure_trust_defaults, local_test_public_key_hex, CryptoError, TrustStore, LOCAL_TEST_KEY_REF,
+};
 
 use crate::report::ConformanceProfile;
 use crate::runner::{fail, finalize_suite, pass, CaseResult, ConformanceError, SuiteResult};
@@ -26,6 +29,7 @@ pub fn run_security_baseline(
         test_invalid_artifact_signature_rejected(artifact_root.as_ref()),
         test_private_artifact_denied(artifact_root.as_ref()),
         test_secret_not_in_events(),
+        test_trust_excludes_local_test(),
     ];
     finalize_suite(ConformanceProfile::C1, cases, artifact_root)
 }
@@ -155,5 +159,52 @@ fn test_secret_not_in_events() -> CaseResult {
         pass(id)
     } else {
         fail(id, "secret detector missed ed25519_secret=")
+    }
+}
+
+fn test_trust_excludes_local_test() -> CaseResult {
+    let id = "sec.trust_excludes_local_test";
+    let dir = match tempfile::tempdir() {
+        Ok(d) => d,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let root = dir.path();
+    let identity_dir = root.join("identity");
+    if let Err(e) = std::fs::create_dir_all(&identity_dir) {
+        return fail(id, e.to_string());
+    }
+    let legacy = TrustStore {
+        entries: vec![aira_object::TrustEntry {
+            identity_id: LOCAL_TEST_KEY_REF.into(),
+            algorithm: "ed25519".into(),
+            public_key_hex: local_test_public_key_hex(),
+            supersedes: None,
+            previous_public_key_hex: None,
+            previous_grace_until: None,
+        }],
+        revoked: vec![],
+    };
+    if let Err(e) = legacy.save(root) {
+        return fail(id, e.to_string());
+    }
+    match ensure_trust_defaults(root) {
+        Ok(store) => {
+            if store
+                .entries
+                .iter()
+                .any(|e| e.identity_id == LOCAL_TEST_KEY_REF)
+            {
+                return fail(id, "ensure_trust_defaults left local-test in trust.json");
+            }
+        }
+        Err(e) => return fail(id, e.to_string()),
+    }
+    let mut store = match TrustStore::load(root) {
+        Ok(s) => s,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    match store.upsert(LOCAL_TEST_KEY_REF, &local_test_public_key_hex()) {
+        Err(CryptoError::ProtectedIdentity(_)) => pass(id),
+        other => fail(id, format!("expected ProtectedIdentity, got {other:?}")),
     }
 }

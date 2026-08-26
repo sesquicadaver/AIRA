@@ -4,7 +4,7 @@ use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use aira_object::{AiraRef, TrustStore};
+use aira_object::{AiraRef, TrustStore, LOCAL_TEST_KEY_REF};
 use aira_protocol::ProtocolEnvelope;
 use snow::TransportState;
 use tokio::net::{TcpListener, TcpStream};
@@ -211,6 +211,9 @@ pub async fn dial(
     peer_identity_id: &str,
 ) -> Result<AuthenticatedPeer, PeerError> {
     let local_root = local_root.as_ref().to_path_buf();
+    if peer_identity_id == LOCAL_TEST_KEY_REF {
+        return Err(PeerError::Untrusted(peer_identity_id.into()));
+    }
     let trust = TrustStore::load(&local_root)?;
     if trust.is_revoked(peer_identity_id) {
         return Err(PeerError::Revoked(peer_identity_id.into()));

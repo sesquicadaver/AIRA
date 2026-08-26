@@ -37,6 +37,7 @@ Report vulnerabilities **privately** via [GitHub Security Advisories](https://gi
 ### Peer / post-MVP network
 
 - Peer listen defaults **loopback**; Noise + trust store admission; no auto-trust strangers ([`docs/peer-link.md`](docs/peer-link.md)).
+- **SEC-1 (QUEUE #134):** `aira:identity:local-test` is excluded from runtime `trust.json`; peer handshake and discv reject it; legacy entries are stripped on session open ([`docs/crypto.md`](docs/crypto.md)).
 - DHT/relay/gossip/STUN/discv are **prototypes**, not production mesh security.
 - Desktop network profiles P0–P6: fail-closed rules in [`docs/desktop-network-profiles.md`](docs/desktop-network-profiles.md).
 

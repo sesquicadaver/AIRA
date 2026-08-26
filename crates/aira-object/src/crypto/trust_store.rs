@@ -14,8 +14,7 @@ use super::error::{
     LOCAL_TEST_KEY_REF,
 };
 use super::keyring::{
-    local_test_public_key_hex, process_keyring, register_keyring, register_node_identity, Keyring,
-    NodeIdentityFile,
+    process_keyring, register_keyring, register_node_identity, Keyring, NodeIdentityFile,
 };
 
 /// One trusted verifying identity (public key only).
@@ -102,9 +101,13 @@ impl TrustStore {
     /// Insert or replace an entry by identity_id.
     ///
     /// Fails with [`CryptoError::RevokedKey`] if the id is on the CRL.
+    /// Refuses [`LOCAL_TEST_KEY_REF`] — fixture identity must not enter runtime trust (SEC-1).
     pub fn upsert(&mut self, identity_id: &str, public_key_hex: &str) -> Result<(), CryptoError> {
         let _ = parse_public_hex(public_key_hex.trim())?;
         let id = identity_id.trim();
+        if id == LOCAL_TEST_KEY_REF {
+            return Err(CryptoError::ProtectedIdentity(LOCAL_TEST_KEY_REF.into()));
+        }
         AiraRef::parse(id).map_err(|_| CryptoError::InvalidKey)?;
         if self.is_revoked(id) {
             return Err(CryptoError::RevokedKey(id.to_string()));
@@ -315,9 +318,11 @@ impl TrustStore {
         Ok(())
     }
 
-    /// Ensure local-test public key is trusted.
-    pub fn ensure_local_test(&mut self) -> Result<(), CryptoError> {
-        self.upsert(LOCAL_TEST_KEY_REF, &local_test_public_key_hex())
+    /// Strip legacy `local-test` entry from runtime trust (SEC-1 migration).
+    ///
+    /// Returns `true` when an entry was removed.
+    pub fn strip_local_test(&mut self) -> bool {
+        self.remove(LOCAL_TEST_KEY_REF)
     }
 
     /// Build a verifying-only keyring from active entries (revoked excluded; no grace).
@@ -457,11 +462,11 @@ pub fn sync_trust_verifiers(root: impl AsRef<Path>) -> Result<usize, CryptoError
     Ok(n)
 }
 
-/// Ensure local-test (+ node identity if present) are in trust.json and registered.
+/// Ensure node identity (when present) is in trust.json; strip legacy local-test (SEC-1).
 pub fn ensure_trust_defaults(root: impl AsRef<Path>) -> Result<TrustStore, CryptoError> {
     let root = root.as_ref();
     let mut store = TrustStore::load(root)?;
-    store.ensure_local_test()?;
+    store.strip_local_test();
     let id_path = root.join("identity").join("local.identity.json");
     if id_path.exists() {
         let raw = fs::read_to_string(&id_path).map_err(|e| CryptoError::Io(e.to_string()))?;
