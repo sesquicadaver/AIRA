@@ -11,8 +11,9 @@ mod local;
 mod plane;
 
 pub use local::{
-    init_node, load_config, node_config_present, LocalSession, NodeConfig, NodePaths,
-    ProblemRecord, DEFAULT_AIRA_ROOT,
+    init_node, load_config, node_config_present, read_event_log_resilient, EventLogReadOutcome,
+    LocalSession, NodeConfig, NodePaths, ProblemRecord, DEFAULT_AIRA_ROOT,
+    EVENT_LOG_CORRUPT_BACKUP,
 };
 pub use plane::{FlowError, OperationalPlane, SubmitOutcome};
 
@@ -393,5 +394,29 @@ mod tests {
         let session = LocalSession::open(&root).unwrap();
         assert_eq!(session.config.node.mode, "local");
         assert_eq!(session.config.node.profile, "C1");
+    }
+
+    #[test]
+    fn corrupt_event_log_recovered_and_writable() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let log_path = root.join("events/event-log.json");
+        std::fs::write(&log_path, "{not-json").unwrap();
+
+        let read = read_event_log_resilient(&log_path).unwrap();
+        assert!(read.recovered_from_corruption);
+        assert!(root.join("events").join(EVENT_LOG_CORRUPT_BACKUP).exists());
+        assert!(log_path.exists());
+
+        let mut session = LocalSession::open(&root).unwrap();
+        session.submit_problem("Calculate 2 + 2").unwrap();
+        let tail = session.event_tail(20).unwrap();
+        assert!(
+            tail.iter()
+                .any(|e| e.event_type == EventType::ProblemSubmitted),
+            "events must append after corruption recovery"
+        );
     }
 }
