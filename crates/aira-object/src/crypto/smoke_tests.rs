@@ -121,12 +121,10 @@ fn trust_store_peer_verify_without_signing_key() {
 
     let loaded = TrustStore::load(root).unwrap();
     assert_eq!(loaded.entries.len(), 1);
-    assert!(
-        !loaded
-            .entries
-            .iter()
-            .any(|e| e.identity_id == LOCAL_TEST_KEY_REF)
-    );
+    assert!(!loaded
+        .entries
+        .iter()
+        .any(|e| e.identity_id == LOCAL_TEST_KEY_REF));
     let _ = register_trust_store(root).unwrap();
 
     let msg = b"peer-message";
@@ -205,21 +203,17 @@ fn ensure_trust_defaults_strips_legacy_local_test() {
     legacy.save(root).unwrap();
 
     let store = ensure_trust_defaults(root).unwrap();
-    assert!(
-        !store
-            .entries
-            .iter()
-            .any(|e| e.identity_id == LOCAL_TEST_KEY_REF)
-    );
+    assert!(!store
+        .entries
+        .iter()
+        .any(|e| e.identity_id == LOCAL_TEST_KEY_REF));
     assert_eq!(store.entries.len(), 1);
     assert_eq!(store.entries[0].identity_id, id);
     let reloaded = TrustStore::load(root).unwrap();
-    assert!(
-        !reloaded
-            .entries
-            .iter()
-            .any(|e| e.identity_id == LOCAL_TEST_KEY_REF)
-    );
+    assert!(!reloaded
+        .entries
+        .iter()
+        .any(|e| e.identity_id == LOCAL_TEST_KEY_REF));
     reset_primary_signer();
 }
 

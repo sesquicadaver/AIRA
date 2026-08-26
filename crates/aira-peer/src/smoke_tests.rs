@@ -547,7 +547,11 @@ fn trust_delta_refuses_local_test_and_local_node() {
     let peer = "aira:identity:peer-td";
     let peer_sk = SigningKey::from_bytes(&[73u8; 32]);
     let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
-    let lt_pub = hex::encode(SigningKey::from_bytes(&[74u8; 32]).verifying_key().to_bytes());
+    let lt_pub = hex::encode(
+        SigningKey::from_bytes(&[74u8; 32])
+            .verifying_key()
+            .to_bytes(),
+    );
     let mut t = TrustStore::load(root).unwrap();
     t.upsert(peer, &peer_pub).unwrap();
     assert_eq!(

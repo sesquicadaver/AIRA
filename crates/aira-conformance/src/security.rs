@@ -12,8 +12,7 @@ use aira_csu_context_basic::ContextBasicCsu;
 use aira_event::{payload_contains_secret, EventError, EventSink, EventType, MemoryEventLog};
 use aira_object::AiraRef;
 use aira_object::{
-    ensure_trust_defaults, local_test_public_key_hex, CryptoError, TrustStore,
-    LOCAL_TEST_KEY_REF,
+    ensure_trust_defaults, local_test_public_key_hex, CryptoError, TrustStore, LOCAL_TEST_KEY_REF,
 };
 
 use crate::report::ConformanceProfile;
