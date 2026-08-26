@@ -47,6 +47,8 @@ pub enum CryptoError {
     InvalidTimestamp(String),
     #[error("csu tenant isolation: {0}")]
     TenantIsolation(String),
+    #[error("signature.key_ref must equal producer_identity ({key_ref} != {producer})")]
+    ProducerIdentityMismatch { producer: String, key_ref: String },
 }
 /// True when `grace_until` is still active at process UTC now.
 pub(super) fn node_grace_active(grace_until: &str) -> Result<bool, CryptoError> {

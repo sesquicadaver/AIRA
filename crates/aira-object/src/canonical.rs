@@ -68,6 +68,20 @@ pub fn sign_canonical_descriptor(
     signature_for(key_ref, &msg)
 }
 
+/// Verify `signature.key_ref` matches declared producer (SEC-3).
+pub fn verify_producer_signature_binding(
+    producer_identity: &AiraRef,
+    signature: &Signature,
+) -> Result<(), CryptoError> {
+    if signature.key_ref != *producer_identity {
+        return Err(CryptoError::ProducerIdentityMismatch {
+            producer: producer_identity.as_str().to_string(),
+            key_ref: signature.key_ref.as_str().to_string(),
+        });
+    }
+    Ok(())
+}
+
 /// Verify `signature` over the canonical descriptor hash (no LOCAL_TEST domain fallback).
 pub fn verify_canonical_descriptor(
     signature: &Signature,
@@ -162,5 +176,16 @@ mod tests {
         verify_ed25519(&sig, msg).unwrap();
         let desc = json!({"payload_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"});
         assert!(verify_canonical_descriptor(&sig, &desc).is_err());
+    }
+
+    #[test]
+    fn producer_signature_binding_rejects_key_ref_mismatch() {
+        let producer = AiraRef::parse("aira:identity:producer-a").unwrap();
+        let mut sig = local_test_signature(b"msg");
+        sig.key_ref = AiraRef::parse("aira:identity:signer-b").unwrap();
+        let err = verify_producer_signature_binding(&producer, &sig).unwrap_err();
+        assert!(matches!(err, CryptoError::ProducerIdentityMismatch { .. }));
+        sig.key_ref = producer.clone();
+        verify_producer_signature_binding(&producer, &sig).unwrap();
     }
 }

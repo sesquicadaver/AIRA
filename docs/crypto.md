@@ -81,6 +81,8 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust remove \
 
 **SEC-1:** `aira:identity:local-test` must **not** be in `trust.json` entries. Upsert, peer handshake, and discv admission reject it; `ensure_trust_defaults` migrates legacy installs.
 
+**SEC-3:** Object/Event/Artifact descriptor verify requires `signature.key_ref == producer_identity` before canonical Ed25519 check; stores reject cross-identity descriptors.
+
 **CRL** (Analyze-25): `trust.json` field `revoked[]` is a durable deny list. `identity trust revoke --key-ref … [--reason …]` moves an id out of `entries` onto the CRL; `trust add` / `upsert` of a revoked id fails with `RevokedKey`. `remove` is still non-durable (re-add allowed). `local-test` cannot be revoked.
 
 ```bash

@@ -62,6 +62,7 @@ impl ArtifactDescriptor {
 
     /// Verify Ed25519 over canonical descriptor hash. No LOCAL_TEST domain fallback.
     pub fn verify_canonical(&self) -> Result<(), aira_object::CryptoError> {
+        aira_object::verify_producer_signature_binding(&self.producer_identity, &self.signature)?;
         let v =
             serde_json::to_value(self).map_err(|e| aira_object::CryptoError::Io(e.to_string()))?;
         aira_object::verify_canonical_descriptor(&self.signature, &v)

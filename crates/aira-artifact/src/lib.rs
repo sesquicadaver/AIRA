@@ -256,4 +256,20 @@ mod tests {
         .unwrap();
         assert!(h.verify_canonical().is_err());
     }
+
+    #[test]
+    fn store_rejects_cross_identity_key_ref() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let payload = b"cross-id";
+        let mut desc = descriptor_for(
+            payload,
+            "aira:artifact:sha256_6666666666666666666666666666666666666666666666666666666666666666",
+        );
+        desc.signature.key_ref = AiraRef::parse("aira:identity:other-signer").unwrap();
+        assert!(matches!(
+            store.publish(desc, payload).unwrap_err(),
+            ArtifactError::InvalidSignature(_)
+        ));
+    }
 }

@@ -42,6 +42,7 @@ let alpha = run_alpha_acceptance("/tmp/alpha")?;
 - Private artifacts (`aira:policy:private`) denied on default resolve
 - Obvious secret material rejected in event `payload_ref`
 - **`sec.trust_excludes_local_test`** (SEC-1 / QUEUE #134): runtime `trust.json` excludes `aira:identity:local-test`; upsert refused; legacy entry stripped on `ensure_trust_defaults`
+- **`sec.producer_identity_binding`** (SEC-3 / QUEUE #136): Object/Event/Artifact require `signature.key_ref == producer_identity`; stores reject cross-identity descriptors
 
 ## Alpha acceptance (#80)
 

@@ -141,4 +141,15 @@ mod tests {
         .unwrap();
         assert!(h.verify_canonical().is_err());
     }
+
+    #[test]
+    fn store_rejects_cross_identity_key_ref() {
+        let mut log = MemoryEventLog::new();
+        let mut e = sample_event("aira:event:cross-id", EventType::ProblemSubmitted);
+        e.signature.key_ref = AiraRef::parse("aira:identity:other-signer").unwrap();
+        assert!(matches!(
+            log.append(e).unwrap_err(),
+            EventError::InvalidSignature
+        ));
+    }
 }
