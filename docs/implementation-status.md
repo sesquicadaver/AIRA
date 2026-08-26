@@ -163,7 +163,7 @@ Conformance spec §19 lists extra fixture *names* (event chain, policy deny, res
 |---------|------|--------|-------|----|--------|
 | C0 | Local Core | `run_c0` | `c0.ontology.schemas`, `c0.object.immutability`, `c0.object.handle_opacity`, `c0.object.verify_on_read`, `c0.artifact.immutability`, `c0.artifact.verify_on_read`, `c0.event.causality`, `c0.policy.gate`, `c0.csu.dispatch_policy`, `c0.acquisition.fail_closed` | **yes** (QUEUE #38) | **DONE** |
 | C1 | Local operational node | `run_c1` | `c1.pipeline.calculate_2_plus_2`, `c1.csu.manifests`, `c1.result.verified_completeness`, `c1.result.extended_fields`, `c1.failure.to_evidence` | **yes** | **DONE** |
-| C2 | Protocol-compatible | `run_c2` | `c2.protocol.envelope_schema`, `c2.protocol.response_schema`, `c2.identity.descriptor_schema`, `c2.discovery.capability_not_node`, `c2.ep.unsupported_version_no_side_effects`, `c2.event.publish_idempotent`, `c2.artifact.hash_mismatch`, `c2.protocol.envelope_unsigned` | **yes** (`conformance-c2`, #117) | **DONE** |
+| C2 | Protocol-compatible | `run_c2` | 10 cases incl. `c2.protocol.envelope_canonical_mutations`, `c2.protocol.response_canonical_mutations` (SEC-2 #135) | **yes** (`conformance-c2`, #117) | **DONE** |
 | C3–C5 | Federated / settlement / research | — | — | no | **ABSENT** / **RESEARCH** |
 | Security baseline | Conformance §14 subset | `run_security_baseline` | unsigned CSU/artifact; private deny; secret in events | crate tests | **DONE** |
 | Alpha acceptance | MVP | `run_alpha_acceptance` | init layout, 2+2, failure evidence, C0/C1 | crate tests | **DONE** |
