@@ -41,6 +41,7 @@ let alpha = run_alpha_acceptance("/tmp/alpha")?;
 - Unsigned artifact publish rejected
 - Private artifacts (`aira:policy:private`) denied on default resolve
 - Obvious secret material rejected in event `payload_ref`
+- **`sec.trust_excludes_local_test`** (SEC-1 / QUEUE #134): runtime `trust.json` excludes `aira:identity:local-test`; upsert refused; legacy entry stripped on `ensure_trust_defaults`
 
 ## Alpha acceptance (#80)
 
