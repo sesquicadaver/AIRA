@@ -79,6 +79,7 @@ impl ObjectDescriptor {
 
     /// Verify Ed25519 over canonical descriptor hash. No LOCAL_TEST domain fallback.
     pub fn verify_canonical(&self) -> Result<(), crate::CryptoError> {
+        crate::verify_producer_signature_binding(&self.producer_identity, &self.signature)?;
         let v = serde_json::to_value(self).map_err(|e| crate::CryptoError::Io(e.to_string()))?;
         crate::verify_canonical_descriptor(&self.signature, &v)
     }

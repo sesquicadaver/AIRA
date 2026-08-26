@@ -6,13 +6,16 @@ use aira_artifact::{
     is_private_artifact, ArtifactError, ArtifactStore, ArtifactType, CasArtifactStore,
     PRIVATE_ARTIFACT_POLICY,
 };
+use aira_core::MemoryObjectStore;
+use aira_core::{CoreError, ObjectStore};
 use aira_csu::support::{make_artifact, make_event};
 use aira_csu::{Csu, CsuRegistry};
 use aira_csu_context_basic::ContextBasicCsu;
 use aira_event::{payload_contains_secret, EventError, EventSink, EventType, MemoryEventLog};
 use aira_object::AiraRef;
 use aira_object::{
-    ensure_trust_defaults, local_test_public_key_hex, CryptoError, TrustStore, LOCAL_TEST_KEY_REF,
+    ensure_trust_defaults, local_test_public_key_hex, CryptoError, ObjectDescriptor, TrustStore,
+    LOCAL_TEST_KEY_REF,
 };
 
 use crate::report::ConformanceProfile;
@@ -30,6 +33,7 @@ pub fn run_security_baseline(
         test_private_artifact_denied(artifact_root.as_ref()),
         test_secret_not_in_events(),
         test_trust_excludes_local_test(),
+        test_producer_identity_binding(),
     ];
     finalize_suite(ConformanceProfile::C1, cases, artifact_root)
 }
@@ -207,4 +211,88 @@ fn test_trust_excludes_local_test() -> CaseResult {
         Err(CryptoError::ProtectedIdentity(_)) => pass(id),
         other => fail(id, format!("expected ProtectedIdentity, got {other:?}")),
     }
+}
+
+fn test_producer_identity_binding() -> CaseResult {
+    let id = "sec.producer_identity_binding";
+    let other = match AiraRef::parse("aira:identity:cross-producer") {
+        Ok(r) => r,
+        Err(e) => return fail(id, e.to_string()),
+    };
+
+    let mut obj = ObjectDescriptor::example_problem();
+    obj.signature.key_ref = other.clone();
+    if !matches!(
+        obj.verify_canonical(),
+        Err(CryptoError::ProducerIdentityMismatch { .. })
+    ) {
+        return fail(
+            id,
+            "object descriptor must reject key_ref != producer_identity",
+        );
+    }
+    let mut obj_store = MemoryObjectStore::new();
+    if !matches!(
+        obj_store.create(obj).unwrap_err(),
+        CoreError::InvalidSignature(_)
+    ) {
+        return fail(id, "object store must reject cross-identity descriptor");
+    }
+
+    let mut ev = make_event(
+        "aira:event:sec_cross1",
+        EventType::CustomEvent,
+        vec![],
+        vec![],
+        vec![],
+        Some("ok".into()),
+    );
+    ev.signature.key_ref = other.clone();
+    if !matches!(
+        ev.verify_canonical(),
+        Err(CryptoError::ProducerIdentityMismatch { .. })
+    ) {
+        return fail(
+            id,
+            "event descriptor must reject key_ref != producer_identity",
+        );
+    }
+    let mut log = MemoryEventLog::new();
+    if !matches!(log.append(ev).unwrap_err(), EventError::InvalidSignature) {
+        return fail(id, "event log must reject cross-identity descriptor");
+    }
+
+    let payload = b"sec-cross-artifact";
+    let mut art = make_artifact(
+        "aira:artifact:sec_cross1",
+        ArtifactType::EvidenceArtifact,
+        payload,
+        vec![],
+    );
+    art.signature.key_ref = other;
+    if !matches!(
+        art.verify_canonical(),
+        Err(CryptoError::ProducerIdentityMismatch { .. })
+    ) {
+        return fail(
+            id,
+            "artifact descriptor must reject key_ref != producer_identity",
+        );
+    }
+    let dir = match tempfile::tempdir() {
+        Ok(d) => d,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let mut store = match CasArtifactStore::open(dir.path()) {
+        Ok(s) => s,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if !matches!(
+        store.publish(art, payload).unwrap_err(),
+        ArtifactError::InvalidSignature(_)
+    ) {
+        return fail(id, "artifact store must reject cross-identity descriptor");
+    }
+
+    pass(id)
 }

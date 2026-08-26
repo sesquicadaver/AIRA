@@ -17,6 +17,7 @@ pub use audit::{
 pub use canonical::{
     canonical_json_bytes, canonicalize_value, descriptor_signing_hash, descriptor_signing_message,
     sign_canonical_descriptor, strip_top_level_signature, verify_canonical_descriptor,
+    verify_producer_signature_binding,
 };
 pub use crypto::{
     active_identity, active_signature, ensure_trust_defaults, is_cryptographic_signature,
@@ -170,5 +171,19 @@ mod tests {
         let mut id = d;
         id.object_id = AiraRef::parse("aira:problem:MUTATED").unwrap();
         assert!(id.verify_canonical().is_err());
+    }
+
+    #[test]
+    fn verify_rejects_cross_identity_key_ref() {
+        let d = ObjectDescriptor::example_problem();
+        let mut bad = d.clone();
+        bad.signature.key_ref = AiraRef::parse("aira:identity:other-producer").unwrap();
+        assert_eq!(
+            bad.verify_canonical(),
+            Err(CryptoError::ProducerIdentityMismatch {
+                producer: d.producer_identity.as_str().to_string(),
+                key_ref: "aira:identity:other-producer".into(),
+            })
+        );
     }
 }

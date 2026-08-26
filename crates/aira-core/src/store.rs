@@ -132,4 +132,15 @@ mod tests {
             Err(CoreError::InvalidSignature(_))
         ));
     }
+
+    #[test]
+    fn create_rejects_cross_identity_key_ref() {
+        let mut store = MemoryObjectStore::new();
+        let mut desc = ObjectDescriptor::example_problem();
+        desc.signature.key_ref = aira_object::AiraRef::parse("aira:identity:other-signer").unwrap();
+        assert!(matches!(
+            store.create(desc).unwrap_err(),
+            CoreError::InvalidSignature(_)
+        ));
+    }
 }
