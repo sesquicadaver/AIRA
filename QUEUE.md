@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#134` DONE @ PR #97; **перший OPEN = `#135`** (SEC-2 canonical envelope) |
+| `main` | Phase G `#135` DONE @ PR #98; **перший OPEN = `#136`** (SEC-3 producer identity binding) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
