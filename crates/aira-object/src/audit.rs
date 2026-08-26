@@ -27,6 +27,10 @@ pub enum TrustAuditAction {
     TenantRotate,
     /// Per-CSU tenant signing secret revoked (dir removed).
     TenantRevoke,
+    /// Local federation membership established (descriptor ceremony).
+    FederationJoin,
+    /// Local federation membership cleared (`federation leave`).
+    FederationLeave,
 }
 
 impl TrustAuditAction {
@@ -40,6 +44,8 @@ impl TrustAuditAction {
             Self::NodeRotate => "node_rotate",
             Self::TenantRotate => "tenant_rotate",
             Self::TenantRevoke => "tenant_revoke",
+            Self::FederationJoin => "federation_join",
+            Self::FederationLeave => "federation_leave",
         }
     }
 }
