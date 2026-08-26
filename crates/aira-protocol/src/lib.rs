@@ -128,6 +128,32 @@ mod tests {
     }
 
     #[test]
+    fn event_protocol_rejects_equivocation() {
+        let mut ep = EventProtocolAdapter::new();
+        let ev_a = make_event(
+            "aira:event:ep_equiv",
+            EventType::ProblemSubmitted,
+            vec![AiraRef::parse("aira:problem:p1").unwrap()],
+            vec![],
+            vec![],
+            Some("a".into()),
+        );
+        let ev_b = make_event(
+            "aira:event:ep_equiv",
+            EventType::ProblemSubmitted,
+            vec![AiraRef::parse("aira:problem:p1").unwrap()],
+            vec![],
+            vec![],
+            Some("b".into()),
+        );
+        let (_env, resp) = ep.publish_event(ev_a, EP_VERSION).unwrap();
+        assert_eq!(resp.status, ProtocolStatus::Accepted);
+        let (_env2, resp2) = ep.publish_event(ev_b, EP_VERSION).unwrap();
+        assert_eq!(resp2.status, ProtocolStatus::Equivocation);
+        assert_eq!(ep.events().len(), 1);
+    }
+
+    #[test]
     fn artifact_protocol_publish_resolve_and_hash_check() {
         let dir = tempfile::tempdir().unwrap();
         let mut ap = ArtifactProtocolAdapter::open(dir.path()).unwrap();

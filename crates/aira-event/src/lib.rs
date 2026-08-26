@@ -143,6 +143,23 @@ mod tests {
     }
 
     #[test]
+    fn event_log_rejects_equivocation() {
+        let mut log = MemoryEventLog::new();
+        let mut a = sample_event("aira:event:eq1", EventType::ProblemSubmitted);
+        a.payload_ref = Some("first".into());
+        a = a.attach_canonical_signature().expect("sign payload first");
+        log.append(a.clone()).unwrap();
+
+        let mut b = sample_event("aira:event:eq1", EventType::ProblemSubmitted);
+        b.payload_ref = Some("second".into());
+        b = b.attach_canonical_signature().expect("sign payload second");
+        assert!(matches!(
+            log.append(b).unwrap_err(),
+            EventError::Equivocation(_)
+        ));
+    }
+
+    #[test]
     fn store_rejects_cross_identity_key_ref() {
         let mut log = MemoryEventLog::new();
         let mut e = sample_event("aira:event:cross-id", EventType::ProblemSubmitted);

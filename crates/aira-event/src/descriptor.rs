@@ -71,6 +71,13 @@ impl EventDescriptor {
         Ok(self)
     }
 
+    /// SHA-256 of canonical JSON without top-level signature (SEC-4 equivocation key).
+    pub fn canonical_content_hash(&self) -> Result<ContentHash, aira_object::CryptoError> {
+        let v =
+            serde_json::to_value(self).map_err(|e| aira_object::CryptoError::Io(e.to_string()))?;
+        aira_object::descriptor_signing_hash(&v)
+    }
+
     /// Verify Ed25519 over canonical descriptor hash. No LOCAL_TEST domain fallback.
     pub fn verify_canonical(&self) -> Result<(), aira_object::CryptoError> {
         aira_object::verify_producer_signature_binding(&self.producer_identity, &self.signature)?;

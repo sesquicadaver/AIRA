@@ -24,7 +24,8 @@
         "UNSUPPORTED_CAPABILITY",
         "INVALID_SIGNATURE",
         "INVALID_ARTIFACT",
-        "INVARIANT_VIOLATION"
+        "INVARIANT_VIOLATION",
+        "EQUIVOCATION"
       ]
     },
     "reason_refs": {

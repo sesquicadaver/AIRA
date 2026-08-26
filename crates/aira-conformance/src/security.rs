@@ -34,6 +34,7 @@ pub fn run_security_baseline(
         test_secret_not_in_events(),
         test_trust_excludes_local_test(),
         test_producer_identity_binding(),
+        test_event_equivocation(),
     ];
     finalize_suite(ConformanceProfile::C1, cases, artifact_root)
 }
@@ -294,5 +295,37 @@ fn test_producer_identity_binding() -> CaseResult {
         return fail(id, "artifact store must reject cross-identity descriptor");
     }
 
+    pass(id)
+}
+
+fn test_event_equivocation() -> CaseResult {
+    let id = "sec.event_equivocation";
+    let mut log = MemoryEventLog::new();
+    let event_a = make_event(
+        "aira:event:sec_equiv",
+        EventType::CustomEvent,
+        vec![],
+        vec![],
+        vec![],
+        Some("alpha".into()),
+    );
+    let event_b = make_event(
+        "aira:event:sec_equiv",
+        EventType::CustomEvent,
+        vec![],
+        vec![],
+        vec![],
+        Some("beta".into()),
+    );
+    log.append(event_a).unwrap();
+    if !matches!(
+        log.append(event_b).unwrap_err(),
+        EventError::Equivocation(_)
+    ) {
+        return fail(
+            id,
+            "event log must reject same event_id with different canonical hash",
+        );
+    }
     pass(id)
 }
