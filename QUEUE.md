@@ -268,7 +268,7 @@ F0 stabilize CI (#107–#109)
 | 134 | **DONE** | ~~Analyze-182 — SEC-1 local-test trust hardening~~ | `local-test` не в runtime trust; peer reject test identity; migration note | conformance/peer negative test green | full identity ceremony |
 | 135 | **DONE** | ~~Analyze-183 — SEC-2 canonical envelope signature~~ | full envelope + response canonical sign/verify; `key_ref == issuer` | C2 mutation tests per field green | wire protocol version bump |
 | 136 | **DONE** | ~~Analyze-184 — SEC-3 producer identity binding~~ | `signature.key_ref == producer_identity` on Object/Event/Artifact | store + conformance reject cross-identity | delegation artifacts |
-| 137 | **OPEN** | Analyze-185 — SEC-4 event equivocation | same `event_id` + diff hash → conflict; C2 case | idempotent same-hash ACCEPT | global total order |
+| 137 | **DONE** | ~~Analyze-185 — SEC-4 event equivocation~~ | same `event_id` + diff hash → conflict; C2 case | idempotent same-hash ACCEPT | global total order |
 | 138 | **OPEN** | Analyze-186 — SEC-5 artifact admission | immutable descriptor admission; supersession persist on reopen | artifact store tests green | new artifact types |
 | 139 | **OPEN** | Analyze-169 — federation leave | CLI `federation leave` | membership cleared; tests | Join Request protocol |
 | 140 | **OPEN** | Analyze-170 — federation join hardening | join edge cases + audit | regression tests green | remote federation |
@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#137` SEC-4 event equivocation. Порядок: `#137` → `#151` (SEC `#136`–`#138` перед federation).
+**Перший OPEN:** `#138` SEC-5 artifact admission. Порядок: `#138` → `#151` (SEC `#136`–`#138` перед federation).
 
 ```text
 G0 govern (#120–#121)

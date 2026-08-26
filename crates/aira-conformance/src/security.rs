@@ -35,6 +35,7 @@ pub fn run_security_baseline(
         test_trust_excludes_local_test(),
         test_producer_identity_binding(),
         test_event_equivocation(),
+        test_artifact_admission(),
     ];
     finalize_suite(ConformanceProfile::C1, cases, artifact_root)
 }
@@ -326,6 +327,82 @@ fn test_event_equivocation() -> CaseResult {
             id,
             "event log must reject same event_id with different canonical hash",
         );
+    }
+    pass(id)
+}
+
+fn test_artifact_admission() -> CaseResult {
+    let id = "sec.artifact_admission";
+    let dir = match tempfile::tempdir() {
+        Ok(d) => d,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let payload = b"sec-admission";
+    let mut store = match CasArtifactStore::open(dir.path()) {
+        Ok(s) => s,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let d1 = make_artifact(
+        "aira:artifact:sec_adm1",
+        ArtifactType::EvidenceArtifact,
+        payload,
+        vec![],
+    );
+    let id1 = d1.artifact_id.clone();
+    if let Err(e) = store.publish(d1.clone(), payload) {
+        return fail(id, e.to_string());
+    }
+    let (loaded, _) = match store.resolve(&id1) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if loaded != d1 {
+        return fail(
+            id,
+            "stored descriptor must match admitted descriptor (no post-verify mutation)",
+        );
+    }
+
+    let mut bad = make_artifact(
+        "aira:artifact:sec_adm2",
+        ArtifactType::EvidenceArtifact,
+        payload,
+        vec![],
+    );
+    bad.content_ref = "cas://sha256:deadbeef".into();
+    bad = match bad.attach_canonical_signature() {
+        Ok(d) => d,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if !matches!(
+        store.publish(bad, payload).unwrap_err(),
+        ArtifactError::ContentRefMismatch(_)
+    ) {
+        return fail(id, "publish must reject content_ref != cas://content_hash");
+    }
+
+    let payload2 = b"sec-admission-v2";
+    let d2 = make_artifact(
+        "aira:artifact:sec_adm3",
+        ArtifactType::EvidenceArtifact,
+        payload2,
+        vec![],
+    );
+    let id2 = d2.artifact_id.clone();
+    if let Err(e) = store.supersede(&id1, d2, payload2) {
+        return fail(id, e.to_string());
+    }
+    drop(store);
+    let reopened = match CasArtifactStore::open(dir.path()) {
+        Ok(s) => s,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let current = match reopened.supersession_current(&id1) {
+        Some(c) => c,
+        None => return fail(id, "supersession mapping missing after reopen"),
+    };
+    if current != id2 {
+        return fail(id, "supersession current id mismatch after reopen");
     }
     pass(id)
 }

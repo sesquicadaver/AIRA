@@ -85,6 +85,8 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust remove \
 
 **SEC-4:** Event log and Event Protocol adapter reject equivocation: duplicate `event_id` with a different canonical descriptor hash returns `EQUIVOCATION` / `EventError::Equivocation`; same hash remains idempotent (`ACCEPTED`, no second append).
 
+**SEC-5:** `CasArtifactStore::publish` admits the signed descriptor as-is (no post-verify mutation); `content_ref` must equal `cas://{content_hash}`; supersession mappings are persisted in `index.json` across reopen.
+
 **CRL** (Analyze-25): `trust.json` field `revoked[]` is a durable deny list. `identity trust revoke --key-ref … [--reason …]` moves an id out of `entries` onto the CRL; `trust add` / `upsert` of a revoked id fails with `RevokedKey`. `remove` is still non-durable (re-add allowed). `local-test` cannot be revoked.
 
 ```bash
