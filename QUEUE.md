@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#141` DONE @ PR #104; **перший OPEN = `#142`** (event log durability) |
+| `main` | Phase G `#142` DONE @ PR #105; **перший OPEN = `#143`** (SQLite object path) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
@@ -272,8 +272,8 @@ F0 stabilize CI (#107–#109)
 | 138 | **DONE** | ~~Analyze-186 — SEC-5 artifact admission~~ | immutable descriptor admission; supersession persist on reopen | artifact store tests green | new artifact types |
 | 139 | **DONE** | ~~Analyze-169 — federation leave~~ | CLI `federation leave` | membership cleared; tests | Join Request protocol |
 | 140 | **DONE** | ~~Analyze-170 — federation join hardening~~ | join edge cases + audit | regression tests green | remote federation |
-| 141 | **OPEN** | Analyze-171 — C3 conformance scaffold | `run_c3` minimal local cases | runner + doc; optional CI note | full C3 wire |
-| 142 | **OPEN** | Analyze-172 — event log durability | JSON log corruption recovery test | test + doc note | production event engine |
+| 141 | **DONE** | ~~Analyze-171 — C3 conformance scaffold~~ | `run_c3` minimal local cases | runner + doc; optional CI note | full C3 wire |
+| 142 | **DONE** | ~~Analyze-172 — event log durability~~ | JSON log corruption recovery test | test + doc note | production event engine |
 | 143 | **OPEN** | Analyze-173 — SQLite object path | integrity/migration smoke | test + status doc | new object fields |
 | 144 | **OPEN** | Analyze-174 — external CSU fixture | third-party manifest loads | registry smoke green | CSU marketplace |
 | 145 | **OPEN** | Analyze-175 — CSU SDK doc | `docs/csu-sdk.md` + conformance case | doc + named test | SDK distribution |
@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#141` C3 conformance scaffold. Порядок: `#141` → `#151`.
+**Перший OPEN:** `#143` SQLite object path. Порядок: `#143` → `#151`.
 
 ```text
 G0 govern (#120–#121)
