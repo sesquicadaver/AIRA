@@ -15,6 +15,7 @@ use aira_desktop_runtime::{
 };
 
 use crate::actions;
+use crate::camera;
 
 pub struct AiraDesktopApp {
     pub(super) paths: DesktopPaths,
@@ -35,6 +36,8 @@ pub struct AiraDesktopApp {
     pub(super) find_to_edit: String,
     pub(super) last_error: Option<String>,
     pub(super) qr_texture: Option<egui::TextureHandle>,
+    pub(super) qr_camera: Option<camera::InviteQrCamera>,
+    pub(super) qr_camera_status: Option<String>,
     pub(super) restart_hint: bool,
 }
 
@@ -80,6 +83,8 @@ impl AiraDesktopApp {
             find_to_edit: String::new(),
             last_error,
             qr_texture: None,
+            qr_camera: None,
+            qr_camera_status: None,
             restart_hint: false,
         };
         let _ = app.refresh_status();

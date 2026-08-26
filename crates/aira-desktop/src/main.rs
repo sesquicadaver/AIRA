@@ -4,6 +4,7 @@
 
 mod actions;
 mod app;
+mod camera;
 
 use std::path::PathBuf;
 use std::process::ExitCode;

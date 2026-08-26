@@ -2,11 +2,11 @@
 
 ## 1. Summary
 
-Encode/decode the same `aira:schema:desktop:peer-invite:0.1` document as a QR PNG file (`invite-export-qr` / `invite-import-qr`). Compact JSON payload; camera/live scan Out.
+Encode/decode the same `aira:schema:desktop:peer-invite:0.1` document as a QR PNG file (`invite-export-qr` / `invite-import-qr`). Compact JSON payload. GUI camera scan (`#133`) decodes in-memory luma frames via `import_invite_qr_luma`.
 
 ## 5. Non-Goals
 
-Camera / live scan (`#85` may show PNG only); DHT/relay; auto-trust.
+DHT/relay; auto-trust from discovery; non-loopback dial in this slice.
 
 ## 7. Change
 
@@ -17,3 +17,4 @@ Camera / live scan (`#85` may show PNG only); DHT/relay; auto-trust.
 ## 15. Tests
 
 `cargo test -p aira-desktop-runtime --test invite_qr`
+`cargo test -p aira-desktop` (`invite_qr_from_luma_roundtrip_smoke`)

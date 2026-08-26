@@ -1,6 +1,6 @@
 # Desktop PeerInvite file + QR (QUEUE #83 / #84)
 
-**Phase G `#133`:** GUI camera capture → invite import (roundtrip smoke). File/PNG paths below remain the current contract.
+**Phase G `#133`:** GUI **Scan QR (camera)** — live webcam decode → same import path as PNG. File paths below remain the contract.
 
 ## File export / import
 
@@ -12,9 +12,9 @@ aira desktop invite-export --out ~/alice.invite.json --addr 127.0.0.1:9797
 aira desktop invite-import --file ~/alice.invite.json
 ```
 
-## QR PNG (no camera)
+## QR PNG (file) and camera scan
 
-Encode compact PeerInvite JSON into a PNG; decode from an image file on disk.
+Encode compact PeerInvite JSON into a PNG; decode from disk **or** from a live camera frame in the GUI (`Scan QR (camera)`).
 
 ```bash
 aira desktop invite-export-qr --out ~/alice.invite.png

@@ -1,6 +1,6 @@
 # AIRA Desktop GUI (QUEUE #78 / #85)
 
-**Status:** Phase E **DONE**. Phase G: P3/P4 CI stabilization (`#131`–`#132`); QR **camera** import planned (`#133`).
+**Status:** Phase E **DONE**. Phase G G4: peer lifecycle CI stable (`#131`–`#132`); invite QR camera (`#133`).
 
 **Binary:** `aira-desktop`  
 **CLI:** `aira desktop gui`  
@@ -18,7 +18,7 @@
 | Federation (P5) | Import signed descriptor JSON; membership status display |
 | Discovery (P6 Dev) | STUN query, discv announce, discv FIND — explicit inputs only; no public STUN default |
 | Settings | `open_ui_on_start`, `autostart_on_login` (persisted) |
-| Friend invite | Export/Import JSON; Show/Export/Import QR PNG; camera capture planned (`#133`) |
+| Friend invite | Export/Import JSON; Show/Export/Import QR PNG; **Scan QR (camera)** |
 | Quit | stop node + close window |
 | Autostart | Linux: XDG `~/.config/autostart/aira-desktop.desktop`; macOS: LaunchAgent `~/Library/LaunchAgents/ai.aira.desktop.plist` (`#87`); Windows: Startup `AIRA Desktop.bat` (`#91`) |
 
