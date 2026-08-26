@@ -65,7 +65,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 
 | Requirement | Source | Implemented in | Tested by | Status | Notes |
 |-------------|--------|----------------|-----------|--------|-------|
-| Common envelope + signature | Book II §6; B2-001/002 | `aira-protocol` + schemas | `c2.protocol.envelope_schema`; `c2.protocol.envelope_unsigned`; `envelope_rejects_local_test_domain_fallback` | **PARTIAL** | Local C2; C2 case #124 |
+| Common envelope + signature | Book II §6; B2-001/002 | `aira-protocol` + schemas | `c2.protocol.envelope_schema`; `c2.protocol.envelope_unsigned`; `c2.protocol.envelope_canonical_mutations`; `c2.protocol.response_canonical_mutations`; `envelope_rejects_local_test_domain_fallback` | **PARTIAL** | SEC-2 canonical descriptor (#135) |
 | Unsupported version without side effects | B2-003 | `EventProtocolAdapter` | `c2.ep.unsupported_version_no_side_effects` | **PARTIAL** | Local adapter |
 | Event Protocol publish idempotency | Book II §12; B2-008 | `aira-protocol` event adapter | `c2.event.publish_idempotent`; `event_protocol_publish_idempotent_and_unsupported_version` | **PARTIAL** | In-process; C2 case #122 |
 | Artifact Protocol publish/resolve + hash | Book II §11; B2-007 | `aira-protocol` artifact adapter | `c2.artifact.hash_mismatch`; `artifact_protocol_publish_resolve_and_hash_check` | **PARTIAL** | In-process; C2 case #123 |
