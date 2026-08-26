@@ -4,7 +4,7 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use aira_flow::NodePaths;
-use anyhow::{bail, Result};
+use anyhow::Result;
 
 use crate::cli::TrustCommands;
 use crate::support::ensure_init;
@@ -51,9 +51,6 @@ pub(crate) fn run(root: &Path, command: TrustCommands) -> Result<ExitCode> {
             ensure_init(root)?;
             let mut store =
                 aira_object::TrustStore::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
-            if key_ref == aira_object::LOCAL_TEST_KEY_REF {
-                bail!("refusing to remove local-test from trust store");
-            }
             if store.remove(&key_ref) {
                 store.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
                 aira_object::sync_trust_verifiers(root).map_err(|e| anyhow::anyhow!("{e}"))?;

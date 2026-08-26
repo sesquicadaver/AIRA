@@ -9,7 +9,7 @@ use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::path::Path;
 use std::time::Duration;
 
-use aira_object::{utc_now_rfc3339, AiraRef, Keyring, Signature, TrustStore};
+use aira_object::{utc_now_rfc3339, AiraRef, Keyring, Signature, TrustStore, LOCAL_TEST_KEY_REF};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 
@@ -173,6 +173,9 @@ fn random_nonce_hex() -> String {
 }
 
 fn admit(trust: &TrustStore, identity_id: &str) -> Result<(), PeerError> {
+    if identity_id == LOCAL_TEST_KEY_REF {
+        return Err(PeerError::Untrusted(identity_id.into()));
+    }
     if trust.is_revoked(identity_id) {
         return Err(PeerError::Revoked(identity_id.into()));
     }

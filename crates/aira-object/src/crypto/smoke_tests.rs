@@ -116,12 +116,17 @@ fn trust_store_peer_verify_without_signing_key() {
     let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
 
     let mut store = TrustStore::default();
-    store.ensure_local_test().unwrap();
     store.upsert(peer_id, &peer_pub).unwrap();
     store.save(root).unwrap();
 
     let loaded = TrustStore::load(root).unwrap();
-    assert_eq!(loaded.entries.len(), 2);
+    assert_eq!(loaded.entries.len(), 1);
+    assert!(
+        !loaded
+            .entries
+            .iter()
+            .any(|e| e.identity_id == LOCAL_TEST_KEY_REF)
+    );
     let _ = register_trust_store(root).unwrap();
 
     let msg = b"peer-message";
@@ -135,9 +140,87 @@ fn trust_store_peer_verify_without_signing_key() {
     let _ = sync_trust_verifiers(root).unwrap();
     let ring = TrustStore::load(root).unwrap().to_keyring().unwrap();
     assert!(ring.verifying_key(peer_id).is_none());
-    assert!(ring.verifying_key(LOCAL_TEST_KEY_REF).is_some());
+    assert!(ring.verifying_key(LOCAL_TEST_KEY_REF).is_none());
     assert!(ring.verify(&sig, msg).is_err());
-    ring.verify(&local_test_signature(msg), msg).unwrap();
+    assert!(ring.verify(&local_test_signature(msg), msg).is_err());
+}
+
+#[test]
+fn trust_upsert_rejects_local_test() {
+    let mut store = TrustStore::default();
+    assert_eq!(
+        store.upsert(LOCAL_TEST_KEY_REF, &local_test_public_key_hex()),
+        Err(CryptoError::ProtectedIdentity(LOCAL_TEST_KEY_REF.into()))
+    );
+    assert!(store.entries.is_empty());
+}
+
+#[test]
+fn ensure_trust_defaults_strips_legacy_local_test() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+    fs::create_dir_all(root.join("identity")).unwrap();
+    let sk = SigningKey::from_bytes(&[11u8; 32]);
+    let id = "aira:identity:node-sec1";
+    let pub_hex = hex::encode(sk.verifying_key().to_bytes());
+    fs::write(
+        root.join("identity/local.ed25519"),
+        format!("{}\n", hex::encode(sk.to_bytes())),
+    )
+    .unwrap();
+    fs::write(
+        root.join("identity/local.identity.json"),
+        serde_json::json!({
+            "identity_id": id,
+            "identity_type": "local",
+            "display_name": "node-sec1",
+            "public_key": { "algorithm": "ed25519", "key_hex": pub_hex },
+            "created_at": "2026-07-16T00:00:00Z",
+            "key_path": "identity/local.ed25519"
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let legacy = TrustStore {
+        entries: vec![
+            TrustEntry {
+                identity_id: LOCAL_TEST_KEY_REF.into(),
+                algorithm: "ed25519".into(),
+                public_key_hex: local_test_public_key_hex(),
+                supersedes: None,
+                previous_public_key_hex: None,
+                previous_grace_until: None,
+            },
+            TrustEntry {
+                identity_id: id.into(),
+                algorithm: "ed25519".into(),
+                public_key_hex: pub_hex.clone(),
+                supersedes: None,
+                previous_public_key_hex: None,
+                previous_grace_until: None,
+            },
+        ],
+        revoked: vec![],
+    };
+    legacy.save(root).unwrap();
+
+    let store = ensure_trust_defaults(root).unwrap();
+    assert!(
+        !store
+            .entries
+            .iter()
+            .any(|e| e.identity_id == LOCAL_TEST_KEY_REF)
+    );
+    assert_eq!(store.entries.len(), 1);
+    assert_eq!(store.entries[0].identity_id, id);
+    let reloaded = TrustStore::load(root).unwrap();
+    assert!(
+        !reloaded
+            .entries
+            .iter()
+            .any(|e| e.identity_id == LOCAL_TEST_KEY_REF)
+    );
+    reset_primary_signer();
 }
 
 #[test]
@@ -150,7 +233,6 @@ fn trust_crl_revoke_blocks_readd_and_verify() {
     let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
 
     let mut store = TrustStore::default();
-    store.ensure_local_test().unwrap();
     store.upsert(peer_id, &peer_pub).unwrap();
     store.save(root).unwrap();
     let _ = register_trust_store(root).unwrap();
@@ -178,7 +260,7 @@ fn trust_crl_revoke_blocks_readd_and_verify() {
     assert!(TrustStore::default()
         .revoke(LOCAL_TEST_KEY_REF, None)
         .is_err());
-    ring.verify(&local_test_signature(msg), msg).unwrap();
+    assert!(ring.verify(&local_test_signature(msg), msg).is_err());
 }
 
 #[test]
@@ -191,7 +273,6 @@ fn trust_crl_unrevoke_allows_explicit_readd() {
     let peer_pub = hex::encode(peer_sk.verifying_key().to_bytes());
 
     let mut store = TrustStore::default();
-    store.ensure_local_test().unwrap();
     store.upsert(peer_id, &peer_pub).unwrap();
     store.save(root).unwrap();
     let _ = register_trust_store(root).unwrap();
@@ -252,7 +333,6 @@ fn trust_rotate_revokes_old_trusts_new() {
     let new_pub = hex::encode(new_sk.verifying_key().to_bytes());
 
     let mut store = TrustStore::default();
-    store.ensure_local_test().unwrap();
     store.upsert(old_id, &old_pub).unwrap();
     store.save(root).unwrap();
     let _ = register_trust_store(root).unwrap();
@@ -322,7 +402,6 @@ fn trust_rotate_grace_allows_old_until() {
     let new_pub = hex::encode(new_sk.verifying_key().to_bytes());
 
     let mut store = TrustStore::default();
-    store.ensure_local_test().unwrap();
     store.upsert(old_id, &old_pub).unwrap();
     store.save(root).unwrap();
 
@@ -371,7 +450,6 @@ fn trust_rekey_grace_allows_old_same_id() {
     let new_pub = hex::encode(new_sk.verifying_key().to_bytes());
 
     let mut store = TrustStore::default();
-    store.ensure_local_test().unwrap();
     store.upsert(id, &old_pub).unwrap();
     store.save(root).unwrap();
 
@@ -508,7 +586,6 @@ fn node_rotate_rolls_back_when_node_revoked() {
     .to_string();
     fs::write(root.join("identity/local.identity.json"), &old_json).unwrap();
     let mut store = TrustStore::default();
-    store.ensure_local_test().unwrap();
     store.upsert(id, &old_pub).unwrap();
     store.revoke(id, Some("block rotate")).unwrap();
     store.save(root).unwrap();
@@ -717,7 +794,6 @@ fn node_rotate_backup_preserves_prev_slot_on_trust_fail() {
     let prior = b"prior-backup-secret\n";
     fs::write(root.join("identity").join(NODE_SECRET_BACKUP_FILE), prior).unwrap();
     let mut store = TrustStore::default();
-    store.ensure_local_test().unwrap();
     store.upsert(id, &old_pub).unwrap();
     store.revoke(id, Some("block")).unwrap();
     store.save(root).unwrap();

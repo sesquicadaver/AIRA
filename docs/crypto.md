@@ -52,7 +52,9 @@ On `LocalSession::open` / `submit_problem` / `aira identity create`:
 
 1. Load `.aira/identity/` into the keyring
 2. Set primary signer to the node `identity_id`
-3. Ensure `.aira/identity/trust.json` defaults (local-test + node pub) and register verifying keys
+3. Ensure `.aira/identity/trust.json` defaults (node pub when present; **never** `local-test` — SEC-1) and register verifying keys
+
+**SEC-1 migration (QUEUE #134):** Older nodes may have `aira:identity:local-test` in `trust.json`. `ensure_trust_defaults` / session open strips that entry on save. `identity trust add` refuses local-test; peer handshake and discv reject it even if a legacy file still lists it. Process keyring keeps local-test for fixtures/signing only — not runtime peer trust.
 
 ```bash
 cargo run -p aira-cli -- --root "$ROOT" identity create --name local
@@ -70,12 +72,14 @@ cargo run -p aira-cli -- --root "$ROOT" identity trust add \
   --key-ref aira:identity:peer-alice --pubkey-hex <64-hex>
 cargo run -p aira-cli -- --root "$ROOT" identity trust remove \
   --key-ref aira:identity:peer-alice
-# refuse remove of aira:identity:local-test
+# local-test must not appear in trust.json (SEC-1); legacy entries are stripped on session open
 ```
 
 `register_trust_store` merges entries into the process keyring so `verify_ed25519` / `aira identity verify` succeed for trusted peers without their signing keys on disk.
 
-**Unload / sync** (Analyze-24 / Analyze-62 / Analyze-63): `sync_trust_verifiers` prunes process verifying keys absent from `trust.json` (never unloads `local-test`; signing identities keep derived verifying keys unless revoked; **in-memory CSU tenant publishers are preserved** until tenant unload / `csu-tenant revoke` — trust CRL alone does not drop them). `identity trust remove` and `ensure_trust_defaults` call sync so unload takes effect in-process immediately.
+**Unload / sync** (Analyze-24 / Analyze-62 / Analyze-63): `sync_trust_verifiers` prunes process verifying keys absent from `trust.json` (never unloads `local-test` from the **process keyring** for fixture signing; signing identities keep derived verifying keys unless revoked; **in-memory CSU tenant publishers are preserved** until tenant unload / `csu-tenant revoke` — trust CRL alone does not drop them). `identity trust remove` and `ensure_trust_defaults` call sync so unload takes effect in-process immediately.
+
+**SEC-1:** `aira:identity:local-test` must **not** be in `trust.json` entries. Upsert, peer handshake, and discv admission reject it; `ensure_trust_defaults` migrates legacy installs.
 
 **CRL** (Analyze-25): `trust.json` field `revoked[]` is a durable deny list. `identity trust revoke --key-ref … [--reason …]` moves an id out of `entries` onto the CRL; `trust add` / `upsert` of a revoked id fails with `RevokedKey`. `remove` is still non-durable (re-add allowed). `local-test` cannot be revoked.
 
