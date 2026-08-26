@@ -1,6 +1,6 @@
 //! Local AIRA-EP Event Protocol adapter (Issue #72).
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use aira_event::{EventDescriptor, EventSink, MemoryEventLog};
 use aira_object::{AiraRef, ContentHash};
@@ -17,8 +17,8 @@ pub const EP_VERSION: &str = "0.1";
 /// Local AIRA-EP adapter over an in-process event log.
 pub struct EventProtocolAdapter {
     log: MemoryEventLog,
-    /// Idempotency keyed by event_id.
-    seen_events: HashSet<String>,
+    /// Idempotency keyed by event_id → canonical content hash (SEC-4).
+    seen_events: HashMap<String, ContentHash>,
     seq: u64,
 }
 
@@ -32,7 +32,7 @@ impl EventProtocolAdapter {
     pub fn new() -> Self {
         Self {
             log: MemoryEventLog::new(),
-            seen_events: HashSet::new(),
+            seen_events: HashMap::new(),
             seq: 1,
         }
     }
@@ -61,19 +61,27 @@ impl EventProtocolAdapter {
         envelope.validate_signature()?;
 
         let event_key = event.event_id.as_str().to_string();
-        if self.seen_events.contains(&event_key) {
-            let resp = self.response(
-                &event.event_id,
-                ProtocolStatus::Accepted,
-                Some(envelope.message_id.as_str()),
-            )?;
+        let content_hash = event
+            .canonical_content_hash()
+            .map_err(|e| ProtocolError::Storage(e.to_string()))?;
+        if let Some(stored) = self.seen_events.get(&event_key) {
+            let status = if stored == &content_hash {
+                ProtocolStatus::Accepted
+            } else {
+                ProtocolStatus::Equivocation
+            };
+            let resp =
+                self.response(&event.event_id, status, Some(envelope.message_id.as_str()))?;
             return Ok((envelope, resp));
         }
 
-        self.log
-            .append(event.clone())
-            .map_err(|e| ProtocolError::Storage(e.to_string()))?;
-        self.seen_events.insert(event_key);
+        self.log.append(event.clone()).map_err(|e| match e {
+            aira_event::EventError::Equivocation(id) => {
+                ProtocolError::Storage(format!("event equivocation: {id}"))
+            }
+            other => ProtocolError::Storage(other.to_string()),
+        })?;
+        self.seen_events.insert(event_key, content_hash);
 
         let resp = self.response(
             &event.event_id,

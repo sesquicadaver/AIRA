@@ -39,6 +39,7 @@ Report vulnerabilities **privately** via [GitHub Security Advisories](https://gi
 - Peer listen defaults **loopback**; Noise + trust store admission; no auto-trust strangers ([`docs/peer-link.md`](docs/peer-link.md)).
 - **SEC-1 (QUEUE #134):** `aira:identity:local-test` is excluded from runtime `trust.json`; peer handshake and discv reject it; legacy entries are stripped on session open ([`docs/crypto.md`](docs/crypto.md)).
 - **SEC-3 (QUEUE #136):** Object/Event/Artifact stores require `signature.key_ref == producer_identity`; cross-identity descriptors fail closed ([`docs/crypto.md`](docs/crypto.md)).
+- **SEC-4 (QUEUE #137):** same `event_id` with different canonical descriptor hash → equivocation conflict; idempotent when hash matches ([`docs/crypto.md`](docs/crypto.md)).
 - DHT/relay/gossip/STUN/discv are **prototypes**, not production mesh security.
 - Desktop network profiles P0–P6: fail-closed rules in [`docs/desktop-network-profiles.md`](docs/desktop-network-profiles.md).
 

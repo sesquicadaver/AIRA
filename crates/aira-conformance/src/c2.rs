@@ -27,6 +27,7 @@ pub fn run_c2(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_discovery_returns_capability_not_node(),
         test_unsupported_version_no_side_effects(),
         test_event_publish_idempotent(),
+        test_event_publish_equivocation(),
         test_artifact_hash_mismatch(),
         test_protocol_envelope_unsigned(),
         test_protocol_envelope_canonical_mutations(),
@@ -233,6 +234,60 @@ fn test_event_publish_idempotent() -> CaseResult {
             id,
             "duplicate publish must be idempotent (no second append)",
         );
+    }
+    pass(id)
+}
+
+/// SEC-4 / B2-008 — same event_id with different canonical hash → EQUIVOCATION (no second append).
+fn test_event_publish_equivocation() -> CaseResult {
+    let id = "c2.event.publish_equivocation";
+    let mut ep = EventProtocolAdapter::new();
+    let event_a = make_event(
+        "aira:event:c2-equiv",
+        EventType::ProblemSubmitted,
+        vec![aira_object::AiraRef::parse("aira:problem:c2-equiv").unwrap()],
+        vec![],
+        vec![],
+        Some("payload-a".into()),
+    );
+    let event_b = make_event(
+        "aira:event:c2-equiv",
+        EventType::ProblemSubmitted,
+        vec![aira_object::AiraRef::parse("aira:problem:c2-equiv").unwrap()],
+        vec![],
+        vec![],
+        Some("payload-b".into()),
+    );
+    let before = ep.events().len();
+    let (_env, resp) = match ep.publish_event(event_a, EP_VERSION) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if resp.status != ProtocolStatus::Accepted {
+        return fail(
+            id,
+            format!("first publish expected ACCEPTED, got {:?}", resp.status),
+        );
+    }
+    if ep.events().len() != before + 1 {
+        return fail(id, "first publish did not append");
+    }
+
+    let (_env2, resp2) = match ep.publish_event(event_b, EP_VERSION) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if resp2.status != ProtocolStatus::Equivocation {
+        return fail(
+            id,
+            format!(
+                "conflicting publish expected EQUIVOCATION, got {:?}",
+                resp2.status
+            ),
+        );
+    }
+    if ep.events().len() != before + 1 {
+        return fail(id, "conflicting publish must not append a second event");
     }
     pass(id)
 }

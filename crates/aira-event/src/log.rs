@@ -1,9 +1,9 @@
 //! Append-only in-memory event log with local subscriptions.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
-use aira_object::AiraRef;
+use aira_object::{AiraRef, ContentHash};
 use thiserror::Error;
 
 use crate::descriptor::{EventDescriptor, EventType};
@@ -11,6 +11,8 @@ use crate::descriptor::{EventDescriptor, EventType};
 /// Event log errors.
 #[derive(Debug, Error)]
 pub enum EventError {
+    #[error("event equivocation: {0}")]
+    Equivocation(AiraRef),
     #[error("event immutable: {0}")]
     Immutable(AiraRef),
     #[error("event not found: {0}")]
@@ -44,7 +46,8 @@ pub trait EventLog: EventSink {
 /// Local memory event log (no global total order required).
 pub struct MemoryEventLog {
     events: Vec<EventDescriptor>,
-    seen_ids: HashSet<String>,
+    /// event_id → canonical content hash (SEC-4 equivocation detection).
+    seen_ids: HashMap<String, ContentHash>,
     by_object: HashMap<String, Vec<usize>>,
     by_artifact: HashMap<String, Vec<usize>>,
     subscribers: HashMap<EventType, Vec<(SubscriptionId, Handler)>>,
@@ -55,7 +58,7 @@ impl MemoryEventLog {
     pub fn new() -> Self {
         Self {
             events: Vec::new(),
-            seen_ids: HashSet::new(),
+            seen_ids: HashMap::new(),
             by_object: HashMap::new(),
             by_artifact: HashMap::new(),
             subscribers: HashMap::new(),
@@ -106,9 +109,15 @@ impl EventSink for MemoryEventLog {
             return Err(EventError::SecretMaterial);
         }
         let id = event.event_id.as_str().to_string();
-        if self.seen_ids.contains(&id) {
-            // Idempotent: duplicate delivery has no additional semantic effect.
-            return Ok(());
+        let content_hash = event
+            .canonical_content_hash()
+            .map_err(|_| EventError::InvalidSignature)?;
+        if let Some(stored) = self.seen_ids.get(&id) {
+            if stored == &content_hash {
+                // Idempotent: duplicate delivery has no additional semantic effect.
+                return Ok(());
+            }
+            return Err(EventError::Equivocation(event.event_id.clone()));
         }
 
         let idx = self.events.len();
@@ -131,7 +140,7 @@ impl EventSink for MemoryEventLog {
             }
         }
 
-        self.seen_ids.insert(id);
+        self.seen_ids.insert(id, content_hash);
         self.events.push(event);
         Ok(())
     }

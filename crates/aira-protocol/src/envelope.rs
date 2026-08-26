@@ -74,6 +74,7 @@ pub enum ProtocolStatus {
     InvalidSignature,
     InvalidArtifact,
     InvariantViolation,
+    Equivocation,
 }
 
 /// Envelope validation / adapter errors.
