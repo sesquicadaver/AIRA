@@ -274,7 +274,7 @@ F0 stabilize CI (#107–#109)
 | 140 | **DONE** | ~~Analyze-170 — federation join hardening~~ | join edge cases + audit | regression tests green | remote federation |
 | 141 | **DONE** | ~~Analyze-171 — C3 conformance scaffold~~ | `run_c3` minimal local cases | runner + doc; optional CI note | full C3 wire |
 | 142 | **DONE** | ~~Analyze-172 — event log durability~~ | JSON log corruption recovery test | test + doc note | production event engine |
-| 143 | **OPEN** | Analyze-173 — SQLite object path | integrity/migration smoke | test + status doc | new object fields |
+| 143 | **DONE** | ~~Analyze-173 — SQLite object path~~ | integrity/migration smoke | test + status doc | new object fields |
 | 144 | **OPEN** | Analyze-174 — external CSU fixture | third-party manifest loads | registry smoke green | CSU marketplace |
 | 145 | **OPEN** | Analyze-175 — CSU SDK doc | `docs/csu-sdk.md` + conformance case | doc + named test | SDK distribution |
 | 146 | **OPEN** | Analyze-176 — epistemic-basic CSU | `csu/epistemic-basic` EPI-001 | crate tests green | full Epistemic plane |
@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#143` SQLite object path. Порядок: `#143` → `#151`.
+**Перший OPEN:** `#144` external CSU fixture. Порядок: `#144` → `#151`.
 
 ```text
 G0 govern (#120–#121)

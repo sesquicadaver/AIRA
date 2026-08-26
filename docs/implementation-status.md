@@ -246,7 +246,7 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #134–#138 | SEC hardening (audit) | local-test trust; envelope sign; identity bind; equivocation; artifact admission |
 | #139–#141 | Federation + C3 scaffold | leave CLI; join hardening; `run_c3` local |
 | #142 | Event log durability | corrupt JSON backup + reset (`event-log.json.corrupt`); test in `aira-flow` | **DONE** @ PR #105 |
-| #143 | SQLite object path | `init_node` `db/aira.sqlite` migrate idempotent; corrupt JSON fail-closed; tests | **IN PROGRESS** |
+| #143 | SQLite object path | `init_node` `db/aira.sqlite` migrate idempotent; corrupt JSON fail-closed; tests | **DONE** @ PR #106 |
 | #144–#145 | CSU SDK | external fixture; `docs/csu-sdk.md` (not marketplace) |
 | #146–#147 | Epistemic basic | `csu/epistemic-basic`; assessment roundtrip |
 | #148–#150 | Production packaging | macOS codesign; Windows MSI; Linux deb |
