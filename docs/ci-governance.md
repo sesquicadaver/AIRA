@@ -62,6 +62,14 @@ pull_request: main, develop
 
 1. `conformance run --profile C2` — partial local protocol regression gate; separate job from C0/C1.
 
+## Profile C3 (QUEUE #141)
+
+Local federation ceremony scaffold (`run_c3`): four named cases under `c3.federation.*`. **Not** in required branch checks — run manually:
+
+```bash
+cargo run -p aira-cli -- --root "$ROOT" conformance run --profile C3
+```
+
 ## External checks
 
 GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` and is not part of the required check name above unless explicitly added to branch protection.

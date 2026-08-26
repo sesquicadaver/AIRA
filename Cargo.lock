@@ -214,6 +214,8 @@ dependencies = [
  "aira-policy",
  "aira-protocol",
  "aira-schema",
+ "ed25519-dalek",
+ "hex",
  "rusqlite",
  "serde",
  "serde_json",
