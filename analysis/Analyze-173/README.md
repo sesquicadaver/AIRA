@@ -1,7 +1,7 @@
 # Analyze-173 — SQLite object path (QUEUE #143)
 
 ## Status
-IN PROGRESS — PR for SQLite object store migration/integrity smoke.
+DONE @ PR #106 — SQLite migrate idempotent; corrupt descriptor JSON fail-closed; `init_node` path smoke.
 
 ## Done when
 `init_node` `db/aira.sqlite` survives reopen; migrate idempotent; corrupt row fails closed; regression tests; doc note.

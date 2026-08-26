@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#142` DONE @ PR #105; **перший OPEN = `#143`** (SQLite object path) |
+| `main` | Phase G `#143` DONE @ PR #106; **перший OPEN = `#144`** (external CSU fixture) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
