@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#137` DONE @ PR #100; **перший OPEN = `#138`** (SEC-5 artifact admission) |
+| `main` | Phase G `#138` DONE @ PR #101; **перший OPEN = `#139`** (federation leave) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
@@ -269,7 +269,7 @@ F0 stabilize CI (#107–#109)
 | 135 | **DONE** | ~~Analyze-183 — SEC-2 canonical envelope signature~~ | full envelope + response canonical sign/verify; `key_ref == issuer` | C2 mutation tests per field green | wire protocol version bump |
 | 136 | **DONE** | ~~Analyze-184 — SEC-3 producer identity binding~~ | `signature.key_ref == producer_identity` on Object/Event/Artifact | store + conformance reject cross-identity | delegation artifacts |
 | 137 | **DONE** | ~~Analyze-185 — SEC-4 event equivocation~~ | same `event_id` + diff hash → conflict; C2 case | idempotent same-hash ACCEPT | global total order |
-| 138 | **OPEN** | Analyze-186 — SEC-5 artifact admission | immutable descriptor admission; supersession persist on reopen | artifact store tests green | new artifact types |
+| 138 | **DONE** | ~~Analyze-186 — SEC-5 artifact admission~~ | immutable descriptor admission; supersession persist on reopen | artifact store tests green | new artifact types |
 | 139 | **OPEN** | Analyze-169 — federation leave | CLI `federation leave` | membership cleared; tests | Join Request protocol |
 | 140 | **OPEN** | Analyze-170 — federation join hardening | join edge cases + audit | regression tests green | remote federation |
 | 141 | **OPEN** | Analyze-171 — C3 conformance scaffold | `run_c3` minimal local cases | runner + doc; optional CI note | full C3 wire |
@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#138` SEC-5 artifact admission. Порядок: `#138` → `#151` (SEC `#136`–`#138` перед federation).
+**Перший OPEN:** `#139` federation leave. Порядок: `#139` → `#151`.
 
 ```text
 G0 govern (#120–#121)

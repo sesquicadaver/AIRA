@@ -1,7 +1,7 @@
 # Analyze-186 — SEC-5 artifact admission (QUEUE #138)
 
 ## Status
-IN PROGRESS — PR for SEC-5 artifact admission.
+DONE @ PR #101 — artifact admission (SEC-5).
 
 ## Done when
 `CasArtifactStore::publish` does not mutate signed descriptor post-verify; supersession mapping persists across reopen; tests.
