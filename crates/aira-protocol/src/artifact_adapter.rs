@@ -4,8 +4,8 @@ use aira_artifact::{ArtifactDescriptor, ArtifactStore, CasArtifactStore, Publish
 use aira_object::{AiraRef, ContentHash};
 
 use crate::envelope::{
-    local_identity, local_signature, mvp_timestamp, signature_over_payload_hash, ProtocolEnvelope,
-    ProtocolError, ProtocolId, ProtocolResponse, ProtocolStatus, ScopeDescriptor,
+    local_identity, mvp_timestamp, ProtocolEnvelope, ProtocolError, ProtocolId, ProtocolResponse,
+    ProtocolStatus, ScopeDescriptor,
 };
 
 /// Supported local artifact protocol version.
@@ -171,14 +171,15 @@ impl ArtifactProtocolAdapter {
         self.seq += 1;
         let message_id = AiraRef::parse(format!("aira:message:ap{}", self.seq))
             .map_err(|e| ProtocolError::Storage(e.to_string()))?;
-        Ok(ProtocolEnvelope {
+        let issuer = local_identity();
+        ProtocolEnvelope {
             protocol_id: ProtocolId::Artifact,
             protocol_version: protocol_version.into(),
             message_type: message_type.into(),
             message_id,
             correlation_id: Some(subject.as_str().to_string()),
             causal_refs: vec![],
-            issuer_identity: local_identity(),
+            issuer_identity: issuer.clone(),
             target_scope: ScopeDescriptor::local("artifact-protocol"),
             policy_refs: vec![AiraRef::parse("aira:policy:default")
                 .map_err(|e| ProtocolError::Storage(e.to_string()))?],
@@ -186,8 +187,9 @@ impl ArtifactProtocolAdapter {
             payload_ref: Some(format!("artifact:{}", subject)),
             created_at: mvp_timestamp(),
             expires_at: None,
-            signature: signature_over_payload_hash(hash),
-        })
+            signature: ProtocolEnvelope::placeholder_signature(&issuer),
+        }
+        .attach_canonical_signature()
     }
 
     fn response(
@@ -199,13 +201,15 @@ impl ArtifactProtocolAdapter {
         self.seq += 1;
         let message_id = AiraRef::parse(format!("aira:message:apresp{}", self.seq))
             .map_err(|e| ProtocolError::Storage(e.to_string()))?;
-        Ok(ProtocolResponse {
+        let issuer = local_identity();
+        ProtocolResponse {
             message_id,
             correlation_id: correlation.map(|s| s.to_string()),
             status,
             reason_refs: vec![subject.clone()],
             created_at: mvp_timestamp(),
-            signature: local_signature(),
-        })
+            signature: ProtocolResponse::placeholder_signature(&issuer),
+        }
+        .attach_canonical_signature(&issuer)
     }
 }

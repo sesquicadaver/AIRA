@@ -365,31 +365,30 @@ pub fn make_dht_announce_envelope(
     }
     let json = serde_json::to_string(announce)?;
     let hash = ContentHash::sha256_bytes(json.as_bytes());
-    let signature = ring
-        .sign(&local_id, hash.as_str().as_bytes())
-        .map_err(|e| PeerError::Crypto(e.to_string()))?;
     let mut nonce = [0u8; 8];
     OsRng.fill_bytes(&mut nonce);
     let message_id =
         aira_object::AiraRef::parse(format!("aira:message:dht-{}", hex::encode(nonce)))
             .map_err(|e| PeerError::Protocol(e.to_string()))?;
     let created = utc_now_rfc3339()?;
-    Ok(ProtocolEnvelope {
+    ProtocolEnvelope {
         protocol_id: ProtocolId::Discovery,
         protocol_version: "0.1".into(),
         message_type: DHT_ANNOUNCE_MESSAGE_TYPE.into(),
         message_id,
         correlation_id: None,
         causal_refs: vec![],
-        issuer_identity: local_id,
+        issuer_identity: local_id.clone(),
         target_scope: ScopeDescriptor::local("peer-dht"),
         policy_refs: vec![],
         payload_hash: hash,
         payload_ref: Some(json),
         created_at: Timestamp::parse(created).map_err(|e| PeerError::Protocol(e.to_string()))?,
         expires_at: None,
-        signature,
-    })
+        signature: ProtocolEnvelope::placeholder_signature(&local_id),
+    }
+    .attach_canonical_signature_with_keyring(&ring, &local_id)
+    .map_err(|e| PeerError::Protocol(e.to_string()))
 }
 
 /// Announce local listen addr into DHT and fan out to address-book peers (best-effort).

@@ -60,7 +60,6 @@ fn mutual_trust(
 
 fn make_envelope(issuer: &AiraRef, ring: &Keyring, payload: &str) -> ProtocolEnvelope {
     let hash = ContentHash::sha256_bytes(payload.as_bytes());
-    let sig = ring.sign(issuer, hash.as_str().as_bytes()).unwrap();
     ProtocolEnvelope {
         protocol_id: ProtocolId::Identity,
         protocol_version: "0.1".into(),
@@ -75,8 +74,10 @@ fn make_envelope(issuer: &AiraRef, ring: &Keyring, payload: &str) -> ProtocolEnv
         payload_ref: None,
         created_at: Timestamp::parse("2026-07-16T12:00:00Z").unwrap(),
         expires_at: None,
-        signature: sig,
+        signature: ProtocolEnvelope::placeholder_signature(issuer),
     }
+    .attach_canonical_signature_with_keyring(ring, issuer)
+    .unwrap()
 }
 
 #[tokio::test]
@@ -485,7 +486,7 @@ async fn listen_rejects_non_loopback() {
 }
 
 #[test]
-fn make_peer_ping_signs_payload_hash() {
+fn make_peer_ping_signs_canonical_descriptor() {
     let dir = tempdir().unwrap();
     let root = dir.path();
     init_node(root).unwrap();
@@ -496,8 +497,7 @@ fn make_peer_ping_signs_payload_hash() {
     assert_eq!(env.signature.key_ref, id);
     assert_eq!(env.payload_ref.as_deref(), Some("hello-ping"));
     let ring = TrustStore::load(root).unwrap().to_keyring().unwrap();
-    ring.verify(&env.signature, env.payload_hash.as_str().as_bytes())
-        .unwrap();
+    env.validate_signature_with_keyring(&ring).unwrap();
 }
 
 #[tokio::test]
@@ -825,7 +825,6 @@ fn craft_trust_delta_envelope_unchecked(
     let (local_id, ring) = Keyring::load_node_identity(root).unwrap();
     let json = String::from_utf8(delta.canonical_bytes().unwrap()).unwrap();
     let hash = ContentHash::sha256_bytes(json.as_bytes());
-    let signature = ring.sign(&local_id, hash.as_str().as_bytes()).unwrap();
     let mut nonce = [0u8; 8];
     OsRng.fill_bytes(&mut nonce);
     let message_id = AiraRef::parse(format!(
@@ -841,15 +840,17 @@ fn craft_trust_delta_envelope_unchecked(
         message_id,
         correlation_id: None,
         causal_refs: vec![],
-        issuer_identity: local_id,
+        issuer_identity: local_id.clone(),
         target_scope: ScopeDescriptor::local("peer-trust-delta"),
         policy_refs: vec![],
         payload_hash: hash,
         payload_ref: Some(json),
         created_at: Timestamp::parse(created).unwrap(),
         expires_at: None,
-        signature,
+        signature: ProtocolEnvelope::placeholder_signature(&local_id),
     }
+    .attach_canonical_signature_with_keyring(&ring, &local_id)
+    .unwrap()
 }
 
 #[tokio::test]

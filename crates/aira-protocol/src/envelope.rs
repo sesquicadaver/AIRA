@@ -1,6 +1,9 @@
 //! Protocol Envelope / Response types (Issue #71).
 
-use aira_object::{AiraRef, ContentHash, Signature, Timestamp};
+use aira_object::{
+    descriptor_signing_message, sign_canonical_descriptor, verify_canonical_descriptor, AiraRef,
+    ContentHash, Keyring, Signature, Timestamp,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -118,9 +121,59 @@ pub struct ProtocolEnvelope {
 }
 
 impl ProtocolEnvelope {
-    /// Reject empty / TESTSIG / invalid Ed25519 over `payload_hash` (no domain fallback).
+    /// Placeholder signature (stripped from canonical hash before sign).
+    pub fn placeholder_signature(issuer: &AiraRef) -> Signature {
+        Signature {
+            algorithm: "ed25519".into(),
+            key_ref: issuer.clone(),
+            signature_value: String::new(),
+        }
+    }
+
+    /// Canonical sign over full descriptor; `signature.key_ref` must equal `issuer_identity`.
+    pub fn attach_canonical_signature(mut self) -> Result<Self, ProtocolError> {
+        let issuer = self.issuer_identity.clone();
+        let v = serde_json::to_value(&self).map_err(|e| ProtocolError::Schema(e.to_string()))?;
+        self.signature =
+            sign_canonical_descriptor(&issuer, &v).map_err(|_| ProtocolError::InvalidSignature)?;
+        Ok(self)
+    }
+
+    /// Canonical sign with an explicit node keyring (peer / CLI paths).
+    pub fn attach_canonical_signature_with_keyring(
+        mut self,
+        ring: &Keyring,
+        issuer: &AiraRef,
+    ) -> Result<Self, ProtocolError> {
+        if self.issuer_identity != *issuer {
+            return Err(ProtocolError::InvalidSignature);
+        }
+        let v = serde_json::to_value(&self).map_err(|e| ProtocolError::Schema(e.to_string()))?;
+        let msg = descriptor_signing_message(&v).map_err(|_| ProtocolError::InvalidSignature)?;
+        self.signature = ring
+            .sign(issuer, &msg)
+            .map_err(|_| ProtocolError::InvalidSignature)?;
+        Ok(self)
+    }
+
+    /// Verify canonical descriptor signature via process keyring.
     pub fn validate_signature(&self) -> Result<(), ProtocolError> {
-        aira_object::verify_ed25519(&self.signature, self.payload_hash.as_str().as_bytes())
+        if self.signature.key_ref != self.issuer_identity {
+            return Err(ProtocolError::InvalidSignature);
+        }
+        let v = serde_json::to_value(self).map_err(|e| ProtocolError::Schema(e.to_string()))?;
+        verify_canonical_descriptor(&self.signature, &v)
+            .map_err(|_| ProtocolError::InvalidSignature)
+    }
+
+    /// Verify canonical descriptor signature via a supplied verifying keyring.
+    pub fn validate_signature_with_keyring(&self, ring: &Keyring) -> Result<(), ProtocolError> {
+        if self.signature.key_ref != self.issuer_identity {
+            return Err(ProtocolError::InvalidSignature);
+        }
+        let v = serde_json::to_value(self).map_err(|e| ProtocolError::Schema(e.to_string()))?;
+        let msg = descriptor_signing_message(&v).map_err(|_| ProtocolError::InvalidSignature)?;
+        ring.verify(&self.signature, &msg)
             .map_err(|_| ProtocolError::InvalidSignature)
     }
 }
@@ -138,14 +191,58 @@ pub struct ProtocolResponse {
     pub signature: Signature,
 }
 
+impl ProtocolResponse {
+    pub fn placeholder_signature(issuer: &AiraRef) -> Signature {
+        ProtocolEnvelope::placeholder_signature(issuer)
+    }
+
+    pub fn attach_canonical_signature(mut self, issuer: &AiraRef) -> Result<Self, ProtocolError> {
+        let v = serde_json::to_value(&self).map_err(|e| ProtocolError::Schema(e.to_string()))?;
+        self.signature =
+            sign_canonical_descriptor(issuer, &v).map_err(|_| ProtocolError::InvalidSignature)?;
+        Ok(self)
+    }
+
+    pub fn attach_canonical_signature_with_keyring(
+        mut self,
+        ring: &Keyring,
+        issuer: &AiraRef,
+    ) -> Result<Self, ProtocolError> {
+        let v = serde_json::to_value(&self).map_err(|e| ProtocolError::Schema(e.to_string()))?;
+        let msg = descriptor_signing_message(&v).map_err(|_| ProtocolError::InvalidSignature)?;
+        self.signature = ring
+            .sign(issuer, &msg)
+            .map_err(|_| ProtocolError::InvalidSignature)?;
+        Ok(self)
+    }
+
+    pub fn validate_signature(&self, issuer: &AiraRef) -> Result<(), ProtocolError> {
+        if self.signature.key_ref != *issuer {
+            return Err(ProtocolError::InvalidSignature);
+        }
+        let v = serde_json::to_value(self).map_err(|e| ProtocolError::Schema(e.to_string()))?;
+        verify_canonical_descriptor(&self.signature, &v)
+            .map_err(|_| ProtocolError::InvalidSignature)
+    }
+
+    pub fn validate_signature_with_keyring(
+        &self,
+        ring: &Keyring,
+        issuer: &AiraRef,
+    ) -> Result<(), ProtocolError> {
+        if self.signature.key_ref != *issuer {
+            return Err(ProtocolError::InvalidSignature);
+        }
+        let v = serde_json::to_value(self).map_err(|e| ProtocolError::Schema(e.to_string()))?;
+        let msg = descriptor_signing_message(&v).map_err(|_| ProtocolError::InvalidSignature)?;
+        ring.verify(&self.signature, &msg)
+            .map_err(|_| ProtocolError::InvalidSignature)
+    }
+}
+
 /// Local MVP signature helper (real Ed25519 over domain message).
 pub fn local_signature() -> Signature {
     aira_object::local_test_signature(aira_object::LOCAL_TEST_DOMAIN_MSG)
-}
-
-/// Local MVP signature over protocol `payload_hash` bytes.
-pub fn signature_over_payload_hash(hash: &ContentHash) -> Signature {
-    aira_object::local_test_signature(hash.as_str().as_bytes())
 }
 
 /// Local MVP identity ref.

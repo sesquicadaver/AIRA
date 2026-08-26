@@ -13,7 +13,7 @@ Repo-level ТЗ → module → tests map: [implementation-status.md](implementat
 
 Reports validate against `aira:schema:conformance:report:0.1` and are published as immutable `ConformanceArtifact`.
 
-Phase G `#122`–`#124` adds named local C2 cases (idempotency, hash mismatch, unsigned envelope). See [phase-g-plan.md](phase-g-plan.md).
+Phase G `#122`–`#124` adds named local C2 cases (idempotency, hash mismatch, unsigned envelope). SEC-2 (`#135`) adds `c2.protocol.envelope_canonical_mutations` and `c2.protocol.response_canonical_mutations`. See [phase-g-plan.md](phase-g-plan.md).
 
 ## CLI
 

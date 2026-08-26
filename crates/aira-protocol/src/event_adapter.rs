@@ -7,8 +7,8 @@ use aira_object::{AiraRef, ContentHash};
 use serde_json::to_vec;
 
 use crate::envelope::{
-    local_identity, local_signature, mvp_timestamp, signature_over_payload_hash, ProtocolEnvelope,
-    ProtocolError, ProtocolId, ProtocolResponse, ProtocolStatus, ScopeDescriptor,
+    local_identity, mvp_timestamp, ProtocolEnvelope, ProtocolError, ProtocolId, ProtocolResponse,
+    ProtocolStatus, ScopeDescriptor,
 };
 
 /// Supported local event protocol version.
@@ -93,22 +93,24 @@ impl EventProtocolAdapter {
         self.seq += 1;
         let message_id = AiraRef::parse(format!("aira:message:ep{}", self.seq))
             .map_err(|e| ProtocolError::Storage(e.to_string()))?;
-        Ok(ProtocolEnvelope {
+        let issuer = local_identity();
+        ProtocolEnvelope {
             protocol_id: ProtocolId::Event,
             protocol_version: protocol_version.into(),
             message_type: "EventPublish".into(),
             message_id,
             correlation_id: Some(event.event_id.as_str().to_string()),
             causal_refs: event.causal_refs.clone(),
-            issuer_identity: local_identity(),
+            issuer_identity: issuer.clone(),
             target_scope: ScopeDescriptor::local("event-protocol"),
             policy_refs: event.policy_refs.clone(),
-            payload_hash: hash.clone(),
+            payload_hash: hash,
             payload_ref: Some(format!("event:{}", event.event_id)),
             created_at: mvp_timestamp(),
             expires_at: None,
-            signature: signature_over_payload_hash(&hash),
-        })
+            signature: ProtocolEnvelope::placeholder_signature(&issuer),
+        }
+        .attach_canonical_signature()
     }
 
     fn response(
@@ -120,13 +122,15 @@ impl EventProtocolAdapter {
         self.seq += 1;
         let message_id = AiraRef::parse(format!("aira:message:epresp{}", self.seq))
             .map_err(|e| ProtocolError::Storage(e.to_string()))?;
-        Ok(ProtocolResponse {
+        let issuer = local_identity();
+        ProtocolResponse {
             message_id,
             correlation_id: correlation.map(|s| s.to_string()),
             status,
             reason_refs: vec![event_id.clone()],
             created_at: mvp_timestamp(),
-            signature: local_signature(),
-        })
+            signature: ProtocolResponse::placeholder_signature(&issuer),
+        }
+        .attach_canonical_signature(&issuer)
     }
 }
