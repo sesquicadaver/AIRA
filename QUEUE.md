@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#140` DONE @ PR #103; **перший OPEN = `#141`** (C3 conformance scaffold) |
+| `main` | Phase G `#141` DONE @ PR #104; **перший OPEN = `#142`** (event log durability) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
