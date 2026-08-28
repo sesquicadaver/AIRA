@@ -72,8 +72,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #161 must be DONE after C3 capability case"
     );
     assert!(
-        text.contains("| 162 | **OPEN**"),
-        "QUEUE #162 must be next OPEN"
+        text.contains("| 162 | **DONE**"),
+        "QUEUE #162 must be DONE after federation export deny"
+    );
+    assert!(
+        text.contains("| 163 | **OPEN**"),
+        "QUEUE #163 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
@@ -111,6 +115,7 @@ fn phase_h_h1_stores_status_rollup() {
         "CapabilityAdvertisementStore",
         "capability_ad_persist_roundtrip",
         "c3.capability.advertisement",
+        "federation_export_import_deny_by_default_audits",
     ] {
         assert!(
             text.contains(needle),

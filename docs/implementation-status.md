@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#161` DONE; `#162` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#162` DONE; `#163` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#162`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#163`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -106,7 +106,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | R0 Minimal Local Core | Book IV §23 R0 | `aira-core`, `aira-event`, `aira-artifact`, `aira-policy`, `aira-schema` | C0 + crate tests | **DONE** | |
 | R1 Minimal Operational Node | Book IV §23 R1 | `aira-flow`, `aira-cli`, basic CSUs, `.aira` layout | C1; `local_init_submit_status_and_artifact`; `run_alpha_acceptance` | **DONE** | `config.node.profile = "C1"` |
 | R2 Local Protocol Node | Book IV §23 R2 | `aira-protocol` | `run_c2` + CI `conformance-c2` (#117) | **PARTIAL** | Partial C2 local; CI regression gate |
-| R3 Federation-Capable Node | Book IV §23 R3 | join prototype | federation tests | **POST-MVP** | Not a federation runtime |
+| R3 Federation-Capable Node | Book IV §23 R3 | join/leave + IO policy deny (#162) | federation tests; `federation_export_import_deny_by_default_audits` | **POST-MVP** | Local ceremony + deny-by-default export/import; not a federation runtime |
 | R4 Research-Capable Node | Book IV §23 R4 | — | — | **RESEARCH** | Book V |
 | Object / Artifact / Event stores | Book IV §6 | plane memory objects + node `SqliteObjectStore` (#158); CAS artifacts; file-chain events (#157) | `plane_memory_beside_node_sqlite_object_path`; `session_durable_file_chain_roundtrip`; core/artifact tests | **PARTIAL** | **H1 DONE** (`#154`–`#159`): durable events + SQLite path documented; plane drain still memory objects/events |
 | Policy + Invariant + CSU runtime | Book IV §9–12 | matching crates | C0/C1 | **DONE** | |
@@ -276,8 +276,9 @@ Plan: [`phase-g-plan.md`](phase-g-plan.md) **DONE**. RFC: [`AIRA-RFC-0069`](../s
 | #158 | Sqlite object path + docs | `plane_memory_beside_node_sqlite_object_path` | **DONE** @ PR #121 |
 | #159 | Stores status rollup | this file H1 rows + Phase H table | **DONE** @ this PR |
 | #160 | Capability ad persist | `capability_ad_persist_roundtrip` | **DONE** @ PR #123 |
-| #161 | C3 capability advertisement | `c3.capability.advertisement` | **DONE** @ this PR |
-| #162–#164 | C3 depth | policy export; ≥6 cases; optional CI |
+| #161 | C3 capability advertisement | `c3.capability.advertisement` | **DONE** @ PR #124 |
+| #162 | Federation IO export/import deny | `federation_export_import_deny_by_default_audits` | **DONE** @ this PR |
+| #163–#164 | C3 depth | ≥6 cases; optional CI |
 | #165–#171 | CRP local adapter | B2-006; discovery≠node; PARTIAL |
 | #172–#177 | Settlement receipts | B2-011; `run_c4`; PARTIAL |
 | #178–#181 | Promotion gate | RFC-P; `run_c5`; non-operational |

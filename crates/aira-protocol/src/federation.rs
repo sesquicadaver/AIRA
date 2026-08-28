@@ -326,6 +326,130 @@ pub fn leave_federation(root: impl AsRef<Path>) -> Result<LeaveOutcome, Federati
     })
 }
 
+/// On-disk schema for local federation import/export policy (#162).
+pub const FEDERATION_IO_POLICY_SCHEMA: &str = "aira:federation:io-policy:v1";
+
+/// Direction of a policy-scoped federation artifact/event transfer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FederationTransferKind {
+    Export,
+    Import,
+}
+
+impl FederationTransferKind {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Export => "export",
+            Self::Import => "import",
+        }
+    }
+}
+
+/// Local federation IO policy (deny-by-default for export/import).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FederationIoPolicy {
+    pub schema: String,
+    pub allow_export: bool,
+    pub allow_import: bool,
+}
+
+impl Default for FederationIoPolicy {
+    fn default() -> Self {
+        Self {
+            schema: FEDERATION_IO_POLICY_SCHEMA.into(),
+            allow_export: false,
+            allow_import: false,
+        }
+    }
+}
+
+/// Result of [`check_federation_transfer`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TransferCheckOutcome {
+    Allow,
+    Deny { reason: String },
+}
+
+/// Path to `.aira/federation/io-policy.json`.
+pub fn federation_io_policy_path(root: impl AsRef<Path>) -> PathBuf {
+    root.as_ref().join("federation").join("io-policy.json")
+}
+
+/// Load IO policy or deny-by-default when missing.
+pub fn load_federation_io_policy(
+    root: impl AsRef<Path>,
+) -> Result<FederationIoPolicy, FederationError> {
+    let path = federation_io_policy_path(&root);
+    if !path.exists() {
+        return Ok(FederationIoPolicy::default());
+    }
+    let raw = fs::read_to_string(&path).map_err(|e| FederationError::Failed(e.to_string()))?;
+    let policy: FederationIoPolicy =
+        serde_json::from_str(&raw).map_err(|e| FederationError::Failed(e.to_string()))?;
+    if policy.schema != FEDERATION_IO_POLICY_SCHEMA {
+        return Err(FederationError::Failed(format!(
+            "federation io-policy schema mismatch: {}",
+            policy.schema
+        )));
+    }
+    Ok(policy)
+}
+
+/// Persist IO policy (creates `federation/` as needed).
+pub fn save_federation_io_policy(
+    root: impl AsRef<Path>,
+    policy: &FederationIoPolicy,
+) -> Result<(), FederationError> {
+    if policy.schema != FEDERATION_IO_POLICY_SCHEMA {
+        return Err(FederationError::Failed(format!(
+            "federation io-policy schema mismatch: {}",
+            policy.schema
+        )));
+    }
+    let path = federation_io_policy_path(&root);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| FederationError::Failed(e.to_string()))?;
+    }
+    let json =
+        serde_json::to_string_pretty(policy).map_err(|e| FederationError::Failed(e.to_string()))?;
+    fs::write(path, format!("{json}\n")).map_err(|e| FederationError::Failed(e.to_string()))
+}
+
+/// Policy-scoped export/import check (PRIV-003 / Book II §18).
+///
+/// DENY by default unless the matching `allow_*` flag is true. DENY appends a
+/// trust-audit entry (`federation_export_deny` / `federation_import_deny`).
+pub fn check_federation_transfer(
+    root: impl AsRef<Path>,
+    kind: FederationTransferKind,
+    subject_ref: &str,
+) -> Result<TransferCheckOutcome, FederationError> {
+    let root = root.as_ref();
+    let policy = load_federation_io_policy(root)?;
+    let allowed = match kind {
+        FederationTransferKind::Export => policy.allow_export,
+        FederationTransferKind::Import => policy.allow_import,
+    };
+    if allowed {
+        return Ok(TransferCheckOutcome::Allow);
+    }
+    let reason = format!(
+        "federation policy denies {} (allow_{}=false)",
+        kind.as_str(),
+        kind.as_str()
+    );
+    let action = match kind {
+        FederationTransferKind::Export => TrustAuditAction::FederationExportDeny,
+        FederationTransferKind::Import => TrustAuditAction::FederationImportDeny,
+    };
+    let entry = TrustAuditEntry::new(action, subject_ref, Some("federation"))
+        .map_err(FederationError::Crypto)?
+        .with_reason(Some(&reason));
+    record_trust_audit(root, entry).map_err(FederationError::Crypto)?;
+    Ok(TransferCheckOutcome::Deny { reason })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -600,5 +724,72 @@ mod tests {
         let desc = unsigned("aira:identity:fed-home", "aira:federation:home", "zz");
         assert!(join_federation(dir.path(), &desc).is_err());
         assert!(!membership_path(dir.path()).exists());
+    }
+
+    #[test]
+    fn federation_export_import_deny_by_default_audits() {
+        use aira_object::TrustAuditLog;
+
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let subject = "aira:artifact:cross-fed:1";
+
+        let export =
+            check_federation_transfer(root, FederationTransferKind::Export, subject).unwrap();
+        match export {
+            TransferCheckOutcome::Deny { reason } => {
+                assert!(reason.contains("export"), "{reason}");
+            }
+            TransferCheckOutcome::Allow => panic!("export must deny by default"),
+        }
+        let import =
+            check_federation_transfer(root, FederationTransferKind::Import, subject).unwrap();
+        match import {
+            TransferCheckOutcome::Deny { reason } => {
+                assert!(reason.contains("import"), "{reason}");
+            }
+            TransferCheckOutcome::Allow => panic!("import must deny by default"),
+        }
+
+        let audit = TrustAuditLog::load(root).unwrap();
+        assert_eq!(audit.len(), 2);
+        assert_eq!(audit[0].action, TrustAuditAction::FederationExportDeny);
+        assert_eq!(audit[1].action, TrustAuditAction::FederationImportDeny);
+        assert_eq!(audit[0].subject_id, subject);
+    }
+
+    #[test]
+    fn federation_io_policy_allow_skips_deny_audit() {
+        use aira_object::TrustAuditLog;
+
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let policy = FederationIoPolicy {
+            schema: FEDERATION_IO_POLICY_SCHEMA.into(),
+            allow_export: true,
+            allow_import: false,
+        };
+        save_federation_io_policy(root, &policy).unwrap();
+        assert!(federation_io_policy_path(root).is_file());
+        let loaded = load_federation_io_policy(root).unwrap();
+        assert!(loaded.allow_export);
+        assert!(!loaded.allow_import);
+
+        let export =
+            check_federation_transfer(root, FederationTransferKind::Export, "aira:artifact:ok")
+                .unwrap();
+        assert_eq!(export, TransferCheckOutcome::Allow);
+        assert!(TrustAuditLog::load(root).unwrap().is_empty());
+
+        let import = check_federation_transfer(
+            root,
+            FederationTransferKind::Import,
+            "aira:artifact:blocked",
+        )
+        .unwrap();
+        assert!(matches!(import, TransferCheckOutcome::Deny { .. }));
+        let audit = TrustAuditLog::load(root).unwrap();
+        assert_eq!(audit.len(), 1);
+        assert_eq!(audit[0].action, TrustAuditAction::FederationImportDeny);
     }
 }

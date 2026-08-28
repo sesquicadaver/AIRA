@@ -31,6 +31,10 @@ pub enum TrustAuditAction {
     FederationJoin,
     /// Local federation membership cleared (`federation leave`).
     FederationLeave,
+    /// Cross-federation export denied by local IO policy.
+    FederationExportDeny,
+    /// Cross-federation import denied by local IO policy.
+    FederationImportDeny,
 }
 
 impl TrustAuditAction {
@@ -46,6 +50,8 @@ impl TrustAuditAction {
             Self::TenantRevoke => "tenant_revoke",
             Self::FederationJoin => "federation_join",
             Self::FederationLeave => "federation_leave",
+            Self::FederationExportDeny => "federation_export_deny",
+            Self::FederationImportDeny => "federation_import_deny",
         }
     }
 }
