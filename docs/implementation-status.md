@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status (Analyze-87 / QUEUE #52; Phase F `#119`; Phase G `#120`–`#146` OPEN):** map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps.
+**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#134`) · **Phase G plan:** [`phase-g-plan.md`](phase-g-plan.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase G closed) · **Phase G plan:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -35,8 +35,8 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Forbidden Core entities (GPU/LLM/Node/Driver/Scheduler/…) | Book 0 §3.2; B0-002 | Schema + fixture reject | `fixtures/invalid/core/object-descriptor-gpu.json`; `scripts/dep_firewall.py` | **DONE** | Core must not import node/peer/concrete CSU |
 | Operational pipeline PS → Interpret → Reduce → Materialize → Verify → VRA | Book 0 §4; B0-003; OP-001 | `aira_flow::OperationalPlane` (C1 **reference/demo**) | `c1.pipeline.calculate_2_plus_2`; `aira-flow` `calculate_two_plus_two_demo` | **DONE** | Plane is not production event/scheduler/federation runtime |
 | Human Final Collapse / no silent pick | Book 0 A6; B0-004 | `is_normative_split` string heuristic + OperationalArtifact | `normative_split_stub_does_not_autocollapse` | **STUB** | Not a full Differentiated Solution Field CSU |
-| Evidence primacy | Book 0 A5; B0-005 | `schemas/evidence/claim-artifact.schema.json`; `csu/evidence-basic`; failure evidence path | `schema validate --fixtures` claim/assumption (#125); `c1.failure.to_evidence`; `failure_creates_failure_evidence` | **PARTIAL** | B0-005 schema gate for Claim vs Assumption; no runtime Epistemic CSU |
-| Epistemic Status as distinct coordinate | Book 0 §6 | `schemas/evidence/epistemic-assessment.schema.json`; `csu/epistemic-basic` | schema fixtures (#108); `epi_001_assessment_separates_coordinates_and_revisions` | **PARTIAL** | Plane/CLI roundtrip is `#147`; full Epistemic plane out |
+| Evidence primacy | Book 0 A5; B0-005 | `schemas/evidence/claim-artifact.schema.json`; `csu/evidence-basic`; failure evidence path | `schema validate --fixtures` claim/assumption (#125); `c1.failure.to_evidence`; `failure_creates_failure_evidence` | **PARTIAL** | B0-005 schema gate for Claim vs Assumption; Epistemic basic + path `#146`–`#147` |
+| Epistemic Status as distinct coordinate | Book 0 §6 | `schemas/evidence/epistemic-assessment.schema.json`; `csu/epistemic-basic` | schema fixtures (#108); `epi_001_…`; `epistemic_assessment_roundtrip_via_plane_and_session` | **PARTIAL** | Full Epistemic plane still out |
 | Evolution / Research plane | Book 0 §10; Book V | — | — | **RESEARCH** | Isolated; not mixed into Core |
 | Cost / escalation / Goal Compiler | Book 0 §8–9; Book V | — | — | **RESEARCH** | Out of MVP |
 
@@ -254,9 +254,9 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #148 | macOS codesign | `scripts/macos-codesign-notarize.sh` + `desktop-packaging-macos.md` | **DONE** @ PR #111 |
 | #149 | Windows MSI | `scripts/package-desktop-windows-msi.sh` + WiX stage | **DONE** @ PR #112 |
 | #150 | Linux deb | `scripts/package-desktop-linux-deb.sh` + debian control | **DONE** @ PR #113 |
-| #151 | Phase G docs + RFC | README + this file v0.2; RFC-0069; QUEUE G closed |
+| #151 | Phase G docs + RFC | README + this file v0.2; `AIRA-RFC-0069`; QUEUE G closed | **DONE** (this atom) |
 
-Plan: [`phase-g-plan.md`](phase-g-plan.md).
+Plan: [`phase-g-plan.md`](phase-g-plan.md) **DONE**. RFC: [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md).
 
 ---
 
@@ -277,7 +277,7 @@ CRP product pivot · settlement ledger product · PHM/HIE runtime
 KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 ```
 
-**Phase G `#120`–`#146` IN SCOPE** (не змінює anti-mission): deeper local C2, mechanical splits, desktop peer CI, federation leave, local C3 scaffold, CSU SDK doc, `epistemic-basic`, production packaging scripts. Plan: [`phase-g-plan.md`](phase-g-plan.md).
+**Phase G `#120`–`#151` DONE** (не змінює anti-mission): deeper local C2, mechanical splits, desktop peer CI, SEC hardening, federation leave, local C3 scaffold, CSU SDK doc, `epistemic-basic`, production packaging scripts. Plan: [`phase-g-plan.md`](phase-g-plan.md); closure: [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md).
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 

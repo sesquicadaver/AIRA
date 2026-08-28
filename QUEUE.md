@@ -1,18 +1,18 @@
 # AIRA — лінійна черга задач
 
-**Оновлено:** 2026-08-24  
+**Оновлено:** 2026-08-28  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **OPEN** (2026-08-26).
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **DONE** (2026-08-28, RFC-0069).
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Phase G `#150` DONE @ PR #113; **перший OPEN = `#151`** (Phase G docs closure) |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; **OPEN немає** — потрібен новий план етапу |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase G reference v0.2 `#120`–`#151` |
+| Активна черга | **порожня** (Phase G closed); post-G лише за новим планом |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#146` OPEN (2026-08-24).
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** (2026-08-28).
 
 ---
 
@@ -282,11 +282,11 @@ F0 stabilize CI (#107–#109)
 | 148 | **DONE** | ~~Analyze-178 — macOS codesign~~ | notarization script + doc update | script dry-run doc | App Store |
 | 149 | **DONE** | ~~Analyze-179 — Windows MSI~~ | MSI build script + doc | artifact builds on CI runner | codesign enterprise |
 | 150 | **DONE** | ~~Analyze-180 — Linux deb metapackage~~ | deb production path doc + script | package smoke | AppImage |
-| 151 | **OPEN** | Analyze-181 — Phase G docs closure | README + implementation-status v0.2; RFC-0069 | G scope documented; QUEUE G closed | post-G RFC track; анти-місія README |
+| 151 | **DONE** | ~~Analyze-181 — Phase G docs closure~~ | README + implementation-status v0.2; RFC-0069 | G scope documented; QUEUE G closed | post-G RFC track; анти-місія README |
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#151` Phase G docs closure. Порядок: `#151`.
+**Phase G завершено** (`#120`–`#151` DONE; RFC-0069). **OPEN немає.**
 
 ```text
 G0 govern (#120–#121)
@@ -294,14 +294,16 @@ G0 govern (#120–#121)
     → G2 evidence gaps (#125–#126)
       → G3 modularize (#127–#130)
         → G4 desktop peer (#131–#133)
-          → G-SEC hardening (#134–#138) — audit blockers before peer/federation
+          → G-SEC hardening (#134–#138)
             → G5 federation/C3 (#139–#141)
               → G6 durable stores (#142–#143)
                 → G7 CSU SDK (#144–#145)
                   → G8 epistemic (#146–#147)
                     → G9 packaging (#148–#150)
-                      → G10 docs (#151)
+                      → G10 docs (#151) ✓
 ```
+
+Post-G: лише новий план етапу + RFC; анти-місія README **ніколи** в QUEUE.
 
 ---
 

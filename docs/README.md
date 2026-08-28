@@ -1,6 +1,6 @@
 # AIRA documentation index
 
-**Оновлено:** 2026-08-26. Канон виконання: [`QUEUE.md`](../QUEUE.md) (перший OPEN = `#134`). Статус реалізації: [`implementation-status.md`](implementation-status.md).
+**Оновлено:** 2026-08-28. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.2**).
 
 ## Anti-mission (ніколи в product / QUEUE)
 
@@ -21,7 +21,7 @@ Core що «вирішує задачі» замість CSU contracts
 | D | [`phase-d-plan.md`](phase-d-plan.md) | `#53`–`#74` | **DONE** |
 | E | [`phase-e-plan.md`](phase-e-plan.md) + [`desktop-ux.md`](desktop-ux.md) | `#75`–`#106` | **DONE** |
 | F | [`phase-f-plan.md`](phase-f-plan.md) | `#107`–`#119` | **DONE** |
-| G | [`phase-g-plan.md`](phase-g-plan.md) | `#120`–`#146` | **OPEN** |
+| G | [`phase-g-plan.md`](phase-g-plan.md) | `#120`–`#151` | **DONE** (RFC-0069) |
 
 ## Core reference
 
