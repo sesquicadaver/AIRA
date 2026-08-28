@@ -3,6 +3,7 @@
 //! Protocol Envelope + local adapters for Event / Artifact / Identity / Discovery.
 
 mod artifact_adapter;
+mod capability_ad;
 mod discovery;
 mod envelope;
 mod event_adapter;
@@ -10,6 +11,10 @@ mod federation;
 mod identity;
 
 pub use artifact_adapter::{ArtifactOpResult, ArtifactProtocolAdapter, AP_VERSION};
+pub use capability_ad::{
+    CapabilityAdBody, CapabilityAdvertisement, CapabilityAdvertisementStore, ValidityWindow,
+    CAPABILITY_AD_STORE_SCHEMA,
+};
 pub use discovery::{
     CapabilityDescriptor, DiscoveryHit, DiscoveryRegistry, DISCOVERY_REGISTRY_SCHEMA,
 };

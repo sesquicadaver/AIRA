@@ -12,6 +12,7 @@
   federation/membership.json  # optional local join pin (Analyze-70)
   csu/registry.json
   discovery/registry.json  # local capability discovery (Analyze-45)
+  capability/advertisements.json  # Book II CAP ads persist (#160)
   http/              # optional self-signed TLS PEM (`--tls-self-signed`)
   events/event-log.json           # legacy JSON event log (recovery helpers)
   events/file-chain-log.json      # durable FileChainEventLog (#157)
