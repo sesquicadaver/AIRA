@@ -62,16 +62,22 @@ pull_request: main, develop
 
 1. `conformance run --profile C2` — partial local protocol regression gate; separate job from C0/C1.
 
+## Job `conformance-c3` (QUEUE #164)
+
+1. `conformance run --profile C3` — local federation + CAP + export_deny regression.
+2. **Not** a merge gate: do **not** add to branch-protection required checks.
+3. Required checks stay: `fmt-clippy-test-schema-c0-c1`, `conformance-c2`.
+
 ## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony (`run_c3`): **6** named cases (#163) — `c3.federation.descriptor_verify`, `join_membership`, `leave_clears`, `rejoin_after_leave`, `c3.capability.advertisement`, `c3.federation.export_deny`. Next: optional CI `#164`; CRP `#165`+.
+Local federation ceremony (`run_c3`): **6** named cases (#163) — `c3.federation.descriptor_verify`, `join_membership`, `leave_clears`, `rejoin_after_leave`, `c3.capability.advertisement`, `c3.federation.export_deny`. Optional CI job `conformance-c3` (`#164`, non-gate). Next: CRP `#165`+.
 
-### Current posture (this atom / QUEUE #153)
+### Current posture (QUEUE #153 + `#164`)
 
 | Surface | Status |
 |---------|--------|
-| CLI / library `run_c3` | available |
-| Job in `.github/workflows/ci.yml` | **absent** (added only by `#164`) |
+| CLI / library `run_c3` | available (6 named cases, `#163`) |
+| Job in `.github/workflows/ci.yml` | **`conformance-c3`** (QUEUE `#164`) — **informational** |
 | Required branch-protection check | **no** — C3 is not a merge gate |
 | Required checks remain | `fmt-clippy-test-schema-c0-c1`, `conformance-c2` only |
 
@@ -81,9 +87,9 @@ Manual / local run:
 cargo run -p aira-cli -- --root "$ROOT" conformance run --profile C3 --out /tmp/aira-c3
 ```
 
-### When C3 may become an optional CI job (`#164`)
+### Optional CI job `conformance-c3` (`#164` **DONE**)
 
-All of the following **MUST** hold before adding a non-required workflow job named `conformance-c3`:
+Criteria that **MUST** hold (and do) for the non-required workflow job named `conformance-c3`:
 
 1. `run_c3` exposes a stable, documented set of **≥6** named local cases (**DONE** `#163`: 6 cases).
 2. Cases are **local-only** (no live WAN / discv5 / flake-prone peer mesh).
@@ -91,7 +97,7 @@ All of the following **MUST** hold before adding a non-required workflow job nam
 4. Adding the job does **not** change C0/C1/C2 steps or required check names.
 5. Docs (`ci-governance.md`, `conformance.md`) name the job and restate “not a merge gate”.
 
-`#153` does **not** create that job — only `#164` may.
+`#164` added the job; it remains **informational** (not in required status checks).
 
 ### When C3 may become a merge gate (future; not `#164`)
 
@@ -121,6 +127,6 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
 - Phase G plan (DONE): [`phase-g-plan.md`](phase-g-plan.md)
 - Phase I plan (PLANNED after `#183`): [`phase-i-plan.md`](phase-i-plan.md) — Handle/Verify/Policy/Reuse stabilization; not active until H closes
-- Phase H plan (OPEN `#164`): [`phase-h-plan.md`](phase-h-plan.md) — `#163` run_c3 ≥6 DONE; next optional C3 CI job
+- Phase H plan (OPEN `#165`): [`phase-h-plan.md`](phase-h-plan.md) — `#164` optional `conformance-c3` DONE (non-gate); next CRP schemas
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
 - RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`)

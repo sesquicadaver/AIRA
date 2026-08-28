@@ -80,47 +80,57 @@ fn ci_workflow_matches_governance_job_name() {
 }
 
 #[test]
-fn c3_is_not_merge_gate_and_criteria_documented() {
+fn c3_optional_ci_job_is_not_merge_gate() {
     let doc = std::fs::read_to_string(repo_root().join("docs/ci-governance.md")).unwrap();
     let conf = std::fs::read_to_string(repo_root().join("docs/conformance.md")).unwrap();
     let ci = std::fs::read_to_string(repo_root().join(".github/workflows/ci.yml")).unwrap();
 
-    // #153: C3 remains optional; no workflow job yet (#164).
+    // #164: optional job present; must not be a required merge check.
+    assert!(ci.contains("conformance-c3:"));
+    assert!(ci.contains("name: conformance-c3"));
+    assert!(ci.contains("conformance run --profile C3"));
+    assert!(!REQUIRED_MERGE_CHECKS.contains(&"conformance-c3"));
     assert!(
-        !ci.contains("conformance-c3"),
-        "ci.yml must not add conformance-c3 before QUEUE #164"
+        doc.contains("select `fmt-clippy-test-schema-c0-c1` and `conformance-c2`"),
+        "branch protection must still list only C0/C1 job + C2"
     );
     assert!(
-        !ci.contains("conformance run --profile C3"),
-        "C3 must not run in CI until #164"
+        !doc.contains(
+            "select `fmt-clippy-test-schema-c0-c1` and `conformance-c2` and `conformance-c3`"
+        ),
+        "conformance-c3 must not be added to required checks"
     );
 
     for needle in [
-        "QUEUE #153",
+        "conformance-c3",
         "not a merge gate",
-        "When C3 may become an optional CI job",
-        "≥6",
         "When C3 may become a merge gate",
         "conformance run --profile C3",
         "#164",
+        "informational",
     ] {
         assert!(
             doc.contains(needle),
-            "ci-governance missing C3 governance: {needle}"
+            "ci-governance missing C3 optional-job note: {needle}"
         );
     }
 
     for needle in [
-        "C3 governance (#153)",
+        "conformance-c3",
         "not** in branch-protection",
         "conformance run --profile C3",
         "#164",
     ] {
         assert!(
             conf.contains(needle),
-            "conformance.md missing C3 governance: {needle}"
+            "conformance.md missing C3 optional-job note: {needle}"
         );
     }
 
-    assert!(!REQUIRED_MERGE_CHECKS.contains(&"conformance-c3"));
+    // C3 must remain a separate job (not a step inside check / c2).
+    let before_c3 = ci.split("conformance-c3:").next().expect("c3 job");
+    assert!(
+        !before_c3.contains("conformance run --profile C3"),
+        "C3 must be its own job"
+    );
 }

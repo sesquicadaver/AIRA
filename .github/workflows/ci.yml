@@ -66,3 +66,20 @@ jobs:
       # QUEUE #117 / Analyze-152: partial C2 regression gate (Phase F F4).
       - name: conformance C2
         run: cargo run -p aira-cli --locked -- conformance run --profile C2 --out "${{ runner.temp }}/aira-c2"
+
+  # QUEUE #164 / Analyze-199: optional local C3 regression (NOT a merge gate).
+  # Do not add `conformance-c3` to branch-protection required checks.
+  conformance-c3:
+    name: conformance-c3
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.94.0
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: conformance C3 (optional / non-gate)
+        run: cargo run -p aira-cli --locked -- conformance run --profile C3 --out "${{ runner.temp }}/aira-c3"

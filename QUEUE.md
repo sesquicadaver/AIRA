@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#163` **DONE**; `#164` **OPEN** |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#164` **DONE**; `#165` **OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#164` |
+| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#165` |
 
 ## Правила атомарності
 
@@ -322,7 +322,7 @@ G0 govern (#120–#121)
 | 161 | **DONE** | ~~Analyze-196 — C3 capability case~~ | `c3.capability.advertisement` у run_c3 | case green (5 local) | policy export (#162) |
 | 162 | **DONE** | ~~Analyze-197 — federation export deny~~ | policy-scoped export/import deny + audit | `federation_export_import_deny_by_default_audits` | C3 ≥6 (#163) |
 | 163 | **DONE** | ~~Analyze-198 — C3 cases ≥6~~ | run_c3 ≥6 named local cases + doc | 6 cases incl. `c3.federation.export_deny` | C3 CI job (#164) |
-| 164 | **OPEN** | Analyze-199 — optional C3 CI | workflow job non-gate + governance note | job runs on PR/main | CRP schemas (#165) |
+| 164 | **DONE** | ~~Analyze-199 — optional C3 CI~~ | workflow job non-gate + governance note | `conformance-c3` in ci.yml (not required) | CRP schemas (#165) |
 | 165 | **OPEN** | Analyze-200 — CRP schema fixtures | route request/candidate fixtures validate | schema CI green | CRP adapter (#166) |
 | 166 | **OPEN** | Analyze-201 — CRP local adapter | in-process CRP + short RFC; capability≠node | adapter tests + RFC | node-keyed reject (#167) |
 | 167 | **OPEN** | Analyze-202 — CRP reject node route | conformance: node-keyed route → fail | named case green | multi-candidate (#168) |
@@ -345,7 +345,7 @@ G0 govern (#120–#121)
 
 ### Наступний цикл (Phase H)
 
-**Перший OPEN:** `#164` (optional C3 CI). `#152`–`#163` DONE. Далі строго лінійно `#165`…`#183`.
+**Перший OPEN:** `#165` (CRP schema fixtures). `#152`–`#164` DONE. Далі строго лінійно `#166`…`#183`.
 
 ```text
 H0 govern (#152–#153)
