@@ -101,6 +101,9 @@ fn phase_h_h1_stores_status_rollup() {
         "FileChainEventLog",
         "plane_memory_beside_node_sqlite_object_path",
     ] {
-        assert!(text.contains(needle), "implementation-status missing: {needle}");
+        assert!(
+            text.contains(needle),
+            "implementation-status missing: {needle}"
+        );
     }
 }
