@@ -7,16 +7,26 @@
   config.json        # written by `aira init` (canonical)
   # config.yaml      # optional read-equivalent alternative (xor with config.json)
   identity/          # aira identity create + trust.json + trust-audit.jsonl
-  db/aira.sqlite
+  db/aira.sqlite     # SqliteObjectStore schema (node path; plane still uses MemoryObjectStore)
   artifacts/         # CAS + index.json
   federation/membership.json  # optional local join pin (Analyze-70)
   csu/registry.json
   discovery/registry.json  # local capability discovery (Analyze-45)
   http/              # optional self-signed TLS PEM (`--tls-self-signed`)
-  events/event-log.json
+  events/event-log.json           # legacy JSON event log (recovery helpers)
+  events/file-chain-log.json      # durable FileChainEventLog (#157)
   problems/index.json
   conformance/reports/
 ```
+
+### Object stores: memory vs SQLite (#158)
+
+| Store | Where | Role |
+|-------|-------|------|
+| `MemoryObjectStore` | in-process `OperationalPlane` | C1 reference/demo objects for submit/drain |
+| `SqliteObjectStore` | `.aira/db/aira.sqlite` | Node-layout durable object path (`init` creates schema) |
+
+They coexist: the plane does **not** auto-import SQLite rows, and Core does **not** depend on `aira-node` / `aira-peer`. Helper: `aira_flow::open_node_sqlite_object_store(&paths)`.
 
 ## Setup
 

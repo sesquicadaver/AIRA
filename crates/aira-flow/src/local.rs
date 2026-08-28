@@ -607,6 +607,15 @@ impl LocalSession {
     }
 }
 
+/// Open the node-layout SQLite object store (`db/aira.sqlite`) without touching the
+/// in-memory [`OperationalPlane`] store (QUEUE #158).
+///
+/// Core keeps `SqliteObjectStore` / `MemoryObjectStore` in `aira-core`; this helper
+/// only resolves the path from [`NodePaths`]. It does **not** import `aira-node`.
+pub fn open_node_sqlite_object_store(paths: &NodePaths) -> Result<SqliteObjectStore, FlowError> {
+    SqliteObjectStore::open(paths.sqlite()).map_err(|e| FlowError::Core(e.to_string()))
+}
+
 fn run_counter_path(paths: &NodePaths) -> PathBuf {
     paths.root.join("run-counter")
 }

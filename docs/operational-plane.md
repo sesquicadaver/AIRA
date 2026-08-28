@@ -22,7 +22,9 @@ OperationalPlane = локальна референсна демонстраці�
 ## What it is
 
 - In-process drain of basic CSUs (context → reduction → execution → verification → evidence).
-- Memory object store + memory event log; artifact CAS on disk under the node/CAS root.
+- **Memory** object store + memory event log for the plane drain path; artifact CAS on disk under the node/CAS root.
+- Node layout also initializes **SQLite** at `.aira/db/aira.sqlite` (`SqliteObjectStore`) beside that memory store — see [local-node.md](local-node.md) §Object stores (#158). The plane does not auto-load SQLite objects.
+- Durable events for `LocalSession` use `events/file-chain-log.json` (#157); plane drain still uses in-memory `MemoryEventLog`.
 - Safety bound on drain iterations (demo fail-closed), not a job scheduler.
 - C1 profile (`config.node.profile = "C1"`) for local MVP / alpha acceptance.
 
