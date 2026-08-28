@@ -64,7 +64,7 @@ pull_request: main, develop
 
 ## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony (`run_c3`): `c3.federation.*` (#141) + `c3.capability.advertisement` (#161). Phase H deepens further (`#162`–`#170`: policy export, ≥6 cases, CRP local).
+Local federation ceremony (`run_c3`): `c3.federation.*` (#141) + `c3.capability.advertisement` (#161). Phase H deepens further (`#163`–`#170`: ≥6 cases, CRP local). Federation IO policy deny (#162) is unit-smoke in `aira-protocol`.
 
 ### Current posture (this atom / QUEUE #153)
 
@@ -120,6 +120,6 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
 - Phase G plan (DONE): [`phase-g-plan.md`](phase-g-plan.md)
-- Phase H plan (OPEN `#162`): [`phase-h-plan.md`](phase-h-plan.md) — `#161` `c3.capability.advertisement` DONE (5 local cases); next policy export; optional C3 job `#164`
+- Phase H plan (OPEN `#163`): [`phase-h-plan.md`](phase-h-plan.md) — `#162` federation IO deny DONE; next C3 ≥6 cases; optional C3 job `#164`
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
 - RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`)

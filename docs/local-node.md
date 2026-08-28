@@ -10,6 +10,7 @@
   db/aira.sqlite     # SqliteObjectStore schema (node path; plane still uses MemoryObjectStore)
   artifacts/         # CAS + index.json
   federation/membership.json  # optional local join pin (Analyze-70)
+  federation/io-policy.json   # export/import allow flags; deny-by-default (#162)
   csu/registry.json
   discovery/registry.json  # local capability discovery (Analyze-45)
   capability/advertisements.json  # Book II CAP ads persist (#160)
