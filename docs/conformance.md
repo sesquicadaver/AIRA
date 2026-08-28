@@ -32,7 +32,7 @@ Phase G `#122`–`#124` adds named local C2 cases (idempotency, hash mismatch, u
 6. `c3.federation.export_deny`
 
 - **Merge gate:** only via a later dedicated QUEUE atom + RFC after sustained green optional job; never silently.
-- **`#153` does not** add workflow YAML (that is `#164` only).
+- **`#164` added** the optional `conformance-c3` workflow job; required checks unchanged.
 
 ## CLI
 
