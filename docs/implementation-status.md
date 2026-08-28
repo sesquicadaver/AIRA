@@ -249,7 +249,7 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #143 | SQLite object path | `init_node` `db/aira.sqlite` migrate idempotent; corrupt JSON fail-closed; tests | **DONE** @ PR #106 |
 | #144 | External CSU fixture | `manifest-external-partner.json`; `external_third_party_csu_fixture_registry_smoke` | **DONE** @ PR #107 |
 | #145 | CSU SDK doc | `docs/csu-sdk.md`; `c1.csu.external_partner_fixture` | **DONE** @ PR #108 |
-| #146 | epistemic-basic CSU | `csu/epistemic-basic`; EPI-001 smoke | **IN PROGRESS** |
+| #146 | epistemic-basic CSU | `csu/epistemic-basic`; EPI-001 smoke | **DONE** @ PR #109 |
 | #147 | Epistemic assessment path | plane/CLI roundtrip | **OPEN** |
 | #148–#150 | Production packaging | macOS codesign; Windows MSI; Linux deb |
 | #151 | Phase G docs + RFC | README + this file v0.2; RFC-0069; QUEUE G closed |
