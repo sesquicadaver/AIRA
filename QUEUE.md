@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#160` **DONE**; `#161` **OPEN** |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#161` **DONE**; `#162` **OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#161` |
+| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#162` |
 
 ## Правила атомарності
 
@@ -319,7 +319,7 @@ G0 govern (#120–#121)
 | 158 | **DONE** | ~~Analyze-193 — Sqlite object path~~ | node/plane Sqlite object path test + doc | `plane_memory_beside_node_sqlite_object_path` | status rollup (#159) |
 | 159 | **DONE** | Analyze-194 — stores status rollup | implementation-status stores/event rows + Phase H table | PARTIAL notes reflect H1 (`#154`–`#158`) | capability ad (#160) |
 | 160 | **DONE** | ~~Analyze-195 — capability ad persist~~ | load/save local capability advertisements | `capability_ad_persist_roundtrip` | C3 case (#161) |
-| 161 | **OPEN** | Analyze-196 — C3 capability case | `c3.capability.advertisement` у run_c3 | case green | policy export (#162) |
+| 161 | **DONE** | ~~Analyze-196 — C3 capability case~~ | `c3.capability.advertisement` у run_c3 | case green (5 local) | policy export (#162) |
 | 162 | **OPEN** | Analyze-197 — federation export deny | policy-scoped export/import deny + audit | smoke green | C3 ≥6 (#163) |
 | 163 | **OPEN** | Analyze-198 — C3 cases ≥6 | run_c3 ≥6 named local cases + doc | suite count met | C3 CI job (#164) |
 | 164 | **OPEN** | Analyze-199 — optional C3 CI | workflow job non-gate + governance note | job runs on PR/main | CRP schemas (#165) |
@@ -345,7 +345,7 @@ G0 govern (#120–#121)
 
 ### Наступний цикл (Phase H)
 
-**Перший OPEN:** `#161` (C3 capability case). `#152`–`#160` DONE. Далі строго лінійно `#162`…`#183`.
+**Перший OPEN:** `#162` (federation policy export deny). `#152`–`#161` DONE. Далі строго лінійно `#163`…`#183`.
 
 ```text
 H0 govern (#152–#153)
