@@ -27,7 +27,10 @@ fn phase_h_plan_present() {
 #[test]
 fn phase_h_queue_wiring_152_done() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
-    assert!(text.contains("phase-h-plan.md"), "QUEUE missing phase-h-plan");
+    assert!(
+        text.contains("phase-h-plan.md"),
+        "QUEUE missing phase-h-plan"
+    );
     assert!(
         text.contains("| 152 | **DONE**"),
         "QUEUE #152 must be DONE after wiring"
