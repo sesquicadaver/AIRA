@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#162` **DONE**; `#163` **OPEN** |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#163` **DONE**; `#164` **OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#163` |
+| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#164` |
 
 ## Правила атомарності
 
@@ -321,7 +321,7 @@ G0 govern (#120–#121)
 | 160 | **DONE** | ~~Analyze-195 — capability ad persist~~ | load/save local capability advertisements | `capability_ad_persist_roundtrip` | C3 case (#161) |
 | 161 | **DONE** | ~~Analyze-196 — C3 capability case~~ | `c3.capability.advertisement` у run_c3 | case green (5 local) | policy export (#162) |
 | 162 | **DONE** | ~~Analyze-197 — federation export deny~~ | policy-scoped export/import deny + audit | `federation_export_import_deny_by_default_audits` | C3 ≥6 (#163) |
-| 163 | **OPEN** | Analyze-198 — C3 cases ≥6 | run_c3 ≥6 named local cases + doc | suite count met | C3 CI job (#164) |
+| 163 | **DONE** | ~~Analyze-198 — C3 cases ≥6~~ | run_c3 ≥6 named local cases + doc | 6 cases incl. `c3.federation.export_deny` | C3 CI job (#164) |
 | 164 | **OPEN** | Analyze-199 — optional C3 CI | workflow job non-gate + governance note | job runs on PR/main | CRP schemas (#165) |
 | 165 | **OPEN** | Analyze-200 — CRP schema fixtures | route request/candidate fixtures validate | schema CI green | CRP adapter (#166) |
 | 166 | **OPEN** | Analyze-201 — CRP local adapter | in-process CRP + short RFC; capability≠node | adapter tests + RFC | node-keyed reject (#167) |
@@ -345,7 +345,7 @@ G0 govern (#120–#121)
 
 ### Наступний цикл (Phase H)
 
-**Перший OPEN:** `#163` (C3 cases ≥6). `#152`–`#162` DONE. Далі строго лінійно `#164`…`#183`.
+**Перший OPEN:** `#164` (optional C3 CI). `#152`–`#163` DONE. Далі строго лінійно `#165`…`#183`.
 
 ```text
 H0 govern (#152–#153)

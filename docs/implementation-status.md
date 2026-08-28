@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#162` DONE; `#163` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#163` DONE; `#164` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#163`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#164`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -164,7 +164,7 @@ Conformance spec §19 lists extra fixture *names* (event chain, policy deny, res
 | C0 | Local Core | `run_c0` | `c0.ontology.schemas`, `c0.object.immutability`, `c0.object.handle_opacity`, `c0.object.verify_on_read`, `c0.artifact.immutability`, `c0.artifact.verify_on_read`, `c0.event.causality`, `c0.policy.gate`, `c0.csu.dispatch_policy`, `c0.acquisition.fail_closed` | **yes** (QUEUE #38) | **DONE** |
 | C1 | Local operational node | `run_c1` | `c1.pipeline.calculate_2_plus_2`, `c1.csu.manifests`, `c1.result.verified_completeness`, `c1.result.extended_fields`, `c1.failure.to_evidence` | **yes** | **DONE** |
 | C2 | Protocol-compatible | `run_c2` | 11 cases incl. `c2.event.publish_equivocation` (SEC-4 #137); `c2.protocol.envelope_canonical_mutations`, `c2.protocol.response_canonical_mutations` (SEC-2 #135) | **yes** (`conformance-c2`, #117) | **DONE** |
-| C3 | Local federation + CAP | `run_c3` | 5 cases: `c3.federation.*` (#141) + `c3.capability.advertisement` (#161); governance `#153` | **no** (manual; optional job `#164`; gate criteria in ci-governance) | **DONE** (scaffold + `#153` + `#161`) |
+| C3 | Local federation + CAP + IO deny | `run_c3` | **6** cases (#163): federation×4 + `c3.capability.advertisement` + `c3.federation.export_deny`; governance `#153` | **no** (manual; optional job `#164`; gate criteria in ci-governance) | **DONE** (scaffold + `#153` + `#161` + `#163`) |
 | Security baseline | Conformance §14 subset | `run_security_baseline` | unsigned CSU/artifact; private deny; secret in events | crate tests | **DONE** |
 | Alpha acceptance | MVP | `run_alpha_acceptance` | init layout, 2+2, failure evidence, C0/C1 | crate tests | **DONE** |
 
@@ -277,8 +277,9 @@ Plan: [`phase-g-plan.md`](phase-g-plan.md) **DONE**. RFC: [`AIRA-RFC-0069`](../s
 | #159 | Stores status rollup | this file H1 rows + Phase H table | **DONE** @ this PR |
 | #160 | Capability ad persist | `capability_ad_persist_roundtrip` | **DONE** @ PR #123 |
 | #161 | C3 capability advertisement | `c3.capability.advertisement` | **DONE** @ PR #124 |
-| #162 | Federation IO export/import deny | `federation_export_import_deny_by_default_audits` | **DONE** @ this PR |
-| #163–#164 | C3 depth | ≥6 cases; optional CI |
+| #162 | Federation IO export/import deny | `federation_export_import_deny_by_default_audits` | **DONE** @ PR #125 |
+| #163 | C3 cases ≥6 | `run_c3` 6 named cases | **DONE** @ this PR |
+| #164 | Optional C3 CI | non-required `conformance-c3` job | **OPEN** |
 | #165–#171 | CRP local adapter | B2-006; discovery≠node; PARTIAL |
 | #172–#177 | Settlement receipts | B2-011; `run_c4`; PARTIAL |
 | #178–#181 | Promotion gate | RFC-P; `run_c5`; non-operational |

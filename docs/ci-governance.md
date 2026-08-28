@@ -64,7 +64,7 @@ pull_request: main, develop
 
 ## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony (`run_c3`): `c3.federation.*` (#141) + `c3.capability.advertisement` (#161). Phase H deepens further (`#163`–`#170`: ≥6 cases, CRP local). Federation IO policy deny (#162) is unit-smoke in `aira-protocol`.
+Local federation ceremony (`run_c3`): **6** named cases (#163) — `c3.federation.descriptor_verify`, `join_membership`, `leave_clears`, `rejoin_after_leave`, `c3.capability.advertisement`, `c3.federation.export_deny`. Next: optional CI `#164`; CRP `#165`+.
 
 ### Current posture (this atom / QUEUE #153)
 
@@ -85,7 +85,7 @@ cargo run -p aira-cli -- --root "$ROOT" conformance run --profile C3 --out /tmp/
 
 All of the following **MUST** hold before adding a non-required workflow job named `conformance-c3`:
 
-1. `run_c3` exposes a stable, documented set of **≥6** named local cases (target of `#163`).
+1. `run_c3` exposes a stable, documented set of **≥6** named local cases (**DONE** `#163`: 6 cases).
 2. Cases are **local-only** (no live WAN / discv5 / flake-prone peer mesh).
 3. Job is **informational**: present in `ci.yml` but **not** listed in branch protection required checks.
 4. Adding the job does **not** change C0/C1/C2 steps or required check names.
@@ -121,6 +121,6 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
 - Phase G plan (DONE): [`phase-g-plan.md`](phase-g-plan.md)
 - Phase I plan (PLANNED after `#183`): [`phase-i-plan.md`](phase-i-plan.md) — Handle/Verify/Policy/Reuse stabilization; not active until H closes
-- Phase H plan (OPEN `#163`): [`phase-h-plan.md`](phase-h-plan.md) — `#162` federation IO deny DONE; next C3 ≥6 cases; optional C3 job `#164`
+- Phase H plan (OPEN `#164`): [`phase-h-plan.md`](phase-h-plan.md) — `#163` run_c3 ≥6 DONE; next optional C3 CI job
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
 - RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`)
