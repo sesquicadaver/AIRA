@@ -60,8 +60,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #158 must be DONE after Sqlite object path"
     );
     assert!(
-        text.contains("| 159 | **OPEN**"),
-        "QUEUE #159 must be next OPEN"
+        text.contains("| 159 | **DONE**"),
+        "QUEUE #159 must be DONE after stores status rollup"
+    );
+    assert!(
+        text.contains("| 160 | **OPEN**"),
+        "QUEUE #160 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
@@ -84,4 +88,22 @@ fn phase_g_points_to_phase_h() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-g-plan.md")).unwrap();
     assert!(text.contains("phase-h-plan.md"));
     assert!(text.contains("#152"));
+}
+
+#[test]
+fn phase_h_h1_stores_status_rollup() {
+    let text = std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "Phase H gates",
+        "H1 DONE",
+        "#154",
+        "#159",
+        "FileChainEventLog",
+        "plane_memory_beside_node_sqlite_object_path",
+    ] {
+        assert!(
+            text.contains(needle),
+            "implementation-status missing: {needle}"
+        );
+    }
 }

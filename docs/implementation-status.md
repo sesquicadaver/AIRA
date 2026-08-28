@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#158` DONE; `#159` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#159` DONE H1 stores rollup; `#160` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#159`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#160`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -46,10 +46,10 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 
 | Requirement | Source | Implemented in | Tested by | Status | Notes |
 |-------------|--------|----------------|-----------|--------|-------|
-| Immutable Object Store | Book I §4–5; B1-001 | `aira-core` `MemoryObjectStore` / `SqliteObjectStore` | `c0.object.immutability`; `c0.object.verify_on_read`; `sqlite_migrate_idempotent_reopen_preserves_rows`; `sqlite_corrupt_descriptor_json_integrity`; `init_node_sqlite_object_path_migrate_and_persist` | **DONE** | Verify-on-read (#112); SQLite migrate/integrity smoke (#143) |
+| Immutable Object Store | Book I §4–5; B1-001 | `aira-core` `MemoryObjectStore` / `SqliteObjectStore` | `c0.object.immutability`; `c0.object.verify_on_read`; `sqlite_migrate_idempotent_reopen_preserves_rows`; `sqlite_corrupt_descriptor_json_integrity`; `init_node_sqlite_object_path_migrate_and_persist`; `plane_memory_beside_node_sqlite_object_path` (#158) | **DONE** | Verify-on-read (#112); SQLite migrate (#143); node path beside plane memory (#158) |
 | Opaque Handle | Book I §6; B1-003 | `aira_object::Handle` | `c0.object.handle_opacity`; `handle_is_opaque` | **DONE** | Debug omits token/paths; C0 B1-003 case |
-| Event runtime, local causal order, no global total order | Book I §8–9; B1-004/005 | `aira-event` `MemoryEventLog` | `c0.event.causality`; `aira-event` unit tests | **DONE** | Plane drain is in-process demo (`drain_from` bound 256) |
-| Durable event log | Book I / Book IV §6.3 | `LocalSession` → `file-chain-log.json` (#157) + legacy `event-log.json`; `FileChainEventLog` (#156) | `session_durable_file_chain_roundtrip`; `corrupt_*`; `file_chain_event_log_persists_across_reopen` | **PARTIAL** | session wires durable file-chain (#157); legacy JSON dual-write retained; plane still memory until drained |
+| Event runtime, local causal order, no global total order | Book I §8–9; B1-004/005 | `aira-event` `MemoryEventLog` + `EventHashChain` (#154) | `c0.event.causality`; `event_log_hash_chain_tip_append_verify_and_mid_tamper_detect`; `aira-event` unit tests | **DONE** | Plane drain in-process (`drain_from` 256); tip/mid-tamper fail-closed (#154) |
+| Durable event log | Book I / Book IV §6.3 | `LocalSession` → `file-chain-log.json` (#157) + legacy `event-log.json`; `FileChainEventLog` (#156); prefix recovery (#155) | `session_durable_file_chain_roundtrip`; `corrupt_event_log_recovered_and_writable`; `corrupt_trailing_event_log_recovers_valid_prefix`; `file_chain_event_log_persists_across_reopen` | **PARTIAL** | H1: hash-chain tip (#154), prefix recover (#155), file backend (#156), session wire (#157); dual-write + plane memory remain |
 | Policy Gate ALLOW/DENY/REQUIRE | Book I §10; B1-006/007 | `aira-policy` | `c0.policy.gate`; `invariant_checker_emits_event_on_policy_deny` | **DONE** | |
 | Invariant Checker can block | Book I §11; B1-008 | `aira-core` `InvariantChecker` | C0 immutability cases | **DONE** | |
 | Security boundary (no Core memory / foreign CSU / secrets) | Book I §12; B1-009; B3-004 | `aira-csu` isolation + event secret scan | `isolation_baseline_denies_direct_mutation_and_peer_call`; `run_security_baseline` | **DONE** | MVP sandbox: in-process, no FS/net |
@@ -108,7 +108,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | R2 Local Protocol Node | Book IV §23 R2 | `aira-protocol` | `run_c2` + CI `conformance-c2` (#117) | **PARTIAL** | Partial C2 local; CI regression gate |
 | R3 Federation-Capable Node | Book IV §23 R3 | join prototype | federation tests | **POST-MVP** | Not a federation runtime |
 | R4 Research-Capable Node | Book IV §23 R4 | — | — | **RESEARCH** | Book V |
-| Object / Artifact / Event stores | Book IV §6 | plane memory objects + node `SqliteObjectStore` (#158); CAS artifacts; file-chain events (#157) | `plane_memory_beside_node_sqlite_object_path`; `session_durable_file_chain_roundtrip`; core/artifact tests | **PARTIAL** | Plane drain still memory objects/events; SQLite beside memory documented; H1 rollup `#159` |
+| Object / Artifact / Event stores | Book IV §6 | plane memory objects + node `SqliteObjectStore` (#158); CAS artifacts; file-chain events (#157) | `plane_memory_beside_node_sqlite_object_path`; `session_durable_file_chain_roundtrip`; core/artifact tests | **PARTIAL** | **H1 DONE** (`#154`–`#159`): durable events + SQLite path documented; plane drain still memory objects/events |
 | Policy + Invariant + CSU runtime | Book IV §9–12 | matching crates | C0/C1 | **DONE** | |
 | Minimal operational flow submit→verify | Book IV §15 | `OperationalPlane` | C1 + demos | **DONE** | Reference-local only ([operational-plane.md](operational-plane.md)) |
 | Local HTTP API surface | Book IV §16 | `aira-node` `http/` | `http` module tests | **POST-MVP** | Roadmap M11; same reference plane |
@@ -260,6 +260,29 @@ Plan: [`phase-g-plan.md`](phase-g-plan.md) **DONE**. RFC: [`AIRA-RFC-0069`](../s
 
 ---
 
+
+---
+
+## Phase H gates (OPEN)
+
+| QUEUE | Gate | Evidence (target) |
+|-------|------|-------------------|
+| #152 | Phase H wiring + contract | `phase_h_doc.rs`; `docs/phase-h-plan.md` | **DONE** @ PR #115 |
+| #153 | C3 governance (optional) | `ci-governance.md` + living-spec C3 optional | **DONE** @ PR #116 |
+| #154 | EventHashChain tip | `event_log_hash_chain_tip_append_verify_and_mid_tamper_detect` | **DONE** @ PR #117 |
+| #155 | Event log prefix recovery | `corrupt_trailing_event_log_recovers_valid_prefix` | **DONE** @ PR #118 |
+| #156 | FileChainEventLog | `file_chain_event_log_persists_across_reopen` | **DONE** @ PR #119 |
+| #157 | Session wire file-chain | `session_durable_file_chain_roundtrip` | **DONE** @ PR #120 |
+| #158 | Sqlite object path + docs | `plane_memory_beside_node_sqlite_object_path` | **DONE** @ PR #121 |
+| #159 | Stores status rollup | this file H1 rows + Phase H table | **DONE** @ this PR |
+| #160–#164 | C3 depth | capability ad; discovery; ≥6 cases; optional CI |
+| #165–#171 | CRP local adapter | B2-006; discovery≠node; PARTIAL |
+| #172–#177 | Settlement receipts | B2-011; `run_c4`; PARTIAL |
+| #178–#181 | Promotion gate | RFC-P; `run_c5`; non-operational |
+| #182–#183 | Docs + RFC-0077 | Reference v0.3; QUEUE H closed |
+
+Plan: [`phase-h-plan.md`](phase-h-plan.md). Consolidating RFC: RFC-0077 (`#183`).
+
 ## Explicitly not this reference (anti-mission + out-of-scope)
 
 README §«What AIRA is not» — **ніколи** в QUEUE / phase plans як «later phase»:
@@ -278,6 +301,8 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 ```
 
 **Phase G `#120`–`#151` DONE** (не змінює anti-mission): deeper local C2, mechanical splits, desktop peer CI, SEC hardening, federation leave, local C3 scaffold, CSU SDK doc, `epistemic-basic`, production packaging scripts. Plan: [`phase-g-plan.md`](phase-g-plan.md); closure: [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md).
+
+**Phase H `#152`–`#159` H1 stores DONE** (не змінює anti-mission): EventHashChain, prefix recovery, FileChainEventLog, session wire, Sqlite beside plane memory, status rollup. Plan: [`phase-h-plan.md`](phase-h-plan.md); consolidating RFC-0077 at `#183`.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 

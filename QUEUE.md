@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#158` **DONE**; `#159` **OPEN** |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#159` **DONE**; `#160` **OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#159` |
+| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#160` |
 
 ## Правила атомарності
 
@@ -317,7 +317,7 @@ G0 govern (#120–#121)
 | 156 | **DONE** | ~~Analyze-191 — durable event backend~~ | file-chain event log module | `file_chain_event_log_persists_across_reopen` | session wire (#157) |
 | 157 | **DONE** | ~~Analyze-192 — session durable events~~ | LocalSession/init_node → durable backend; reopen | `session_durable_file_chain_roundtrip` | Sqlite objects (#158) |
 | 158 | **DONE** | ~~Analyze-193 — Sqlite object path~~ | node/plane Sqlite object path test + doc | `plane_memory_beside_node_sqlite_object_path` | status rollup (#159) |
-| 159 | **OPEN** | Analyze-194 — stores status rollup | implementation-status stores/event rows | PARTIAL notes reflect H1 | capability ad (#160) |
+| 159 | **DONE** | Analyze-194 — stores status rollup | implementation-status stores/event rows + Phase H table | PARTIAL notes reflect H1 (`#154`–`#158`) | capability ad (#160) |
 | 160 | **OPEN** | Analyze-195 — capability ad persist | load/save local capability advertisements | тест | C3 case (#161) |
 | 161 | **OPEN** | Analyze-196 — C3 capability case | `c3.capability.advertisement` у run_c3 | case green | policy export (#162) |
 | 162 | **OPEN** | Analyze-197 — federation export deny | policy-scoped export/import deny + audit | smoke green | C3 ≥6 (#163) |
@@ -345,7 +345,7 @@ G0 govern (#120–#121)
 
 ### Наступний цикл (Phase H)
 
-**Перший OPEN:** `#159` (stores status rollup). `#152`–`#158` DONE. Далі строго лінійно `#160`…`#183`.
+**Перший OPEN:** `#160` (capability advertisement). `#152`–`#159` DONE. Далі строго лінійно `#161`…`#183`.
 
 ```text
 H0 govern (#152–#153)
