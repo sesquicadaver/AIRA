@@ -3,10 +3,12 @@
 //! Append-only event log with local subscriptions. No global total order.
 
 mod descriptor;
+mod durable;
 mod hash_chain;
 mod log;
 
 pub use descriptor::{EventDescriptor, EventType};
+pub use durable::{DurableEventError, FileChainEventLog, FILE_CHAIN_EVENT_LOG_SCHEMA};
 pub use hash_chain::{
     genesis_tip, link_hash, ChainError, ChainedEvent, EventHashChain, EVENT_LOG_CHAIN_GENESIS,
 };

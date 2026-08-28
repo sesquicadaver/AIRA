@@ -4,6 +4,7 @@
 //! Does not replace `MemoryEventLog` and does not wire `LocalSession` (#157).
 
 use aira_object::ContentHash;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::descriptor::EventDescriptor;
@@ -25,7 +26,7 @@ pub enum ChainError {
 }
 
 /// One append-only chain record.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChainedEvent {
     pub prev_hash: ContentHash,
     pub event: EventDescriptor,
@@ -69,6 +70,17 @@ impl EventHashChain {
 
     pub fn is_empty(&self) -> bool {
         self.records.is_empty()
+    }
+
+    /// Rebuild a chain from persisted records and verify tip integrity.
+    pub fn try_from_records(records: Vec<ChainedEvent>) -> Result<Self, ChainError> {
+        let tip = records
+            .last()
+            .map(|r| r.entry_hash.clone())
+            .unwrap_or_else(genesis_tip);
+        let chain = Self { records, tip };
+        chain.verify_tip()?;
+        Ok(chain)
     }
 
     /// Append an event: `entry_hash = H(prev_tip || event.canonical_content_hash)`.
