@@ -251,7 +251,7 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #145 | CSU SDK doc | `docs/csu-sdk.md`; `c1.csu.external_partner_fixture` | **DONE** @ PR #108 |
 | #146 | epistemic-basic CSU | `csu/epistemic-basic`; EPI-001 smoke | **DONE** @ PR #109 |
 | #147 | Epistemic assessment path | plane/session roundtrip; `epistemic_assessment_roundtrip_via_plane_and_session` | **DONE** @ PR #110 |
-| #148 | macOS codesign | `scripts/macos-codesign-notarize.sh` + `desktop-packaging-macos.md` | **IN PROGRESS** |
+| #148 | macOS codesign | `scripts/macos-codesign-notarize.sh` + `desktop-packaging-macos.md` | **DONE** @ PR #111 |
 | #149–#150 | Windows MSI / Linux deb | packaging scripts + docs | **OPEN** |
 | #151 | Phase G docs + RFC | README + this file v0.2; RFC-0069; QUEUE G closed |
 

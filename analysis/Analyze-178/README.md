@@ -1,7 +1,7 @@
 # Analyze-178 — macOS codesign (QUEUE #148)
 
 ## Status
-IN PROGRESS — notarization helper + doc update.
+DONE @ PR #111 — `scripts/macos-codesign-notarize.sh` + doc.
 
 ## Done when
 `scripts/macos-codesign-notarize.sh --dry-run` documented; doc section in `desktop-packaging-macos.md`.
