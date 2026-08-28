@@ -9,7 +9,7 @@ Repo-level ТЗ → module → tests map: [implementation-status.md](implementat
 | C0 | `run_c0` | ontology, object/artifact immutability, event causality, policy gate, CSU dispatch, acquisition fail-closed | **yes** (job `check`) |
 | C1 | `run_c1` | pipeline 2+2, CSU manifests, external partner fixture (`c1.csu.external_partner_fixture`), verified result completeness, failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) | **yes** |
 | C2 | `run_c2` | partial **local** protocols (M13): envelope/response/identity schemas, discovery Capability≠Node, UNSUPPORTED_VERSION without side effects | **yes** (job `conformance-c2`, QUEUE #117) |
-| C3 | `run_c3` | **local federation + CAP** (#141, `#161`); Phase H глибочить cases / CRP (`#162`–`#170`) | **no** — optional only after `#164`; **not** a merge gate ([criteria](ci-governance.md#profile-c3-queue-141-scaffold-153-governance)) |
+| C3 | `run_c3` | **6 named local cases** (#163): federation×4 + CAP + export_deny; CRP later (`#165`–`#170`) | **no** — optional only after `#164`; **not** a merge gate ([criteria](ci-governance.md#profile-c3-queue-141-scaffold-153-governance)) |
 | C4 | `run_c4` (Phase H `#175`) | settlement audit receipts scaffold | no |
 | C5 | `run_c5` (Phase H `#180`) | research separation + promotion gate scaffold | no |
 
@@ -20,7 +20,17 @@ Phase G `#122`–`#124` adds named local C2 cases (idempotency, hash mismatch, u
 ### C3 governance (#153)
 
 - **Today:** run locally; **no** `conformance-c3` job in `ci.yml`; **not** in branch-protection required checks.
-- **Optional CI job (`#164`):** only when `run_c3` has ≥6 stable local cases and the job stays non-required — see [ci-governance.md](ci-governance.md) §Profile C3.
+- **Optional CI job (`#164`):** `run_c3` now has ≥6 stable local cases (#163); job stays non-required — see [ci-governance.md](ci-governance.md) §Profile C3.
+
+### C3 named cases (`run_c3`, #163)
+
+1. `c3.federation.descriptor_verify`
+2. `c3.federation.join_membership`
+3. `c3.federation.leave_clears`
+4. `c3.federation.rejoin_after_leave`
+5. `c3.capability.advertisement`
+6. `c3.federation.export_deny`
+
 - **Merge gate:** only via a later dedicated QUEUE atom + RFC after sustained green optional job; never silently.
 - **`#153` does not** add workflow YAML (that is `#164` only).
 

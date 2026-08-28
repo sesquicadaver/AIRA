@@ -1,23 +1,25 @@
 //! C3 conformance scaffold — local federation + capability advertisement
-//! (Phase G #141; Phase H #161).
+//! + policy-scoped IO deny (Phase G #141; Phase H #161/#163).
 //!
 //! Not production federated wire protocol; exercises descriptor verify, join,
-//! leave, re-join, and local CAP persist from `aira-protocol`.
+//! leave, re-join, local CAP persist, and federation export deny from
+//! `aira-protocol`.
 
 use std::path::Path;
 
 use aira_object::{AiraRef, Signature, TrustAuditAction, TrustAuditLog};
 use aira_protocol::{
-    descriptor_canonical_bytes, join_federation, leave_federation, load_federation_membership,
-    membership_path, verify_federation_descriptor, CapabilityAdvertisementStore,
-    FederationDescriptor, FEDERATION_DESCRIPTOR_DOMAIN,
+    check_federation_transfer, descriptor_canonical_bytes, join_federation, leave_federation,
+    load_federation_membership, membership_path, verify_federation_descriptor,
+    CapabilityAdvertisementStore, FederationDescriptor, FederationTransferKind,
+    TransferCheckOutcome, FEDERATION_DESCRIPTOR_DOMAIN,
 };
 use ed25519_dalek::SigningKey;
 
 use crate::report::ConformanceProfile;
 use crate::runner::{fail, finalize_suite, pass, CaseResult, ConformanceError, SuiteResult};
 
-/// Run the minimal local C3 federation scaffold and emit a Conformance Report Artifact.
+/// Run the local C3 scaffold (≥6 named cases) and emit a Conformance Report Artifact.
 pub fn run_c3(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, ConformanceError> {
     let root = artifact_root.as_ref().join("c3-federation");
     std::fs::create_dir_all(&root).map_err(|e| ConformanceError::Io(e.to_string()))?;
@@ -27,6 +29,7 @@ pub fn run_c3(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_federation_leave_clears(&root),
         test_federation_rejoin_after_leave(&root),
         test_capability_advertisement(&root),
+        test_federation_export_deny(&root),
     ];
     finalize_suite(ConformanceProfile::C3, cases, artifact_root)
 }
@@ -221,6 +224,44 @@ fn test_capability_advertisement(root: &Path) -> CaseResult {
     let mut reject = CapabilityAdvertisementStore::new();
     if reject.register(bad).is_ok() {
         return fail(id, "Node-keyed provider_csu must be rejected");
+    }
+    pass(id)
+}
+
+/// PRIV-003 / Book II §18: federation export deny-by-default + trust audit (#162/#163).
+fn test_federation_export_deny(root: &Path) -> CaseResult {
+    let id = "c3.federation.export_deny";
+    let sub = root.join("export-deny");
+    if let Err(e) = std::fs::create_dir_all(&sub) {
+        return fail(id, e.to_string());
+    }
+    let subject = "aira:artifact:c3:cross-fed:1";
+    let outcome =
+        match check_federation_transfer(sub.as_path(), FederationTransferKind::Export, subject) {
+            Ok(v) => v,
+            Err(e) => return fail(id, e.to_string()),
+        };
+    match outcome {
+        TransferCheckOutcome::Deny { reason } => {
+            if !reason.contains("export") {
+                return fail(id, format!("deny reason should mention export: {reason}"));
+            }
+        }
+        TransferCheckOutcome::Allow => return fail(id, "export must deny by default"),
+    }
+    let audit = match TrustAuditLog::load(&sub) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let deny_entries: Vec<_> = audit
+        .iter()
+        .filter(|e| e.action == TrustAuditAction::FederationExportDeny)
+        .collect();
+    if deny_entries.is_empty() {
+        return fail(id, "missing federation_export_deny audit");
+    }
+    if deny_entries.iter().any(|e| e.subject_id != subject) {
+        return fail(id, "audit subject_id mismatch");
     }
     pass(id)
 }

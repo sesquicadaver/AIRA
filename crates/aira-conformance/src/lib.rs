@@ -110,12 +110,16 @@ mod tests {
             "failures={:?}",
             suite.report.failures
         );
-        assert_eq!(suite.report.results.passed, 5);
-        assert_eq!(suite.cases.len(), 5);
+        assert_eq!(suite.report.results.passed, 6);
+        assert_eq!(suite.cases.len(), 6);
         assert!(suite
             .cases
             .iter()
             .any(|c| c.test_id == "c3.capability.advertisement"));
+        assert!(suite
+            .cases
+            .iter()
+            .any(|c| c.test_id == "c3.federation.export_deny"));
     }
 
     #[test]
@@ -126,7 +130,7 @@ mod tests {
         let suite2 = run_profile(ConformanceProfile::C2, dir.path().join("p2")).unwrap();
         assert_eq!(suite2.cases.len(), 11);
         let suite3 = run_profile(ConformanceProfile::C3, dir.path().join("p3")).unwrap();
-        assert_eq!(suite3.cases.len(), 5);
+        assert_eq!(suite3.cases.len(), 6);
     }
 
     #[test]
