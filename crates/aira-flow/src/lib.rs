@@ -11,8 +11,8 @@ mod local;
 mod plane;
 
 pub use local::{
-    init_node, load_config, node_config_present, read_event_log_resilient, EventLogReadOutcome,
-    LocalSession, NodeConfig, NodePaths, ProblemRecord, DEFAULT_AIRA_ROOT,
+    init_node, load_config, node_config_present, read_event_log_resilient, EventLogFile,
+    EventLogReadOutcome, LocalSession, NodeConfig, NodePaths, ProblemRecord, DEFAULT_AIRA_ROOT,
     EVENT_LOG_CORRUPT_BACKUP,
 };
 pub use plane::{FlowError, OperationalPlane, SubmitOutcome};
@@ -468,6 +468,7 @@ mod tests {
 
         let read = read_event_log_resilient(&log_path).unwrap();
         assert!(read.recovered_from_corruption);
+        assert!(read.log.events.is_empty());
         assert!(root.join("events").join(EVENT_LOG_CORRUPT_BACKUP).exists());
         assert!(log_path.exists());
 
@@ -479,5 +480,38 @@ mod tests {
                 .any(|e| e.event_type == EventType::ProblemSubmitted),
             "events must append after corruption recovery"
         );
+    }
+
+    #[test]
+    fn corrupt_trailing_event_log_recovers_valid_prefix() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let mut session = LocalSession::open(&root).unwrap();
+        session.submit_problem("Calculate 2 + 2").unwrap();
+        drop(session);
+
+        let log_path = root.join("events/event-log.json");
+        let good = std::fs::read_to_string(&log_path).unwrap();
+        let before: EventLogFile = serde_json::from_str(&good).expect("valid log after submit");
+        assert!(!before.events.is_empty(), "expected events after submit");
+        let n = before.events.len();
+
+        // Trailing junk after a complete JSON document (#155).
+        std::fs::write(&log_path, format!("{good}\n,,,TRAILING_GARBAGE")).unwrap();
+        let read = read_event_log_resilient(&log_path).unwrap();
+        assert!(read.recovered_from_corruption);
+        assert_eq!(read.log.events.len(), n);
+        assert!(root.join("events").join(EVENT_LOG_CORRUPT_BACKUP).exists());
+
+        // Truncated mid-array: keep first event object, destroy the rest (#155).
+        let first = serde_json::to_string(&before.events[0]).unwrap();
+        let truncated = format!("{{\"events\":[{first},{{this-is-not-json");
+        std::fs::write(&log_path, &truncated).unwrap();
+        let read2 = read_event_log_resilient(&log_path).unwrap();
+        assert!(read2.recovered_from_corruption);
+        assert_eq!(read2.log.events.len(), 1);
+        assert_eq!(read2.log.events[0].event_id, before.events[0].event_id);
     }
 }
