@@ -1,0 +1,14 @@
+Package: aira-desktop
+Version: @VERSION@
+Section: utils
+Priority: optional
+Architecture: @ARCH@
+Maintainer: AIRA Maintainers <maintainers@aira.local>
+Depends: libc6
+Description: AIRA Desktop (local reference GUI)
+ AIRA Desktop Developer Preview / production-path .deb (#150).
+ Installs aira, aira-node, and aira-desktop under /usr/bin plus
+ XDG .desktop entries (Exec=aira / Exec=aira-desktop).
+ .
+ This is not a production distributed AIRA runtime. AppImage is out of scope.
+Homepage: https://github.com/sesquicadaver/AIRA

@@ -1,8 +1,8 @@
-# AIRA Desktop — Linux packaging (QUEUE #79)
+# AIRA Desktop — Linux packaging (QUEUE #79; deb `#150`)
 
-**Status:** Developer Preview. **Not** a production distributed AIRA runtime.  
-**Phase G `#145`:** Linux deb metapackage + production path doc/script (beyond Developer Preview tarball).  
-**Format:** **tarball + `.desktop`** (not AppImage) so `#78` XDG autostart (`Exec=aira-desktop`) and menu entries (`Exec=aira` / `Exec=aira-desktop`) stay PATH-compatible.
+**Status:** Developer Preview tarball + optional `.deb` production path. **Not** a production distributed AIRA runtime.  
+**Phase G `#150`:** [`scripts/package-desktop-linux-deb.sh`](../scripts/package-desktop-linux-deb.sh) + [`deploy/linux/debian/control.in`](../deploy/linux/debian/control.in).  
+**Format:** **tarball + `.desktop`** for Preview; **`.deb`** installs to `/usr/bin` + `/usr/share/applications` (still `Exec=aira` / `Exec=aira-desktop`). AppImage is **Out**.
 
 ## End-user install (no `cargo`)
 
@@ -42,6 +42,33 @@ Node data (`~/.local/share/aira`) and settings (`~/.config/aira`) are kept.
 ```
 
 `--skip-build` reuses existing `target/release/{aira,aira-node,aira-desktop}`.
+
+## deb pipeline (`#150`)
+
+Developer Preview remains the **tarball**. For a Debian package production path:
+
+1. Stage (CI smoke — stub bins + control + `.stage.tar.gz`):
+
+```bash
+./scripts/package-desktop-linux-deb.sh --layout-only
+# → release/desktop/aira-desktop_<ver>_<arch>.stage.tar.gz
+```
+
+2. Dry-run `dpkg-deb` (no package built):
+
+```bash
+./scripts/package-desktop-linux-deb.sh --dry-run --stub-bins
+```
+
+3. Build a real `.deb` (requires `dpkg-deb`):
+
+```bash
+./scripts/package-desktop-linux-deb.sh --execute --skip-build
+# → release/desktop/aira-desktop_<ver>_<arch>.deb
+sudo dpkg -i release/desktop/aira-desktop_*.deb
+```
+
+Install layout: `/usr/bin/{aira,aira-node,aira-desktop}` and `/usr/share/applications/{aira,aira-desktop}.desktop`. **Out:** AppImage.
 
 ## Developer (AIRA Dev) notes
 
