@@ -36,8 +36,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #152 must be DONE after wiring"
     );
     assert!(
-        text.contains("| 153 | **OPEN**"),
-        "QUEUE #153 must be next OPEN"
+        text.contains("| 153 | **DONE**"),
+        "QUEUE #153 must be DONE after C3 governance"
+    );
+    assert!(
+        text.contains("| 154 | **OPEN**"),
+        "QUEUE #154 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
