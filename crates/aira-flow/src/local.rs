@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use aira_artifact::{ArtifactStore, CasArtifactStore};
 use aira_core::SqliteObjectStore;
-use aira_event::EventDescriptor;
+use aira_event::{EventDescriptor, FileChainEventLog};
 use aira_object::AiraRef;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -148,6 +148,12 @@ impl NodePaths {
     pub fn event_log(&self) -> PathBuf {
         self.events_dir().join("event-log.json")
     }
+
+    /// Durable hash-chain event log path (QUEUE #156 / #157).
+    pub fn file_chain_event_log(&self) -> PathBuf {
+        self.events_dir().join("file-chain-log.json")
+    }
+
     pub fn problems_dir(&self) -> PathBuf {
         self.root.join("problems")
     }
@@ -368,6 +374,9 @@ pub fn init_node(root: impl AsRef<Path>) -> Result<NodePaths, FlowError> {
     if !paths.event_log().exists() {
         write_json(&paths.event_log(), &EventLogFile::default())?;
     }
+    // Durable file-chain backend (#157); legacy event-log.json kept for recovery helpers.
+    FileChainEventLog::open_or_create(paths.file_chain_event_log())
+        .map_err(|e| FlowError::Other(e.to_string()))?;
     if !paths.problems_index().exists() {
         write_json(&paths.problems_index(), &ProblemsIndex::default())?;
     }
@@ -485,6 +494,23 @@ impl LocalSession {
         }
         write_json(&self.paths.event_log(), &log)?;
 
+        // Durable hash-chain log (#157): append only new event ids.
+        let mut durable = FileChainEventLog::open_or_create(self.paths.file_chain_event_log())
+            .map_err(|e| FlowError::Other(e.to_string()))?;
+        let known: std::collections::HashSet<String> = durable
+            .chain()
+            .records()
+            .iter()
+            .map(|r| r.event.event_id.as_str().to_string())
+            .collect();
+        for ev in self.plane.events() {
+            if !known.contains(ev.event_id.as_str()) {
+                durable
+                    .append(ev.clone())
+                    .map_err(|e| FlowError::Other(e.to_string()))?;
+            }
+        }
+
         let mut idx = read_json::<ProblemsIndex>(&self.paths.problems_index()).unwrap_or_default();
         let record = match outcome {
             SubmitOutcome::Completed {
@@ -559,6 +585,20 @@ impl LocalSession {
     }
 
     pub fn event_tail(&self, limit: usize) -> Result<Vec<EventDescriptor>, FlowError> {
+        let chain_path = self.paths.file_chain_event_log();
+        if chain_path.exists() {
+            let durable = FileChainEventLog::open(&chain_path)
+                .map_err(|e| FlowError::Other(e.to_string()))?;
+            let events: Vec<EventDescriptor> = durable
+                .chain()
+                .records()
+                .iter()
+                .map(|r| r.event.clone())
+                .collect();
+            let n = events.len();
+            let start = n.saturating_sub(limit);
+            return Ok(events[start..].to_vec());
+        }
         let read = read_event_log_resilient(&self.paths.event_log())?;
         let log = read.log;
         let n = log.events.len();

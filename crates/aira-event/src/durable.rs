@@ -1,7 +1,7 @@
 //! Durable file-backed hash-chain event log (QUEUE #156).
 //!
-//! Persists [`EventHashChain`] as JSON. Does not wire [`crate`]-level session
-//! paths — that is QUEUE #157.
+//! Persists [`EventHashChain`] as JSON. Wired from `LocalSession` / `init_node` in
+//! `aira-flow` (QUEUE #157).
 
 use std::fs;
 use std::path::{Path, PathBuf};
