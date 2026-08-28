@@ -247,7 +247,7 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #139–#141 | Federation + C3 scaffold | leave CLI; join hardening; `run_c3` local |
 | #142 | Event log durability | corrupt JSON backup + reset (`event-log.json.corrupt`); test in `aira-flow` | **DONE** @ PR #105 |
 | #143 | SQLite object path | `init_node` `db/aira.sqlite` migrate idempotent; corrupt JSON fail-closed; tests | **DONE** @ PR #106 |
-| #144 | External CSU fixture | `manifest-external-partner.json`; `external_third_party_csu_fixture_registry_smoke` | **IN PROGRESS** |
+| #144 | External CSU fixture | `manifest-external-partner.json`; `external_third_party_csu_fixture_registry_smoke` | **DONE** @ PR #107 |
 | #145 | CSU SDK doc | `docs/csu-sdk.md` + conformance case | **OPEN** |
 | #146–#147 | Epistemic basic | `csu/epistemic-basic`; assessment roundtrip |
 | #148–#150 | Production packaging | macOS codesign; Windows MSI; Linux deb |
