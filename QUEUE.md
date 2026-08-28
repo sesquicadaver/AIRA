@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#145` CSU SDK doc. Порядок: `#145` → `#151`.
+**Перший OPEN:** `#146` epistemic-basic CSU. Порядок: `#146` → `#151`.
 
 ```text
 G0 govern (#120–#121)
