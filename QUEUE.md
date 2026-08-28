@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#149` DONE @ PR #112; **перший OPEN = `#150`** (Linux deb) |
+| `main` | Phase G `#150` DONE @ PR #113; **перший OPEN = `#151`** (Phase G docs closure) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
@@ -281,12 +281,12 @@ F0 stabilize CI (#107–#109)
 | 147 | **DONE** | ~~Analyze-177 — epistemic assessment path~~ | epistemic artifact roundtrip smoke | CLI/plane test | normative split CSU |
 | 148 | **DONE** | ~~Analyze-178 — macOS codesign~~ | notarization script + doc update | script dry-run doc | App Store |
 | 149 | **DONE** | ~~Analyze-179 — Windows MSI~~ | MSI build script + doc | artifact builds on CI runner | codesign enterprise |
-| 150 | **OPEN** | Analyze-180 — Linux deb metapackage | deb production path doc + script | package smoke | AppImage |
+| 150 | **DONE** | ~~Analyze-180 — Linux deb metapackage~~ | deb production path doc + script | package smoke | AppImage |
 | 151 | **OPEN** | Analyze-181 — Phase G docs closure | README + implementation-status v0.2; RFC-0069 | G scope documented; QUEUE G closed | post-G RFC track; анти-місія README |
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#150` Linux deb. Порядок: `#150` → `#151`.
+**Перший OPEN:** `#151` Phase G docs closure. Порядок: `#151`.
 
 ```text
 G0 govern (#120–#121)
