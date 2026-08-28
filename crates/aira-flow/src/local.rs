@@ -184,17 +184,23 @@ pub struct EventLogFile {
     pub events: Vec<EventDescriptor>,
 }
 
-/// Outcome of reading `events/event-log.json` with corruption recovery (#142).
+/// Outcome of reading `events/event-log.json` with corruption recovery (#142 / #155).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EventLogReadOutcome {
     pub log: EventLogFile,
     pub recovered_from_corruption: bool,
 }
 
-/// Backup suffix when `event-log.json` is corrupt and reset.
+/// Backup suffix when `event-log.json` is corrupt and repaired or reset.
 pub const EVENT_LOG_CORRUPT_BACKUP: &str = "event-log.json.corrupt";
 
-/// Read event log; on corrupt JSON backup file and reset to empty (fail-safe recovery).
+/// Read event log with fail-safe recovery.
+///
+/// 1. Missing file → empty log.
+/// 2. Full JSON parse OK (no trailing junk) → as-is.
+/// 3. Valid `EventLogFile` value with trailing bytes (#155) → keep value, backup + rewrite.
+/// 4. Truncated/corrupt `events` array (#155) → longest prefix of valid `EventDescriptor`s.
+/// 5. Otherwise (#142) → backup + empty reset.
 pub fn read_event_log_resilient(path: &Path) -> Result<EventLogReadOutcome, FlowError> {
     if !path.exists() {
         return Ok(EventLogReadOutcome {
@@ -203,31 +209,129 @@ pub fn read_event_log_resilient(path: &Path) -> Result<EventLogReadOutcome, Flow
         });
     }
     let raw = fs::read_to_string(path).map_err(|e| FlowError::Other(e.to_string()))?;
-    if let Ok(log) = serde_json::from_str::<EventLogFile>(&raw) {
-        return Ok(EventLogReadOutcome {
-            log,
-            recovered_from_corruption: false,
-        });
-    }
-    let parent = match path.parent() {
-        Some(p) => p,
-        None => {
-            return Err(FlowError::Other(
-                "event log path has no parent directory".into(),
-            ));
+
+    let mut de = serde_json::Deserializer::from_str(&raw);
+    if let Ok(log) = EventLogFile::deserialize(&mut de) {
+        if de.end().is_ok() {
+            return Ok(EventLogReadOutcome {
+                log,
+                recovered_from_corruption: false,
+            });
         }
-    };
-    let backup = parent.join(EVENT_LOG_CORRUPT_BACKUP);
-    if backup.exists() {
-        fs::remove_file(&backup).map_err(|e| FlowError::Other(e.to_string()))?;
+        // Trailing bytes after a complete EventLogFile — preserve prefix (#155).
+        return persist_recovered_log(path, log);
     }
-    fs::rename(path, &backup).map_err(|e| FlowError::Other(e.to_string()))?;
+
+    if let Some(log) = recover_event_log_events_prefix(&raw) {
+        return persist_recovered_log(path, log);
+    }
+
+    // Unrecoverable: backup + empty (#142).
+    backup_corrupt_log(path)?;
     let empty = EventLogFile::default();
     write_json(path, &empty)?;
     Ok(EventLogReadOutcome {
         log: empty,
         recovered_from_corruption: true,
     })
+}
+
+fn persist_recovered_log(path: &Path, log: EventLogFile) -> Result<EventLogReadOutcome, FlowError> {
+    backup_corrupt_log(path)?;
+    write_json(path, &log)?;
+    Ok(EventLogReadOutcome {
+        log,
+        recovered_from_corruption: true,
+    })
+}
+
+fn backup_corrupt_log(path: &Path) -> Result<(), FlowError> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| FlowError::Other("event log path has no parent directory".into()))?;
+    let backup = parent.join(EVENT_LOG_CORRUPT_BACKUP);
+    if backup.exists() {
+        fs::remove_file(&backup).map_err(|e| FlowError::Other(e.to_string()))?;
+    }
+    fs::rename(path, &backup).map_err(|e| FlowError::Other(e.to_string()))?;
+    Ok(())
+}
+
+/// Recover longest prefix of valid events from a damaged `{"events":[...` payload (#155).
+fn recover_event_log_events_prefix(raw: &str) -> Option<EventLogFile> {
+    let key = "\"events\"";
+    let key_pos = raw.find(key)?;
+    let after_key = &raw[key_pos + key.len()..];
+    let bracket_rel = after_key.find('[')?;
+    let mut cursor = &after_key[bracket_rel + 1..];
+    let mut events = Vec::new();
+
+    loop {
+        cursor = cursor.trim_start();
+        if cursor.is_empty() || cursor.starts_with(']') {
+            break;
+        }
+        if cursor.starts_with(',') {
+            cursor = cursor[1..].trim_start();
+            continue;
+        }
+        match take_json_value(cursor) {
+            Some((value_str, rest)) => match serde_json::from_str::<EventDescriptor>(value_str) {
+                Ok(ev) => {
+                    events.push(ev);
+                    cursor = rest;
+                }
+                Err(_) => break,
+            },
+            None => break,
+        }
+    }
+
+    // Prefix recovery only when at least one event was salvaged (empty→full reset path).
+    if events.is_empty() {
+        return None;
+    }
+    Some(EventLogFile { events })
+}
+
+/// Split one complete JSON value (object/array) from the start of `s`.
+fn take_json_value(s: &str) -> Option<(&str, &str)> {
+    let bytes = s.as_bytes();
+    if bytes.first() != Some(&b'{') && bytes.first() != Some(&b'[') {
+        return None;
+    }
+    let mut depth = 0i32;
+    let mut in_string = false;
+    let mut escape = false;
+    for (i, &b) in bytes.iter().enumerate() {
+        if in_string {
+            if escape {
+                escape = false;
+                continue;
+            }
+            match b {
+                b'\\' => escape = true,
+                b'"' => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+        match b {
+            b'"' => in_string = true,
+            b'{' | b'[' => depth += 1,
+            b'}' | b']' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some((&s[..=i], &s[i + 1..]));
+                }
+                if depth < 0 {
+                    return None;
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 /// Initialize `.aira` layout (#57).

@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#154` **DONE**; `#155` **OPEN** |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#155` **DONE**; `#156` **OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#155` |
+| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#156` |
 
 ## Правила атомарності
 
@@ -313,7 +313,7 @@ G0 govern (#120–#121)
 | 152 | **DONE** | ~~Analyze-187 — Phase H wiring~~ | `phase-h-plan.md` + QUEUE `#152`–`#183` + cross-links; living smoke ids | docs + QUEUE узгоджені; phase_h_doc | stores code; CRP |
 | 153 | **DONE** | ~~Analyze-188 — C3 governance note~~ | conformance + ci-governance: C3 optional; gate criteria | docs sync; ci_governance C3 contract | C3 CI job (#164) |
 | 154 | **DONE** | ~~Analyze-189 — event hash-chain tip~~ | append + verify tip; mid-log tamper detect | `event_log_hash_chain_tip_…` green | prefix recovery (#155) |
-| 155 | **OPEN** | Analyze-190 — event prefix recovery | corrupt trailing → valid prefix recover | test + doc note | new backend (#156) |
+| 155 | **DONE** | ~~Analyze-190 — event prefix recovery~~ | corrupt trailing → valid prefix recover | `corrupt_trailing_event_log_recovers_valid_prefix` | new backend (#156) |
 | 156 | **OPEN** | Analyze-191 — durable event backend | file-chain або SQLite events module | unit tests green | session wire (#157) |
 | 157 | **OPEN** | Analyze-192 — session durable events | LocalSession/init_node → durable backend; reopen | roundtrip test | Sqlite objects (#158) |
 | 158 | **OPEN** | Analyze-193 — Sqlite object path | node/plane Sqlite object path test + doc | test green; no Core→node | status rollup (#159) |
@@ -345,7 +345,7 @@ G0 govern (#120–#121)
 
 ### Наступний цикл (Phase H)
 
-**Перший OPEN:** `#155` (event prefix recovery). `#152`–`#154` DONE. Далі строго лінійно `#156`…`#183`.
+**Перший OPEN:** `#156` (durable event backend). `#152`–`#155` DONE. Далі строго лінійно `#157`…`#183`.
 
 ```text
 H0 govern (#152–#153)
