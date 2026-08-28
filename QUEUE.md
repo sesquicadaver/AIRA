@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#146` DONE @ PR #109; **перший OPEN = `#147`** (epistemic assessment path) |
+| `main` | Phase G `#147` DONE @ PR #110; **перший OPEN = `#148`** (macOS codesign) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
@@ -278,7 +278,7 @@ F0 stabilize CI (#107–#109)
 | 144 | **DONE** | ~~Analyze-174 — external CSU fixture~~ | third-party manifest loads | registry smoke green | CSU marketplace |
 | 145 | **DONE** | ~~Analyze-175 — CSU SDK doc~~ | `docs/csu-sdk.md` + conformance case | doc + named test | SDK distribution |
 | 146 | **DONE** | ~~Analyze-176 — epistemic-basic CSU~~ | `csu/epistemic-basic` EPI-001 | crate tests green | full Epistemic plane |
-| 147 | **OPEN** | Analyze-177 — epistemic assessment path | epistemic artifact roundtrip smoke | CLI/plane test | normative split CSU |
+| 147 | **DONE** | ~~Analyze-177 — epistemic assessment path~~ | epistemic artifact roundtrip smoke | CLI/plane test | normative split CSU |
 | 148 | **OPEN** | Analyze-178 — macOS codesign | notarization script + doc update | script dry-run doc | App Store |
 | 149 | **OPEN** | Analyze-179 — Windows MSI | MSI build script + doc | artifact builds on CI runner | codesign enterprise |
 | 150 | **OPEN** | Analyze-180 — Linux deb metapackage | deb production path doc + script | package smoke | AppImage |
@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Перший OPEN:** `#147` epistemic assessment path. Порядок: `#147` → `#151`.
+**Перший OPEN:** `#148` macOS codesign. Порядок: `#148` → `#151`.
 
 ```text
 G0 govern (#120–#121)
