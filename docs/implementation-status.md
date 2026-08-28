@@ -253,7 +253,7 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #147 | Epistemic assessment path | plane/session roundtrip; `epistemic_assessment_roundtrip_via_plane_and_session` | **DONE** @ PR #110 |
 | #148 | macOS codesign | `scripts/macos-codesign-notarize.sh` + `desktop-packaging-macos.md` | **DONE** @ PR #111 |
 | #149 | Windows MSI | `scripts/package-desktop-windows-msi.sh` + WiX stage | **DONE** @ PR #112 |
-| #150 | Linux deb | packaging script + doc | **OPEN** |
+| #150 | Linux deb | `scripts/package-desktop-linux-deb.sh` + debian control | **IN PROGRESS** |
 | #151 | Phase G docs + RFC | README + this file v0.2; RFC-0069; QUEUE G closed |
 
 Plan: [`phase-g-plan.md`](phase-g-plan.md).
