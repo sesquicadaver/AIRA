@@ -473,6 +473,7 @@ dependencies = [
  "aira-schema",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 1.0.69",
 ]
 
