@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#144` DONE @ PR #107; **перший OPEN = `#145`** (CSU SDK doc) |
+| `main` | Phase G `#145` DONE @ PR #108; **перший OPEN = `#146`** (epistemic-basic CSU) |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
 | Активна черга | Phase G reference v0.2 `#120`–`#151` |
@@ -276,7 +276,7 @@ F0 stabilize CI (#107–#109)
 | 142 | **DONE** | ~~Analyze-172 — event log durability~~ | JSON log corruption recovery test | test + doc note | production event engine |
 | 143 | **DONE** | ~~Analyze-173 — SQLite object path~~ | integrity/migration smoke | test + status doc | new object fields |
 | 144 | **DONE** | ~~Analyze-174 — external CSU fixture~~ | third-party manifest loads | registry smoke green | CSU marketplace |
-| 145 | **OPEN** | Analyze-175 — CSU SDK doc | `docs/csu-sdk.md` + conformance case | doc + named test | SDK distribution |
+| 145 | **DONE** | ~~Analyze-175 — CSU SDK doc~~ | `docs/csu-sdk.md` + conformance case | doc + named test | SDK distribution |
 | 146 | **OPEN** | Analyze-176 — epistemic-basic CSU | `csu/epistemic-basic` EPI-001 | crate tests green | full Epistemic plane |
 | 147 | **OPEN** | Analyze-177 — epistemic assessment path | epistemic artifact roundtrip smoke | CLI/plane test | normative split CSU |
 | 148 | **OPEN** | Analyze-178 — macOS codesign | notarization script + doc update | script dry-run doc | App Store |
