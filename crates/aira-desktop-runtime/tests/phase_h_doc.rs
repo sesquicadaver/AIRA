@@ -52,8 +52,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #156 must be DONE after durable backend"
     );
     assert!(
-        text.contains("| 157 | **OPEN**"),
-        "QUEUE #157 must be next OPEN"
+        text.contains("| 157 | **DONE**"),
+        "QUEUE #157 must be DONE after session durable wire"
+    );
+    assert!(
+        text.contains("| 158 | **OPEN**"),
+        "QUEUE #158 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {

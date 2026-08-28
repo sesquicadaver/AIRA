@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#156` DONE; `#157` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#157` DONE; `#158` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#157`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#158`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -49,7 +49,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Immutable Object Store | Book I §4–5; B1-001 | `aira-core` `MemoryObjectStore` / `SqliteObjectStore` | `c0.object.immutability`; `c0.object.verify_on_read`; `sqlite_migrate_idempotent_reopen_preserves_rows`; `sqlite_corrupt_descriptor_json_integrity`; `init_node_sqlite_object_path_migrate_and_persist` | **DONE** | Verify-on-read (#112); SQLite migrate/integrity smoke (#143) |
 | Opaque Handle | Book I §6; B1-003 | `aira_object::Handle` | `c0.object.handle_opacity`; `handle_is_opaque` | **DONE** | Debug omits token/paths; C0 B1-003 case |
 | Event runtime, local causal order, no global total order | Book I §8–9; B1-004/005 | `aira-event` `MemoryEventLog` | `c0.event.causality`; `aira-event` unit tests | **DONE** | Plane drain is in-process demo (`drain_from` bound 256) |
-| Durable event log | Book I / Book IV §6.3 | `LocalSession` → `.aira/events/event-log.json`; `EventHashChain` (#154); `FileChainEventLog` (#156) | `corrupt_*`; `event_log_hash_chain_tip_*`; `file_chain_event_log_persists_across_reopen` | **PARTIAL** | file-chain durable module (#156); session wire still #157; legacy JSON log remains until wired |
+| Durable event log | Book I / Book IV §6.3 | `LocalSession` → `file-chain-log.json` (#157) + legacy `event-log.json`; `FileChainEventLog` (#156) | `session_durable_file_chain_roundtrip`; `corrupt_*`; `file_chain_event_log_persists_across_reopen` | **PARTIAL** | session wires durable file-chain (#157); legacy JSON dual-write retained; plane still memory until drained |
 | Policy Gate ALLOW/DENY/REQUIRE | Book I §10; B1-006/007 | `aira-policy` | `c0.policy.gate`; `invariant_checker_emits_event_on_policy_deny` | **DONE** | |
 | Invariant Checker can block | Book I §11; B1-008 | `aira-core` `InvariantChecker` | C0 immutability cases | **DONE** | |
 | Security boundary (no Core memory / foreign CSU / secrets) | Book I §12; B1-009; B3-004 | `aira-csu` isolation + event secret scan | `isolation_baseline_denies_direct_mutation_and_peer_call`; `run_security_baseline` | **DONE** | MVP sandbox: in-process, no FS/net |

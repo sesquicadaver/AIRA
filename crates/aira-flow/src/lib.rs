@@ -514,4 +514,46 @@ mod tests {
         assert_eq!(read2.log.events.len(), 1);
         assert_eq!(read2.log.events[0].event_id, before.events[0].event_id);
     }
+
+    #[test]
+    fn session_durable_file_chain_roundtrip() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let chain_path = root.join("events/file-chain-log.json");
+        assert!(
+            chain_path.exists(),
+            "init_node must create file-chain durable log"
+        );
+
+        {
+            let mut session = LocalSession::open(&root).unwrap();
+            session.submit_problem("Calculate 2 + 2").unwrap();
+            let tail = session.event_tail(50).unwrap();
+            assert!(
+                tail.iter()
+                    .any(|e| e.event_type == EventType::ProblemSubmitted),
+                "event_tail must read durable file-chain after submit"
+            );
+        }
+
+        let durable = aira_event::FileChainEventLog::open(&chain_path).unwrap();
+        assert!(!durable.is_empty());
+        durable.chain().verify_tip().unwrap();
+        assert!(durable
+            .chain()
+            .records()
+            .iter()
+            .any(|r| r.event.event_type == EventType::ProblemSubmitted));
+
+        // Reopen session: durable events still visible via event_tail.
+        let session = LocalSession::open(&root).unwrap();
+        let tail = session.event_tail(50).unwrap();
+        assert!(
+            tail.iter()
+                .any(|e| e.event_type == EventType::ProblemSubmitted),
+            "reopened session must see durable file-chain events"
+        );
+    }
 }
