@@ -120,6 +120,6 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
 - Phase G plan (DONE): [`phase-g-plan.md`](phase-g-plan.md)
-- Phase H plan (OPEN `#154`): [`phase-h-plan.md`](phase-h-plan.md) — `#153` C3 governance DONE; next H1 stores; optional C3 job `#164`
+- Phase H plan (OPEN `#155`): [`phase-h-plan.md`](phase-h-plan.md) — `#154` hash-chain DONE; next prefix recovery; optional C3 job `#164`
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
 - RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`)
