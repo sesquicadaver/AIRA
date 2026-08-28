@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AIRA Desktop WiX source (QUEUE #149).
+  Placeholders substituted by scripts/package-desktop-windows-msi.sh:
+    @VERSION@  @UPGRADE_CODE@  @MANUFACTURER@  @PRODUCT_NAME@
+  Build on Windows with WiX Toolset (candle + light). See docs/desktop-packaging-windows.md.
+  Out: Authenticode / enterprise codesign (#149 Out).
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product
+      Id="*"
+      Name="@PRODUCT_NAME@"
+      Language="1033"
+      Version="@VERSION@"
+      Manufacturer="@MANUFACTURER@"
+      UpgradeCode="@UPGRADE_CODE@">
+    <Package
+        InstallerVersion="500"
+        Compressed="yes"
+        InstallScope="perUser"
+        Description="@PRODUCT_NAME@ (@VERSION@)"
+        Comments="AIRA Desktop MSI pipeline — not a production distributed runtime" />
+
+    <MajorUpgrade
+        DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="ProductFeature" Title="@PRODUCT_NAME@" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+    </Feature>
+  </Product>
+
+  <Fragment>
+    <!-- Per-user Programs path mirrors install-user.bat default. -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="LocalPrograms" Name="Programs">
+          <Directory Id="INSTALLFOLDER" Name="AIRA" />
+        </Directory>
+      </Directory>
+    </Directory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="AiraCli" Guid="*">
+        <File Id="AiraExe" Source="payload\bin\aira.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="AiraNode" Guid="*">
+        <File Id="AiraNodeExe" Source="payload\bin\aira-node.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="AiraDesktop" Guid="*">
+        <File Id="AiraDesktopExe" Source="payload\bin\aira-desktop.exe" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>
