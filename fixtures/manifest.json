@@ -61,6 +61,10 @@
       "file": "fixtures/valid/csu/manifest.json"
     },
     {
+      "schema": "aira:schema:csu:manifest:0.1",
+      "file": "fixtures/valid/csu/manifest-external-partner.json"
+    },
+    {
       "schema": "aira:schema:execution:capsule:0.1",
       "file": "fixtures/valid/execution/capsule.json"
     },

@@ -1,0 +1,40 @@
+{
+  "csu_id": "aira:csu:partner.external",
+  "csu_name": "partner-external-fixture",
+  "csu_type": "Artifact",
+  "csu_version": "0.1.0",
+  "abi_version": "0.1",
+  "manifest_version": "0.1",
+  "identity_ref": "aira:identity:local-test",
+  "publisher_identity": "aira:identity:local-test",
+  "capabilities": [],
+  "permissions": [],
+  "event_subscriptions": [
+    {
+      "event_type": "ProblemSubmitted"
+    }
+  ],
+  "event_outputs": [
+    {
+      "event_type": "OperationalArtifactCreated"
+    }
+  ],
+  "artifact_inputs": [],
+  "artifact_outputs": [],
+  "policy_refs": [
+    "aira:policy:default"
+  ],
+  "sandbox": {
+    "filesystem": "none",
+    "network": "none",
+    "process": "in_process",
+    "device_access": "none",
+    "secret_access": "none"
+  },
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "22fd4d7517a1c91c48a450911c4164c3f456f5f43b0f8650a6e8a37566110cd463f75bbed8bf618439cb706d6f7b3c9d46f596516e87ea9f1adf3167a33bc509"
+  },
+  "created_at": "2026-07-10T12:00:00Z"
+}

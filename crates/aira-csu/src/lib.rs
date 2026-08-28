@@ -414,6 +414,40 @@ mod tests {
     }
 
     #[test]
+    fn external_third_party_csu_fixture_registry_smoke() {
+        let root = aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let path = root.join("fixtures/valid/csu/manifest-external-partner.json");
+        let text = std::fs::read_to_string(&path).expect("external partner fixture");
+        let m: CsuManifest = serde_json::from_str(&text).expect("parse external manifest");
+        m.verify_canonical().expect("canonical external manifest");
+
+        let schema_reg = aira_schema::SchemaRegistry::load(root.join("schemas")).unwrap();
+        let v = serde_json::to_value(&m).unwrap();
+        schema_reg
+            .validate("aira:schema:csu:manifest:0.1", &v)
+            .expect("schema validate external manifest");
+
+        // Not a built-in `csu/*` crate id — third-party registry entry.
+        assert_eq!(m.csu_id.as_str(), "aira:csu:partner.external");
+
+        let mut reg = CsuRegistry::new();
+        reg.register(m.clone(), None)
+            .expect("register external csu");
+        assert_eq!(reg.list().len(), 1);
+        assert_eq!(
+            reg.get(&m.csu_id).unwrap().manifest.csu_name,
+            "partner-external-fixture"
+        );
+
+        let dir = tempfile::tempdir().unwrap();
+        let reg_path = dir.path().join("registry.json");
+        reg.save(&reg_path).unwrap();
+        let loaded = CsuRegistry::load(&reg_path).unwrap();
+        assert_eq!(loaded.list().len(), 1);
+        assert_eq!(loaded.list()[0].manifest.csu_id, m.csu_id);
+    }
+
+    #[test]
     fn registry_save_load_roundtrip() {
         let dir = tempfile::tempdir().unwrap();
         let path: PathBuf = dir.path().join("registry.json");
