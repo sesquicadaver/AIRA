@@ -40,7 +40,7 @@ Problem Statement
 **OperationalPlane:** C1 reference/demo only — [`docs/operational-plane.md`](docs/operational-plane.md) (not production event/scheduler/federation runtime).
 **Implementation status:** [`docs/implementation-status.md`](docs/implementation-status.md) — **Reference v0.2** (Book 0–IV / schemas / C0–C3 scaffold / CSU basic + epistemic-basic).
 **Documentation index:** [`docs/README.md`](docs/README.md).
-**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C–F **DONE**. Phase G Reference v0.2 **`#120`–`#151` DONE** — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); consolidating RFC [`AIRA-RFC-0069`](specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md). Phase H Protocol depth v0.3 — [`docs/phase-h-plan.md`](docs/phase-h-plan.md) (`#152`–`#183`, лінійно); `#152` wiring **DONE**, **`#153` OPEN**. Анти-місія §«What AIRA is not» **ніколи** в QUEUE.
+**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C–E **DONE**. Phase F stabilization **DONE** (`#107`–`#119`, [`docs/phase-f-plan.md`](docs/phase-f-plan.md)). Phase G Reference v0.2 **`#120`–`#151` DONE** — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); consolidating RFC [`AIRA-RFC-0069`](specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md). Phase H Protocol depth v0.3 — [`docs/phase-h-plan.md`](docs/phase-h-plan.md) (`#152`–`#183`, лінійно); `#152` wiring **DONE**, **`#153` OPEN**. Анти-місія §«What AIRA is not» **ніколи** в QUEUE.
 
 Активний атом: `#153` (C3 governance note). Далі: durable stores → C3 depth → CRP → settlement receipts → research promotion → RFC-0077 / Reference v0.3. Status: [`docs/implementation-status.md`](docs/implementation-status.md) (**v0.2**).
 
