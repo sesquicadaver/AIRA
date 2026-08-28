@@ -64,8 +64,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #159 must be DONE after stores status rollup"
     );
     assert!(
-        text.contains("| 160 | **OPEN**"),
-        "QUEUE #160 must be next OPEN"
+        text.contains("| 160 | **DONE**"),
+        "QUEUE #160 must be DONE after capability ad persist"
+    );
+    assert!(
+        text.contains("| 161 | **OPEN**"),
+        "QUEUE #161 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
@@ -100,6 +104,8 @@ fn phase_h_h1_stores_status_rollup() {
         "#159",
         "FileChainEventLog",
         "plane_memory_beside_node_sqlite_object_path",
+        "CapabilityAdvertisementStore",
+        "capability_ad_persist_roundtrip",
     ] {
         assert!(
             text.contains(needle),
