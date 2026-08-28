@@ -64,7 +64,7 @@ Core що «вирішує задачі» замість CSU contracts
 | [`desktop-federation.md`](desktop-federation.md) | P5 federation GUI |
 | [`desktop-discovery.md`](desktop-discovery.md) | P6 STUN/discv (Dev) |
 | [`desktop-packaging.md`](desktop-packaging.md) | Linux tarball |
-| [`desktop-packaging-macos.md`](desktop-packaging-macos.md) | macOS `.app` tarball |
+| [`desktop-packaging-macos.md`](desktop-packaging-macos.md) | macOS `.app` tarball + codesign/notarize helper (`#148`) |
 | [`desktop-packaging-windows.md`](desktop-packaging-windows.md) | Windows zip |
 
 ## Releases & security
