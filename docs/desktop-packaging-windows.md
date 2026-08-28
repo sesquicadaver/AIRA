@@ -1,8 +1,8 @@
-# AIRA Desktop — Windows packaging (QUEUE #93)
+# AIRA Desktop — Windows packaging (QUEUE #93; MSI `#149`)
 
-**Status:** Developer Preview. **Not** a production distributed AIRA runtime.  
-**Format:** versioned **`.zip`** with `bin/*.exe` (not MSI). Codesign / SmartScreen / Store are **Out** of E3.  
-**Phase G `#144`:** MSI pipeline doc + build script (production path).
+**Status:** Developer Preview zip + optional MSI pipeline stage. **Not** a production distributed AIRA runtime.  
+**Format:** versioned **`.zip`** with `bin/*.exe` for Preview; MSI via WiX stage (`#149`). Authenticode / enterprise codesign are **Out**.  
+**Phase G `#149`:** [`scripts/package-desktop-windows-msi.sh`](../scripts/package-desktop-windows-msi.sh) + [`deploy/windows/aira-desktop.wxs`](../deploy/windows/aira-desktop.wxs).
 
 ## End-user install (no `cargo`)
 
@@ -101,6 +101,32 @@ aira-desktop-windows-<ver>-<arch>/
   MANIFEST.txt
   share/doc/aira/   (selected docs)
 ```
+
+## MSI pipeline (`#149`)
+
+Developer Preview remains the **zip**. For a WiX MSI production path:
+
+1. Stage sources (works on Linux CI — stub bins + rendered `.wxs` + `.tar.gz`):
+
+```bash
+./scripts/package-desktop-windows-msi.sh --layout-only
+# → release/desktop/aira-desktop-windows-msi-<ver>-<arch>.tar.gz
+```
+
+2. Dry-run candle/light (no WiX install required):
+
+```bash
+./scripts/package-desktop-windows-msi.sh --dry-run --stub-bins
+```
+
+3. On **Windows** with [WiX Toolset](https://wixtoolset.org/) on PATH, build a real MSI:
+
+```bash
+./scripts/package-desktop-windows-msi.sh --execute --skip-build
+# or from the stage: build-msi.bat
+```
+
+Payload installs per-user under `%LOCALAPPDATA%\Programs\AIRA\` (same as `install.bat`). **Out:** Authenticode signing / SmartScreen / Store.
 
 ## Related
 

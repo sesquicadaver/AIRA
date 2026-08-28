@@ -252,7 +252,8 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #146 | epistemic-basic CSU | `csu/epistemic-basic`; EPI-001 smoke | **DONE** @ PR #109 |
 | #147 | Epistemic assessment path | plane/session roundtrip; `epistemic_assessment_roundtrip_via_plane_and_session` | **DONE** @ PR #110 |
 | #148 | macOS codesign | `scripts/macos-codesign-notarize.sh` + `desktop-packaging-macos.md` | **DONE** @ PR #111 |
-| #149–#150 | Windows MSI / Linux deb | packaging scripts + docs | **OPEN** |
+| #149 | Windows MSI | `scripts/package-desktop-windows-msi.sh` + WiX stage | **IN PROGRESS** |
+| #150 | Linux deb | packaging script + doc | **OPEN** |
 | #151 | Phase G docs + RFC | README + this file v0.2; RFC-0069; QUEUE G closed |
 
 Plan: [`phase-g-plan.md`](phase-g-plan.md).
