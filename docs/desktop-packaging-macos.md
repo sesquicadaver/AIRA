@@ -1,8 +1,8 @@
-# AIRA Desktop — macOS packaging (QUEUE #89)
+# AIRA Desktop — macOS packaging (QUEUE #89; codesign `#148`)
 
-**Status:** Developer Preview. **Not** a production distributed AIRA runtime.  
-**Format:** **`AIRA Desktop.app`** inside a versioned **`.tar.gz`** (not DMG). Codesign / notarize / App Store are **Out** of E2.  
-**Phase G `#143`:** codesign doc + notarization helper script (production path).
+**Status:** Developer Preview tarball + optional production codesign/notarize helper. **Not** a production distributed AIRA runtime.  
+**Format:** **`AIRA Desktop.app`** inside a versioned **`.tar.gz`** (not DMG). App Store submission is **Out** (`#148`).  
+**Phase G `#148`:** [`scripts/macos-codesign-notarize.sh`](../scripts/macos-codesign-notarize.sh) (default `--dry-run`).
 
 ## End-user install (no `cargo`)
 
@@ -103,6 +103,30 @@ AIRA Desktop.app/
 ```
 
 Tarball root also includes `install.sh`, `uninstall.sh`, `README.md`, `MANIFEST.txt`, and `share/doc/aira/` (selected docs).
+
+## Codesign / notarization (`#148`)
+
+Developer Preview tarballs remain **unsigned**. For a Gatekeeper-ready production `.app` on a maintainers' Mac:
+
+1. Build/stage the app (`./scripts/package-desktop-macos.sh` on Darwin).
+2. Dry-run the helper (no Apple credentials; safe on Linux CI):
+
+```bash
+./scripts/macos-codesign-notarize.sh --dry-run \
+  --app release/desktop/aira-desktop-macos-<ver>-<arch>/AIRA\ Desktop.app
+```
+
+3. Execute on Darwin after configuring a Developer ID identity and `notarytool` keychain profile:
+
+```bash
+export CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+export NOTARY_KEYCHAIN_PROFILE=aira-notary
+# once: xcrun notarytool store-credentials aira-notary --apple-id … --team-id … --password …
+./scripts/macos-codesign-notarize.sh --execute \
+  --app /path/to/AIRA\ Desktop.app
+```
+
+The helper: deep `codesign` with hardened runtime → zip via `ditto` → `notarytool submit --wait` → `stapler staple`. **Out:** Mac App Store / `productbuild` / TestFlight.
 
 ## Related
 
