@@ -9,8 +9,9 @@ Repo-level ТЗ → module → tests map: [implementation-status.md](implementat
 | C0 | `run_c0` | ontology, object/artifact immutability, event causality, policy gate, CSU dispatch, acquisition fail-closed | **yes** (job `check`) |
 | C1 | `run_c1` | pipeline 2+2, CSU manifests, external partner fixture (`c1.csu.external_partner_fixture`), verified result completeness, failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) | **yes** |
 | C2 | `run_c2` | partial **local** protocols (M13): envelope/response/identity schemas, discovery Capability≠Node, UNSUPPORTED_VERSION without side effects | **yes** (job `conformance-c2`, QUEUE #117) |
-| C3 | `run_c3` | **local federation scaffold** (#141): descriptor verify, join/leave/rejoin; audit smoke | **no** (manual / local; not a merge gate yet) |
-| C4–C5 | — | settlement / research | no |
+| C3 | `run_c3` | **local federation scaffold** (#141); Phase H глибочить cases / capability / CRP (`#160`–`#170`) | **no** (optional job `#164`; not merge gate) |
+| C4 | `run_c4` (Phase H `#175`) | settlement audit receipts scaffold | no |
+| C5 | `run_c5` (Phase H `#180`) | research separation + promotion gate scaffold | no |
 
 Reports validate against `aira:schema:conformance:report:0.1` and are published as immutable `ConformanceArtifact`.
 

@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-28  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **DONE** (2026-08-28, RFC-0069).
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **DONE** (2026-08-28, RFC-0069). Phase H Protocol depth v0.3 [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — `#152`–`#183` **OPEN**.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; **OPEN немає** — потрібен новий план етапу |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152` **DONE**; `#153` **OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | **порожня** (Phase G closed); post-G лише за новим планом |
+| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#153` |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** (2026-08-28).
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** (2026-08-28). Phase H — [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#183` **OPEN**.
 
 ---
 
@@ -286,7 +286,7 @@ F0 stabilize CI (#107–#109)
 
 ### Наступний цикл (Phase G)
 
-**Phase G завершено** (`#120`–`#151` DONE; RFC-0069). **OPEN немає.**
+**Phase G завершено** (`#120`–`#151` DONE; RFC-0069). Далі — Phase H нижче.
 
 ```text
 G0 govern (#120–#121)
@@ -303,7 +303,61 @@ G0 govern (#120–#121)
                       → G10 docs (#151) ✓
 ```
 
-Post-G: лише новий план етапу + RFC; анти-місія README **ніколи** в QUEUE.
+## Активна черга (лінійна) — Phase H: Protocol depth & durable reference v0.3
+
+План: [`docs/phase-h-plan.md`](docs/phase-h-plan.md). Джерела: Phase G §7 (зведені в **одну** лінію); Conformance C3→C4→C5; Book II CRP/Settlement; Book V promotion.  
+**Не** GPU/LLM/blockchain/scheduler; **не** distributed OperationalPlane; CRP = capability routing; Settlement = audit receipts.
+
+| # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
+|---|--------|---------|-----------------|-----------|------------------|
+| 152 | **DONE** | ~~Analyze-187 — Phase H wiring~~ | `phase-h-plan.md` + QUEUE `#152`–`#183` + cross-links; living smoke ids | docs + QUEUE узгоджені; phase_h_doc | stores code; CRP |
+| 153 | **OPEN** | Analyze-188 — C3 governance note | conformance + ci-governance: C3 optional; gate criteria | docs sync | C3 CI job (#164) |
+| 154 | **OPEN** | Analyze-189 — event hash-chain tip | append + verify tip; mid-log tamper detect | named test green | prefix recovery (#155) |
+| 155 | **OPEN** | Analyze-190 — event prefix recovery | corrupt trailing → valid prefix recover | test + doc note | new backend (#156) |
+| 156 | **OPEN** | Analyze-191 — durable event backend | file-chain або SQLite events module | unit tests green | session wire (#157) |
+| 157 | **OPEN** | Analyze-192 — session durable events | LocalSession/init_node → durable backend; reopen | roundtrip test | Sqlite objects (#158) |
+| 158 | **OPEN** | Analyze-193 — Sqlite object path | node/plane Sqlite object path test + doc | test green; no Core→node | status rollup (#159) |
+| 159 | **OPEN** | Analyze-194 — stores status rollup | implementation-status stores/event rows | PARTIAL notes reflect H1 | capability ad (#160) |
+| 160 | **OPEN** | Analyze-195 — capability ad persist | load/save local capability advertisements | тест | C3 case (#161) |
+| 161 | **OPEN** | Analyze-196 — C3 capability case | `c3.capability.advertisement` у run_c3 | case green | policy export (#162) |
+| 162 | **OPEN** | Analyze-197 — federation export deny | policy-scoped export/import deny + audit | smoke green | C3 ≥6 (#163) |
+| 163 | **OPEN** | Analyze-198 — C3 cases ≥6 | run_c3 ≥6 named local cases + doc | suite count met | C3 CI job (#164) |
+| 164 | **OPEN** | Analyze-199 — optional C3 CI | workflow job non-gate + governance note | job runs on PR/main | CRP schemas (#165) |
+| 165 | **OPEN** | Analyze-200 — CRP schema fixtures | route request/candidate fixtures validate | schema CI green | CRP adapter (#166) |
+| 166 | **OPEN** | Analyze-201 — CRP local adapter | in-process CRP + short RFC; capability≠node | adapter tests + RFC | node-keyed reject (#167) |
+| 167 | **OPEN** | Analyze-202 — CRP reject node route | conformance: node-keyed route → fail | named case green | multi-candidate (#168) |
+| 168 | **OPEN** | Analyze-203 — CRP multi-candidate gate | ≥2 candidates; Policy Gate before bind | ALLOW/DENY tests | CRP events (#169) |
+| 169 | **OPEN** | Analyze-204 — CRP route events | selected/rejected/failure events | тест | B2-006 case (#170) |
+| 170 | **OPEN** | Analyze-205 — B2-006 C3 case | `c3.crp.route_candidate` | run_c3 green | status CRP (#171) |
+| 171 | **OPEN** | Analyze-206 — CRP status PARTIAL | implementation-status CRP ABSENT→PARTIAL | matrix updated | settlement fixtures (#172) |
+| 172 | **OPEN** | Analyze-207 — settlement fixtures | receipt schema fixtures + privacy fields | schema validate green | receipt store (#173) |
+| 173 | **OPEN** | Analyze-208 — settlement receipt store | append-only receipts; verify-on-read smoke | tests green | B2-011 (#174) |
+| 174 | **OPEN** | Analyze-209 — B2-011 privacy smoke | privacy class / redaction local test | named test | run_c4 (#175) |
+| 175 | **OPEN** | Analyze-210 — run_c4 scaffold | minimal C4 receipt cases | runner + doc | status settlement (#176) |
+| 176 | **OPEN** | Analyze-211 — settlement status | implementation-status Settlement→PARTIAL | matrix updated | RFC-P doc (#177) |
+| 177 | **OPEN** | Analyze-212 — RFC-P promotion doc | `docs/rfc-p-promotion.md` | doc merged | promotion fixtures (#178) |
+| 178 | **OPEN** | Analyze-213 — promotion fixtures | promotion-candidate schema fixtures | schema validate green | non-operational gate (#179) |
+| 179 | **OPEN** | Analyze-214 — non-operational gate | research input rejected as operational | тест | run_c5 (#180) |
+| 180 | **OPEN** | Analyze-215 — run_c5 scaffold | research separation + promotion cases | runner + doc | status rollup (#181) |
+| 181 | **OPEN** | Analyze-216 — promotion status | implementation-status C5/promotion notes | matrix updated | v0.3 docs (#182) |
+| 182 | **OPEN** | Analyze-217 — Reference v0.3 docs | README + implementation-status v0.3 | docs sync | RFC-0077 (#183) |
+| 183 | **OPEN** | Analyze-218 — Phase H RFC-0077 | consolidating RFC; close H | QUEUE H DONE; no OPEN | post-H new plan only |
+
+### Наступний цикл (Phase H)
+
+**Перший OPEN:** `#153` (C3 governance note). `#152` DONE. Далі строго лінійно `#154`…`#183`.
+
+```text
+H0 govern (#152–#153)
+  → H1 durable stores (#154–#159)
+    → H2 C3 federation depth (#160–#164)
+      → H3 CRP local (#165–#171)
+        → H4 settlement audit (#172–#176)
+          → H5 research promotion (#177–#181)
+            → H6 docs RFC-0077 (#182–#183)
+```
+
+Анти-місія README **ніколи** в QUEUE.
 
 ---
 

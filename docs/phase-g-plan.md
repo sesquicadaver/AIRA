@@ -146,18 +146,21 @@ implementation-status відображає v0.2 posture; Phase G RFC closure.
 - Consolidating atom: [`AIRA-RFC-0069`](../../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (`#151`).
 - Per-atom RFC-G лише при контрактній зміні (C3 scaffold, epistemic CSU, federation leave).
 
-## 7. Post-G (лише за RFC + новий план; не в лінійній черзі)
+## 7. Post-G → Phase H (один лінійний план)
 
-**Не** «Phase H» з GPU/marketplace — такі теми з §3 анти-місії заборонені.
+Після DONE `#151` напрями нижче **зведені** в єдиний лінійний етап (без вилок / паралельних планів):
 
-Потенційні **AIRA-вирівняні** напрями після DONE `#151` (кожен — окремий план, не автоматичний backlog):
+[`phase-h-plan.md`](phase-h-plan.md) → QUEUE `#152`–`#183`.
+
+Порядок залежності (Conformance C3→C4→C5):
 
 ```text
-CRP protocol (Book II B2-006) — design/RFC, не compute marketplace
-Settlement protocol (B2-011) — audit receipts, не blockchain product
-Controlled federation expansion (C3–C5 local conformance depth)
-Research promotion discipline (Book V → RFC-P)
-Production-grade event/object stores (без scheduler у Core)
+durable stores
+  → C3 federation depth + capability advertisement
+    → CRP local (B2-006; не marketplace)
+      → Settlement audit receipts (B2-011; не blockchain)
+        → Research promotion discipline (Book V → RFC-P)
+          → docs / RFC-0077 / Reference v0.3
 ```
 
-Додавання в QUEUE — лише новий план етапу після закриття G; анти-місія з §3 **ніколи**.
+Анти-місія з §3 **ніколи** в QUEUE.
