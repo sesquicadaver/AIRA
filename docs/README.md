@@ -40,7 +40,7 @@ Core що «вирішує задачі» замість CSU contracts
 |-----|-------|
 | [`csu-development.md`](csu-development.md) | Manifest, trait, basic set |
 | [`model-acquisition-policy.md`](model-acquisition-policy.md) | Download/publish fail-closed |
-| `csu-sdk.md` | Planned Phase G `#140` (not yet in tree) |
+| [`csu-sdk.md`](csu-sdk.md) | Third-party CSU contract (`#145`; not marketplace) |
 
 ## Local node & network (post-MVP)
 

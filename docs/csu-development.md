@@ -1,6 +1,6 @@
 # CSU development guide
 
-See also: [model-acquisition-policy.md](model-acquisition-policy.md) (local model layer). Phase G `#140` will add [`csu-sdk.md`](csu-sdk.md) (third-party CSU contract doc; **not** a CSU marketplace).
+See also: [model-acquisition-policy.md](model-acquisition-policy.md) (local model layer); [`csu-sdk.md`](csu-sdk.md) (third-party CSU contract; **not** a CSU marketplace; QUEUE `#145`).
 
 ## What a CSU is
 

@@ -80,8 +80,8 @@ mod tests {
             "failures={:?}",
             suite.report.failures
         );
-        assert!(suite.report.results.passed >= 5);
-        assert_eq!(suite.cases.len(), 5);
+        assert!(suite.report.results.passed >= 6);
+        assert_eq!(suite.cases.len(), 6);
     }
 
     #[test]
