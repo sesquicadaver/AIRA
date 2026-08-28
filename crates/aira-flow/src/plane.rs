@@ -14,6 +14,7 @@ use aira_core::{MemoryObjectStore, ObjectStore};
 use aira_csu::support::{json_bytes, local_identity, local_signature, make_artifact, make_event};
 use aira_csu::{Csu, CsuRuntime, DISPATCH_POLICY_ACTION};
 use aira_csu_context_basic::ContextBasicCsu;
+use aira_csu_epistemic_basic::EpistemicBasicCsu;
 use aira_csu_evidence_basic::EvidenceBasicCsu;
 use aira_csu_execution_basic::ExecutionBasicCsu;
 use aira_csu_reduction_basic::ReductionBasicCsu;
@@ -102,6 +103,7 @@ impl OperationalPlane {
             Box::new(ExecutionBasicCsu::new().with_run_nonce(run_nonce)),
             Box::new(VerificationBasicCsu::new().with_run_nonce(run_nonce)),
             Box::new(EvidenceBasicCsu::new().with_run_nonce(run_nonce)),
+            Box::new(EpistemicBasicCsu::new().with_run_nonce(run_nonce)),
         ];
         for h in handlers {
             let id = h.manifest().csu_id.clone();
@@ -237,6 +239,32 @@ impl OperationalPlane {
 
     pub fn has_verified_result_artifact(&self) -> bool {
         self.artifacts_of_type(ArtifactType::VerifiedResultArtifact)
+    }
+
+    /// Latest epistemic assessment artifact from the reference plane (#147).
+    pub fn latest_epistemic_assessment(&self) -> Option<(AiraRef, Value)> {
+        for e in self.events().iter().rev() {
+            if e.event_type != EventType::ArtifactPublished {
+                continue;
+            }
+            for id in &e.artifact_refs {
+                if let Ok((desc, bytes)) = self.artifacts.resolve(id) {
+                    if desc.artifact_type != ArtifactType::KnowledgeArtifact {
+                        continue;
+                    }
+                    if let Ok(v) = serde_json::from_slice::<Value>(&bytes) {
+                        if v.get("epistemic_status").is_some()
+                            && v.get("assessment_id").is_some()
+                            && v.get("confidence").is_some()
+                            && v.get("scope").is_some()
+                        {
+                            return Some((id.clone(), v));
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 
     fn artifacts_of_type(&self, ty: ArtifactType) -> bool {

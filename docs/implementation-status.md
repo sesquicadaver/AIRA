@@ -93,7 +93,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Evidence CSU | EVD-001 | `csu/evidence-basic` | crate + C1 failure path | **DONE** | Does not assign Epistemic Status |
 | Artifact CSU publish/resolve/supersede | ART-001 | `csu/artifact-basic` | `publish_resolve_supersede_events` | **DONE** | |
 | Model acquisition policy gate | D4; QUEUE #60/#115 | `csu/model-acquisition` | `deny_without_policy_*`; `fail_closed_audit_*`; `c0.acquisition.fail_closed` | **DONE** | Default DENY download/publish; see `docs/model-acquisition-policy.md` |
-| Epistemic CSU | EPI-001; Book III §16; Book IV §13.7 | `csu/epistemic-basic` | `epi_001_assessment_separates_coordinates_and_revisions` | **PARTIAL** | Smoke only; full plane out; path `#147` |
+| Epistemic CSU | EPI-001; Book III §16; Book IV §13.7 | `csu/epistemic-basic` + plane wiring | `epi_001_…`; `epistemic_assessment_roundtrip_via_plane_and_session` | **PARTIAL** | Full Epistemic plane still out |
 | Discovery / Federation / Settlement / Optimization / PHM / Evolution / Research / Human Interaction CSUs | Book III §20–27 | — | — | **ABSENT** / **RESEARCH** | Human collapse is plane STUB, not HUM CSU |
 | Durable per-CSU tenant signing | Book III identity; crypto docs | `aira-object` `tenant/` | tenant module tests; CLI tenant_secret tests | **POST-MVP** | Beyond C1 basic set |
 
@@ -250,7 +250,7 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #144 | External CSU fixture | `manifest-external-partner.json`; `external_third_party_csu_fixture_registry_smoke` | **DONE** @ PR #107 |
 | #145 | CSU SDK doc | `docs/csu-sdk.md`; `c1.csu.external_partner_fixture` | **DONE** @ PR #108 |
 | #146 | epistemic-basic CSU | `csu/epistemic-basic`; EPI-001 smoke | **DONE** @ PR #109 |
-| #147 | Epistemic assessment path | plane/CLI roundtrip | **OPEN** |
+| #147 | Epistemic assessment path | plane/session roundtrip; `epistemic_assessment_roundtrip_via_plane_and_session` | **IN PROGRESS** |
 | #148–#150 | Production packaging | macOS codesign; Windows MSI; Linux deb |
 | #151 | Phase G docs + RFC | README + this file v0.2; RFC-0069; QUEUE G closed |
 

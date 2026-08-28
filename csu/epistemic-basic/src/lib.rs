@@ -1,8 +1,8 @@
-//! Epistemic-basic CSU (QUEUE #146 / EPI-001).
+//! Epistemic-basic CSU (QUEUE #146 / EPI-001; plane path `#147`).
 //!
 //! Separates Evidence, Confidence, Scope, and Epistemic Status; supports
 //! Counter Evidence and Revision History. Does **not** implement a full
-//! Epistemic plane (`#147` assessment path / later).
+//! Epistemic plane.
 
 use aira_artifact::ArtifactType;
 use aira_csu::support::{basic_manifest, json_bytes, make_artifact_as, make_event_as};
@@ -34,11 +34,8 @@ impl EpistemicBasicCsu {
                 "aira:csu:epistemic.basic",
                 "epistemic-basic",
                 CsuType::Epistemic,
-                &[
-                    "ResultPublished",
-                    "FailureEvidenceCreated",
-                    "ArtifactPublished",
-                ],
+                // Avoid ArtifactPublished: this CSU emits that type and would recurse in plane drain.
+                &["ResultPublished", "FailureEvidenceCreated"],
                 &["ArtifactPublished"],
             ),
             seq: 1,
@@ -104,8 +101,7 @@ impl Csu for EpistemicBasicCsu {
     ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
         let is_result = event.event_type == EventType::ResultPublished;
         let is_failure_ev = event.event_type == EventType::FailureEvidenceCreated;
-        let is_artifact = event.event_type == EventType::ArtifactPublished;
-        if !is_result && !is_failure_ev && !is_artifact {
+        if !is_result && !is_failure_ev {
             return Ok(vec![]);
         }
 
@@ -129,10 +125,8 @@ impl Csu for EpistemicBasicCsu {
                 "Contradicted",
                 0.2_f64,
             )
-        } else if is_result {
-            (evidence_refs.clone(), Vec::new(), "Hypothesis", 0.7_f64)
         } else {
-            (evidence_refs.clone(), Vec::new(), "Observation", 0.5_f64)
+            (evidence_refs.clone(), Vec::new(), "Hypothesis", 0.7_f64)
         };
 
         let assessment_id = self.next_id("epistemic");
