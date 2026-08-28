@@ -126,6 +126,26 @@ Docs: Reference v0.3; RFC-0077; QUEUE #152–#183 DONE.
 - Consolidating: `specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md` (`#183`).
 - Per-atom RFC обов’язковий при контрактній зміні: CRP adapter (`#166`), settlement receipts (`#173`/`#175`), promotion gate (`#179`/`#180`).
 
-## 7. Post-H
+## 7. Post-H → Phase I (один лінійний план)
 
-Лише **новий** план етапу після DONE `#183`. Не відкривати паралельні черги.
+Після DONE `#183` напрям нижче — **єдиний** наступний етап (без вилок / паралельних черг із хвостом H):
+
+[`phase-i-plan.md`](phase-i-plan.md) → QUEUE `#184`–`#198` (**активується лише після `#183`**).
+
+Порядок (semantic contracts перед новим protocol plan):
+
+```text
+status honesty
+  → Handle integrity
+    → semantic Verification
+      → CSU PolicyGate in invoke
+        → durable reuse (LocalSession)
+          → identity fail-closed
+            → atomic / recoverable persistence
+              → clock + replay + nonce + crypto scope + CI supply-chain
+                → docs / RFC-0078
+```
+
+Джерело пріоритетів: аудит `main` @ `b66bcf1` (P0–P2). Анти-місія README **ніколи** в QUEUE.
+
+До `#183` DONE: Phase I план зафіксований, але **перший OPEN лишається** у Phase H (`#163`…).

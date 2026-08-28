@@ -23,6 +23,7 @@ Core що «вирішує задачі» замість CSU contracts
 | F | [`phase-f-plan.md`](phase-f-plan.md) | `#107`–`#119` | **DONE** |
 | G | [`phase-g-plan.md`](phase-g-plan.md) | `#120`–`#151` | **DONE** (RFC-0069) |
 | H | [`phase-h-plan.md`](phase-h-plan.md) | `#152`–`#183` | **IN PROGRESS** (`#152`–`#162` DONE; OPEN `#163`) |
+| I | [`phase-i-plan.md`](phase-i-plan.md) | `#184`–`#198` | **PLANNED** (після DONE `#183`; не активна черга) |
 
 ## Core reference
 
