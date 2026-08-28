@@ -48,12 +48,13 @@ Use `aira_csu::support::{basic_manifest, make_event, make_artifact}` for MVP hel
 | execution-basic | safe math/text actions |
 | verification-basic | Verified Result |
 | evidence-basic | failure/result evidence |
+| epistemic-basic | EPI-001 assessment (Evidence/Confidence/Scope/Status; `#146`) |
 | artifact-basic | publish/resolve/supersede ops |
 | model-acquisition | local model download/publish policy gate (not marketplace) |
 | model-rating | contextual rating evidence (local-only) |
 | model-recommendation | advisory upgrade recommendation (local-only) |
 
-**Planned Phase G `#141`:** `epistemic-basic` (EPI-001 smoke).
+**Phase G `#147`:** epistemic assessment path (plane/CLI roundtrip).
 
 ## Isolation baseline
 

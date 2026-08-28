@@ -1,0 +1,19 @@
+[package]
+name = "aira-csu-epistemic-basic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "AIRA epistemic-basic CSU (EPI-001)"
+
+[dependencies]
+aira-csu = { path = "../../crates/aira-csu" }
+aira-event = { path = "../../crates/aira-event" }
+aira-artifact = { path = "../../crates/aira-artifact" }
+aira-object = { path = "../../crates/aira-object" }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+aira-schema = { path = "../../crates/aira-schema" }

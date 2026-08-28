@@ -280,6 +280,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "aira-csu-epistemic-basic"
+version = "0.1.0"
+dependencies = [
+ "aira-artifact",
+ "aira-csu",
+ "aira-event",
+ "aira-object",
+ "aira-schema",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "aira-csu-evidence-basic"
 version = "0.1.0"
 dependencies = [

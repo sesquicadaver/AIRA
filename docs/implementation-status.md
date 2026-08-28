@@ -36,7 +36,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Operational pipeline PS → Interpret → Reduce → Materialize → Verify → VRA | Book 0 §4; B0-003; OP-001 | `aira_flow::OperationalPlane` (C1 **reference/demo**) | `c1.pipeline.calculate_2_plus_2`; `aira-flow` `calculate_two_plus_two_demo` | **DONE** | Plane is not production event/scheduler/federation runtime |
 | Human Final Collapse / no silent pick | Book 0 A6; B0-004 | `is_normative_split` string heuristic + OperationalArtifact | `normative_split_stub_does_not_autocollapse` | **STUB** | Not a full Differentiated Solution Field CSU |
 | Evidence primacy | Book 0 A5; B0-005 | `schemas/evidence/claim-artifact.schema.json`; `csu/evidence-basic`; failure evidence path | `schema validate --fixtures` claim/assumption (#125); `c1.failure.to_evidence`; `failure_creates_failure_evidence` | **PARTIAL** | B0-005 schema gate for Claim vs Assumption; no runtime Epistemic CSU |
-| Epistemic Status as distinct coordinate | Book 0 §6 | `schemas/evidence/epistemic-assessment.schema.json` | schema fixtures (#108) | **PARTIAL** | No Epistemic CSU (`csu/` has no epistemic crate) |
+| Epistemic Status as distinct coordinate | Book 0 §6 | `schemas/evidence/epistemic-assessment.schema.json`; `csu/epistemic-basic` | schema fixtures (#108); `epi_001_assessment_separates_coordinates_and_revisions` | **PARTIAL** | Plane/CLI roundtrip is `#147`; full Epistemic plane out |
 | Evolution / Research plane | Book 0 §10; Book V | — | — | **RESEARCH** | Isolated; not mixed into Core |
 | Cost / escalation / Goal Compiler | Book 0 §8–9; Book V | — | — | **RESEARCH** | Out of MVP |
 
@@ -93,7 +93,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Evidence CSU | EVD-001 | `csu/evidence-basic` | crate + C1 failure path | **DONE** | Does not assign Epistemic Status |
 | Artifact CSU publish/resolve/supersede | ART-001 | `csu/artifact-basic` | `publish_resolve_supersede_events` | **DONE** | |
 | Model acquisition policy gate | D4; QUEUE #60/#115 | `csu/model-acquisition` | `deny_without_policy_*`; `fail_closed_audit_*`; `c0.acquisition.fail_closed` | **DONE** | Default DENY download/publish; see `docs/model-acquisition-policy.md` |
-| Epistemic CSU | EPI-001; Book III §16; Book IV §13.7 | schema only | — | **ABSENT** | Not in `csu/` |
+| Epistemic CSU | EPI-001; Book III §16; Book IV §13.7 | `csu/epistemic-basic` | `epi_001_assessment_separates_coordinates_and_revisions` | **PARTIAL** | Smoke only; full plane out; path `#147` |
 | Discovery / Federation / Settlement / Optimization / PHM / Evolution / Research / Human Interaction CSUs | Book III §20–27 | — | — | **ABSENT** / **RESEARCH** | Human collapse is plane STUB, not HUM CSU |
 | Durable per-CSU tenant signing | Book III identity; crypto docs | `aira-object` `tenant/` | tenant module tests; CLI tenant_secret tests | **POST-MVP** | Beyond C1 basic set |
 
@@ -249,7 +249,8 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #143 | SQLite object path | `init_node` `db/aira.sqlite` migrate idempotent; corrupt JSON fail-closed; tests | **DONE** @ PR #106 |
 | #144 | External CSU fixture | `manifest-external-partner.json`; `external_third_party_csu_fixture_registry_smoke` | **DONE** @ PR #107 |
 | #145 | CSU SDK doc | `docs/csu-sdk.md`; `c1.csu.external_partner_fixture` | **DONE** @ PR #108 |
-| #146–#147 | Epistemic basic | `csu/epistemic-basic`; assessment roundtrip |
+| #146 | epistemic-basic CSU | `csu/epistemic-basic`; EPI-001 smoke | **IN PROGRESS** |
+| #147 | Epistemic assessment path | plane/CLI roundtrip | **OPEN** |
 | #148–#150 | Production packaging | macOS codesign; Windows MSI; Linux deb |
 | #151 | Phase G docs + RFC | README + this file v0.2; RFC-0069; QUEUE G closed |
 
