@@ -1,6 +1,6 @@
 //! AIRA local operational flow (Issue Set Epic 7 / #47–#56 + Epic 8 local node).
 //!
-//! Wires Problem submit → basic CSU pipeline → Verified Result / Evidence.
+//! Wires Problem submit → basic CSU pipeline → Verified Result / Evidence / Epistemic assessment.
 //! Epic 8 adds `.aira` layout persistence via [`local`].
 //!
 //! [`OperationalPlane`] is a **C1 reference/demo** (Analyze-86): not a production
@@ -209,6 +209,44 @@ mod tests {
             .events()
             .iter()
             .any(|e| e.event_type == EventType::CapsuleCompleted));
+    }
+
+    #[test]
+    fn epistemic_assessment_roundtrip_via_plane_and_session() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let arts = dir.path().join("arts");
+        let mut plane = OperationalPlane::open(&arts).unwrap();
+        plane.submit_problem("Calculate 2 + 2").unwrap();
+        let (aid, body) = plane
+            .latest_epistemic_assessment()
+            .expect("epistemic assessment after ResultPublished");
+        assert_eq!(body["epistemic_status"], json!("Hypothesis"));
+        assert!(body.get("evidence_refs").is_some());
+        assert!(body.get("confidence").is_some());
+        assert!(body.get("scope").is_some());
+        assert!(body.get("counter_evidence_refs").is_some());
+        assert!(body.get("revision_refs").is_some());
+
+        let root = aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let reg = aira_schema::SchemaRegistry::load(root.join("schemas")).unwrap();
+        reg.validate("aira:schema:epistemic:assessment:0.1", &body)
+            .unwrap();
+
+        // LocalSession / CLI path: submit + resolve assessment artifact bytes.
+        let node = dir.path().join(".aira");
+        init_node(&node).unwrap();
+        let mut session = LocalSession::open(&node).unwrap();
+        session.submit_problem("Calculate 2 + 2").unwrap();
+        let (id, _) = session
+            .plane()
+            .latest_epistemic_assessment()
+            .expect("session epistemic path");
+        let (desc, bytes) = session.get_artifact(id.as_str()).unwrap();
+        assert_eq!(desc["artifact_type"], json!("KnowledgeArtifact"));
+        let again: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(again["epistemic_status"], json!("Hypothesis"));
+        let _ = aid;
     }
 
     #[test]

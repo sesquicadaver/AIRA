@@ -54,7 +54,7 @@ Use `aira_csu::support::{basic_manifest, make_event, make_artifact}` for MVP hel
 | model-rating | contextual rating evidence (local-only) |
 | model-recommendation | advisory upgrade recommendation (local-only) |
 
-**Phase G `#147`:** epistemic assessment path (plane/CLI roundtrip).
+**Phase G `#148`+:** production packaging scripts.
 
 ## Isolation baseline
 

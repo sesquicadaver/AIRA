@@ -484,6 +484,7 @@ dependencies = [
  "aira-core",
  "aira-csu",
  "aira-csu-context-basic",
+ "aira-csu-epistemic-basic",
  "aira-csu-evidence-basic",
  "aira-csu-execution-basic",
  "aira-csu-reduction-basic",
