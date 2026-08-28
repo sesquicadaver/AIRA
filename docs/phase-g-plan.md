@@ -1,9 +1,10 @@
 # Phase G — Reference completion v0.2
 
-**Статус:** складено 2026-08-24; **OPEN** → QUEUE `#120`–`#151` (2026-08-26: SEC `#134`–`#138` перед federation).  
+**Статус:** складено 2026-08-24; **DONE** 2026-08-28 → QUEUE `#120`–`#151` (RFC-0069).  
 **Джерела:** [`implementation-status.md`](implementation-status.md) (PARTIAL/STUB/ABSENT); [`phase-f-plan.md`](phase-f-plan.md) §3 post-F; EVO-2 (local C2 → controlled C3 → CSU SDK); [`peer-link.md`](peer-link.md) Out.  
 **Не канон backlog:** канон виконання — [`QUEUE.md`](../QUEUE.md).  
 **Не змінює:** Book 0–III semantics без RFC; не додає CRP/settlement/PHM/HIE як runtime dependency.
+**Closure:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md).
 
 ## 0. Порядок
 
@@ -142,14 +143,14 @@ implementation-status відображає v0.2 posture; Phase G RFC closure.
 
 ## 6. RFC
 
-- Consolidating atom: [`AIRA-RFC-0069`](../../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (`#146`).
+- Consolidating atom: [`AIRA-RFC-0069`](../../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (`#151`).
 - Per-atom RFC-G лише при контрактній зміні (C3 scaffold, epistemic CSU, federation leave).
 
 ## 7. Post-G (лише за RFC + новий план; не в лінійній черзі)
 
 **Не** «Phase H» з GPU/marketplace — такі теми з §3 анти-місії заборонені.
 
-Потенційні **AIRA-вирівняні** напрями після DONE `#146` (кожен — окремий план, не автоматичний backlog):
+Потенційні **AIRA-вирівняні** напрями після DONE `#151` (кожен — окремий план, не автоматичний backlog):
 
 ```text
 CRP protocol (Book II B2-006) — design/RFC, не compute marketplace

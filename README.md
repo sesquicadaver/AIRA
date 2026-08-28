@@ -36,15 +36,15 @@ Problem Statement
 
 **Epic 0–11:** workspace through Partial Local C2 + **MVP Alpha**.
 **Post-MVP:** M11 HTTP; Alpha.2 Ed25519; Identity Keyring; Plane node signing; Trust; Peer P0–P6 + DHT/relay/gossip ([`docs/crypto.md`](docs/crypto.md), [`docs/peer-link.md`](docs/peer-link.md), [`docs/local-node.md`](docs/local-node.md), [`docs/desktop-network-profiles.md`](docs/desktop-network-profiles.md)).
-**Desktop:** Developer Preview Linux/macOS/Windows — [`docs/desktop-ux.md`](docs/desktop-ux.md); network profiles P0–P6 **DONE** (Phase E).
+**Desktop:** Developer Preview Linux/macOS/Windows — [`docs/desktop-ux.md`](docs/desktop-ux.md); network profiles P0–P6 **DONE** (Phase E); packaging helpers `#148`–`#150`.
 **OperationalPlane:** C1 reference/demo only — [`docs/operational-plane.md`](docs/operational-plane.md) (not production event/scheduler/federation runtime).
-**Implementation status:** [`docs/implementation-status.md`](docs/implementation-status.md) — Book 0–IV / schemas / C0–C2 / CSU basic; HTTP/peer = post-MVP.
+**Implementation status:** [`docs/implementation-status.md`](docs/implementation-status.md) — **Reference v0.2** (Book 0–IV / schemas / C0–C3 scaffold / CSU basic + epistemic-basic).
 **Documentation index:** [`docs/README.md`](docs/README.md).
-**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C **#38–#52 DONE**. Phase D **#53–#74 DONE**. Phase E **#75–#106 DONE**. Phase F stabilization **#107–#119 DONE** ([`docs/phase-f-plan.md`](docs/phase-f-plan.md)). Phase G Reference v0.2 **#120–#151 OPEN** — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); **перший OPEN = `#134`** (SEC hardening).
+**Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C–E **DONE**. Phase F stabilization **DONE** (`#107`–`#119`, [`docs/phase-f-plan.md`](docs/phase-f-plan.md)). Phase G Reference v0.2 **`#120`–`#151` DONE** — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); consolidating RFC [`AIRA-RFC-0069`](specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md). Нові атоми — лише за окремим планом етапу (post-G); анти-місія §«What AIRA is not» **ніколи** в QUEUE.
 
-Останні закриті slices: Phase F `#107`–`#119` (Rust 1.94, C2 CI job, verify-on-read, acquisition fail-closed, `peer_lifecycle_p2` CI stable, RFC-0068).
+Останні закриті slices: Phase G `#120`–`#151` (local C2 deepen, SEC hardening, federation leave, C3 scaffold, CSU SDK, epistemic-basic, packaging scripts, docs/RFC-0069).
 
-See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md`, `scripts/prepare-alpha.sh`, `scripts/package-desktop-linux.sh`, `scripts/package-desktop-macos.sh`, and `scripts/package-desktop-windows.sh`.
+See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md`, `scripts/prepare-alpha.sh`, `scripts/package-desktop-linux.sh`, `scripts/package-desktop-macos.sh`, `scripts/package-desktop-windows.sh`, plus production-path helpers `scripts/macos-codesign-notarize.sh`, `scripts/package-desktop-windows-msi.sh`, `scripts/package-desktop-linux-deb.sh`.
 
 Long-running daemons: [`docs/runbook-systemd.md`](docs/runbook-systemd.md).
 
