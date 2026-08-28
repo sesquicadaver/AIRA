@@ -1,15 +1,16 @@
-//! C3 conformance scaffold — local federation ceremony only (Phase G #141).
+//! C3 conformance scaffold — local federation + capability advertisement
+//! (Phase G #141; Phase H #161).
 //!
 //! Not production federated wire protocol; exercises descriptor verify, join,
-//! leave, and re-join paths from `aira-protocol::federation`.
+//! leave, re-join, and local CAP persist from `aira-protocol`.
 
 use std::path::Path;
 
 use aira_object::{AiraRef, Signature, TrustAuditAction, TrustAuditLog};
 use aira_protocol::{
     descriptor_canonical_bytes, join_federation, leave_federation, load_federation_membership,
-    membership_path, verify_federation_descriptor, FederationDescriptor,
-    FEDERATION_DESCRIPTOR_DOMAIN,
+    membership_path, verify_federation_descriptor, CapabilityAdvertisementStore,
+    FederationDescriptor, FEDERATION_DESCRIPTOR_DOMAIN,
 };
 use ed25519_dalek::SigningKey;
 
@@ -25,6 +26,7 @@ pub fn run_c3(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_federation_join_membership(&root),
         test_federation_leave_clears(&root),
         test_federation_rejoin_after_leave(&root),
+        test_capability_advertisement(&root),
     ];
     finalize_suite(ConformanceProfile::C3, cases, artifact_root)
 }
@@ -159,6 +161,66 @@ fn test_federation_rejoin_after_leave(root: &Path) -> CaseResult {
         .any(|e| e.action == TrustAuditAction::FederationLeave)
     {
         return fail(id, "missing federation_leave audit");
+    }
+    pass(id)
+}
+
+/// B2-005 local CAP: persist advertisement, reopen, reject Node-keyed provider (#161).
+fn test_capability_advertisement(root: &Path) -> CaseResult {
+    let id = "c3.capability.advertisement";
+    let sub = root.join("capability-ad");
+    if let Err(e) = std::fs::create_dir_all(&sub) {
+        return fail(id, e.to_string());
+    }
+    let mut store = CapabilityAdvertisementStore::new();
+    let ad = match CapabilityAdvertisementStore::local_advertisement(
+        "aira:capability-ad:c3:execution-basic",
+        "local.execution-basic",
+        "aira:csu:execution-basic",
+    ) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    // B2-005 MUST fields
+    if ad.provider_csu.as_str().is_empty()
+        || ad.capability.capability_type.is_empty()
+        || ad.capability.scope.scope_type.is_empty()
+        || ad.policy_refs.is_empty()
+        || ad.signature.signature_value.trim().is_empty()
+    {
+        return fail(id, "B2-005 required fields missing on local advertisement");
+    }
+    if let Err(e) = store.register(ad) {
+        return fail(id, e.to_string());
+    }
+    if let Err(e) = store.save(&sub) {
+        return fail(id, e.to_string());
+    }
+    if !CapabilityAdvertisementStore::path(&sub).is_file() {
+        return fail(id, "advertisements.json missing after save");
+    }
+    let loaded = match CapabilityAdvertisementStore::load(&sub) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if !loaded.contains("aira:capability-ad:c3:execution-basic") {
+        return fail(id, "advertisement not loaded after reopen");
+    }
+    let mut bad = match CapabilityAdvertisementStore::local_advertisement(
+        "aira:capability-ad:c3:node-keyed",
+        "local.bad",
+        "aira:csu:execution-basic",
+    ) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    bad.provider_csu = match AiraRef::parse("aira:node:local") {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let mut reject = CapabilityAdvertisementStore::new();
+    if reject.register(bad).is_ok() {
+        return fail(id, "Node-keyed provider_csu must be rejected");
     }
     pass(id)
 }
