@@ -9,7 +9,7 @@ Repo-level ТЗ → module → tests map: [implementation-status.md](implementat
 | C0 | `run_c0` | ontology, object/artifact immutability, event causality, policy gate, CSU dispatch, acquisition fail-closed | **yes** (job `check`) |
 | C1 | `run_c1` | pipeline 2+2, CSU manifests, external partner fixture (`c1.csu.external_partner_fixture`), verified result completeness, failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) | **yes** |
 | C2 | `run_c2` | partial **local** protocols (M13): envelope/response/identity schemas, discovery Capability≠Node, UNSUPPORTED_VERSION without side effects | **yes** (job `conformance-c2`, QUEUE #117) |
-| C3 | `run_c3` | **local federation scaffold** (#141); Phase H глибочить cases / capability / CRP (`#160`–`#170`) | **no** (optional job `#164`; not merge gate) |
+| C3 | `run_c3` | **local federation scaffold** (#141); Phase H глибочить cases / capability / CRP (`#160`–`#170`) | **no** — optional only after `#164`; **not** a merge gate ([criteria](ci-governance.md#profile-c3-queue-141-scaffold-153-governance)) |
 | C4 | `run_c4` (Phase H `#175`) | settlement audit receipts scaffold | no |
 | C5 | `run_c5` (Phase H `#180`) | research separation + promotion gate scaffold | no |
 
@@ -17,12 +17,20 @@ Reports validate against `aira:schema:conformance:report:0.1` and are published 
 
 Phase G `#122`–`#124` adds named local C2 cases (idempotency, hash mismatch, unsigned envelope). SEC-2 (`#135`) adds `c2.protocol.envelope_canonical_mutations` and `c2.protocol.response_canonical_mutations`. See [phase-g-plan.md](phase-g-plan.md).
 
+### C3 governance (#153)
+
+- **Today:** run locally; **no** `conformance-c3` job in `ci.yml`; **not** in branch-protection required checks.
+- **Optional CI job (`#164`):** only when `run_c3` has ≥6 stable local cases and the job stays non-required — see [ci-governance.md](ci-governance.md) §Profile C3.
+- **Merge gate:** only via a later dedicated QUEUE atom + RFC after sustained green optional job; never silently.
+- **`#153` does not** add workflow YAML (that is `#164` only).
+
 ## CLI
 
 ```bash
 cargo run -p aira-cli -- conformance run --profile C0 --out /tmp/aira-c0
 cargo run -p aira-cli -- conformance run --profile C1 --out /tmp/aira-c1
 cargo run -p aira-cli -- conformance run --profile C2 --out /tmp/aira-c2
+cargo run -p aira-cli -- conformance run --profile C3 --out /tmp/aira-c3
 ```
 
 ## Library

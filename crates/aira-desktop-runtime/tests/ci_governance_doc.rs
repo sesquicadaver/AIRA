@@ -1,4 +1,4 @@
-//! CI governance doc contract (#109, #120).
+//! CI governance doc contract (#109, #120, #153).
 
 use std::path::PathBuf;
 
@@ -77,4 +77,50 @@ fn ci_workflow_matches_governance_job_name() {
     assert!(doc.contains("fmt-clippy-test-schema-c0-c1"));
     assert!(ci.contains("name: fmt-clippy-test-schema-c0-c1"));
     assert!(ci.contains("name: conformance-c2"));
+}
+
+#[test]
+fn c3_is_not_merge_gate_and_criteria_documented() {
+    let doc = std::fs::read_to_string(repo_root().join("docs/ci-governance.md")).unwrap();
+    let conf = std::fs::read_to_string(repo_root().join("docs/conformance.md")).unwrap();
+    let ci = std::fs::read_to_string(repo_root().join(".github/workflows/ci.yml")).unwrap();
+
+    // #153: C3 remains optional; no workflow job yet (#164).
+    assert!(
+        !ci.contains("conformance-c3"),
+        "ci.yml must not add conformance-c3 before QUEUE #164"
+    );
+    assert!(
+        !ci.contains("conformance run --profile C3"),
+        "C3 must not run in CI until #164"
+    );
+
+    for needle in [
+        "QUEUE #153",
+        "not a merge gate",
+        "When C3 may become an optional CI job",
+        "≥6",
+        "When C3 may become a merge gate",
+        "conformance run --profile C3",
+        "#164",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "ci-governance missing C3 governance: {needle}"
+        );
+    }
+
+    for needle in [
+        "C3 governance (#153)",
+        "not** in branch-protection",
+        "conformance run --profile C3",
+        "#164",
+    ] {
+        assert!(
+            conf.contains(needle),
+            "conformance.md missing C3 governance: {needle}"
+        );
+    }
+
+    assert!(!REQUIRED_MERGE_CHECKS.contains(&"conformance-c3"));
 }

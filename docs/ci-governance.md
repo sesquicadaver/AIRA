@@ -1,4 +1,4 @@
-# CI governance (QUEUE #109, #120)
+# CI governance (QUEUE #109, #120, #153)
 
 Canonical mapping between GitHub Actions and merge policy for `main`. Workflow source: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
@@ -62,12 +62,54 @@ pull_request: main, develop
 
 1. `conformance run --profile C2` — partial local protocol regression gate; separate job from C0/C1.
 
-## Profile C3 (QUEUE #141)
+## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony scaffold (`run_c3`): four named cases under `c3.federation.*`. **Not** in required branch checks — run manually:
+Local federation ceremony (`run_c3`): named cases under `c3.federation.*` (scaffold from `#141`). Phase H deepens C3 later (`#160`–`#170`: capability advertisement, more cases, CRP local).
+
+### Current posture (this atom / QUEUE #153)
+
+| Surface | Status |
+|---------|--------|
+| CLI / library `run_c3` | available |
+| Job in `.github/workflows/ci.yml` | **absent** (added only by `#164`) |
+| Required branch-protection check | **no** — C3 is not a merge gate |
+| Required checks remain | `fmt-clippy-test-schema-c0-c1`, `conformance-c2` only |
+
+Manual / local run:
 
 ```bash
-cargo run -p aira-cli -- --root "$ROOT" conformance run --profile C3
+cargo run -p aira-cli -- --root "$ROOT" conformance run --profile C3 --out /tmp/aira-c3
+```
+
+### When C3 may become an optional CI job (`#164`)
+
+All of the following **MUST** hold before adding a non-required workflow job named `conformance-c3`:
+
+1. `run_c3` exposes a stable, documented set of **≥6** named local cases (target of `#163`).
+2. Cases are **local-only** (no live WAN / discv5 / flake-prone peer mesh).
+3. Job is **informational**: present in `ci.yml` but **not** listed in branch protection required checks.
+4. Adding the job does **not** change C0/C1/C2 steps or required check names.
+5. Docs (`ci-governance.md`, `conformance.md`) name the job and restate “not a merge gate”.
+
+`#153` does **not** create that job — only `#164` may.
+
+### When C3 may become a merge gate (future; not `#164`)
+
+Optional job alone is insufficient. Promoting `conformance-c3` into **required** status checks requires a **separate** QUEUE atom + RFC that records:
+
+1. Sustained green optional `conformance-c3` on `main` (operator judgment; no silent add).
+2. C3 local profile covers the Conformance ladder slice intended for the gate (federation + capability advertisement; CRP local cases when those atoms are DONE).
+3. Explicit update of the “Required status check” table and branch-protection checklist in this file.
+4. C0/C1/C2 gates remain required and are not weakened.
+
+Until that atom exists, treat any PR that adds C3 to required checks as **out of policy**.
+
+### Anti-scope for C3 CI
+
+```text
+full Book II wire / production federation mesh
+discv5 / ICE / TURN as merge-gate dependencies
+CRP marketplace / settlement ledger / scheduler
 ```
 
 ## External checks
@@ -78,6 +120,6 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
 - Phase G plan (DONE): [`phase-g-plan.md`](phase-g-plan.md)
-- Phase H plan (OPEN `#153`): [`phase-h-plan.md`](phase-h-plan.md) — C3 governance `#153`; optional job `#164`
+- Phase H plan (OPEN `#154`): [`phase-h-plan.md`](phase-h-plan.md) — `#153` C3 governance DONE; next H1 stores; optional C3 job `#164`
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
 - RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`)
