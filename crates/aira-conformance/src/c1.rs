@@ -9,7 +9,7 @@ use std::path::Path;
 
 use aira_artifact::{ArtifactStore, ArtifactType};
 use aira_csu::support::make_event;
-use aira_csu::{Csu, CsuManifest};
+use aira_csu::{Csu, CsuManifest, CsuRegistry};
 use aira_csu_artifact_basic::ArtifactBasicCsu;
 use aira_csu_context_basic::ContextBasicCsu;
 use aira_csu_evidence_basic::EvidenceBasicCsu;
@@ -30,6 +30,7 @@ pub fn run_c1(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
     let cases = vec![
         test_operational_pipeline(artifact_root.as_ref()),
         test_csu_manifests(),
+        test_csu_external_partner_fixture(artifact_root.as_ref()),
         test_verified_result_completeness(artifact_root.as_ref()),
         test_verified_result_extended_fields(),
         test_failure_to_evidence(artifact_root.as_ref()),
@@ -92,6 +93,70 @@ fn test_csu_manifests() -> CaseResult {
         if let Err(e) = reg.validate("aira:schema:csu:manifest:0.1", &v) {
             return fail(id, format!("{} schema: {e}", m.csu_id));
         }
+    }
+    pass(id)
+}
+
+/// QUEUE #145 — third-party partner fixture loads into local registry (not a `csu/` crate).
+fn test_csu_external_partner_fixture(artifact_root: &Path) -> CaseResult {
+    let id = "c1.csu.external_partner_fixture";
+    let root = match aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")) {
+        Ok(r) => r,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let path = root.join("fixtures/valid/csu/manifest-external-partner.json");
+    let text = match fs::read_to_string(&path) {
+        Ok(t) => t,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let m: CsuManifest = match serde_json::from_str(&text) {
+        Ok(m) => m,
+        Err(e) => return fail(id, format!("parse: {e}")),
+    };
+    if m.csu_id.as_str() != "aira:csu:partner.external" {
+        return fail(
+            id,
+            format!("expected aira:csu:partner.external, got {}", m.csu_id),
+        );
+    }
+    if let Err(e) = m.validate_for_registration() {
+        return fail(id, format!("validate_for_registration: {e}"));
+    }
+    let reg = match load_registry() {
+        Ok(r) => r,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let v = match serde_json::to_value(&m) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if let Err(e) = reg.validate("aira:schema:csu:manifest:0.1", &v) {
+        return fail(id, format!("schema: {e}"));
+    }
+    let mut registry = CsuRegistry::new();
+    if let Err(e) = registry.register(m.clone(), None) {
+        return fail(id, format!("register: {e}"));
+    }
+    let reg_path = artifact_root
+        .join("c1-external-partner")
+        .join("registry.json");
+    if let Some(parent) = reg_path.parent() {
+        if let Err(e) = fs::create_dir_all(parent) {
+            return fail(id, e.to_string());
+        }
+    }
+    if let Err(e) = registry.save(&reg_path) {
+        return fail(id, format!("save: {e}"));
+    }
+    let loaded = match CsuRegistry::load(&reg_path) {
+        Ok(r) => r,
+        Err(e) => return fail(id, format!("load: {e}")),
+    };
+    if loaded.list().len() != 1 {
+        return fail(id, format!("expected 1 entry, got {}", loaded.list().len()));
+    }
+    if loaded.list()[0].manifest.csu_id != m.csu_id {
+        return fail(id, "loaded csu_id mismatch");
     }
     pass(id)
 }
