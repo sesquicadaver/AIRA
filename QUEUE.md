@@ -341,7 +341,7 @@ G0 govern (#120–#121)
 | 180 | **OPEN** | Analyze-215 — run_c5 scaffold | research separation + promotion cases | runner + doc | status rollup (#181) |
 | 181 | **OPEN** | Analyze-216 — promotion status | implementation-status C5/promotion notes | matrix updated | v0.3 docs (#182) |
 | 182 | **OPEN** | Analyze-217 — Reference v0.3 docs | README + implementation-status v0.3 | docs sync | RFC-0077 (#183) |
-| 183 | **OPEN** | Analyze-218 — Phase H RFC-0077 | consolidating RFC; close H | QUEUE H DONE; no OPEN | post-H new plan only |
+| 183 | **OPEN** | Analyze-218 — Phase H RFC-0077 | consolidating RFC; close H | QUEUE H DONE; no OPEN | Phase I [`docs/phase-i-plan.md`](docs/phase-i-plan.md) `#184`–`#198` |
 
 ### Наступний цикл (Phase H)
 
@@ -358,6 +358,11 @@ H0 govern (#152–#153)
 ```
 
 Анти-місія README **ніколи** в QUEUE.
+
+### Post-H (зафіксовано, не активне)
+
+Після DONE `#183` — Phase I semantic stabilization: [`docs/phase-i-plan.md`](docs/phase-i-plan.md) (`#184`–`#198`).  
+**Не додавати `#184` як OPEN і не виконувати атоми I, доки `#183` ≠ DONE.** Не паралелити з хвостом H.
 
 ---
 
@@ -390,6 +395,8 @@ H0 govern (#152–#153)
 | EVO-3 model layer (CSU/Artifact, не Core) | план [`docs/phase-d-plan.md`](docs/phase-d-plan.md); `#53`–`#74` DONE (D0–D7 complete) |
 | Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#106` DONE (2026-08-22) |
 | Post-E stabilization (phase-e §Пізніше; EVO-2) | [`docs/phase-f-plan.md`](docs/phase-f-plan.md); `#107`–`#119` **DONE** (2026-08-24) |
-| Reference v0.2 (local C2 depth, SEC hardening, C3 scaffold, SDK, packaging) | [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` OPEN (2026-08-26) |
+| Reference v0.2 (local C2 depth, SEC hardening, C3 scaffold, SDK, packaging) | [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** @ RFC-0069 |
+| Protocol depth v0.3 | [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#183` (OPEN `#163`) |
+| Semantic contract stabilization (post-H) | [`docs/phase-i-plan.md`](docs/phase-i-plan.md); `#184`–`#198` **PLANNED** (після `#183`) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
