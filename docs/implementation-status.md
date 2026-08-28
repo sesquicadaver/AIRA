@@ -254,7 +254,7 @@ Plan: [`phase-f-plan.md`](phase-f-plan.md).
 | #148 | macOS codesign | `scripts/macos-codesign-notarize.sh` + `desktop-packaging-macos.md` | **DONE** @ PR #111 |
 | #149 | Windows MSI | `scripts/package-desktop-windows-msi.sh` + WiX stage | **DONE** @ PR #112 |
 | #150 | Linux deb | `scripts/package-desktop-linux-deb.sh` + debian control | **DONE** @ PR #113 |
-| #151 | Phase G docs + RFC | README + this file v0.2; `AIRA-RFC-0069`; QUEUE G closed | **DONE** (this atom) |
+| #151 | Phase G docs + RFC | README + this file v0.2; `AIRA-RFC-0069`; QUEUE G closed | **DONE** @ PR #114 |
 
 Plan: [`phase-g-plan.md`](phase-g-plan.md) **DONE**. RFC: [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md).
 
