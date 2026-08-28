@@ -1,6 +1,6 @@
 # Phase H — Protocol depth & durable reference v0.3
 
-**Статус:** складено 2026-08-28; `#152`–`#157` **DONE**; перший OPEN = `#158`; хвіст `#158`–`#183`.  
+**Статус:** складено 2026-08-28; `#152`–`#158` **DONE**; перший OPEN = `#159`; хвіст `#159`–`#183`.  
 **Джерела:** [`phase-g-plan.md`](phase-g-plan.md) §7 (post-G); [`implementation-status.md`](implementation-status.md) PARTIAL/STUB/ABSENT; Conformance C3→C4→C5 ladder; Book II §10/§15; Book V promotion; EVO-2.  
 **Не канон backlog:** канон виконання — [`QUEUE.md`](../QUEUE.md).  
 **Не змінює:** Book 0–III semantics без per-atom RFC; анти-місію README.

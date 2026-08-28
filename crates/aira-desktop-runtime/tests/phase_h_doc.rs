@@ -56,8 +56,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #157 must be DONE after session durable wire"
     );
     assert!(
-        text.contains("| 158 | **OPEN**"),
-        "QUEUE #158 must be next OPEN"
+        text.contains("| 158 | **DONE**"),
+        "QUEUE #158 must be DONE after Sqlite object path"
+    );
+    assert!(
+        text.contains("| 159 | **OPEN**"),
+        "QUEUE #159 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {

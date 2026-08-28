@@ -11,9 +11,9 @@ mod local;
 mod plane;
 
 pub use local::{
-    init_node, load_config, node_config_present, read_event_log_resilient, EventLogFile,
-    EventLogReadOutcome, LocalSession, NodeConfig, NodePaths, ProblemRecord, DEFAULT_AIRA_ROOT,
-    EVENT_LOG_CORRUPT_BACKUP,
+    init_node, load_config, node_config_present, open_node_sqlite_object_store,
+    read_event_log_resilient, EventLogFile, EventLogReadOutcome, LocalSession, NodeConfig,
+    NodePaths, ProblemRecord, DEFAULT_AIRA_ROOT, EVENT_LOG_CORRUPT_BACKUP,
 };
 pub use plane::{FlowError, OperationalPlane, SubmitOutcome};
 
@@ -31,6 +31,7 @@ mod tests {
     use aira_event::EventType;
     use aira_object::AiraRef;
     use serde_json::json;
+    use std::path::PathBuf;
     use std::sync::{Mutex, OnceLock};
 
     /// Process-wide CSU tenant map / primary signer must not race across parallel tests.
@@ -455,6 +456,73 @@ mod tests {
 
         let again = aira_core::SqliteObjectStore::open(&sqlite_path).unwrap();
         assert_eq!(again.get_by_object_id(&object_id).unwrap().unwrap(), desc);
+    }
+
+    #[test]
+    fn plane_memory_beside_node_sqlite_object_path() {
+        use aira_core::ObjectStore;
+
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+
+        let mut session = LocalSession::open(&root).unwrap();
+        session.submit_problem("Calculate 2 + 2").unwrap();
+        let problem = session.plane().problem_ref().unwrap().clone();
+        assert!(
+            session
+                .plane()
+                .objects()
+                .get_by_object_id(&problem)
+                .unwrap()
+                .is_some(),
+            "plane MemoryObjectStore must hold the submitted problem"
+        );
+
+        // Node SQLite path is independent of the plane memory store (#158).
+        let mut sqlite = open_node_sqlite_object_store(&session.paths).unwrap();
+        let mut durable = aira_object::ObjectDescriptor::example_problem();
+        durable.object_id = aira_object::AiraRef::parse("aira:problem:01SQLITEBESIDE").unwrap();
+        durable = durable
+            .attach_canonical_signature()
+            .expect("resign sqlite-only object");
+        let durable_id = durable.object_id.clone();
+        sqlite.create(durable.clone()).unwrap();
+        drop(sqlite);
+
+        let reopened = open_node_sqlite_object_store(&session.paths).unwrap();
+        assert_eq!(
+            reopened.get_by_object_id(&durable_id).unwrap().unwrap(),
+            durable
+        );
+        // Plane memory still has the session problem; SQLite object is not auto-imported.
+        assert!(session
+            .plane()
+            .objects()
+            .get_by_object_id(&durable_id)
+            .unwrap()
+            .is_none());
+        assert!(session
+            .plane()
+            .objects()
+            .get_by_object_id(&problem)
+            .unwrap()
+            .is_some());
+    }
+
+    #[test]
+    fn aira_core_manifest_has_no_node_or_peer_dep() {
+        let core_toml = std::fs::read_to_string(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../aira-core/Cargo.toml"),
+        )
+        .unwrap();
+        for forbidden in ["aira-node", "aira-peer", "aira-flow", "aira-desktop"] {
+            assert!(
+                !core_toml.contains(forbidden),
+                "aira-core must not depend on {forbidden} (Core↛node firewall)"
+            );
+        }
     }
 
     #[test]

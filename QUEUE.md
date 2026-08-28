@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#157` **DONE**; `#158` **OPEN** |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#158` **DONE**; `#159` **OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#158` |
+| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#159` |
 
 ## Правила атомарності
 
@@ -316,7 +316,7 @@ G0 govern (#120–#121)
 | 155 | **DONE** | ~~Analyze-190 — event prefix recovery~~ | corrupt trailing → valid prefix recover | `corrupt_trailing_event_log_recovers_valid_prefix` | new backend (#156) |
 | 156 | **DONE** | ~~Analyze-191 — durable event backend~~ | file-chain event log module | `file_chain_event_log_persists_across_reopen` | session wire (#157) |
 | 157 | **DONE** | ~~Analyze-192 — session durable events~~ | LocalSession/init_node → durable backend; reopen | `session_durable_file_chain_roundtrip` | Sqlite objects (#158) |
-| 158 | **OPEN** | Analyze-193 — Sqlite object path | node/plane Sqlite object path test + doc | test green; no Core→node | status rollup (#159) |
+| 158 | **DONE** | ~~Analyze-193 — Sqlite object path~~ | node/plane Sqlite object path test + doc | `plane_memory_beside_node_sqlite_object_path` | status rollup (#159) |
 | 159 | **OPEN** | Analyze-194 — stores status rollup | implementation-status stores/event rows | PARTIAL notes reflect H1 | capability ad (#160) |
 | 160 | **OPEN** | Analyze-195 — capability ad persist | load/save local capability advertisements | тест | C3 case (#161) |
 | 161 | **OPEN** | Analyze-196 — C3 capability case | `c3.capability.advertisement` у run_c3 | case green | policy export (#162) |
@@ -345,7 +345,7 @@ G0 govern (#120–#121)
 
 ### Наступний цикл (Phase H)
 
-**Перший OPEN:** `#158` (Sqlite object path). `#152`–`#157` DONE. Далі строго лінійно `#159`…`#183`.
+**Перший OPEN:** `#159` (stores status rollup). `#152`–`#158` DONE. Далі строго лінійно `#160`…`#183`.
 
 ```text
 H0 govern (#152–#153)
