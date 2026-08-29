@@ -1,6 +1,6 @@
 # AIRA documentation index
 
-**Оновлено:** 2026-08-29. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase H `#171` **OPEN**; `#152`–`#170` **DONE**; Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.2** → ціль Phase H: **v0.3**).
+**Оновлено:** 2026-08-29. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase H `#172` **OPEN**; `#152`–`#171` **DONE**; Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.2** → ціль Phase H: **v0.3**).
 
 ## Anti-mission (ніколи в product / QUEUE)
 
@@ -22,7 +22,7 @@ Core що «вирішує задачі» замість CSU contracts
 | E | [`phase-e-plan.md`](phase-e-plan.md) + [`desktop-ux.md`](desktop-ux.md) | `#75`–`#106` | **DONE** |
 | F | [`phase-f-plan.md`](phase-f-plan.md) | `#107`–`#119` | **DONE** |
 | G | [`phase-g-plan.md`](phase-g-plan.md) | `#120`–`#151` | **DONE** (RFC-0069) |
-| H | [`phase-h-plan.md`](phase-h-plan.md) | `#152`–`#183` | **IN PROGRESS** (`#152`–`#170` DONE; OPEN `#171`) |
+| H | [`phase-h-plan.md`](phase-h-plan.md) | `#152`–`#183` | **IN PROGRESS** (`#152`–`#171` DONE; OPEN `#172`) |
 | I | [`phase-i-plan.md`](phase-i-plan.md) | `#184`–`#198` | **PLANNED** (після DONE `#183`; не активна черга) |
 
 ## Core reference
