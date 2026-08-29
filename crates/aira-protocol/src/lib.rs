@@ -39,8 +39,9 @@ pub use federation::{
 };
 pub use identity::{IdentityDescriptor, IdentityType, PublicKeyEntry};
 pub use settlement::{
-    ContributionDescriptor, SettlementReceipt, SettlementReceiptStore, SETTLEMENT_RECEIPTS_REL,
-    SETTLEMENT_RECEIPTS_STORE_SCHEMA,
+    parse_receipt_privacy_checked, validate_settlement_privacy, ContributionDescriptor,
+    SettlementReceipt, SettlementReceiptStore, SETTLEMENT_PRIVACY_FORBIDDEN_KEYS,
+    SETTLEMENT_RECEIPTS_REL, SETTLEMENT_RECEIPTS_STORE_SCHEMA,
 };
 
 /// Crate version string.

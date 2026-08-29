@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#173` **DONE**; `#174` **OPEN** |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#174` **DONE**; `#175` **OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#174` |
+| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#175` |
 
 ## Правила атомарності
 
@@ -332,7 +332,7 @@ G0 govern (#120–#121)
 | 171 | **DONE** | ~~Analyze-206 — CRP status PARTIAL~~ | implementation-status CRP ABSENT→PARTIAL | matrix updated | settlement fixtures (#172) |
 | 172 | **DONE** | ~~Analyze-207 — settlement fixtures~~ | receipt schema fixtures + privacy fields | `schema validate --fixtures` green | receipt store (#173) |
 | 173 | **DONE** | ~~Analyze-208 — settlement receipt store~~ | append-only receipts; verify-on-read smoke | `settlement_receipt_store_*`; RFC-0080 | B2-011 (#174) |
-| 174 | **OPEN** | Analyze-209 — B2-011 privacy smoke | privacy class / redaction local test | named test | run_c4 (#175) |
+| 174 | **DONE** | ~~Analyze-209 — B2-011 privacy smoke~~ | privacy class / redaction local test | `b2_011_settlement_privacy_smoke` | run_c4 (#175) |
 | 175 | **OPEN** | Analyze-210 — run_c4 scaffold | minimal C4 receipt cases | runner + doc | status settlement (#176) |
 | 176 | **OPEN** | Analyze-211 — settlement status | implementation-status Settlement→PARTIAL | matrix updated | RFC-P doc (#177) |
 | 177 | **OPEN** | Analyze-212 — RFC-P promotion doc | `docs/rfc-p-promotion.md` | doc merged | promotion fixtures (#178) |
@@ -345,7 +345,7 @@ G0 govern (#120–#121)
 
 ### Наступний цикл (Phase H)
 
-**Перший OPEN:** `#174` (B2-011 privacy smoke). `#152`–`#173` DONE. Далі строго лінійно `#175`…`#183`.
+**Перший OPEN:** `#175` (`run_c4` scaffold). `#152`–`#174` DONE. Далі строго лінійно `#176`…`#183`.
 
 ```text
 H0 govern (#152–#153)
