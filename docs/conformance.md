@@ -9,7 +9,7 @@ Repo-level ТЗ → module → tests map: [implementation-status.md](implementat
 | C0 | `run_c0` | ontology, object/artifact immutability, event causality, policy gate, CSU dispatch, acquisition fail-closed | **yes** (job `check`) |
 | C1 | `run_c1` | pipeline 2+2, CSU manifests, external partner fixture (`c1.csu.external_partner_fixture`), verified result completeness, failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) | **yes** |
 | C2 | `run_c2` | partial **local** protocols (M13): envelope/response/identity schemas, discovery Capability≠Node, UNSUPPORTED_VERSION without side effects | **yes** (job `conformance-c2`, QUEUE #117) |
-| C3 | `run_c3` | **6 named local cases** (#163): federation×4 + CAP + export_deny; CRP later (`#165`–`#170`) | **optional job** `conformance-c3` (#164) — **not** a merge gate ([governance](ci-governance.md#job-conformance-c3-queue-164)) |
+| C3 | `run_c3` | **6 named local cases** (#163): federation×4 + CAP + export_deny; CRP schemas `#165` DONE; adapter `#166`–`#170` | **optional job** `conformance-c3` (#164) — **not** a merge gate ([governance](ci-governance.md#job-conformance-c3-queue-164)) |
 | C4 | `run_c4` (Phase H `#175`) | settlement audit receipts scaffold | no |
 | C5 | `run_c5` (Phase H `#180`) | research separation + promotion gate scaffold | no |
 

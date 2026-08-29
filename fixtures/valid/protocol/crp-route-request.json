@@ -1,0 +1,46 @@
+{
+  "route_request_id": "aira:crp:request:fixture1",
+  "capsule_ref": "aira:capsule:exec:fixture1",
+  "required_capabilities": [
+    {
+      "capability_id": "aira:capability:math.eval.safe",
+      "capability_type": "math.eval.safe",
+      "schema_version": "0.1",
+      "provider_csu": "aira:csu:execution.basic",
+      "input_artifact_types": ["ExecutionArtifact"],
+      "output_artifact_types": ["ExecutionArtifact"],
+      "constraints": {
+        "latency_max_ms": 100
+      },
+      "scope": {
+        "scope_type": "local",
+        "description": "crp fixture"
+      },
+      "policy_refs": ["aira:policy:default"],
+      "signature": {
+        "algorithm": "ed25519",
+        "key_ref": "aira:identity:local-test",
+        "signature_value": "TESTSIG"
+      },
+      "confidence": 1.0
+    }
+  ],
+  "context_ref": "aira:artifact:context:fixture1",
+  "policy_refs": ["aira:policy:default"],
+  "constraints": {
+    "cost_max": null,
+    "latency_max": "100ms",
+    "reliability_min": 0.9,
+    "privacy_class": "local",
+    "federation_scope": {
+      "scope_type": "local",
+      "description": "no federation mesh"
+    }
+  },
+  "issuer_identity": "aira:identity:local-test",
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}

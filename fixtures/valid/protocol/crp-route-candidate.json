@@ -1,0 +1,25 @@
+{
+  "route_candidate_id": "aira:crp:candidate:fixture1",
+  "route_request_id": "aira:crp:request:fixture1",
+  "capability_chain": [
+    {
+      "capability_ref": "aira:capability:math.eval.safe",
+      "provider_csu": "aira:csu:execution.basic",
+      "role": "execute",
+      "policy_refs": ["aira:policy:default"]
+    }
+  ],
+  "estimated_cost": {
+    "amount": 0,
+    "unit": "local-ops",
+    "currency": null
+  },
+  "risk_descriptor_ref": null,
+  "evidence_refs": ["aira:artifact:evidence:fixture1"],
+  "confidence": 0.95,
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}

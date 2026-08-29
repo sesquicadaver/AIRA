@@ -70,7 +70,7 @@ pull_request: main, develop
 
 ## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony (`run_c3`): **6** named cases (#163) — `c3.federation.descriptor_verify`, `join_membership`, `leave_clears`, `rejoin_after_leave`, `c3.capability.advertisement`, `c3.federation.export_deny`. Optional CI job `conformance-c3` (`#164`, non-gate). Next: CRP `#165`+.
+Local federation ceremony (`run_c3`): **6** named cases (#163) — `c3.federation.descriptor_verify`, `join_membership`, `leave_clears`, `rejoin_after_leave`, `c3.capability.advertisement`, `c3.federation.export_deny`. Optional CI job `conformance-c3` (`#164`, non-gate). CRP schemas (`#165` DONE); next: CRP adapter `#166`+.
 
 ### Current posture (QUEUE #153 + `#164`)
 
@@ -127,6 +127,6 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
 - Phase G plan (DONE): [`phase-g-plan.md`](phase-g-plan.md)
 - Phase I plan (PLANNED after `#183`): [`phase-i-plan.md`](phase-i-plan.md) — Handle/Verify/Policy/Reuse stabilization; not active until H closes
-- Phase H plan (OPEN `#165`): [`phase-h-plan.md`](phase-h-plan.md) — `#164` optional `conformance-c3` DONE (non-gate); next CRP schemas
+- Phase H plan (OPEN `#166`): [`phase-h-plan.md`](phase-h-plan.md) — `#165` CRP schemas DONE; next CRP local adapter
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
 - RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`)

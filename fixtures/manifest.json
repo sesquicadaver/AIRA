@@ -105,6 +105,14 @@
       "file": "fixtures/valid/protocol/response.json"
     },
     {
+      "schema": "aira:schema:protocol:crp-route-request:0.1",
+      "file": "fixtures/valid/protocol/crp-route-request.json"
+    },
+    {
+      "schema": "aira:schema:protocol:crp-route-candidate:0.1",
+      "file": "fixtures/valid/protocol/crp-route-candidate.json"
+    },
+    {
       "schema": "aira:schema:identity:identity-descriptor:0.1",
       "file": "fixtures/valid/identity/identity-descriptor.json"
     },
@@ -201,6 +209,14 @@
     {
       "schema": "aira:schema:protocol:envelope:0.1",
       "file": "fixtures/invalid/protocol/envelope-unsigned.json"
+    },
+    {
+      "schema": "aira:schema:protocol:crp-route-request:0.1",
+      "file": "fixtures/invalid/protocol/crp-route-request-unsigned.json"
+    },
+    {
+      "schema": "aira:schema:protocol:crp-route-candidate:0.1",
+      "file": "fixtures/invalid/protocol/crp-route-candidate-empty-chain.json"
     },
     {
       "schema": "aira:schema:model:artifact:0.1",

@@ -84,8 +84,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #164 must be DONE after optional C3 CI"
     );
     assert!(
-        text.contains("| 165 | **OPEN**"),
-        "QUEUE #165 must be next OPEN"
+        text.contains("| 165 | **DONE**"),
+        "QUEUE #165 must be DONE after CRP schema fixtures"
+    );
+    assert!(
+        text.contains("| 166 | **OPEN**"),
+        "QUEUE #166 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
@@ -126,6 +130,8 @@ fn phase_h_h1_stores_status_rollup() {
         "federation_export_import_deny_by_default_audits",
         "c3.federation.export_deny",
         "conformance-c3",
+        "aira:schema:protocol:crp-route-request:0.1",
+        "aira:schema:protocol:crp-route-candidate:0.1",
     ] {
         assert!(
             text.contains(needle),
