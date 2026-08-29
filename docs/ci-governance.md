@@ -70,13 +70,13 @@ pull_request: main, develop
 
 ## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony (`run_c3`): **6** named cases (#163) — `c3.federation.descriptor_verify`, `join_membership`, `leave_clears`, `rejoin_after_leave`, `c3.capability.advertisement`, `c3.federation.export_deny`. Optional CI job `conformance-c3` (`#164`, non-gate). CRP schemas `#165` + `LocalCrpAdapter` `#166` (RFC-0079); next: node-keyed reject `#167`.
+Local federation ceremony (`run_c3`): **7** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167). Optional CI job `conformance-c3` (`#164`, non-gate). Next: CRP multi-candidate `#168`.
 
 ### Current posture (QUEUE #153 + `#164`)
 
 | Surface | Status |
 |---------|--------|
-| CLI / library `run_c3` | available (6 named cases, `#163`) |
+| CLI / library `run_c3` | available (7 named cases) |
 | Job in `.github/workflows/ci.yml` | **`conformance-c3`** (QUEUE `#164`) — **informational** |
 | Required branch-protection check | **no** — C3 is not a merge gate |
 | Required checks remain | `fmt-clippy-test-schema-c0-c1`, `conformance-c2` only |
@@ -91,7 +91,7 @@ cargo run -p aira-cli -- --root "$ROOT" conformance run --profile C3 --out /tmp/
 
 Criteria that **MUST** hold (and do) for the non-required workflow job named `conformance-c3`:
 
-1. `run_c3` exposes a stable, documented set of **≥6** named local cases (**DONE** `#163`: 6 cases).
+1. `run_c3` exposes a stable, documented set of **≥6** named local cases (**DONE** `#163`: 6; **`#167`**: 7 with CRP node reject).
 2. Cases are **local-only** (no live WAN / discv5 / flake-prone peer mesh).
 3. Job is **informational**: present in `ci.yml` but **not** listed in branch protection required checks.
 4. Adding the job does **not** change C0/C1/C2 steps or required check names.
@@ -127,6 +127,6 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
 - Phase G plan (DONE): [`phase-g-plan.md`](phase-g-plan.md)
 - Phase I plan (PLANNED after `#183`): [`phase-i-plan.md`](phase-i-plan.md) — Handle/Verify/Policy/Reuse stabilization; not active until H closes
-- Phase H plan (OPEN `#167`): [`phase-h-plan.md`](phase-h-plan.md) — `#166` CRP adapter DONE (RFC-0079); next node-keyed reject
+- Phase H plan (OPEN `#168`): [`phase-h-plan.md`](phase-h-plan.md) — `#167` CRP node-reject DONE; next multi-candidate gate
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
 - RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`)

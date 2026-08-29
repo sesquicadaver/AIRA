@@ -9,7 +9,7 @@ Repo-level ТЗ → module → tests map: [implementation-status.md](implementat
 | C0 | `run_c0` | ontology, object/artifact immutability, event causality, policy gate, CSU dispatch, acquisition fail-closed | **yes** (job `check`) |
 | C1 | `run_c1` | pipeline 2+2, CSU manifests, external partner fixture (`c1.csu.external_partner_fixture`), verified result completeness, failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) | **yes** |
 | C2 | `run_c2` | partial **local** protocols (M13): envelope/response/identity schemas, discovery Capability≠Node, UNSUPPORTED_VERSION without side effects | **yes** (job `conformance-c2`, QUEUE #117) |
-| C3 | `run_c3` | **6 named local cases** (#163): federation×4 + CAP + export_deny; CRP adapter `#166` (RFC-0079); depth `#167`–`#170` | **optional job** `conformance-c3` (#164) — **not** a merge gate ([governance](ci-governance.md#job-conformance-c3-queue-164)) |
+| C3 | `run_c3` | **7 named local cases**: federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167); depth `#168`–`#170` | **optional job** `conformance-c3` (#164) — **not** a merge gate ([governance](ci-governance.md#job-conformance-c3-queue-164)) |
 | C4 | `run_c4` (Phase H `#175`) | settlement audit receipts scaffold | no |
 | C5 | `run_c5` (Phase H `#180`) | research separation + promotion gate scaffold | no |
 
@@ -22,7 +22,7 @@ Phase G `#122`–`#124` adds named local C2 cases (idempotency, hash mismatch, u
 - **Today:** CLI/`run_c3` available; optional workflow job `conformance-c3` (#164); **not** in branch-protection required checks.
 - **Optional CI job (`#164` DONE):** workflow job `conformance-c3` runs on PR/`main`; **not** in branch-protection required checks — see [ci-governance.md](ci-governance.md) §Job `conformance-c3`.
 - **Merge gate (future):** only after a later QUEUE atom + RFC; never silently add C3 to required checks.
-### C3 named cases (`run_c3`, #163)
+### C3 named cases (`run_c3`, #163 + #167)
 
 1. `c3.federation.descriptor_verify`
 2. `c3.federation.join_membership`
@@ -30,6 +30,7 @@ Phase G `#122`–`#124` adds named local C2 cases (idempotency, hash mismatch, u
 4. `c3.federation.rejoin_after_leave`
 5. `c3.capability.advertisement`
 6. `c3.federation.export_deny`
+7. `c3.crp.reject_node_route`
 
 - **Merge gate:** only via a later dedicated QUEUE atom + RFC after sustained green optional job; never silently.
 - **`#164` added** the optional `conformance-c3` workflow job; required checks unchanged.

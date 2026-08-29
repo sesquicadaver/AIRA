@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#166` **DONE**; `#167` **OPEN** |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#167` **DONE**; `#168` **OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#167` |
+| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#168` |
 
 ## Правила атомарності
 
@@ -325,7 +325,7 @@ G0 govern (#120–#121)
 | 164 | **DONE** | ~~Analyze-199 — optional C3 CI~~ | workflow job non-gate + governance note | `conformance-c3` in ci.yml (not required) | CRP schemas (#165) |
 | 165 | **DONE** | ~~Analyze-200 — CRP schema fixtures~~ | route request/candidate schemas + fixtures | `schema validate --fixtures` green | CRP adapter (#166) |
 | 166 | **DONE** | ~~Analyze-201 — CRP local adapter~~ | in-process CRP + RFC-0079; capability≠node | adapter tests + RFC | node-keyed reject (#167) |
-| 167 | **OPEN** | Analyze-202 — CRP reject node route | conformance: node-keyed route → fail | named case green | multi-candidate (#168) |
+| 167 | **DONE** | ~~Analyze-202 — CRP reject node route~~ | conformance: node-keyed route → fail | `c3.crp.reject_node_route` green | multi-candidate (#168) |
 | 168 | **OPEN** | Analyze-203 — CRP multi-candidate gate | ≥2 candidates; Policy Gate before bind | ALLOW/DENY tests | CRP events (#169) |
 | 169 | **OPEN** | Analyze-204 — CRP route events | selected/rejected/failure events | тест | B2-006 case (#170) |
 | 170 | **OPEN** | Analyze-205 — B2-006 C3 case | `c3.crp.route_candidate` | run_c3 green | status CRP (#171) |
@@ -345,7 +345,7 @@ G0 govern (#120–#121)
 
 ### Наступний цикл (Phase H)
 
-**Перший OPEN:** `#167` (CRP reject node route). `#152`–`#166` DONE. Далі строго лінійно `#168`…`#183`.
+**Перший OPEN:** `#168` (CRP multi-candidate gate). `#152`–`#167` DONE. Далі строго лінійно `#169`…`#183`.
 
 ```text
 H0 govern (#152–#153)
