@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#175` **DONE**; `#176` **OPEN** |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#176` **DONE**; `#177` **OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#176` |
+| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#177` |
 
 ## Правила атомарності
 
@@ -334,7 +334,7 @@ G0 govern (#120–#121)
 | 173 | **DONE** | ~~Analyze-208 — settlement receipt store~~ | append-only receipts; verify-on-read smoke | `settlement_receipt_store_*`; RFC-0080 | B2-011 (#174) |
 | 174 | **DONE** | ~~Analyze-209 — B2-011 privacy smoke~~ | privacy class / redaction local test | `b2_011_settlement_privacy_smoke` | run_c4 (#175) |
 | 175 | **DONE** | ~~Analyze-210 — run_c4 scaffold~~ | minimal C4 receipt cases | `run_c4` 3 cases; RFC-0081 | status settlement (#176) |
-| 176 | **OPEN** | Analyze-211 — settlement status | implementation-status Settlement→PARTIAL | matrix updated | RFC-P doc (#177) |
+| 176 | **DONE** | ~~Analyze-211 — settlement status~~ | implementation-status Settlement→PARTIAL | Book II Settlement **PARTIAL** | RFC-P doc (#177) |
 | 177 | **OPEN** | Analyze-212 — RFC-P promotion doc | `docs/rfc-p-promotion.md` | doc merged | promotion fixtures (#178) |
 | 178 | **OPEN** | Analyze-213 — promotion fixtures | promotion-candidate schema fixtures | schema validate green | non-operational gate (#179) |
 | 179 | **OPEN** | Analyze-214 — non-operational gate | research input rejected as operational | тест | run_c5 (#180) |
@@ -345,7 +345,7 @@ G0 govern (#120–#121)
 
 ### Наступний цикл (Phase H)
 
-**Перший OPEN:** `#176` (settlement status PARTIAL). `#152`–`#175` DONE. Далі строго лінійно `#177`…`#183`.
+**Перший OPEN:** `#177` (RFC-P promotion doc). `#152`–`#176` DONE. Далі строго лінійно `#178`…`#183`.
 
 ```text
 H0 govern (#152–#153)

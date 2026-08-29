@@ -1,6 +1,6 @@
 # AIRA documentation index
 
-**Оновлено:** 2026-08-29. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase H `#176` **OPEN**; `#152`–`#175` **DONE**; Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.2** → ціль Phase H: **v0.3**).
+**Оновлено:** 2026-08-29. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase H `#177` **OPEN**; `#152`–`#176` **DONE**; Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.2** → ціль Phase H: **v0.3**).
 
 ## Anti-mission (ніколи в product / QUEUE)
 

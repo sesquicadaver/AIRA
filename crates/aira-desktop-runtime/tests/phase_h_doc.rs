@@ -195,6 +195,8 @@ fn phase_h_h1_stores_status_rollup() {
         "c4.settlement.receipt_emit_verify",
         "run_c4",
         "RFC-0081",
+        "Local audit receipts only",
+        "no blockchain ledger",
     ] {
         assert!(
             text.contains(needle),

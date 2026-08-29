@@ -70,7 +70,7 @@ pull_request: main, develop
 
 ## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony (`run_c3`): **8** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170). Optional CI job `conformance-c3` (`#164`, non-gate). Next: settlement status PARTIAL `#176`. `run_c4` scaffold available locally (`#175`, not a CI job).
+Local federation ceremony (`run_c3`): **8** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170). Optional CI job `conformance-c3` (`#164`, non-gate). Next: RFC-P promotion doc `#177`. Settlement **PARTIAL** (`#176`); `run_c4` local (`#175`, not a CI job).
 
 ### Current posture (QUEUE #153 + `#164`)
 
