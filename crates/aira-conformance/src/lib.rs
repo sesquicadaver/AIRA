@@ -110,8 +110,8 @@ mod tests {
             "failures={:?}",
             suite.report.failures
         );
-        assert_eq!(suite.report.results.passed, 7);
-        assert_eq!(suite.cases.len(), 7);
+        assert_eq!(suite.report.results.passed, 8);
+        assert_eq!(suite.cases.len(), 8);
         assert!(suite
             .cases
             .iter()
@@ -124,6 +124,10 @@ mod tests {
             .cases
             .iter()
             .any(|c| c.test_id == "c3.crp.reject_node_route"));
+        assert!(suite
+            .cases
+            .iter()
+            .any(|c| c.test_id == "c3.crp.route_candidate"));
     }
 
     #[test]
@@ -134,7 +138,7 @@ mod tests {
         let suite2 = run_profile(ConformanceProfile::C2, dir.path().join("p2")).unwrap();
         assert_eq!(suite2.cases.len(), 11);
         let suite3 = run_profile(ConformanceProfile::C3, dir.path().join("p3")).unwrap();
-        assert_eq!(suite3.cases.len(), 7);
+        assert_eq!(suite3.cases.len(), 8);
     }
 
     #[test]

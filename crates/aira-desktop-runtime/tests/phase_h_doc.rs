@@ -104,8 +104,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #169 must be DONE after CRP route events"
     );
     assert!(
-        text.contains("| 170 | **OPEN**"),
-        "QUEUE #170 must be next OPEN"
+        text.contains("| 170 | **DONE**"),
+        "QUEUE #170 must be DONE after B2-006 C3 case"
+    );
+    assert!(
+        text.contains("| 171 | **OPEN**"),
+        "QUEUE #171 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
@@ -156,6 +160,7 @@ fn phase_h_h1_stores_status_rollup() {
         "crp.bind",
         "crp_route_events_selected_rejected_failure",
         "RouteSelected",
+        "c3.crp.route_candidate",
     ] {
         assert!(
             text.contains(needle),

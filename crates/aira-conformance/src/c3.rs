@@ -1,9 +1,9 @@
 //! C3 conformance scaffold — local federation + capability advertisement
-//! + policy-scoped IO deny + CRP node-keyed reject (Phase G #141; Phase H #161/#163/#167).
+//! + policy-scoped IO deny + CRP (Phase G #141; Phase H #161/#163/#167/#170).
 //!
 //! Not production federated wire protocol; exercises descriptor verify, join,
-//! leave, re-join, local CAP persist, federation export deny, and CRP capability≠node
-//! from `aira-protocol`.
+//! leave, re-join, local CAP persist, federation export deny, CRP capability≠node,
+//! and B2-006 route candidate / failure from `aira-protocol`.
 
 use std::path::Path;
 
@@ -11,8 +11,8 @@ use aira_object::{AiraRef, Signature, TrustAuditAction, TrustAuditLog};
 use aira_protocol::{
     check_federation_transfer, descriptor_canonical_bytes, join_federation, leave_federation,
     load_federation_membership, membership_path, verify_federation_descriptor,
-    CapabilityAdvertisementStore, DiscoveryRegistry, FederationDescriptor, FederationTransferKind,
-    LocalCrpAdapter, TransferCheckOutcome, FEDERATION_DESCRIPTOR_DOMAIN,
+    CapabilityAdvertisementStore, CrpRouteOutcome, DiscoveryRegistry, FederationDescriptor,
+    FederationTransferKind, LocalCrpAdapter, TransferCheckOutcome, FEDERATION_DESCRIPTOR_DOMAIN,
 };
 use ed25519_dalek::SigningKey;
 
@@ -31,6 +31,7 @@ pub fn run_c3(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_capability_advertisement(&root),
         test_federation_export_deny(&root),
         test_crp_reject_node_route(),
+        test_crp_route_candidate(),
     ];
     finalize_suite(ConformanceProfile::C3, cases, artifact_root)
 }
@@ -302,5 +303,81 @@ fn test_crp_reject_node_route() -> CaseResult {
             }
             pass(id)
         }
+    }
+}
+
+/// B2-006: CRP response MUST return capability chain or route failure (#170).
+fn test_crp_route_candidate() -> CaseResult {
+    let id = "c3.crp.route_candidate";
+    let mut discovery = DiscoveryRegistry::new();
+    let cap = match DiscoveryRegistry::local_capability(
+        "aira:capability:c3:math.eval.safe",
+        "math.eval.safe",
+        "aira:csu:execution.basic",
+    ) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if let Err(e) = discovery.register(cap.clone()) {
+        return fail(id, e.to_string());
+    }
+    let mut crp = LocalCrpAdapter::new();
+    let req = match LocalCrpAdapter::local_request(
+        "aira:crp:request:c3-b2006",
+        "aira:capsule:exec:c3-b2006",
+        vec![cap],
+        "aira:artifact:context:c3-b2006",
+    ) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    match crp.route(&req, &discovery, None) {
+        Ok(CrpRouteOutcome::Candidates(cands)) => {
+            if cands.is_empty() {
+                return fail(id, "B2-006: expected ≥1 candidate");
+            }
+            if cands[0].capability_chain.is_empty() {
+                return fail(id, "B2-006: candidate must include capability chain");
+            }
+            if cands[0].capability_chain[0]
+                .provider_csu
+                .as_str()
+                .contains(":node:")
+            {
+                return fail(id, "B2-006: chain must not be Node-keyed");
+            }
+        }
+        Ok(CrpRouteOutcome::Failure { reason }) => {
+            return fail(
+                id,
+                format!("expected capability chain, got failure: {reason}"),
+            );
+        }
+        Err(e) => return fail(id, e.to_string()),
+    }
+
+    let missing = match DiscoveryRegistry::local_capability(
+        "aira:capability:c3:missing",
+        "c3.missing.type",
+        "aira:csu:execution.basic",
+    ) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let miss_req = match LocalCrpAdapter::local_request(
+        "aira:crp:request:c3-b2006-miss",
+        "aira:capsule:exec:c3-b2006-miss",
+        vec![missing],
+        "aira:artifact:context:c3-b2006-miss",
+    ) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    match crp.route(&miss_req, &discovery, None) {
+        Ok(CrpRouteOutcome::Failure { .. }) => pass(id),
+        Ok(CrpRouteOutcome::Candidates(_)) => {
+            fail(id, "B2-006: missing capability must yield route failure")
+        }
+        Err(e) => fail(id, e.to_string()),
     }
 }
