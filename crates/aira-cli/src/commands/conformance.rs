@@ -16,7 +16,8 @@ pub(crate) fn run(root: &Path, command: ConformanceCommands) -> Result<ExitCode>
                 "C1" => ConformanceProfile::C1,
                 "C2" => ConformanceProfile::C2,
                 "C3" => ConformanceProfile::C3,
-                other => bail!("unsupported profile {other} (use C0, C1, C2, or C3)"),
+                "C4" => ConformanceProfile::C4,
+                other => bail!("unsupported profile {other} (use C0, C1, C2, C3, or C4)"),
             };
             let out = out.unwrap_or_else(|| root.join("conformance").join("reports"));
             std::fs::create_dir_all(&out)?;

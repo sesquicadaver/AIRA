@@ -5,6 +5,7 @@ mod c0;
 mod c1;
 mod c2;
 mod c3;
+mod c4;
 mod report;
 mod runner;
 mod security;
@@ -14,6 +15,7 @@ pub use c0::run_c0;
 pub use c1::run_c1;
 pub use c2::run_c2;
 pub use c3::run_c3;
+pub use c4::run_c4;
 pub use report::{
     AiraInfo, ConformanceProfile, ConformanceReport, FailureRecord, ImplementationInfo,
     ResultCounters,
@@ -36,6 +38,7 @@ pub fn run_profile(
         ConformanceProfile::C1 => run_c1(artifact_root),
         ConformanceProfile::C2 => run_c2(artifact_root),
         ConformanceProfile::C3 => run_c3(artifact_root),
+        ConformanceProfile::C4 => run_c4(artifact_root),
         other => Err(ConformanceError::Test(format!(
             "profile {} not implemented in this MVP",
             other.as_str()
@@ -131,6 +134,33 @@ mod tests {
     }
 
     #[test]
+    fn c4_suite_passes_and_emits_report() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("reports");
+        let suite = run_c4(&root).unwrap();
+        assert_eq!(suite.report.aira.profile, ConformanceProfile::C4);
+        assert_eq!(
+            suite.report.results.failed, 0,
+            "failures={:?}",
+            suite.report.failures
+        );
+        assert_eq!(suite.report.results.passed, 3);
+        assert_eq!(suite.cases.len(), 3);
+        assert!(suite
+            .cases
+            .iter()
+            .any(|c| c.test_id == "c4.settlement.receipt_emit_verify"));
+        assert!(suite
+            .cases
+            .iter()
+            .any(|c| c.test_id == "c4.settlement.privacy_reject"));
+        assert!(suite
+            .cases
+            .iter()
+            .any(|c| c.test_id == "c4.settlement.link_prior_route"));
+    }
+
+    #[test]
     fn run_profile_dispatch() {
         let dir = tempfile::tempdir().unwrap();
         let suite = run_profile(ConformanceProfile::C0, dir.path().join("p")).unwrap();
@@ -139,6 +169,8 @@ mod tests {
         assert_eq!(suite2.cases.len(), 11);
         let suite3 = run_profile(ConformanceProfile::C3, dir.path().join("p3")).unwrap();
         assert_eq!(suite3.cases.len(), 8);
+        let suite4 = run_profile(ConformanceProfile::C4, dir.path().join("p4")).unwrap();
+        assert_eq!(suite4.cases.len(), 3);
     }
 
     #[test]
