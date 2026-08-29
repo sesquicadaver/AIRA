@@ -11,6 +11,7 @@ description = "AIRA local C2 protocol envelope and adapters (Epic 10)"
 aira-object = { path = "../aira-object" }
 aira-event = { path = "../aira-event" }
 aira-artifact = { path = "../aira-artifact" }
+aira-policy = { path = "../aira-policy" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
