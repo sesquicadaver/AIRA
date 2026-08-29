@@ -2,22 +2,24 @@
 
 ## 1. Summary
 
-Phase H `#166`: in-process `LocalCrpAdapter` in `aira-protocol` maps a CRP Route Request to Route Candidate(s) via local `DiscoveryRegistry`. Routing is by **Capability → provider CSU**; Node-keyed providers are rejected. Contract aligns with Book II §10 and schemas from `#165`.
+Phase H `#166`/`#168`: in-process `LocalCrpAdapter` in `aira-protocol` maps a CRP Route Request to Route Candidate(s) via local `DiscoveryRegistry`. Routing is by **Capability → provider CSU**; Node-keyed providers are rejected. Multiple equivalent candidates when Discovery has multiple providers. Binding requires Policy Gate **ALLOW** on action `crp.bind` (`#168`). Contract aligns with Book II §10 and schemas from `#165`.
 
 ## 5. Non-Goals
 
-Multi-node CRP mesh; marketplace ranking; Policy Gate bind (`#168`); route events (`#169`); B2-006 C3 case (`#170`); status PARTIAL (`#171`).
+Multi-node CRP mesh; marketplace ranking; route events (`#169`); B2-006 C3 case (`#170`); status PARTIAL (`#171`).
 
 ## 10. Behavior
 
 ```text
-route(request, discovery) → Candidates(chain) | Failure(reason)
+route(request, discovery) → Candidates(chains…) | Failure(reason)
+bind(candidate, policy_gate) → Bound | Denied  (ALLOW only; DENY/REQUIRE → no bind)
 MUST NOT bind provider with `:node:` in ref
 MUST return capability_chain hops (capability_ref + provider_csu) or Failure
+MUST support ≥2 equivalent candidates when multiple CSU providers exist
 ```
 
 ## 15. Tests
 
 ```text
-cargo test -p aira-protocol crp_local
+cargo test -p aira-protocol crp_
 ```

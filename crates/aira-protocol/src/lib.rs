@@ -17,8 +17,8 @@ pub use capability_ad::{
     CAPABILITY_AD_STORE_SCHEMA,
 };
 pub use crp::{
-    CapabilityChainHop, CrpRouteCandidate, CrpRouteConstraints, CrpRouteOutcome, CrpRouteRequest,
-    LocalCrpAdapter, CRP_VERSION,
+    CapabilityChainHop, CrpBindOutcome, CrpRouteCandidate, CrpRouteConstraints, CrpRouteOutcome,
+    CrpRouteRequest, LocalCrpAdapter, CRP_BIND_ACTION, CRP_VERSION,
 };
 pub use discovery::{
     CapabilityDescriptor, DiscoveryHit, DiscoveryRegistry, DISCOVERY_REGISTRY_SCHEMA,

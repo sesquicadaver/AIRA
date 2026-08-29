@@ -585,6 +585,7 @@ dependencies = [
  "aira-csu",
  "aira-event",
  "aira-object",
+ "aira-policy",
  "aira-schema",
  "ed25519-dalek",
  "hex",

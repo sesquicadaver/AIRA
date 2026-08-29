@@ -96,8 +96,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #167 must be DONE after CRP reject node route"
     );
     assert!(
-        text.contains("| 168 | **OPEN**"),
-        "QUEUE #168 must be next OPEN"
+        text.contains("| 168 | **DONE**"),
+        "QUEUE #168 must be DONE after CRP multi-candidate gate"
+    );
+    assert!(
+        text.contains("| 169 | **OPEN**"),
+        "QUEUE #169 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
@@ -144,6 +148,8 @@ fn phase_h_h1_stores_status_rollup() {
         "RFC-0079",
         "crp_local_adapter_routes_capability_not_node",
         "c3.crp.reject_node_route",
+        "crp_multi_candidate_and_policy_gate_bind",
+        "crp.bind",
     ] {
         assert!(
             text.contains(needle),
