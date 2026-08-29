@@ -116,8 +116,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #172 must be DONE after settlement fixtures"
     );
     assert!(
-        text.contains("| 173 | **OPEN**"),
-        "QUEUE #173 must be next OPEN"
+        text.contains("| 173 | **DONE**"),
+        "QUEUE #173 must be DONE after settlement receipt store"
+    );
+    assert!(
+        text.contains("| 174 | **OPEN**"),
+        "QUEUE #174 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
@@ -173,6 +177,10 @@ fn phase_h_h1_stores_status_rollup() {
         "aira:schema:settlement:receipt:0.1",
         "privacy_class",
         "settlement_receipt_schema_loads",
+        "SettlementReceiptStore",
+        "settlement_receipt_store_append_roundtrip_and_verify_on_read",
+        "RFC-0080",
+        "aira:settlement:receipts-jsonl:v1",
     ] {
         assert!(
             text.contains(needle),

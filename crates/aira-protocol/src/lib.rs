@@ -10,6 +10,7 @@ mod envelope;
 mod event_adapter;
 mod federation;
 mod identity;
+mod settlement;
 
 pub use artifact_adapter::{ArtifactOpResult, ArtifactProtocolAdapter, AP_VERSION};
 pub use capability_ad::{
@@ -37,6 +38,10 @@ pub use federation::{
     FEDERATION_MEMBERSHIP_SCHEMA,
 };
 pub use identity::{IdentityDescriptor, IdentityType, PublicKeyEntry};
+pub use settlement::{
+    ContributionDescriptor, SettlementReceipt, SettlementReceiptStore, SETTLEMENT_RECEIPTS_REL,
+    SETTLEMENT_RECEIPTS_STORE_SCHEMA,
+};
 
 /// Crate version string.
 pub fn crate_version() -> &'static str {

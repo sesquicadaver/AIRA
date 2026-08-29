@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#172` **DONE**; `#173` **OPEN** |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#173` **DONE**; `#174` **OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#173` |
+| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#174` |
 
 ## Правила атомарності
 
@@ -331,7 +331,7 @@ G0 govern (#120–#121)
 | 170 | **DONE** | ~~Analyze-205 — B2-006 C3 case~~ | `c3.crp.route_candidate` | run_c3 green (8 cases) | status CRP (#171) |
 | 171 | **DONE** | ~~Analyze-206 — CRP status PARTIAL~~ | implementation-status CRP ABSENT→PARTIAL | matrix updated | settlement fixtures (#172) |
 | 172 | **DONE** | ~~Analyze-207 — settlement fixtures~~ | receipt schema fixtures + privacy fields | `schema validate --fixtures` green | receipt store (#173) |
-| 173 | **OPEN** | Analyze-208 — settlement receipt store | append-only receipts; verify-on-read smoke | tests green | B2-011 (#174) |
+| 173 | **DONE** | ~~Analyze-208 — settlement receipt store~~ | append-only receipts; verify-on-read smoke | `settlement_receipt_store_*`; RFC-0080 | B2-011 (#174) |
 | 174 | **OPEN** | Analyze-209 — B2-011 privacy smoke | privacy class / redaction local test | named test | run_c4 (#175) |
 | 175 | **OPEN** | Analyze-210 — run_c4 scaffold | minimal C4 receipt cases | runner + doc | status settlement (#176) |
 | 176 | **OPEN** | Analyze-211 — settlement status | implementation-status Settlement→PARTIAL | matrix updated | RFC-P doc (#177) |
@@ -345,7 +345,7 @@ G0 govern (#120–#121)
 
 ### Наступний цикл (Phase H)
 
-**Перший OPEN:** `#173` (settlement receipt store). `#152`–`#172` DONE. Далі строго лінійно `#174`…`#183`.
+**Перший OPEN:** `#174` (B2-011 privacy smoke). `#152`–`#173` DONE. Далі строго лінійно `#175`…`#183`.
 
 ```text
 H0 govern (#152–#153)
