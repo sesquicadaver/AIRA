@@ -165,8 +165,7 @@ fn phase_h_h1_stores_status_rollup() {
         "crp_route_events_selected_rejected_failure",
         "RouteSelected",
         "c3.crp.route_candidate",
-        "| CRP |",
-        "**PARTIAL**",
+        "Local in-process only",
     ] {
         assert!(
             text.contains(needle),
