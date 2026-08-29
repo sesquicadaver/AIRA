@@ -128,8 +128,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #175 must be DONE after run_c4 scaffold"
     );
     assert!(
-        text.contains("| 176 | **OPEN**"),
-        "QUEUE #176 must be next OPEN"
+        text.contains("| 176 | **DONE**"),
+        "QUEUE #176 must be DONE after settlement status PARTIAL"
+    );
+    assert!(
+        text.contains("| 177 | **OPEN**"),
+        "QUEUE #177 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
@@ -195,6 +199,8 @@ fn phase_h_h1_stores_status_rollup() {
         "c4.settlement.receipt_emit_verify",
         "run_c4",
         "RFC-0081",
+        "Local audit receipts only",
+        "no blockchain ledger",
     ] {
         assert!(
             text.contains(needle),
