@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#174` DONE; `#175` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#175` DONE; `#176` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#175`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#176`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -74,7 +74,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Capability Advertisement | Book II §9; B2-005 | `CapabilityAdvertisementStore` (`capability/advertisements.json`, #160) + capability schema + HTTP discovery list | `capability_ad_persist_roundtrip`; schema fixtures; HTTP tests | **PARTIAL** | Local CAP persist (#160); discovery list ≠ CAP ads; no network ad protocol |
 | CRP | Book II §10; B2-006 | schemas + `LocalCrpAdapter` + C3 `#165`–`#170` | `c3.crp.route_candidate`; `crp_multi_candidate_and_policy_gate_bind`; RFC-0079 | **PARTIAL** | Local in-process only; no multi-node mesh / marketplace |
 | Federation protocol (full) | Book II §14; B2-010 | join prototype only | `aira-protocol` `federation::join_*` | **POST-MVP** | Local pin + trust; no leave/Join Request/CRP |
-| Settlement / Audit protocol | Book II §15; B2-011 | receipt schema + `SettlementReceiptStore` JSONL (`aira:settlement:receipts-jsonl:v1`) + privacy gate (`#172`–`#174`); RFC-0080 | `settlement_receipt_schema_loads`; `settlement_receipt_store_append_roundtrip_and_verify_on_read`; `b2_011_settlement_privacy_smoke`; `validate_settlement_privacy`; `SETTLEMENT_PRIVACY_FORBIDDEN_KEYS` | **ABSENT** | `run_c4` `#175`; status PARTIAL at `#176` |
+| Settlement / Audit protocol | Book II §15; B2-011 | receipt schema + `SettlementReceiptStore` JSONL (`aira:settlement:receipts-jsonl:v1`) + privacy + `run_c4` (`#172`–`#175`); RFC-0080/0081 | `settlement_receipt_schema_loads`; `settlement_receipt_store_append_roundtrip_and_verify_on_read`; `b2_011_settlement_privacy_smoke`; `validate_settlement_privacy`; `SETTLEMENT_PRIVACY_FORBIDDEN_KEYS`; `c4.settlement.receipt_emit_verify` | **ABSENT** | status PARTIAL at `#176` |
 | C2 profile in CI | Conformance C2 | `run_c2` | GitHub Actions job `conformance-c2` (#117); local `aira-conformance` | **DONE** | C0/C1 remain primary gate; C2 is additional regression |
 
 ---
@@ -168,6 +168,7 @@ Conformance spec §19 lists extra fixture *names* (event chain, policy deny, res
 | C1 | Local operational node | `run_c1` | `c1.pipeline.calculate_2_plus_2`, `c1.csu.manifests`, `c1.result.verified_completeness`, `c1.result.extended_fields`, `c1.failure.to_evidence` | **yes** | **DONE** |
 | C2 | Protocol-compatible | `run_c2` | 11 cases incl. `c2.event.publish_equivocation` (SEC-4 #137); `c2.protocol.envelope_canonical_mutations`, `c2.protocol.response_canonical_mutations` (SEC-2 #135) | **yes** (`conformance-c2`, #117) | **DONE** |
 | C3 | Local federation + CAP + IO deny + CRP | `run_c3` | **8** cases incl. `c3.federation.export_deny` + `c3.capability.advertisement` + `c3.crp.reject_node_route` + `c3.crp.route_candidate`; optional CI `conformance-c3` (#164, non-gate) | **optional** (`conformance-c3`; not merge gate) | **DONE** (scaffold + `#153` + `#161` + `#163` + `#164` + `#167` + `#170`) |
+| C4 | Settlement audit receipts | `run_c4` | **3** cases: `c4.settlement.receipt_emit_verify`, `c4.settlement.privacy_reject`, `c4.settlement.link_prior_route`; RFC-0081 | **no** | **DONE** scaffold (`#175`) |
 | Security baseline | Conformance §14 subset | `run_security_baseline` | unsigned CSU/artifact; private deny; secret in events | crate tests | **DONE** |
 | Alpha acceptance | MVP | `run_alpha_acceptance` | init layout, 2+2, failure evidence, C0/C1 | crate tests | **DONE** |
 
@@ -292,8 +293,9 @@ Plan: [`phase-g-plan.md`](phase-g-plan.md) **DONE**. RFC: [`AIRA-RFC-0069`](../s
 | #171 | CRP status PARTIAL | Book II CRP row ABSENT→**PARTIAL** | **DONE** @ PR #135 |
 | #172 | Settlement receipt fixtures | `settlement/receipt.schema.json` + privacy_class; PRIV-001 | **DONE** @ PR #136 |
 | #173 | Settlement receipt store | `SettlementReceiptStore` JSONL; verify-on-read; RFC-0080 | **DONE** @ PR #137 |
-| #174 | B2-011 privacy smoke | `validate_settlement_privacy`; `b2_011_settlement_privacy_smoke` | **DONE** @ this PR |
-| #175–#177 | Settlement depth | `run_c4`; PARTIAL |
+| #174 | B2-011 privacy smoke | `validate_settlement_privacy`; `b2_011_settlement_privacy_smoke` | **DONE** @ PR #138 |
+| #175 | `run_c4` scaffold | 3 cases; RFC-0081; `c4.settlement.receipt_emit_verify` | **DONE** @ this PR |
+| #176–#177 | Settlement status + RFC-P | PARTIAL; promotion doc |
 | #178–#181 | Promotion gate | RFC-P; `run_c5`; non-operational |
 | #182–#183 | Docs + RFC-0077 | Reference v0.3; QUEUE H closed |
 

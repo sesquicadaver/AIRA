@@ -124,8 +124,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #174 must be DONE after B2-011 privacy smoke"
     );
     assert!(
-        text.contains("| 175 | **OPEN**"),
-        "QUEUE #175 must be next OPEN"
+        text.contains("| 175 | **DONE**"),
+        "QUEUE #175 must be DONE after run_c4 scaffold"
+    );
+    assert!(
+        text.contains("| 176 | **OPEN**"),
+        "QUEUE #176 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
@@ -188,6 +192,9 @@ fn phase_h_h1_stores_status_rollup() {
         "b2_011_settlement_privacy_smoke",
         "validate_settlement_privacy",
         "SETTLEMENT_PRIVACY_FORBIDDEN_KEYS",
+        "c4.settlement.receipt_emit_verify",
+        "run_c4",
+        "RFC-0081",
     ] {
         assert!(
             text.contains(needle),

@@ -261,10 +261,11 @@ pub(super) async fn post_conformance_run(
         "C1" => ConformanceProfile::C1,
         "C2" => ConformanceProfile::C2,
         "C3" => ConformanceProfile::C3,
+        "C4" => ConformanceProfile::C4,
         other => {
             return err(
                 StatusCode::BAD_REQUEST,
-                &format!("unsupported profile {other} (use C0, C1, C2, or C3)"),
+                &format!("unsupported profile {other} (use C0, C1, C2, C3, or C4)"),
             )
         }
     };

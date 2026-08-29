@@ -10,7 +10,7 @@ Repo-level ТЗ → module → tests map: [implementation-status.md](implementat
 | C1 | `run_c1` | pipeline 2+2, CSU manifests, external partner fixture (`c1.csu.external_partner_fixture`), verified result completeness, failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) | **yes** |
 | C2 | `run_c2` | partial **local** protocols (M13): envelope/response/identity schemas, discovery Capability≠Node, UNSUPPORTED_VERSION without side effects | **yes** (job `conformance-c2`, QUEUE #117) |
 | C3 | `run_c3` | **8 named local cases**: federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170) | **optional job** `conformance-c3` (#164) — **not** a merge gate ([governance](ci-governance.md#job-conformance-c3-queue-164)) |
-| C4 | `run_c4` (Phase H `#175`) | settlement audit receipts scaffold | no |
+| C4 | `run_c4` (Phase H `#175`) | **3 named local cases**: receipt emit/verify + privacy reject + link prior CRP route (RFC-0081) | no |
 | C5 | `run_c5` (Phase H `#180`) | research separation + promotion gate scaffold | no |
 
 Reports validate against `aira:schema:conformance:report:0.1` and are published as immutable `ConformanceArtifact`.
@@ -36,6 +36,15 @@ Phase G `#122`–`#124` adds named local C2 cases (idempotency, hash mismatch, u
 - **Merge gate:** only via a later dedicated QUEUE atom + RFC after sustained green optional job; never silently.
 - **`#164` added** the optional `conformance-c3` workflow job; required checks unchanged.
 
+### C4 named cases (`run_c4`, #175)
+
+1. `c4.settlement.receipt_emit_verify`
+2. `c4.settlement.privacy_reject`
+3. `c4.settlement.link_prior_route`
+
+- **Merge gate:** no — scaffold only (RFC-0081); not a CI job.
+- **CLI:** `conformance run --profile C4`
+
 ## CLI
 
 ```bash
@@ -43,16 +52,19 @@ cargo run -p aira-cli -- conformance run --profile C0 --out /tmp/aira-c0
 cargo run -p aira-cli -- conformance run --profile C1 --out /tmp/aira-c1
 cargo run -p aira-cli -- conformance run --profile C2 --out /tmp/aira-c2
 cargo run -p aira-cli -- conformance run --profile C3 --out /tmp/aira-c3
+cargo run -p aira-cli -- conformance run --profile C4 --out /tmp/aira-c4
 ```
 
 ## Library
 
 ```rust
-use aira_conformance::{run_c0, run_c1, run_c2, run_security_baseline, run_alpha_acceptance};
+use aira_conformance::{run_c0, run_c1, run_c2, run_c3, run_c4, run_security_baseline, run_alpha_acceptance};
 
 let c0 = run_c0("/tmp/c0")?;
 let c1 = run_c1("/tmp/c1")?;
 let c2 = run_c2("/tmp/c2")?;
+let c3 = run_c3("/tmp/c3")?;
+let c4 = run_c4("/tmp/c4")?;
 let sec = run_security_baseline("/tmp/sec")?;
 let alpha = run_alpha_acceptance("/tmp/alpha")?;
 ```
