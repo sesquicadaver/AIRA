@@ -112,8 +112,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #171 must be DONE after CRP status PARTIAL"
     );
     assert!(
-        text.contains("| 172 | **OPEN**"),
-        "QUEUE #172 must be next OPEN"
+        text.contains("| 172 | **DONE**"),
+        "QUEUE #172 must be DONE after settlement fixtures"
+    );
+    assert!(
+        text.contains("| 173 | **OPEN**"),
+        "QUEUE #173 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {

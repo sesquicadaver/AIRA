@@ -113,6 +113,10 @@
       "file": "fixtures/valid/protocol/crp-route-candidate.json"
     },
     {
+      "schema": "aira:schema:settlement:receipt:0.1",
+      "file": "fixtures/valid/settlement/receipt.json"
+    },
+    {
       "schema": "aira:schema:identity:identity-descriptor:0.1",
       "file": "fixtures/valid/identity/identity-descriptor.json"
     },
@@ -217,6 +221,14 @@
     {
       "schema": "aira:schema:protocol:crp-route-candidate:0.1",
       "file": "fixtures/invalid/protocol/crp-route-candidate-empty-chain.json"
+    },
+    {
+      "schema": "aira:schema:settlement:receipt:0.1",
+      "file": "fixtures/invalid/settlement/receipt-unsigned.json"
+    },
+    {
+      "schema": "aira:schema:settlement:receipt:0.1",
+      "file": "fixtures/invalid/settlement/receipt-raw-prompt.json"
     },
     {
       "schema": "aira:schema:model:artifact:0.1",

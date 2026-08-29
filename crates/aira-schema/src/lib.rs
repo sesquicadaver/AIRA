@@ -556,6 +556,38 @@ mod tests {
     }
 
     #[test]
+    fn settlement_receipt_schema_loads() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:settlement:receipt:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let valid = root.join("fixtures/valid/settlement/receipt.json");
+        reg.validate_file("aira:schema:settlement:receipt:0.1", &valid)
+            .unwrap();
+        let text = std::fs::read_to_string(&valid).unwrap();
+        let v: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(
+            v.get("privacy_class"),
+            Some(&Value::String("audit-safe".into()))
+        );
+        assert!(v.get("raw_prompt").is_none());
+        assert!(reg
+            .validate_file(
+                "aira:schema:settlement:receipt:0.1",
+                root.join("fixtures/invalid/settlement/receipt-unsigned.json"),
+            )
+            .is_err());
+        assert!(reg
+            .validate_file(
+                "aira:schema:settlement:receipt:0.1",
+                root.join("fixtures/invalid/settlement/receipt-raw-prompt.json"),
+            )
+            .is_err());
+    }
+
+    #[test]
     fn claim_artifact_schema_loads() {
         let reg = registry();
         assert!(reg
