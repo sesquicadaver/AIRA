@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#168` **DONE**; `#169` **OPEN** |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#169` **DONE**; `#170` **OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#169` |
+| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#170` |
 
 ## Правила атомарності
 
@@ -327,7 +327,7 @@ G0 govern (#120–#121)
 | 166 | **DONE** | ~~Analyze-201 — CRP local adapter~~ | in-process CRP + RFC-0079; capability≠node | adapter tests + RFC | node-keyed reject (#167) |
 | 167 | **DONE** | ~~Analyze-202 — CRP reject node route~~ | conformance: node-keyed route → fail | `c3.crp.reject_node_route` green | multi-candidate (#168) |
 | 168 | **DONE** | ~~Analyze-203 — CRP multi-candidate gate~~ | ≥2 candidates; Policy Gate before bind | `crp_multi_candidate_and_policy_gate_bind` | CRP events (#169) |
-| 169 | **OPEN** | Analyze-204 — CRP route events | selected/rejected/failure events | тест | B2-006 case (#170) |
+| 169 | **DONE** | ~~Analyze-204 — CRP route events~~ | selected/rejected/failure events | `crp_route_events_selected_rejected_failure` | B2-006 case (#170) |
 | 170 | **OPEN** | Analyze-205 — B2-006 C3 case | `c3.crp.route_candidate` | run_c3 green | status CRP (#171) |
 | 171 | **OPEN** | Analyze-206 — CRP status PARTIAL | implementation-status CRP ABSENT→PARTIAL | matrix updated | settlement fixtures (#172) |
 | 172 | **OPEN** | Analyze-207 — settlement fixtures | receipt schema fixtures + privacy fields | schema validate green | receipt store (#173) |
@@ -345,7 +345,7 @@ G0 govern (#120–#121)
 
 ### Наступний цикл (Phase H)
 
-**Перший OPEN:** `#169` (CRP route events). `#152`–`#168` DONE. Далі строго лінійно `#170`…`#183`.
+**Перший OPEN:** `#170` (B2-006 C3 case). `#152`–`#169` DONE. Далі строго лінійно `#171`…`#183`.
 
 ```text
 H0 govern (#152–#153)

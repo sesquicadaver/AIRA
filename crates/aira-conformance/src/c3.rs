@@ -293,7 +293,7 @@ fn test_crp_reject_node_route() -> CaseResult {
         Ok(v) => v,
         Err(e) => return fail(id, e.to_string()),
     };
-    match crp.route(&req, &discovery) {
+    match crp.route(&req, &discovery, None) {
         Ok(_) => fail(id, "node-keyed CRP route must fail"),
         Err(e) => {
             let msg = e.to_string();

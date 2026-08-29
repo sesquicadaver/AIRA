@@ -1,11 +1,13 @@
-//! Local in-process Capability Routing Protocol adapter (Book II §10; QUEUE #166/#168).
+//! Local in-process Capability Routing Protocol adapter (Book II §10; QUEUE #166–#169).
 //!
 //! Routes by Capability → provider CSU via [`DiscoveryRegistry`]. No global routing
 //! table, no Node-keyed binding. Multiple equivalent candidates when Discovery has
-//! multiple providers; Policy Gate MUST ALLOW before bind (`crp.bind`).
+//! multiple providers; Policy Gate MUST ALLOW before bind (`crp.bind`). Emits
+//! RouteSelected / RouteRejected / RouteFailed events when an [`EventSink`] is provided.
 //! Contract: [`AIRA-RFC-0079`](../../../specs/rfc/AIRA-RFC-0079-crp-local-adapter.md).
 
-use aira_object::{AiraRef, Signature, Timestamp};
+use aira_event::{EventDescriptor, EventError, EventSink, EventType};
+use aira_object::{AiraRef, ContentHash, Signature, Timestamp};
 use aira_policy::{PolicyDecisionKind, PolicyGate, PolicyQuery};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -93,6 +95,7 @@ pub enum CrpBindOutcome {
 #[derive(Debug, Default)]
 pub struct LocalCrpAdapter {
     candidate_seq: u64,
+    event_seq: u64,
 }
 
 impl LocalCrpAdapter {
@@ -104,17 +107,26 @@ impl LocalCrpAdapter {
     ///
     /// MUST route by Capability type / id → provider CSU. MUST NOT bind Node ids.
     /// Emits one candidate per cartesian combination of non-Node Discovery hits.
+    /// On Failure, optionally appends [`EventType::RouteFailed`].
     pub fn route(
         &mut self,
         request: &CrpRouteRequest,
         discovery: &DiscoveryRegistry,
+        events: Option<&mut dyn EventSink>,
     ) -> Result<CrpRouteOutcome, ProtocolError> {
         validate_route_request(request)?;
 
         if request.required_capabilities.is_empty() {
-            return Ok(CrpRouteOutcome::Failure {
-                reason: "required_capabilities must be non-empty".into(),
-            });
+            let reason = "required_capabilities must be non-empty".to_string();
+            emit_route_event(
+                self,
+                events,
+                EventType::RouteFailed,
+                &request.route_request_id,
+                None,
+                &reason,
+            )?;
+            return Ok(CrpRouteOutcome::Failure { reason });
         }
 
         let mut hop_options: Vec<Vec<CapabilityChainHop>> =
@@ -135,13 +147,20 @@ impl LocalCrpAdapter {
                 })
                 .collect();
             if hits.is_empty() {
-                return Ok(CrpRouteOutcome::Failure {
-                    reason: format!(
-                        "no capability route for type={} id={}",
-                        required.capability_type,
-                        required.capability_id.as_str()
-                    ),
-                });
+                let reason = format!(
+                    "no capability route for type={} id={}",
+                    required.capability_type,
+                    required.capability_id.as_str()
+                );
+                emit_route_event(
+                    self,
+                    events,
+                    EventType::RouteFailed,
+                    &request.route_request_id,
+                    None,
+                    &reason,
+                )?;
+                return Ok(CrpRouteOutcome::Failure { reason });
             }
             let mut hops = Vec::with_capacity(hits.len());
             for hit in hits {
@@ -193,16 +212,25 @@ impl LocalCrpAdapter {
 
     /// Bind a route candidate only after Policy Gate ALLOW on [`CRP_BIND_ACTION`].
     ///
-    /// DENY / REQUIRE → [`CrpBindOutcome::Denied`] (no bind). Does not mutate Discovery.
+    /// DENY / REQUIRE → [`CrpBindOutcome::Denied`] (no bind) and optional
+    /// [`EventType::RouteRejected`]. ALLOW → Bound + optional [`EventType::RouteSelected`].
     pub fn bind(
-        &self,
+        &mut self,
         candidate: &CrpRouteCandidate,
         gate: &mut PolicyGate,
+        events: Option<&mut dyn EventSink>,
     ) -> Result<CrpBindOutcome, ProtocolError> {
         if candidate.capability_chain.is_empty() {
-            return Ok(CrpBindOutcome::Denied {
-                reason: "empty capability_chain cannot bind".into(),
-            });
+            let reason = "empty capability_chain cannot bind".to_string();
+            emit_route_event(
+                self,
+                events,
+                EventType::RouteRejected,
+                &candidate.route_request_id,
+                Some(&candidate.route_candidate_id),
+                &reason,
+            )?;
+            return Ok(CrpBindOutcome::Denied { reason });
         }
         for hop in &candidate.capability_chain {
             if is_node_ref(&hop.provider_csu) || is_node_ref(&hop.capability_ref) {
@@ -227,15 +255,43 @@ impl LocalCrpAdapter {
             .check(query, None)
             .map_err(|e| ProtocolError::Schema(e.to_string()))?;
         match decision.decision {
-            PolicyDecisionKind::Allow => Ok(CrpBindOutcome::Bound {
-                candidate: Box::new(candidate.clone()),
-            }),
-            PolicyDecisionKind::Deny => Ok(CrpBindOutcome::Denied {
-                reason: format!("{CRP_BIND_ACTION} DENY"),
-            }),
-            PolicyDecisionKind::Require => Ok(CrpBindOutcome::Denied {
-                reason: format!("{CRP_BIND_ACTION} REQUIRE (not bound)"),
-            }),
+            PolicyDecisionKind::Allow => {
+                emit_route_event(
+                    self,
+                    events,
+                    EventType::RouteSelected,
+                    &candidate.route_request_id,
+                    Some(&candidate.route_candidate_id),
+                    "crp.bind ALLOW",
+                )?;
+                Ok(CrpBindOutcome::Bound {
+                    candidate: Box::new(candidate.clone()),
+                })
+            }
+            PolicyDecisionKind::Deny => {
+                let reason = format!("{CRP_BIND_ACTION} DENY");
+                emit_route_event(
+                    self,
+                    events,
+                    EventType::RouteRejected,
+                    &candidate.route_request_id,
+                    Some(&candidate.route_candidate_id),
+                    &reason,
+                )?;
+                Ok(CrpBindOutcome::Denied { reason })
+            }
+            PolicyDecisionKind::Require => {
+                let reason = format!("{CRP_BIND_ACTION} REQUIRE (not bound)");
+                emit_route_event(
+                    self,
+                    events,
+                    EventType::RouteRejected,
+                    &candidate.route_request_id,
+                    Some(&candidate.route_candidate_id),
+                    &reason,
+                )?;
+                Ok(CrpBindOutcome::Denied { reason })
+            }
         }
     }
 
@@ -262,6 +318,48 @@ impl LocalCrpAdapter {
             signature: local_signature(),
         })
     }
+}
+
+fn emit_route_event(
+    adapter: &mut LocalCrpAdapter,
+    events: Option<&mut dyn EventSink>,
+    event_type: EventType,
+    request_id: &AiraRef,
+    candidate_id: Option<&AiraRef>,
+    payload_note: &str,
+) -> Result<(), ProtocolError> {
+    let Some(log) = events else {
+        return Ok(());
+    };
+    adapter.event_seq = adapter.event_seq.saturating_add(1);
+    let event_id = AiraRef::parse(format!("aira:event:crp-route-{}", adapter.event_seq))
+        .map_err(|e| ProtocolError::Schema(e.to_string()))?;
+    let mut object_refs = vec![request_id.clone()];
+    if let Some(cid) = candidate_id {
+        object_refs.push(cid.clone());
+    }
+    let payload_hash = ContentHash::sha256_bytes(payload_note.as_bytes());
+    let ev = EventDescriptor {
+        event_id,
+        event_type,
+        schema_version: "0.1".into(),
+        producer_identity: AiraRef::parse("aira:identity:local-test")
+            .map_err(|e| ProtocolError::Schema(e.to_string()))?,
+        causal_refs: vec![],
+        object_refs,
+        artifact_refs: vec![],
+        policy_refs: vec![AiraRef::parse("aira:policy:default")
+            .map_err(|e| ProtocolError::Schema(e.to_string()))?],
+        payload_hash,
+        payload_ref: Some(payload_note.into()),
+        created_at: Timestamp::parse("2026-08-29T00:00:00Z")
+            .map_err(|e| ProtocolError::Schema(e.to_string()))?,
+        signature: local_signature(),
+    }
+    .attach_canonical_signature()
+    .map_err(|e| ProtocolError::Schema(e.to_string()))?;
+    log.append(ev)
+        .map_err(|e: EventError| ProtocolError::Schema(e.to_string()))
 }
 
 fn is_node_ref(r: &AiraRef) -> bool {
@@ -333,7 +431,7 @@ mod tests {
         )
         .unwrap();
 
-        let outcome = crp.route(&req, &discovery).unwrap();
+        let outcome = crp.route(&req, &discovery, None).unwrap();
         match outcome {
             CrpRouteOutcome::Candidates(cands) => {
                 assert_eq!(cands.len(), 1);
@@ -373,7 +471,7 @@ mod tests {
             "aira:artifact:context:miss",
         )
         .unwrap();
-        match crp.route(&req, &discovery).unwrap() {
+        match crp.route(&req, &discovery, None).unwrap() {
             CrpRouteOutcome::Failure { reason } => assert!(reason.contains("no capability route")),
             CrpRouteOutcome::Candidates(_) => panic!("expected failure"),
         }
@@ -397,7 +495,7 @@ mod tests {
             "aira:artifact:context:node",
         )
         .unwrap();
-        assert!(crp.route(&req, &discovery).is_err());
+        assert!(crp.route(&req, &discovery, None).is_err());
     }
 
     #[test]
@@ -420,7 +518,7 @@ mod tests {
             "aira:artifact:context:schema",
         )
         .unwrap();
-        let outcome = crp.route(&req, &discovery).unwrap();
+        let outcome = crp.route(&req, &discovery, None).unwrap();
         let CrpRouteOutcome::Candidates(cands) = outcome else {
             panic!("expected candidates");
         };
@@ -458,7 +556,7 @@ mod tests {
             "aira:artifact:context:multi",
         )
         .unwrap();
-        let outcome = crp.route(&req, &discovery).unwrap();
+        let outcome = crp.route(&req, &discovery, None).unwrap();
         let CrpRouteOutcome::Candidates(cands) = outcome else {
             panic!("expected candidates");
         };
@@ -469,18 +567,86 @@ mod tests {
         );
 
         let mut deny_gate = PolicyGate::new(local_signature());
-        match crp.bind(&cands[0], &mut deny_gate).unwrap() {
+        match crp.bind(&cands[0], &mut deny_gate, None).unwrap() {
             CrpBindOutcome::Denied { reason } => assert!(reason.contains("DENY")),
             CrpBindOutcome::Bound { .. } => panic!("DENY gate must not bind"),
         }
 
         let mut allow_gate = PolicyGate::new(local_signature());
         allow_gate.allow_action(CRP_BIND_ACTION);
-        match crp.bind(&cands[0], &mut allow_gate).unwrap() {
+        match crp.bind(&cands[0], &mut allow_gate, None).unwrap() {
             CrpBindOutcome::Bound { candidate } => {
                 assert_eq!(candidate.route_candidate_id, cands[0].route_candidate_id);
             }
             CrpBindOutcome::Denied { reason } => panic!("ALLOW must bind: {reason}"),
         }
+    }
+
+    #[test]
+    fn crp_route_events_selected_rejected_failure() {
+        use aira_event::MemoryEventLog;
+
+        let mut discovery = DiscoveryRegistry::new();
+        let cap = DiscoveryRegistry::local_capability(
+            "aira:capability:math.eval.safe",
+            "math.eval.safe",
+            "aira:csu:execution.basic",
+        )
+        .unwrap();
+        discovery.register(cap.clone()).unwrap();
+
+        let mut crp = LocalCrpAdapter::new();
+        let mut log = MemoryEventLog::new();
+
+        let miss = DiscoveryRegistry::local_capability(
+            "aira:capability:missing",
+            "missing.type",
+            "aira:csu:execution.basic",
+        )
+        .unwrap();
+        let miss_req = LocalCrpAdapter::local_request(
+            "aira:crp:request:fail-ev",
+            "aira:capsule:exec:fail-ev",
+            vec![miss],
+            "aira:artifact:context:fail-ev",
+        )
+        .unwrap();
+        match crp.route(&miss_req, &discovery, Some(&mut log)).unwrap() {
+            CrpRouteOutcome::Failure { .. } => {}
+            CrpRouteOutcome::Candidates(_) => panic!("expected failure"),
+        }
+        assert!(log
+            .all()
+            .iter()
+            .any(|e| e.event_type == EventType::RouteFailed));
+
+        let req = LocalCrpAdapter::local_request(
+            "aira:crp:request:ev",
+            "aira:capsule:exec:ev",
+            vec![cap],
+            "aira:artifact:context:ev",
+        )
+        .unwrap();
+        let outcome = crp.route(&req, &discovery, Some(&mut log)).unwrap();
+        let CrpRouteOutcome::Candidates(cands) = outcome else {
+            panic!("expected candidates");
+        };
+
+        let mut deny_gate = PolicyGate::new(local_signature());
+        let _ = crp.bind(&cands[0], &mut deny_gate, Some(&mut log)).unwrap();
+        assert!(log
+            .all()
+            .iter()
+            .any(|e| e.event_type == EventType::RouteRejected));
+
+        let mut allow_gate = PolicyGate::new(local_signature());
+        allow_gate.allow_action(CRP_BIND_ACTION);
+        let _ = crp
+            .bind(&cands[0], &mut allow_gate, Some(&mut log))
+            .unwrap();
+        assert!(log
+            .all()
+            .iter()
+            .any(|e| e.event_type == EventType::RouteSelected));
     }
 }

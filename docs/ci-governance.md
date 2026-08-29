@@ -70,7 +70,7 @@ pull_request: main, develop
 
 ## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony (`run_c3`): **7** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167). Optional CI job `conformance-c3` (`#164`, non-gate). Next: CRP route events `#169`.
+Local federation ceremony (`run_c3`): **7** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167). Optional CI job `conformance-c3` (`#164`, non-gate). Next: B2-006 C3 case `#170`.
 
 ### Current posture (QUEUE #153 + `#164`)
 
@@ -127,6 +127,6 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
 - Phase G plan (DONE): [`phase-g-plan.md`](phase-g-plan.md)
 - Phase I plan (PLANNED after `#183`): [`phase-i-plan.md`](phase-i-plan.md) — Handle/Verify/Policy/Reuse stabilization; not active until H closes
-- Phase H plan (OPEN `#169`): [`phase-h-plan.md`](phase-h-plan.md) — `#168` CRP multi-candidate DONE; next route events
+- Phase H plan (OPEN `#170`): [`phase-h-plan.md`](phase-h-plan.md) — `#169` CRP route events DONE; next B2-006
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
 - RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`)
