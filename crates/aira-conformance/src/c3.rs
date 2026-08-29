@@ -1,9 +1,9 @@
 //! C3 conformance scaffold — local federation + capability advertisement
-//! + policy-scoped IO deny (Phase G #141; Phase H #161/#163).
+//! + policy-scoped IO deny + CRP node-keyed reject (Phase G #141; Phase H #161/#163/#167).
 //!
 //! Not production federated wire protocol; exercises descriptor verify, join,
-//! leave, re-join, local CAP persist, and federation export deny from
-//! `aira-protocol`.
+//! leave, re-join, local CAP persist, federation export deny, and CRP capability≠node
+//! from `aira-protocol`.
 
 use std::path::Path;
 
@@ -11,8 +11,8 @@ use aira_object::{AiraRef, Signature, TrustAuditAction, TrustAuditLog};
 use aira_protocol::{
     check_federation_transfer, descriptor_canonical_bytes, join_federation, leave_federation,
     load_federation_membership, membership_path, verify_federation_descriptor,
-    CapabilityAdvertisementStore, FederationDescriptor, FederationTransferKind,
-    TransferCheckOutcome, FEDERATION_DESCRIPTOR_DOMAIN,
+    CapabilityAdvertisementStore, DiscoveryRegistry, FederationDescriptor, FederationTransferKind,
+    LocalCrpAdapter, TransferCheckOutcome, FEDERATION_DESCRIPTOR_DOMAIN,
 };
 use ed25519_dalek::SigningKey;
 
@@ -30,6 +30,7 @@ pub fn run_c3(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, Conformanc
         test_federation_rejoin_after_leave(&root),
         test_capability_advertisement(&root),
         test_federation_export_deny(&root),
+        test_crp_reject_node_route(),
     ];
     finalize_suite(ConformanceProfile::C3, cases, artifact_root)
 }
@@ -264,4 +265,42 @@ fn test_federation_export_deny(root: &Path) -> CaseResult {
         return fail(id, "audit subject_id mismatch");
     }
     pass(id)
+}
+
+/// Book II §10.4 / B2-006 precursor: CRP MUST NOT route by Node (#167).
+fn test_crp_reject_node_route() -> CaseResult {
+    let id = "c3.crp.reject_node_route";
+    let discovery = DiscoveryRegistry::new();
+    let mut cap = match DiscoveryRegistry::local_capability(
+        "aira:capability:c3:node-keyed",
+        "c3.node.keyed",
+        "aira:csu:execution.basic",
+    ) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    cap.provider_csu = match AiraRef::parse("aira:node:local") {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let mut crp = LocalCrpAdapter::new();
+    let req = match LocalCrpAdapter::local_request(
+        "aira:crp:request:c3-node",
+        "aira:capsule:exec:c3-node",
+        vec![cap],
+        "aira:artifact:context:c3-node",
+    ) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    match crp.route(&req, &discovery) {
+        Ok(_) => fail(id, "node-keyed CRP route must fail"),
+        Err(e) => {
+            let msg = e.to_string();
+            if !(msg.contains("Node") || msg.contains("node")) {
+                return fail(id, format!("error should mention Node: {msg}"));
+            }
+            pass(id)
+        }
+    }
 }
