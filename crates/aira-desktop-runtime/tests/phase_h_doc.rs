@@ -170,6 +170,9 @@ fn phase_h_h1_stores_status_rollup() {
         "RouteSelected",
         "c3.crp.route_candidate",
         "Local in-process only",
+        "aira:schema:settlement:receipt:0.1",
+        "privacy_class",
+        "settlement_receipt_schema_loads",
     ] {
         assert!(
             text.contains(needle),

@@ -289,8 +289,9 @@ Plan: [`phase-g-plan.md`](phase-g-plan.md) **DONE**. RFC: [`AIRA-RFC-0069`](../s
 | #168 | CRP multi-candidate gate | `crp_multi_candidate_and_policy_gate_bind`; `crp.bind` | **DONE** @ PR #132 |
 | #169 | CRP route events | `RouteSelected`/`Rejected`/`Failed`; `crp_route_events_selected_rejected_failure` | **DONE** @ PR #133 |
 | #170 | B2-006 C3 case | `c3.crp.route_candidate` | **DONE** @ PR #134 |
-| #171 | CRP status PARTIAL | Book II CRP row ABSENT→**PARTIAL** | **DONE** @ this PR |
-| #172–#177 | Settlement receipts | B2-011; `run_c4`; PARTIAL |
+| #171 | CRP status PARTIAL | Book II CRP row ABSENT→**PARTIAL** | **DONE** @ PR #135 |
+| #172 | Settlement receipt fixtures | `settlement/receipt.schema.json` + privacy_class; PRIV-001 | **DONE** @ this PR |
+| #173–#177 | Settlement depth | receipt store; B2-011; `run_c4`; PARTIAL |
 | #178–#181 | Promotion gate | RFC-P; `run_c5`; non-operational |
 | #182–#183 | Docs + RFC-0077 | Reference v0.3; QUEUE H closed |
 
