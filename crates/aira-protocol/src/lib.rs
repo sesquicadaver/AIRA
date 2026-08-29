@@ -4,6 +4,7 @@
 
 mod artifact_adapter;
 mod capability_ad;
+mod crp;
 mod discovery;
 mod envelope;
 mod event_adapter;
@@ -14,6 +15,10 @@ pub use artifact_adapter::{ArtifactOpResult, ArtifactProtocolAdapter, AP_VERSION
 pub use capability_ad::{
     CapabilityAdBody, CapabilityAdvertisement, CapabilityAdvertisementStore, ValidityWindow,
     CAPABILITY_AD_STORE_SCHEMA,
+};
+pub use crp::{
+    CapabilityChainHop, CrpRouteCandidate, CrpRouteConstraints, CrpRouteOutcome, CrpRouteRequest,
+    LocalCrpAdapter, CRP_VERSION,
 };
 pub use discovery::{
     CapabilityDescriptor, DiscoveryHit, DiscoveryRegistry, DISCOVERY_REGISTRY_SCHEMA,
