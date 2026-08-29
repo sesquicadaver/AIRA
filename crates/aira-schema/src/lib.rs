@@ -520,6 +520,42 @@ mod tests {
     }
 
     #[test]
+    fn crp_route_schemas_load() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:protocol:crp-route-request:0.1"));
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:protocol:crp-route-candidate:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        reg.validate_file(
+            "aira:schema:protocol:crp-route-request:0.1",
+            root.join("fixtures/valid/protocol/crp-route-request.json"),
+        )
+        .unwrap();
+        reg.validate_file(
+            "aira:schema:protocol:crp-route-candidate:0.1",
+            root.join("fixtures/valid/protocol/crp-route-candidate.json"),
+        )
+        .unwrap();
+        assert!(reg
+            .validate_file(
+                "aira:schema:protocol:crp-route-request:0.1",
+                root.join("fixtures/invalid/protocol/crp-route-request-unsigned.json"),
+            )
+            .is_err());
+        assert!(reg
+            .validate_file(
+                "aira:schema:protocol:crp-route-candidate:0.1",
+                root.join("fixtures/invalid/protocol/crp-route-candidate-empty-chain.json"),
+            )
+            .is_err());
+    }
+
+    #[test]
     fn claim_artifact_schema_loads() {
         let reg = registry();
         assert!(reg

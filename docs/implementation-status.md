@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#164` DONE; `#165` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#165` DONE; `#166` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#165`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#166`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -72,7 +72,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Identity descriptor | Book II §13 | schema + `aira-object` keyring | `c2.identity.descriptor_schema`; `aira-object` crypto/keyring tests | **PARTIAL** | Local identity; rotation is node/tenant CLI |
 | Discovery by Capability, not Node | Book II §8; B2-004 | `DiscoveryRegistry` | `c2.discovery.capability_not_node`; `discovery_returns_capability_not_node` | **PARTIAL** | Local registry file |
 | Capability Advertisement | Book II §9; B2-005 | `CapabilityAdvertisementStore` (`capability/advertisements.json`, #160) + capability schema + HTTP discovery list | `capability_ad_persist_roundtrip`; schema fixtures; HTTP tests | **PARTIAL** | Local CAP persist (#160); discovery list ≠ CAP ads; no network ad protocol |
-| CRP | Book II §10; B2-006 | — | — | **ABSENT** | Explicit Phase C Out |
+| CRP | Book II §10; B2-006 | schemas + fixtures only (`#165`) | `crp-route-request` / `crp-route-candidate` | **ABSENT** | Adapter `#166`+; status PARTIAL at `#171` |
 | Federation protocol (full) | Book II §14; B2-010 | join prototype only | `aira-protocol` `federation::join_*` | **POST-MVP** | Local pin + trust; no leave/Join Request/CRP |
 | Settlement / Audit protocol | Book II §15; B2-011 | — | — | **ABSENT** | Trust audit JSONL is node identity, not settlement receipts |
 | C2 profile in CI | Conformance C2 | `run_c2` | GitHub Actions job `conformance-c2` (#117); local `aira-conformance` | **DONE** | C0/C1 remain primary gate; C2 is additional regression |
@@ -148,6 +148,8 @@ CI: `cargo run -p aira-cli -- schema validate --fixtures fixtures` (QUEUE #38).
 | `aira:schema:conformance:report:0.1` | `conformance/report.schema.json` | valid | **DONE** |
 | `aira:schema:protocol:envelope:0.1` | `protocol/envelope.schema.json` | valid + unsigned invalid | **DONE** |
 | `aira:schema:protocol:response:0.1` | `protocol/response.schema.json` | valid | **DONE** |
+| `aira:schema:protocol:crp-route-request:0.1` | `protocol/crp-route-request.schema.json` | valid + unsigned invalid | **DONE** (#165) |
+| `aira:schema:protocol:crp-route-candidate:0.1` | `protocol/crp-route-candidate.schema.json` | valid + empty-chain invalid | **DONE** (#165) |
 | `aira:schema:identity:identity-descriptor:0.1` | `identity/identity-descriptor.schema.json` | valid | **DONE** |
 | `aira:schema:desktop:settings:0.1` | `desktop/settings.schema.json` | valid + missing-instance-id invalid | **DONE** |
 
@@ -279,9 +281,9 @@ Plan: [`phase-g-plan.md`](phase-g-plan.md) **DONE**. RFC: [`AIRA-RFC-0069`](../s
 | #161 | C3 capability advertisement | `c3.capability.advertisement` | **DONE** @ PR #124 |
 | #162 | Federation IO export/import deny | `federation_export_import_deny_by_default_audits` | **DONE** @ PR #125 |
 | #163 | C3 cases ≥6 | `run_c3` 6 named cases | **DONE** @ PR #127 |
-| #164 | Optional C3 CI | `conformance-c3` in ci.yml (not required) | **DONE** @ this PR |
-| #165 | CRP schema fixtures | route request/candidate fixtures | **OPEN** |
-| #165–#171 | CRP local adapter | B2-006; discovery≠node; PARTIAL |
+| #164 | Optional C3 CI | `conformance-c3` in ci.yml (not required) | **DONE** @ PR #128 |
+| #165 | CRP schema fixtures | route request/candidate schemas + fixtures | **DONE** @ this PR |
+| #166–#171 | CRP local adapter | B2-006; discovery≠node; PARTIAL |
 | #172–#177 | Settlement receipts | B2-011; `run_c4`; PARTIAL |
 | #178–#181 | Promotion gate | RFC-P; `run_c5`; non-operational |
 | #182–#183 | Docs + RFC-0077 | Reference v0.3; QUEUE H closed |

@@ -1,0 +1,28 @@
+{
+  "route_request_id": "aira:crp:request:unsigned",
+  "capsule_ref": "aira:capsule:exec:fixture1",
+  "required_capabilities": [
+    {
+      "capability_id": "aira:capability:math.eval.safe",
+      "capability_type": "math.eval.safe",
+      "schema_version": "0.1",
+      "provider_csu": "aira:csu:execution.basic",
+      "input_artifact_types": ["ExecutionArtifact"],
+      "output_artifact_types": ["ExecutionArtifact"],
+      "constraints": {},
+      "scope": {
+        "scope_type": "local"
+      },
+      "policy_refs": ["aira:policy:default"],
+      "signature": {
+        "algorithm": "ed25519",
+        "key_ref": "aira:identity:local-test",
+        "signature_value": "TESTSIG"
+      }
+    }
+  ],
+  "context_ref": "aira:artifact:context:fixture1",
+  "policy_refs": ["aira:policy:default"],
+  "constraints": {},
+  "issuer_identity": "aira:identity:local-test"
+}

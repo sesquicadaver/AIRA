@@ -1,0 +1,15 @@
+{
+  "route_candidate_id": "aira:crp:candidate:empty-chain",
+  "route_request_id": "aira:crp:request:fixture1",
+  "capability_chain": [],
+  "estimated_cost": {
+    "amount": 0
+  },
+  "evidence_refs": [],
+  "confidence": 0.5,
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}
