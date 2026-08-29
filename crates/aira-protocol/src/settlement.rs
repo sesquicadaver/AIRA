@@ -12,6 +12,7 @@ use aira_object::{
     AiraRef, Signature, Timestamp, LOCAL_TEST_KEY_REF,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::envelope::{mvp_timestamp, ProtocolError};
 
@@ -20,6 +21,14 @@ pub const SETTLEMENT_RECEIPTS_STORE_SCHEMA: &str = "aira:settlement:receipts-jso
 
 /// Relative path under a node root for the append-only receipts log.
 pub const SETTLEMENT_RECEIPTS_REL: &str = "settlement/receipts.jsonl";
+
+/// Top-level / nested keys forbidden by B2-011 / PRIV-001 (Book II §15.3).
+pub const SETTLEMENT_PRIVACY_FORBIDDEN_KEYS: &[&str] = &[
+    "raw_prompt",
+    "private_result_payload",
+    "secret_data",
+    "prompt",
+];
 
 /// Contribution accounting fields (Book II §15.2).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -229,12 +238,59 @@ impl SettlementReceiptStore {
     }
 }
 
-fn admit_receipt(receipt: &SettlementReceipt) -> Result<(), ProtocolError> {
-    if receipt.privacy_class.trim().is_empty() {
-        return Err(ProtocolError::Schema(
-            "privacy_class must be non-empty (PRIV-001 / Book II §15.3)".into(),
-        ));
+/// B2-011 / PRIV-001: reject forbidden privacy keys anywhere in a receipt JSON value.
+pub fn validate_settlement_privacy(value: &Value) -> Result<(), ProtocolError> {
+    reject_forbidden_keys(value)?;
+    match value.get("privacy_class") {
+        Some(Value::String(s)) if !s.trim().is_empty() => Ok(()),
+        Some(Value::Null) | None => Err(ProtocolError::Schema(
+            "privacy_class required and non-empty (B2-011)".into(),
+        )),
+        Some(_) => Err(ProtocolError::Schema(
+            "privacy_class must be a non-empty string (B2-011)".into(),
+        )),
     }
+}
+
+/// Parse a receipt JSON value after privacy checks (defense in depth before typed admit).
+pub fn parse_receipt_privacy_checked(value: Value) -> Result<SettlementReceipt, ProtocolError> {
+    validate_settlement_privacy(&value)?;
+    let receipt: SettlementReceipt =
+        serde_json::from_value(value).map_err(|e| ProtocolError::Schema(e.to_string()))?;
+    admit_receipt(&receipt)?;
+    Ok(receipt)
+}
+
+fn reject_forbidden_keys(value: &Value) -> Result<(), ProtocolError> {
+    match value {
+        Value::Object(map) => {
+            for key in map.keys() {
+                if SETTLEMENT_PRIVACY_FORBIDDEN_KEYS
+                    .iter()
+                    .any(|f| f.eq_ignore_ascii_case(key))
+                {
+                    return Err(ProtocolError::Schema(format!(
+                        "settlement receipt must not contain privacy-sensitive field `{key}` (B2-011 / PRIV-001)"
+                    )));
+                }
+                reject_forbidden_keys(&map[key])?;
+            }
+            Ok(())
+        }
+        Value::Array(items) => {
+            for item in items {
+                reject_forbidden_keys(item)?;
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+fn admit_receipt(receipt: &SettlementReceipt) -> Result<(), ProtocolError> {
+    let as_value =
+        serde_json::to_value(receipt).map_err(|e| ProtocolError::Schema(e.to_string()))?;
+    validate_settlement_privacy(&as_value)?;
     if receipt.capability_refs.is_empty() {
         return Err(ProtocolError::Schema(
             "capability_refs must be non-empty".into(),
@@ -333,6 +389,54 @@ mod tests {
             admit_receipt(&unsigned),
             Err(ProtocolError::InvalidSignature)
         ));
+    }
+
+    #[test]
+    fn b2_011_settlement_privacy_smoke() {
+        let root = aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let raw_prompt: Value = serde_json::from_str(
+            &fs::read_to_string(root.join("fixtures/invalid/settlement/receipt-raw-prompt.json"))
+                .unwrap(),
+        )
+        .unwrap();
+        let err = validate_settlement_privacy(&raw_prompt).unwrap_err();
+        assert!(
+            matches!(err, ProtocolError::Schema(_)),
+            "raw_prompt must fail B2-011: {err}"
+        );
+        assert!(err.to_string().contains("raw_prompt"));
+
+        let mut private = serde_json::to_value(
+            SettlementReceiptStore::local_receipt("aira:settlement:receipt:priv").unwrap(),
+        )
+        .unwrap();
+        private.as_object_mut().unwrap().insert(
+            "private_result_payload".into(),
+            Value::String("secret answer".into()),
+        );
+        assert!(validate_settlement_privacy(&private).is_err());
+
+        let mut nested_secret = serde_json::to_value(
+            SettlementReceiptStore::local_receipt("aira:settlement:receipt:nest").unwrap(),
+        )
+        .unwrap();
+        nested_secret
+            .pointer_mut("/contribution_descriptor")
+            .unwrap()
+            .as_object_mut()
+            .unwrap()
+            .insert("secret_data".into(), Value::String("leak".into()));
+        assert!(validate_settlement_privacy(&nested_secret).is_err());
+
+        let ok = SettlementReceiptStore::local_receipt("aira:settlement:receipt:ok").unwrap();
+        let ok_v = serde_json::to_value(&ok).unwrap();
+        validate_settlement_privacy(&ok_v).unwrap();
+        parse_receipt_privacy_checked(ok_v).unwrap();
+
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = SettlementReceiptStore::open_or_create(dir.path()).unwrap();
+        store.append(ok).unwrap();
+        assert_eq!(store.len(), 1);
     }
 
     #[test]
