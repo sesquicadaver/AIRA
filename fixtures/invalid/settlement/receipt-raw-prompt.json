@@ -1,0 +1,23 @@
+{
+  "receipt_id": "aira:settlement:receipt:raw-prompt",
+  "execution_or_artifact_ref": "aira:artifact:verified:fixture1",
+  "provider_identity": "aira:identity:local-provider",
+  "consumer_identity": "aira:identity:local-consumer",
+  "capability_refs": ["aira:capability:math.eval.safe"],
+  "contribution_descriptor": {
+    "amount": 0,
+    "unit": "local-ops",
+    "method": "own-resource"
+  },
+  "cost_descriptor_ref": "aira:artifact:cost:fixture1",
+  "verification_refs": [],
+  "policy_refs": ["aira:policy:default"],
+  "privacy_class": "audit-safe",
+  "created_at": "2026-08-29T12:00:00Z",
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  },
+  "raw_prompt": "solve 2+2"
+}

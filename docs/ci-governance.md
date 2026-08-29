@@ -70,7 +70,7 @@ pull_request: main, develop
 
 ## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony (`run_c3`): **8** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170). Optional CI job `conformance-c3` (`#164`, non-gate). Next: settlement fixtures `#172`.
+Local federation ceremony (`run_c3`): **8** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170). Optional CI job `conformance-c3` (`#164`, non-gate). Next: settlement receipt store `#173`.
 
 ### Current posture (QUEUE #153 + `#164`)
 
@@ -127,6 +127,6 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
 - Phase G plan (DONE): [`phase-g-plan.md`](phase-g-plan.md)
 - Phase I plan (PLANNED after `#183`): [`phase-i-plan.md`](phase-i-plan.md) — Handle/Verify/Policy/Reuse stabilization; not active until H closes
-- Phase H plan (OPEN `#172`): [`phase-h-plan.md`](phase-h-plan.md) — `#171` CRP PARTIAL DONE; next settlement fixtures
+- Phase H plan (OPEN `#173`): [`phase-h-plan.md`](phase-h-plan.md) — `#172` settlement fixtures DONE; next receipt store
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
 - RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`)
