@@ -1,6 +1,7 @@
 //! Verification-basic CSU (Issue #44).
 //!
 //! Distinguishes Output Artifact from Verified Result Artifact.
+//! `#187`: `math.eval.safe` is independently evaluated; a wrong finite result is not VERIFIED.
 
 use aira_artifact::ArtifactType;
 use aira_csu::support::{basic_manifest, json_bytes, make_artifact_as, make_event_as};
@@ -62,6 +63,135 @@ impl VerificationBasicCsu {
     }
 }
 
+/// Tiny safe arithmetic (digits and + - * / ( )). Independent of execution-basic (CSU ↛ CSU).
+fn math_eval_safe(expr: &str) -> Result<f64, String> {
+    let cleaned: String = expr.chars().filter(|c| !c.is_whitespace()).collect();
+    if cleaned.is_empty() {
+        return Err("empty expression".into());
+    }
+    if cleaned
+        .chars()
+        .any(|c| !(c.is_ascii_digit() || matches!(c, '+' | '-' | '*' | '/' | '(' | ')' | '.')))
+    {
+        return Err("unsupported characters for math.eval.safe".into());
+    }
+    let bytes = cleaned.as_bytes();
+    let mut i = 0usize;
+    fn parse_expr(bytes: &[u8], i: &mut usize) -> Result<f64, String> {
+        let mut v = parse_term(bytes, i)?;
+        while *i < bytes.len() {
+            match bytes[*i] {
+                b'+' => {
+                    *i += 1;
+                    v += parse_term(bytes, i)?;
+                }
+                b'-' => {
+                    *i += 1;
+                    v -= parse_term(bytes, i)?;
+                }
+                _ => break,
+            }
+        }
+        Ok(v)
+    }
+    fn parse_term(bytes: &[u8], i: &mut usize) -> Result<f64, String> {
+        let mut v = parse_factor(bytes, i)?;
+        while *i < bytes.len() {
+            match bytes[*i] {
+                b'*' => {
+                    *i += 1;
+                    v *= parse_factor(bytes, i)?;
+                }
+                b'/' => {
+                    *i += 1;
+                    let d = parse_factor(bytes, i)?;
+                    if d == 0.0 {
+                        return Err("division by zero".into());
+                    }
+                    v /= d;
+                }
+                _ => break,
+            }
+        }
+        Ok(v)
+    }
+    fn parse_factor(bytes: &[u8], i: &mut usize) -> Result<f64, String> {
+        if *i < bytes.len() && bytes[*i] == b'(' {
+            *i += 1;
+            let v = parse_expr(bytes, i)?;
+            if *i >= bytes.len() || bytes[*i] != b')' {
+                return Err("missing )".into());
+            }
+            *i += 1;
+            return Ok(v);
+        }
+        let start = *i;
+        if *i < bytes.len() && (bytes[*i] == b'+' || bytes[*i] == b'-') {
+            *i += 1;
+        }
+        while *i < bytes.len() && (bytes[*i].is_ascii_digit() || bytes[*i] == b'.') {
+            *i += 1;
+        }
+        if start == *i {
+            return Err("expected number".into());
+        }
+        std::str::from_utf8(&bytes[start..*i])
+            .map_err(|_| "utf8".to_string())?
+            .parse::<f64>()
+            .map_err(|e| e.to_string())
+    }
+    let v = parse_expr(bytes, &mut i)?;
+    if i != bytes.len() {
+        return Err("trailing input".into());
+    }
+    Ok(v)
+}
+
+fn claimed_matches_computed(claimed: f64, computed: f64) -> bool {
+    claimed.is_finite() && computed.is_finite() && (claimed - computed).abs() <= 1e-9
+}
+
+fn math_expression(
+    body: &Value,
+    event: &EventDescriptor,
+    ctx: &mut CsuExecutionContext<'_, '_>,
+) -> Option<String> {
+    if let Some(expr) = body
+        .get("expression")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+    {
+        return Some(expr.to_string());
+    }
+    let cap_id = event.artifact_refs.get(1)?;
+    let (_, bytes) = ctx.resolve_artifact(cap_id).ok()?;
+    let cap: Value = serde_json::from_slice(&bytes).ok()?;
+    cap.get("expression")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
+fn math_eval_matches_claimed(
+    body: &Value,
+    event: &EventDescriptor,
+    ctx: &mut CsuExecutionContext<'_, '_>,
+) -> bool {
+    let Some(claimed) = body.get("result").and_then(|v| v.as_f64()) else {
+        return false;
+    };
+    if !claimed.is_finite() {
+        return false;
+    }
+    let Some(expr) = math_expression(body, event, ctx) else {
+        return false;
+    };
+    match math_eval_safe(&expr) {
+        Ok(computed) => claimed_matches_computed(claimed, computed),
+        Err(_) => false,
+    }
+}
+
 impl Csu for VerificationBasicCsu {
     fn manifest(&self) -> &CsuManifest {
         &self.manifest
@@ -98,10 +228,7 @@ impl Csu for VerificationBasicCsu {
         let body: Value = serde_json::from_slice(&bytes).unwrap_or(json!({}));
         let action = body.get("action").and_then(|v| v.as_str()).unwrap_or("");
         let ok = match action {
-            "math.eval.safe" => body
-                .get("result")
-                .and_then(|v| v.as_f64())
-                .is_some_and(|n| n.is_finite()),
+            "math.eval.safe" => math_eval_matches_claimed(&body, event, ctx),
             "text.echo" | "text.uppercase" => body.get("result").and_then(|v| v.as_str()).is_some(),
             _ => false,
         };
@@ -231,18 +358,18 @@ mod tests {
     use aira_event::MemoryEventLog;
     use aira_object::AiraRef;
 
-    #[test]
-    fn version_is_semver_like() {
-        assert!(!crate_version().is_empty());
+    fn problem() -> AiraRef {
+        AiraRef::parse("aira:problem:01TESTPROBLEM").unwrap()
     }
 
-    #[test]
-    fn verifies_math_output_as_verified_result() {
+    fn run_on_output(
+        store: &mut CasArtifactStore,
+        output_payload: Value,
+        extra_refs: Vec<AiraRef>,
+    ) -> Vec<CsuOutput> {
         let mut csu = VerificationBasicCsu::new();
         let mut log = MemoryEventLog::new();
-        let dir = tempfile::tempdir().unwrap();
-        let mut store = CasArtifactStore::open(dir.path()).unwrap();
-        let payload = json_bytes(&json!({"action":"math.eval.safe","result":4.0}));
+        let payload = json_bytes(&output_payload);
         let out = make_artifact(
             "aira:artifact:out1",
             ArtifactType::ExecutionArtifact,
@@ -251,26 +378,59 @@ mod tests {
         );
         let oid = out.artifact_id.clone();
         store.publish(out, &payload).unwrap();
+        let mut refs = vec![oid];
+        refs.extend(extra_refs);
         let mut ctx = aira_csu::CsuExecutionContext::new(
             csu.manifest().csu_id.clone(),
             &mut log,
-            Some(&mut store),
+            Some(store),
             None,
         );
         let ev = mk(
             "aira:event:done1",
             EventType::CapsuleCompleted,
-            vec![AiraRef::parse("aira:problem:01TESTPROBLEM").unwrap()],
-            vec![oid],
+            vec![problem()],
+            refs,
             vec![],
             None,
         );
-        let outs = csu.on_event(&ev, &mut ctx).unwrap();
-        assert!(outs.iter().any(|o| matches!(
-            o,
-            CsuOutput::Artifact { descriptor, .. }
-                if descriptor.artifact_type == ArtifactType::VerifiedResultArtifact
-        )));
+        csu.on_event(&ev, &mut ctx).unwrap()
+    }
+
+    fn is_verified(outs: &[CsuOutput]) -> bool {
+        outs.iter().any(|o| {
+            matches!(
+                o,
+                CsuOutput::Artifact { descriptor, .. }
+                    if descriptor.artifact_type == ArtifactType::VerifiedResultArtifact
+            )
+        })
+    }
+
+    fn is_failed(outs: &[CsuOutput]) -> bool {
+        outs.iter().any(|o| {
+            matches!(
+                o,
+                CsuOutput::Event(e) if e.event_type == EventType::VerificationFailed
+            )
+        })
+    }
+
+    #[test]
+    fn version_is_semver_like() {
+        assert!(!crate_version().is_empty());
+    }
+
+    #[test]
+    fn verifies_math_output_as_verified_result() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"math.eval.safe","expression":"2+2","result":4.0}),
+            vec![],
+        );
+        assert!(is_verified(&outs));
         assert!(outs.iter().any(|o| matches!(
             o,
             CsuOutput::Event(e) if e.event_type == EventType::VerificationCompleted
@@ -279,5 +439,53 @@ mod tests {
             o,
             CsuOutput::Event(e) if e.event_type == EventType::ResultPublished
         )));
+    }
+
+    #[test]
+    fn wrong_finite_math_result_is_not_verified() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"math.eval.safe","expression":"2+2","result":5.0}),
+            vec![],
+        );
+        assert!(!is_verified(&outs));
+        assert!(is_failed(&outs));
+    }
+
+    #[test]
+    fn math_expression_from_capsule_artifact() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap_body = json!({"action":"math.eval.safe","expression":"2+2"});
+        let cap_payload = json_bytes(&cap_body);
+        let cap = make_artifact(
+            "aira:artifact:cap1",
+            ArtifactType::ExecutionArtifact,
+            &cap_payload,
+            vec![],
+        );
+        let cap_id = cap.artifact_id.clone();
+        store.publish(cap, &cap_payload).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"math.eval.safe","result":4.0}),
+            vec![cap_id],
+        );
+        assert!(is_verified(&outs));
+    }
+
+    #[test]
+    fn finite_result_without_expression_is_not_verified() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"math.eval.safe","result":4.0}),
+            vec![],
+        );
+        assert!(!is_verified(&outs));
+        assert!(is_failed(&outs));
     }
 }
