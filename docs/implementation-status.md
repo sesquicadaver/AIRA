@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.3** (Analyze-218 / QUEUE `#183`; Phase H `#152`–`#183` **DONE** @ RFC-0077). Phase I **IN PROGRESS** (`#184`–`#187` **DONE**; first OPEN `#188`). Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.3** (Analyze-218 / QUEUE `#183`; Phase H `#152`–`#183` **DONE** @ RFC-0077). Phase I **IN PROGRESS** (`#184`–`#188` **DONE**; first OPEN `#189`). Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#188`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#189`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -57,7 +57,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Security boundary (no Core memory / foreign CSU / secrets) | Book I §12; B1-009; B3-004 | `aira-csu` isolation + event secret scan | `isolation_baseline_denies_direct_mutation_and_peer_call`; `run_security_baseline` | **DONE** | MVP sandbox: in-process, no FS/net |
 | Artifact runtime + immutability | Book I §16; B1-002 | `aira-artifact` CAS | `c0.artifact.immutability`; `c0.artifact.verify_on_read`; `mutation_fails_supersession_keeps_old`; `unsigned_artifact_rejected_and_private_denied`; `resolve_rejects_tampered_index_descriptor` | **DONE** | Verify-on-read re-checks signature + CAS hash (QUEUE #113) |
 | Verified Result completeness | Book I §17; B1-010 | `schemas/result/verified-result-artifact.schema.json`; verification-basic + plane | `c1.result.verified_completeness`; `c1.result.extended_fields` (#126) | **PARTIAL** | Schema + C1 cover B1-010 required + extended optional fields; runtime payload still minimal |
-| CSU runtime + lifecycle | Book I §13–14 | `aira-csu` `CsuRuntime` / registry | `lifecycle_transitions_and_events`; `dispatch_active_only_and_failure_event`; `dispatch_fail_closed_without_policy_gate_and_on_deny`; `c0.csu.dispatch_policy` | **DONE** | Policy gate required for dispatch (QUEUE #114) |
+| CSU runtime + lifecycle | Book I §13–14 | `aira-csu` `CsuRuntime` / registry | `lifecycle_transitions_and_events`; `dispatch_active_only_and_failure_event`; `dispatch_fail_closed_without_policy_gate_and_on_deny`; `invoke_binds_policy_gate_check_policy_allows`; `check_policy_fail_closed_without_bound_gate`; `c0.csu.dispatch_policy` | **DONE** | Policy gate required for dispatch (QUEUE #114); invoke binds gate for `check_policy` (`#188` / RFC-0086) |
 | Canonical descriptor signatures | Book I security; EVO-2 | `aira_object::canonical` + Event/Artifact/Object/CSU | mutation tests in those crates | **DONE** | QUEUE #39–#44; no runtime `LOCAL_TEST_DOMAIN_MSG` fallback |
 | Federated Core (C2+/C3) | Book I §22 L2 | `aira-protocol`, `aira-peer`, federation join | C2 local; `federation::join_*` | **POST-MVP** | Not C0/C1 CI |
 
@@ -320,7 +320,7 @@ Plan: [`phase-h-plan.md`](phase-h-plan.md). Consolidating RFC: [`AIRA-RFC-0077`]
 | #185 | Status honesty rollup | Opaque Handle / Reduction / Verification **PARTIAL** vs audit `b66bcf1`; `Handle::new`; `is_finite()`; `LocalSession` `vec![]` | **DONE** @ this PR |
 | #186 | Handle integrity | `Handle::new` crate-private; `object_store_access`; `HandleBindMismatch`; RFC-0084; `handle_cross_object_token_bind_rejects` | **DONE** @ this PR |
 | #187 | Semantic verify math.eval.safe | independent eval; `wrong_finite_math_result_is_not_verified`; RFC-0085 | **DONE** @ this PR |
-| #188 | CSU PolicyGate in invoke | bound gate; fail-closed without gate | **OPEN** |
+| #188 | CSU PolicyGate in invoke | `invoke_binds_policy_gate_check_policy_allows`; `check_policy_fail_closed_without_bound_gate`; RFC-0086 | **DONE** @ this PR |
 | #189 | Durable reuse index | LocalSession repeat problem → reuse; persistent | **OPEN** |
 | #190 | Fail-closed signing | no silent local-test fallback | **OPEN** |
 | #191 | Atomic session persist | temp+rename; corrupt ≠ silent wipe | **OPEN** |
@@ -355,7 +355,7 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 **Phase H `#152`–`#183` labelled Reference v0.3** (не змінює anti-mission): protocol-depth docs in README / this file / [conformance.md](conformance.md); consolidating [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md). Plan: [`phase-h-plan.md`](phase-h-plan.md).
 
-**Phase I `#184`–`#198` IN PROGRESS** (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); `#184`–`#187` **DONE**; first OPEN `#188`.
+**Phase I `#184`–`#198` IN PROGRESS** (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); `#184`–`#188` **DONE**; first OPEN `#189`.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
