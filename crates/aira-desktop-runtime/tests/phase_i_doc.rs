@@ -22,7 +22,7 @@ fn phase_i_plan_present() {
         "AIRA-RFC-0078",
         "confirmed free",
         "IN PROGRESS",
-        "first OPEN `#189`",
+        "first OPEN `#190`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-i-plan missing: {needle}");
@@ -57,8 +57,12 @@ fn phase_i_queue_wiring_184_done() {
         "QUEUE #188 must be DONE after PolicyGate invoke"
     );
     assert!(
-        text.contains("| 189 | **OPEN**"),
-        "QUEUE #189 must be first remaining OPEN"
+        text.contains("| 189 | **DONE**"),
+        "QUEUE #189 must be DONE after durable reuse"
+    );
+    assert!(
+        text.contains("| 190 | **OPEN**"),
+        "QUEUE #190 must be first remaining OPEN"
     );
     assert!(
         !text.contains("| 184 | **OPEN**"),
@@ -80,7 +84,11 @@ fn phase_i_queue_wiring_184_done() {
         !text.contains("| 188 | **OPEN**"),
         "QUEUE #188 must not stay OPEN after PolicyGate invoke"
     );
-    for n in 189..=198 {
+    assert!(
+        !text.contains("| 189 | **OPEN**"),
+        "QUEUE #189 must not stay OPEN after durable reuse"
+    );
+    for n in 190..=198 {
         let needle = format!("| {n} | **OPEN**");
         assert!(text.contains(&needle), "QUEUE missing OPEN row: {needle}");
     }
@@ -91,6 +99,7 @@ fn phase_i_queue_wiring_184_done() {
         "Analyze-219",
         "Analyze-222",
         "Analyze-223",
+        "Analyze-224",
         "Analyze-233",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -101,6 +110,7 @@ fn phase_i_queue_wiring_184_done() {
 fn phase_i_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-i-plan.md"));
+    assert!(readme.contains("#190"));
     assert!(readme.contains("#189"));
     assert!(readme.contains("#188"));
     assert!(readme.contains("#187"));
@@ -111,6 +121,7 @@ fn phase_i_readme_and_docs_index() {
     assert!(docs.contains("phase-i-plan.md"));
     assert!(docs.contains("#184"));
     assert!(docs.contains("IN PROGRESS"));
+    assert!(docs.contains("#190"));
     assert!(docs.contains("#189"));
     assert!(docs.contains("#188"));
 }
@@ -120,7 +131,7 @@ fn phase_h_points_to_active_phase_i() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-h-plan.md")).unwrap();
     assert!(text.contains("phase-i-plan.md"));
     assert!(text.contains("#184"));
-    assert!(text.contains("first OPEN `#189`"));
+    assert!(text.contains("first OPEN `#190`"));
 }
 
 #[test]
@@ -242,5 +253,28 @@ fn phase_i_policy_gate_invoke_188() {
     .expect("RFC-0086");
     for needle in ["#188", "check_policy", "policy gate not bound"] {
         assert!(rfc.contains(needle), "RFC-0086 missing: {needle}");
+    }
+}
+
+#[test]
+fn phase_i_durable_reuse_189() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0087",
+        "local_session_repeat_problem_reuses_without_execution",
+        "reuse-index.json",
+        "| #189 | Durable reuse index",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #189 missing: {needle}"
+        );
+    }
+    let rfc =
+        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0087-durable-reuse-index.md"))
+            .expect("RFC-0087");
+    for needle in ["#189", "reuse-index.json", "reuse:ready_solution"] {
+        assert!(rfc.contains(needle), "RFC-0087 missing: {needle}");
     }
 }

@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use aira_artifact::{ArtifactStore, CasArtifactStore};
 use aira_core::SqliteObjectStore;
 use aira_event::{EventDescriptor, FileChainEventLog};
-use aira_object::AiraRef;
+use aira_object::{AiraRef, ContentHash};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -160,6 +160,11 @@ impl NodePaths {
     pub fn problems_index(&self) -> PathBuf {
         self.problems_dir().join("index.json")
     }
+
+    /// Durable ready-solution lookup keyed by problem-text content hash (QUEUE #189).
+    pub fn reuse_index(&self) -> PathBuf {
+        self.problems_dir().join("reuse-index.json")
+    }
     pub fn conformance_reports(&self) -> PathBuf {
         self.root.join("conformance").join("reports")
     }
@@ -182,6 +187,12 @@ pub struct ProblemRecord {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct ProblemsIndex {
     problems: BTreeMap<String, ProblemRecord>,
+}
+
+/// Persistent map: problem-text `sha256:` hash → reusable artifact id.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct ReuseIndex {
+    by_content_hash: BTreeMap<String, String>,
 }
 
 /// JSON event log file shape (`events/event-log.json`).
@@ -380,6 +391,9 @@ pub fn init_node(root: impl AsRef<Path>) -> Result<NodePaths, FlowError> {
     if !paths.problems_index().exists() {
         write_json(&paths.problems_index(), &ProblemsIndex::default())?;
     }
+    if !paths.reuse_index().exists() {
+        write_json(&paths.reuse_index(), &ReuseIndex::default())?;
+    }
     if !paths.csu_registry().exists() {
         fs::write(paths.csu_registry(), "[]\n").map_err(|e| FlowError::Other(e.to_string()))?;
     }
@@ -467,9 +481,10 @@ impl LocalSession {
         let _ = aira_object::ensure_trust_defaults(&self.paths.root);
         let _ = aira_object::load_all_csu_tenant_signing(&self.paths.root);
         // Allocate a fresh nonce and rebuild plane so ids never collide with prior runs.
+        // Seed Reduction from the durable reuse index for this problem text (#189).
         let nonce = alloc_run_nonce(&self.paths)?;
-        self.plane =
-            OperationalPlane::open_with_ready_nonce(self.paths.artifacts(), vec![], nonce)?;
+        let ready = load_ready_solutions_for_text(&self.paths, text)?;
+        self.plane = OperationalPlane::open_with_ready_nonce(self.paths.artifacts(), ready, nonce)?;
         let outcome = self.plane.submit_problem(text)?;
         self.persist_after_submit(text, &outcome)?;
         Ok(outcome)
@@ -543,6 +558,13 @@ impl LocalSession {
         };
         idx.problems.insert(record.problem_id.clone(), record);
         write_json(&self.paths.problems_index(), &idx)?;
+        if let SubmitOutcome::Completed {
+            verified_artifact_id,
+            ..
+        } = outcome
+        {
+            record_reuse_index(&self.paths, text, verified_artifact_id)?;
+        }
         Ok(())
     }
 
@@ -634,6 +656,45 @@ fn alloc_run_nonce(paths: &NodePaths) -> Result<u64, FlowError> {
     let next = peek_run_nonce(paths)?;
     fs::write(&path, format!("{next}\n")).map_err(|e| FlowError::Other(e.to_string()))?;
     Ok(next)
+}
+
+fn problem_text_hash(text: &str) -> String {
+    ContentHash::sha256_bytes(text.as_bytes())
+        .as_str()
+        .to_string()
+}
+
+fn load_ready_solutions_for_text(paths: &NodePaths, text: &str) -> Result<Vec<AiraRef>, FlowError> {
+    if !paths.reuse_index().exists() {
+        return Ok(vec![]);
+    }
+    let idx = read_json::<ReuseIndex>(&paths.reuse_index())?;
+    let Some(id) = idx.by_content_hash.get(&problem_text_hash(text)) else {
+        return Ok(vec![]);
+    };
+    let parsed = AiraRef::parse(id).map_err(|e| FlowError::Other(e.to_string()))?;
+    let store = CasArtifactStore::open(paths.artifacts())
+        .map_err(|e| FlowError::Artifact(e.to_string()))?;
+    match store.resolve(&parsed) {
+        Ok(_) => Ok(vec![parsed]),
+        Err(_) => Ok(vec![]),
+    }
+}
+
+fn record_reuse_index(
+    paths: &NodePaths,
+    text: &str,
+    verified_artifact_id: &AiraRef,
+) -> Result<(), FlowError> {
+    let mut idx = if paths.reuse_index().exists() {
+        read_json::<ReuseIndex>(&paths.reuse_index())?
+    } else {
+        ReuseIndex::default()
+    };
+    idx.by_content_hash
+        .entry(problem_text_hash(text))
+        .or_insert_with(|| verified_artifact_id.as_str().to_string());
+    write_json(&paths.reuse_index(), &idx)
 }
 
 fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), FlowError> {

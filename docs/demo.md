@@ -31,7 +31,9 @@ Library equivalent: `OperationalPlane::submit_problem("Calculate 2 + 2")` (C1 re
 
 When a Ready Solution Artifact is registered with Reduction-basic, the plane prefers reuse and skips execution capsules.
 
-Evidence in tests: `ready_solution_reuse_skips_execution` in `aira-flow` — `CapsuleCompleted` is absent; payload may carry `reuse:ready_solution`.
+`LocalSession` also persists `problems/reuse-index.json` (QUEUE `#189` / RFC-0087): a second submit of the same problem text reuses the stored verified artifact without Execution.
+
+Evidence in tests: `ready_solution_reuse_skips_execution` (pre-seed) and `local_session_repeat_problem_reuses_without_execution` (durable index) in `aira-flow` — `CapsuleCompleted` is absent; payload may carry `reuse:ready_solution`.
 
 ## Failure-to-evidence
 

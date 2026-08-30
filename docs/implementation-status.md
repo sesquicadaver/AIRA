@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.3** (Analyze-218 / QUEUE `#183`; Phase H `#152`–`#183` **DONE** @ RFC-0077). Phase I **IN PROGRESS** (`#184`–`#188` **DONE**; first OPEN `#189`). Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.3** (Analyze-218 / QUEUE `#183`; Phase H `#152`–`#183` **DONE** @ RFC-0077). Phase I **IN PROGRESS** (`#184`–`#189` **DONE**; first OPEN `#190`). Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#189`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#190`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -89,7 +89,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | No direct CSU→CSU call | B3-004; firewall | `csu/*` crates; `scripts/dep_firewall.py` | firewall CI; `isolation_baseline_*` | **DONE** | |
 | Failure Event + Evidence | B3-007/008; FAIL-* | evidence-basic + plane inject | `c1.failure.to_evidence`; `failure_creates_failure_evidence` | **DONE** | C1 SHOULD evidence: implemented |
 | Context CSU (no final Result) | CTX-001 | `csu/context-basic` | `problem_submitted_creates_context_not_result` | **DONE** | |
-| Reduction / reuse before execute | RED-001; OP-002 | `csu/reduction-basic` | `ready_solution_reuse_skips_execution`; `creates_negative_lookup_and_capsule_when_no_reuse` | **PARTIAL** | `#185` honesty (audit `b66bcf1`): in-memory catalog + pre-seeded `enable_ready_solution` skips execution. `LocalSession::submit_problem` rebuilds plane with `vec![]` — no durable reuse index. Persistence → `#189` |
+| Reduction / reuse before execute | RED-001; OP-002 | `csu/reduction-basic` | `ready_solution_reuse_skips_execution`; `creates_negative_lookup_and_capsule_when_no_reuse`; `local_session_repeat_problem_reuses_without_execution` | **PARTIAL** | `#185` honesty (audit `b66bcf1`): in-memory catalog + pre-seeded `enable_ready_solution`; `LocalSession::submit_problem` rebuilt plane with `vec![]`. `#189` / RFC-0087: `problems/reuse-index.json` keyed by text hash; repeat LocalSession submit reuses without execution. Knowledge catalog still unused |
 | Execution CSU authorized capsules | EXE-001 | `csu/execution-basic` | `math_eval_safe_completes`; `rejects_shell_action` | **DONE** | Safe math/text only |
 | Verification CSU | VER-001 | `csu/verification-basic` | `verifies_math_output_as_verified_result`; `wrong_finite_math_result_is_not_verified`; `math_expression_from_capsule_artifact` | **PARTIAL** | `#185` honesty (audit `b66bcf1`): previously `is_finite()` only. `#187` / RFC-0085: independent `math_eval_safe` vs claimed result; wrong finite (e.g. 2+2→5) is not **VERIFIED**. text.echo/uppercase still presence-only |
 | Evidence CSU | EVD-001 | `csu/evidence-basic` | crate + C1 failure path | **DONE** | Does not assign Epistemic Status |
@@ -321,7 +321,7 @@ Plan: [`phase-h-plan.md`](phase-h-plan.md). Consolidating RFC: [`AIRA-RFC-0077`]
 | #186 | Handle integrity | `Handle::new` crate-private; `object_store_access`; `HandleBindMismatch`; RFC-0084; `handle_cross_object_token_bind_rejects` | **DONE** @ this PR |
 | #187 | Semantic verify math.eval.safe | independent eval; `wrong_finite_math_result_is_not_verified`; RFC-0085 | **DONE** @ this PR |
 | #188 | CSU PolicyGate in invoke | `invoke_binds_policy_gate_check_policy_allows`; `check_policy_fail_closed_without_bound_gate`; RFC-0086 | **DONE** @ this PR |
-| #189 | Durable reuse index | LocalSession repeat problem → reuse; persistent | **OPEN** |
+| #189 | Durable reuse index | `local_session_repeat_problem_reuses_without_execution`; `reuse-index.json`; RFC-0087 | **DONE** @ this PR |
 | #190 | Fail-closed signing | no silent local-test fallback | **OPEN** |
 | #191 | Atomic session persist | temp+rename; corrupt ≠ silent wipe | **OPEN** |
 | #192 | Artifact metadata recovery | second descriptor same hash | **OPEN** |
@@ -355,7 +355,7 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 **Phase H `#152`–`#183` labelled Reference v0.3** (не змінює anti-mission): protocol-depth docs in README / this file / [conformance.md](conformance.md); consolidating [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md). Plan: [`phase-h-plan.md`](phase-h-plan.md).
 
-**Phase I `#184`–`#198` IN PROGRESS** (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); `#184`–`#188` **DONE**; first OPEN `#189`.
+**Phase I `#184`–`#198` IN PROGRESS** (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); `#184`–`#189` **DONE**; first OPEN `#190`.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
