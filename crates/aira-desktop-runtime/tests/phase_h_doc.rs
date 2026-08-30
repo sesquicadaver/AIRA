@@ -152,10 +152,13 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #181 must be DONE after promotion status rollup"
     );
     assert!(
-        text.contains("| 182 | **OPEN**"),
-        "QUEUE #182 must be next OPEN"
+        text.contains("| 182 | **DONE**"),
+        "QUEUE #182 must be DONE after Reference v0.3 docs"
     );
-    assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
+    assert!(
+        text.contains("| 183 | **OPEN**"),
+        "QUEUE #183 must be next OPEN"
+    );
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
@@ -276,6 +279,9 @@ fn phase_h_h1_stores_status_rollup() {
         "c5.promotion.gate_reject",
         "c5.promotion.candidate_schema",
         "RFC-0083",
+        "Reference v0.3",
+        "v0.3 protocol-depth posture",
+        "conformance index",
     ] {
         assert!(
             text.contains(needle),

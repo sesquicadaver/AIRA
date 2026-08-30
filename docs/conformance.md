@@ -1,6 +1,18 @@
 # Conformance guide
 
-Repo-level ТЗ → module → tests map: [implementation-status.md](implementation-status.md). Merge gate: [ci-governance.md](ci-governance.md).
+Repo-level ТЗ → module → tests map: [implementation-status.md](implementation-status.md) (**Reference v0.3**). Merge gate: [ci-governance.md](ci-governance.md).
+
+## Reference v0.3 index (`#182`)
+
+| Profile | Role | CI on `main` |
+|---------|------|----------------|
+| C0 / C1 | Local Core + operational node | **yes** (`fmt-clippy-test-schema-c0-c1`) |
+| C2 | Partial local protocols | **yes** (`conformance-c2`) |
+| C3 | Local federation + CAP + CRP | **optional** (`conformance-c3`, not a merge gate) |
+| C4 | Settlement audit receipts scaffold | no |
+| C5 | Research separation + promotion gate scaffold | no |
+
+C4/C5 are local scaffolds only. Research remains **RESEARCH**. Consolidating Phase H RFC is `#183`.
 
 ## Profiles
 

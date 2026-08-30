@@ -40,5 +40,5 @@ Peer/federation/DHT live in `aira-peer` / protocol crates and are **out of this 
 | C0 causality | `crates/aira-conformance/src/c0.rs` |
 | Demos | [demo.md](demo.md) |
 | Local node | [local-node.md](local-node.md) |
-| Phase plans | [phase-h-plan.md](phase-h-plan.md) (OPEN `#182`); RFC-P [rfc-p-promotion.md](rfc-p-promotion.md) |
+| Phase plans | [phase-h-plan.md](phase-h-plan.md) (OPEN `#183`); RFC-P [rfc-p-promotion.md](rfc-p-promotion.md) |
 | Status map | [implementation-status.md](implementation-status.md) |
