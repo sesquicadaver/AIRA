@@ -21,8 +21,8 @@ fn phase_i_plan_present() {
         "Durable reuse",
         "AIRA-RFC-0078",
         "confirmed free",
-        "IN PROGRESS",
-        "first OPEN `#198`",
+        "**DONE**",
+        "QUEUE I closed",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-i-plan missing: {needle}");
@@ -93,8 +93,8 @@ fn phase_i_queue_wiring_184_done() {
         "QUEUE #197 must be DONE after MSRV supply-chain"
     );
     assert!(
-        text.contains("| 198 | **OPEN**"),
-        "QUEUE #198 must be first remaining OPEN"
+        text.contains("| 198 | **DONE**"),
+        "QUEUE #198 must be DONE after Phase I docs RFC"
     );
     assert!(
         !text.contains("| 184 | **OPEN**"),
@@ -152,10 +152,10 @@ fn phase_i_queue_wiring_184_done() {
         !text.contains("| 197 | **OPEN**"),
         "QUEUE #197 must not stay OPEN after MSRV supply-chain"
     );
-    for n in 198..=198 {
-        let needle = format!("| {n} | **OPEN**");
-        assert!(text.contains(&needle), "QUEUE missing OPEN row: {needle}");
-    }
+    assert!(
+        !text.contains("| 198 | **OPEN**"),
+        "QUEUE #198 must not stay OPEN after Phase I close"
+    );
     for needle in [
         "I0 govern + status honesty",
         "I1 P0 Core/CSU semantics",
@@ -200,7 +200,7 @@ fn phase_i_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-i-plan.md"));
     assert!(docs.contains("#184"));
-    assert!(docs.contains("IN PROGRESS"));
+    assert!(docs.contains("QUEUE I closed"));
     assert!(docs.contains("#198"));
     assert!(docs.contains("#197"));
     assert!(docs.contains("#196"));
@@ -219,19 +219,24 @@ fn phase_h_points_to_active_phase_i() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-h-plan.md")).unwrap();
     assert!(text.contains("phase-i-plan.md"));
     assert!(text.contains("#184"));
-    assert!(text.contains("first OPEN `#198`"));
+    assert!(text.contains("QUEUE I closed"));
 }
 
 #[test]
-fn phase_i_rfc_0078_id_free() {
-    let rfc_dir = repo_root().join("specs/rfc");
-    let entries = std::fs::read_dir(&rfc_dir).expect("specs/rfc");
-    for entry in entries {
-        let name = entry.unwrap().file_name().into_string().unwrap();
-        assert!(
-            !name.starts_with("AIRA-RFC-0078"),
-            "RFC-0078 reserved for #198; unexpected file: {name}"
-        );
+fn phase_i_rfc_0078_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0078 file");
+    for needle in [
+        "Phase I",
+        "#184",
+        "#198",
+        "v0.3-stable",
+        "RFC-0084",
+        "RFC-0095",
+        "no OPEN",
+        "GPU marketplace",
+    ] {
+        assert!(text.contains(needle), "RFC-0078 missing: {needle}");
     }
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
@@ -239,6 +244,30 @@ fn phase_i_rfc_0078_id_free() {
     assert!(status.contains("RFC-0078"));
     assert!(status.contains("phase_i_doc.rs"));
     assert!(status.contains("#185"));
+}
+
+#[test]
+fn phase_i_docs_rfc_198() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0078",
+        "v0.3-stable",
+        "QUEUE I closed",
+        "| #198 | Phase I docs + RFC-0078",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #198 missing: {needle}"
+        );
+    }
+    let rfc = std::fs::read_to_string(
+        repo_root().join("specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md"),
+    )
+    .expect("RFC-0078");
+    for needle in ["#198", "v0.3-stable", "QUEUE I closed"] {
+        assert!(rfc.contains(needle), "RFC-0078 missing: {needle}");
+    }
 }
 
 #[test]
