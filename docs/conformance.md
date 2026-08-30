@@ -1,6 +1,6 @@
 # Conformance guide
 
-Repo-level ТЗ → module → tests map: [implementation-status.md](implementation-status.md) (**Reference v0.3**). Merge gate: [ci-governance.md](ci-governance.md).
+Repo-level ТЗ → module → tests map: [implementation-status.md](implementation-status.md) (**Reference v0.3-stable**). Merge gate: [ci-governance.md](ci-governance.md).
 
 ## Reference v0.3 index (`#182`)
 
@@ -12,7 +12,7 @@ Repo-level ТЗ → module → tests map: [implementation-status.md](implementat
 | C4 | Settlement audit receipts scaffold | no |
 | C5 | Research separation + promotion gate scaffold | no |
 
-C4/C5 are local scaffolds only. Research remains **RESEARCH**. Consolidating Phase H RFC: [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md). Phase I semantic contracts: [`phase-i-plan.md`](phase-i-plan.md) (`#184`–`#197` **DONE**; first OPEN `#198`).
+C4/C5 are local scaffolds only. Research remains **RESEARCH**. Consolidating Phase H RFC: [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md). Phase I semantic contracts: [`phase-i-plan.md`](phase-i-plan.md) (`#184`–`#198` **DONE** @ RFC-0078).
 
 ## Profiles
 

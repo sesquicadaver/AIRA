@@ -1,8 +1,9 @@
 # Phase I — Semantic contract stabilization (post-H)
 
-**Статус:** складено 2026-08-28; **IN PROGRESS** 2026-08-30 → QUEUE `#184`–`#197` **DONE**; first OPEN `#198`.  
+**Статус:** складено 2026-08-28; **DONE** 2026-08-30 → QUEUE `#184`–`#198` (RFC-0078).  
 **Джерела:** незалежний аудит `main` @ `b66bcf1` (Handle / Verification / Policy / Reuse / identity / persistence); [`implementation-status.md`](implementation-status.md); [`phase-h-plan.md`](phase-h-plan.md) §7.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase I `#184`–`#198` (після `#183` DONE).  
+**Closure:** [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md). QUEUE I closed.  
 **Не змінює:** анти-місію README; Book semantics без per-atom RFC; production distributed OperationalPlane.
 
 ## 0. Навіщо Phase I (після H, не замість H)
@@ -138,7 +139,7 @@ Docs/RFC: Phase I closed; no OPEN I atoms.
 
 ## 8. RFC
 
-- Consolidating: `specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md` (`#198`) — id **confirmed free** at `#184` wiring (no `AIRA-RFC-0078*` in `specs/rfc/`).
+- Consolidating: [`AIRA-RFC-0078-phase-i-semantic-stabilization.md`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (`#198`) — id **confirmed free** at `#184` wiring.
 - Per-atom RFC при ABI-зміні Handle, Verification contract, Clock у public API.
 - `#186`: [`AIRA-RFC-0084`](../specs/rfc/AIRA-RFC-0084-handle-integrity.md).
 - `#187`: [`AIRA-RFC-0085`](../specs/rfc/AIRA-RFC-0085-semantic-verify-math.md).
@@ -157,6 +158,6 @@ Docs/RFC: Phase I closed; no OPEN I atoms.
 
 ```text
 #183 DONE (RFC-0077) → цей план став активною чергою.
-#184 wiring DONE; #185 status honesty DONE; #186 Handle integrity DONE (RFC-0084); #187 semantic verify DONE (RFC-0085); #188 PolicyGate invoke DONE (RFC-0086); #189 durable reuse DONE (RFC-0087); #190 fail-closed signing DONE (RFC-0088); #191 atomic persist DONE (RFC-0089); #192 artifact recovery DONE (RFC-0090); #193 runtime Clock DONE (RFC-0091); #194 envelope freshness/replay DONE (RFC-0092); #195 run nonce UUIDv7 DONE (RFC-0093); #196 instance-scoped crypto DONE (RFC-0094); #197 MSRV + supply-chain CI DONE (RFC-0095).
-first OPEN `#198` (Phase I docs + RFC).
+#184 wiring DONE; #185 status honesty DONE; #186 Handle integrity DONE (RFC-0084); #187 semantic verify DONE (RFC-0085); #188 PolicyGate invoke DONE (RFC-0086); #189 durable reuse DONE (RFC-0087); #190 fail-closed signing DONE (RFC-0088); #191 atomic persist DONE (RFC-0089); #192 artifact recovery DONE (RFC-0090); #193 runtime Clock DONE (RFC-0091); #194 envelope freshness/replay DONE (RFC-0092); #195 run nonce UUIDv7 DONE (RFC-0093); #196 instance-scoped crypto DONE (RFC-0094); #197 MSRV + supply-chain CI DONE (RFC-0095); #198 docs + RFC-0078 DONE.
+QUEUE I closed; no OPEN.
 ```
