@@ -22,7 +22,7 @@ fn phase_i_plan_present() {
         "AIRA-RFC-0078",
         "confirmed free",
         "IN PROGRESS",
-        "first OPEN `#185`",
+        "first OPEN `#186`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-i-plan missing: {needle}");
@@ -41,12 +41,20 @@ fn phase_i_queue_wiring_184_done() {
         "QUEUE #184 must be DONE after wiring"
     );
     assert!(
-        text.contains("| 185 | **OPEN**"),
-        "QUEUE #185 must be first remaining OPEN"
+        text.contains("| 185 | **DONE**"),
+        "QUEUE #185 must be DONE after status honesty"
+    );
+    assert!(
+        text.contains("| 186 | **OPEN**"),
+        "QUEUE #186 must be first remaining OPEN"
     );
     assert!(
         !text.contains("| 184 | **OPEN**"),
         "QUEUE #184 must not stay OPEN after wiring"
+    );
+    assert!(
+        !text.contains("| 185 | **OPEN**"),
+        "QUEUE #185 must not stay OPEN after honesty rollup"
     );
     for n in 186..=198 {
         let needle = format!("| {n} | **OPEN**");
@@ -68,13 +76,14 @@ fn phase_i_queue_wiring_184_done() {
 fn phase_i_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-i-plan.md"));
+    assert!(readme.contains("#186"));
     assert!(readme.contains("#185"));
     assert!(readme.contains("#184"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-i-plan.md"));
     assert!(docs.contains("#184"));
     assert!(docs.contains("IN PROGRESS"));
-    assert!(docs.contains("#185"));
+    assert!(docs.contains("#186"));
 }
 
 #[test]
@@ -82,7 +91,7 @@ fn phase_h_points_to_active_phase_i() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-h-plan.md")).unwrap();
     assert!(text.contains("phase-i-plan.md"));
     assert!(text.contains("#184"));
-    assert!(text.contains("first OPEN `#185`"));
+    assert!(text.contains("first OPEN `#186`"));
 }
 
 #[test]
@@ -102,4 +111,34 @@ fn phase_i_rfc_0078_id_free() {
     assert!(status.contains("RFC-0078"));
     assert!(status.contains("phase_i_doc.rs"));
     assert!(status.contains("#185"));
+}
+
+#[test]
+fn phase_i_status_honesty_185() {
+    let text = std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "Opaque Handle",
+        "**PARTIAL**",
+        "Handle::new",
+        "storage_token()",
+        "object_id == handle.object_ref",
+        "b66bcf1",
+        "#185",
+        "#186",
+        "Reduction / reuse before execute",
+        "LocalSession::submit_problem",
+        "vec![]",
+        "#189",
+        "Verification CSU",
+        "is_finite()",
+        "VERIFIED",
+        "#187",
+        "| #185 | Status honesty rollup",
+        "**DONE** @ this PR",
+    ] {
+        assert!(
+            text.contains(needle),
+            "implementation-status honesty missing: {needle}"
+        );
+    }
 }
