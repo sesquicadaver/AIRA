@@ -62,7 +62,7 @@ pub struct OperationalPlane {
     runtime: CsuRuntime,
     problem_ref: Option<AiraRef>,
     seq: u64,
-    run_nonce: u64,
+    run_nonce: String,
     ready_solutions: Vec<AiraRef>,
 }
 
@@ -77,15 +77,16 @@ impl OperationalPlane {
         root: impl AsRef<Path>,
         ready_solutions: Vec<AiraRef>,
     ) -> Result<Self, FlowError> {
-        Self::open_with_ready_nonce(root, ready_solutions, 0)
+        Self::open_with_ready_nonce(root, ready_solutions, "0")
     }
 
     /// Open with a run nonce so artifact/event ids do not collide across local submits.
     pub fn open_with_ready_nonce(
         root: impl AsRef<Path>,
         ready_solutions: Vec<AiraRef>,
-        run_nonce: u64,
+        run_nonce: impl Into<String>,
     ) -> Result<Self, FlowError> {
+        let run_nonce = run_nonce.into();
         let artifacts =
             CasArtifactStore::open(root).map_err(|e| FlowError::Artifact(e.to_string()))?;
         let mut runtime = CsuRuntime::new(local_identity(), local_signature());
@@ -96,18 +97,18 @@ impl OperationalPlane {
             .allow_action(DISPATCH_POLICY_ACTION);
         let mut events = MemoryEventLog::new();
 
-        let mut reduction = ReductionBasicCsu::new().with_run_nonce(run_nonce);
+        let mut reduction = ReductionBasicCsu::new().with_run_nonce(run_nonce.clone());
         for id in &ready_solutions {
             reduction = reduction.with_ready_solution(id.clone());
         }
 
         let handlers: Vec<Box<dyn Csu>> = vec![
-            Box::new(ContextBasicCsu::new().with_run_nonce(run_nonce)),
+            Box::new(ContextBasicCsu::new().with_run_nonce(run_nonce.clone())),
             Box::new(reduction),
-            Box::new(ExecutionBasicCsu::new().with_run_nonce(run_nonce)),
-            Box::new(VerificationBasicCsu::new().with_run_nonce(run_nonce)),
-            Box::new(EvidenceBasicCsu::new().with_run_nonce(run_nonce)),
-            Box::new(EpistemicBasicCsu::new().with_run_nonce(run_nonce)),
+            Box::new(ExecutionBasicCsu::new().with_run_nonce(run_nonce.clone())),
+            Box::new(VerificationBasicCsu::new().with_run_nonce(run_nonce.clone())),
+            Box::new(EvidenceBasicCsu::new().with_run_nonce(run_nonce.clone())),
+            Box::new(EpistemicBasicCsu::new().with_run_nonce(run_nonce.clone())),
         ];
         for h in handlers {
             let id = h.manifest().csu_id.clone();
@@ -154,7 +155,7 @@ impl OperationalPlane {
     /// Seed a ready solution and rebuild Reduction handler (Issue #54).
     pub fn enable_ready_solution(&mut self, ready_id: AiraRef) -> Result<(), FlowError> {
         self.ready_solutions.push(ready_id.clone());
-        let mut reduction = ReductionBasicCsu::new().with_run_nonce(self.run_nonce);
+        let mut reduction = ReductionBasicCsu::new().with_run_nonce(self.run_nonce.clone());
         for id in &self.ready_solutions {
             reduction = reduction.with_ready_solution(id.clone());
         }

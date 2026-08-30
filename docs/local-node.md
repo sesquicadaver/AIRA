@@ -142,7 +142,7 @@ Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.
 ## Notes
 
 - Config: `config.json` (from `aira init`) **or** `config.yaml` (same `NodeConfig` schema). Both present → fail-closed. Init never writes YAML.
-- Multi-submit uses `run_nonce` so artifact/event ids do not collide.
+- Multi-submit allocates a UUIDv7 `run_nonce` (RFC-0093) so artifact/event ids do not collide; leftover `.aira/run-counter` is ignored.
 - No network dependency is required for local MVP.
 - Operational submit uses the C1 **reference/demo** plane, not a production event runtime ([operational-plane.md](operational-plane.md)).
 - AiraRefs in path segments may include `:` (single URL path segment).
