@@ -1,0 +1,59 @@
+{
+  "$id": "aira:schema:research:promotion-candidate:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "promotion_id",
+    "source_artifact_ref",
+    "evidence_refs",
+    "validation_refs",
+    "compatibility_check_ref",
+    "policy_refs",
+    "rollback_path_ref",
+    "promotion_status",
+    "created_at",
+    "signature"
+  ],
+  "properties": {
+    "promotion_id": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "source_artifact_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "validation_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "compatibility_check_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "policy_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "rollback_path_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "promotion_status": {
+      "type": "string",
+      "enum": ["candidate", "canary", "accepted", "rejected", "rolled_back"]
+    },
+    "created_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}

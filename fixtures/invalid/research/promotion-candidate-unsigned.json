@@ -1,0 +1,11 @@
+{
+  "promotion_id": "aira:research:promotion:unsigned",
+  "source_artifact_ref": "aira:artifact:research:fixture1",
+  "evidence_refs": ["aira:artifact:evidence:fixture1"],
+  "validation_refs": ["aira:artifact:validation:fixture1"],
+  "compatibility_check_ref": "aira:artifact:compat:fixture1",
+  "policy_refs": ["aira:policy:research-isolation"],
+  "rollback_path_ref": "aira:artifact:rollback:fixture1",
+  "promotion_status": "candidate",
+  "created_at": "2026-08-30T12:00:00Z"
+}

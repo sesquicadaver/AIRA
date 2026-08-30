@@ -588,6 +588,38 @@ mod tests {
     }
 
     #[test]
+    fn promotion_candidate_schema_loads() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:research:promotion-candidate:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let valid = root.join("fixtures/valid/research/promotion-candidate.json");
+        reg.validate_file("aira:schema:research:promotion-candidate:0.1", &valid)
+            .unwrap();
+        let text = std::fs::read_to_string(&valid).unwrap();
+        let v: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(
+            v.get("promotion_status"),
+            Some(&Value::String("candidate".into()))
+        );
+        assert!(v.get("source_artifact_ref").is_some());
+        assert!(reg
+            .validate_file(
+                "aira:schema:research:promotion-candidate:0.1",
+                root.join("fixtures/invalid/research/promotion-candidate-unsigned.json"),
+            )
+            .is_err());
+        assert!(reg
+            .validate_file(
+                "aira:schema:research:promotion-candidate:0.1",
+                root.join("fixtures/invalid/research/promotion-candidate-missing-source.json"),
+            )
+            .is_err());
+    }
+
+    #[test]
     fn claim_artifact_schema_loads() {
         let reg = registry();
         assert!(reg

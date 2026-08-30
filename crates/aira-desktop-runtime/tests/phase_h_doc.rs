@@ -136,8 +136,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #177 must be DONE after RFC-P promotion doc"
     );
     assert!(
-        text.contains("| 178 | **OPEN**"),
-        "QUEUE #178 must be next OPEN"
+        text.contains("| 178 | **DONE**"),
+        "QUEUE #178 must be DONE after promotion fixtures"
+    );
+    assert!(
+        text.contains("| 179 | **OPEN**"),
+        "QUEUE #179 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
@@ -247,6 +251,9 @@ fn phase_h_h1_stores_status_rollup() {
         "Book V → operational лише через promotion",
         "process only",
         "no runtime",
+        "aira:schema:research:promotion-candidate:0.1",
+        "promotion_candidate_schema_loads",
+        "research/promotion-candidate.schema.json",
     ] {
         assert!(
             text.contains(needle),

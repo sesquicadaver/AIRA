@@ -117,6 +117,10 @@
       "file": "fixtures/valid/settlement/receipt.json"
     },
     {
+      "schema": "aira:schema:research:promotion-candidate:0.1",
+      "file": "fixtures/valid/research/promotion-candidate.json"
+    },
+    {
       "schema": "aira:schema:identity:identity-descriptor:0.1",
       "file": "fixtures/valid/identity/identity-descriptor.json"
     },
@@ -229,6 +233,14 @@
     {
       "schema": "aira:schema:settlement:receipt:0.1",
       "file": "fixtures/invalid/settlement/receipt-raw-prompt.json"
+    },
+    {
+      "schema": "aira:schema:research:promotion-candidate:0.1",
+      "file": "fixtures/invalid/research/promotion-candidate-unsigned.json"
+    },
+    {
+      "schema": "aira:schema:research:promotion-candidate:0.1",
+      "file": "fixtures/invalid/research/promotion-candidate-missing-source.json"
     },
     {
       "schema": "aira:schema:model:artifact:0.1",

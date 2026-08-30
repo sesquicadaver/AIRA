@@ -1,6 +1,6 @@
 # RFC-P — Research Promotion (Reference working copy)
 
-**QUEUE:** `#177` (Analyze-212). **Статус:** process doc merged; gate/fixtures/C5 — наступні атоми.  
+**QUEUE:** `#177` (Analyze-212) process; `#178` (Analyze-213) fixtures **DONE**. **Статус:** gate/C5 — наступні атоми.  
 **Канон виконання:** [`QUEUE.md`](../QUEUE.md). **План:** [`phase-h-plan.md`](phase-h-plan.md) H5.  
 **Нормативні джерела:** Book V §3 / §7 / §8 / §28 / §30; [`specs/rfc-process.md`](../specs/rfc-process.md) §12–§13 / §31 (RFC-R / RFC-P / Promotion Gate).  
 **Контрактний тест:** `crates/aira-desktop-runtime/tests/phase_h_doc.rs`.
@@ -193,7 +193,7 @@ Core що «вирішує задачі» замість CSU contracts
 | QUEUE | Atom | Role vs this doc |
 |-------|------|------------------|
 | `#177` | this file | policy: Book V → operational лише через promotion |
-| `#178` | promotion-candidate fixtures | schema + invalid-without-required-fields |
+| `#178` | promotion-candidate fixtures | schema + invalid-without-required-fields (**DONE**) |
 | `#179` | non-operational gate | research/promotion artifact **rejected as operational** |
 | `#180` | `run_c5` | research separation + promotion gate local cases |
 | `#181` | status rollup | `implementation-status` C5 / promotion notes |
