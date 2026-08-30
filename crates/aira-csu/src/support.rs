@@ -26,9 +26,9 @@ pub fn local_identity() -> AiraRef {
     active_identity()
 }
 
-/// Fixed MVP timestamp.
+/// Timestamp from the process [`aira_object::Clock`] (SystemClock unless tests install FixedClock).
 pub fn mvp_timestamp() -> Timestamp {
-    Timestamp::parse("2026-07-10T12:00:00Z").expect("ts")
+    aira_object::now()
 }
 
 /// Override `publisher_identity` on a manifest (emit signer; identity_ref unchanged).

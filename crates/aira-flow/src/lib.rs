@@ -43,6 +43,7 @@ mod tests {
             .unwrap_or_else(|e| e.into_inner());
         aira_object::reset_csu_tenants();
         aira_object::reset_primary_signer();
+        aira_object::reset_clock();
         g
     }
 
@@ -284,6 +285,58 @@ mod tests {
         assert!(tail
             .iter()
             .any(|e| e.event_type == EventType::ProblemSubmitted));
+    }
+
+    #[test]
+    fn local_session_artifacts_are_not_all_mvp_fixed_timestamp() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let mut session = LocalSession::open(&root).unwrap();
+        let SubmitOutcome::Completed {
+            verified_artifact_id,
+            ..
+        } = session.submit_problem("Calculate 2 + 2").unwrap()
+        else {
+            panic!("expected completed");
+        };
+        let (desc, _) = session.get_artifact(verified_artifact_id.as_str()).unwrap();
+        let ts = desc["created_at"].as_str().expect("created_at");
+        assert_ne!(
+            ts,
+            aira_object::MVP_FIXED_TIMESTAMP,
+            "operational artifacts must use the runtime clock"
+        );
+        let ev = session
+            .plane()
+            .events()
+            .iter()
+            .find(|e| e.event_type == EventType::ProblemSubmitted)
+            .unwrap();
+        assert_ne!(ev.created_at.as_str(), aira_object::MVP_FIXED_TIMESTAMP);
+    }
+
+    #[test]
+    fn local_session_fixed_clock_stamps_artifacts() {
+        let _lock = isolated_flow();
+        aira_object::set_clock(std::sync::Arc::new(
+            aira_object::FixedClock::parse("2026-08-30T16:41:00Z").unwrap(),
+        ));
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let mut session = LocalSession::open(&root).unwrap();
+        let SubmitOutcome::Completed {
+            verified_artifact_id,
+            ..
+        } = session.submit_problem("Calculate 2 + 2").unwrap()
+        else {
+            panic!("expected completed");
+        };
+        let (desc, _) = session.get_artifact(verified_artifact_id.as_str()).unwrap();
+        assert_eq!(desc["created_at"].as_str(), Some("2026-08-30T16:41:00Z"));
+        aira_object::reset_clock();
     }
 
     #[test]

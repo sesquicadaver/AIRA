@@ -28,7 +28,7 @@ OperationalPlane = локальна референсна демонстраці�
 - Safety bound on drain iterations (demo fail-closed), not a job scheduler.
 - C1 profile (`config.node.profile = "C1"`) for local MVP / alpha acceptance.
 
-Peer/federation/DHT live in `aira-peer` / protocol crates and are **out of this plane**. HTTP (`aira-node`) is a local JSON surface over `LocalSession`, which still uses this same reference plane. Research / promotion-candidate artifacts are **rejected** as plane input (`#179`, RFC-0082). Local C5 scaffold is `run_c5` (`#180`, RFC-0083). Phase I ([`phase-i-plan.md`](phase-i-plan.md), `#184`–`#198`) does not change this reference-local role.
+Peer/federation/DHT live in `aira-peer` / protocol crates and are **out of this plane**. HTTP (`aira-node`) is a local JSON surface over `LocalSession`, which still uses this same reference plane. Research / promotion-candidate artifacts are **rejected** as plane input (`#179`, RFC-0082). Local C5 scaffold is `run_c5` (`#180`, RFC-0083). Phase I ([`phase-i-plan.md`](phase-i-plan.md), `#184`–`#198`) does not change this reference-local role. Operational `created_at` uses the process Clock (`#193` / RFC-0091), not a fixed MVP timestamp.
 
 ## Pointers
 
