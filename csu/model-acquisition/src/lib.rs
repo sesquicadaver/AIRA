@@ -227,7 +227,7 @@ mod tests {
         );
         let for_sign = Value::Object(body.clone());
         let raw = serde_json::to_vec(&for_sign).unwrap();
-        let sig = active_signature(&raw);
+        let sig = active_signature(&raw).unwrap();
         body.insert("signature".into(), serde_json::to_value(&sig).unwrap());
         Value::Object(body)
     }

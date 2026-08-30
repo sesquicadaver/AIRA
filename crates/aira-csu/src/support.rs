@@ -10,13 +10,15 @@ use serde_json::{json, Value};
 use crate::manifest::{CsuManifest, CsuSandbox, CsuType, SUPPORTED_ABI_VERSION};
 
 /// Signature over a message using the process primary signer (node identity when set).
+///
+/// Panics if the primary has no signing key (fail-closed; no local-test fallback).
 pub fn local_signature_over(message: &[u8]) -> aira_object::Signature {
-    active_signature(message)
+    active_signature(message).expect("primary signer has no signing key")
 }
 
 /// Signature over the standard domain message using the primary signer.
 pub fn local_signature() -> aira_object::Signature {
-    active_signature(aira_object::LOCAL_TEST_DOMAIN_MSG)
+    active_signature(aira_object::LOCAL_TEST_DOMAIN_MSG).expect("primary signer has no signing key")
 }
 
 /// Producer identity — primary signer (node identity when registered, else local-test).

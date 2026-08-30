@@ -285,6 +285,28 @@ mod tests {
     }
 
     #[test]
+    fn local_session_rejects_corrupt_identity() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        std::fs::create_dir_all(root.join("identity")).unwrap();
+        std::fs::write(
+            root.join("identity/local.identity.json"),
+            "{not-a-valid-identity",
+        )
+        .unwrap();
+        let err = match LocalSession::open(&root) {
+            Ok(_) => panic!("expected corrupt identity to fail LocalSession::open"),
+            Err(e) => e.to_string(),
+        };
+        assert!(
+            err.contains("identity") || err.contains("io") || err.contains("json"),
+            "expected identity load error, got {err}"
+        );
+    }
+
+    #[test]
     fn local_session_repeat_problem_reuses_without_execution() {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();

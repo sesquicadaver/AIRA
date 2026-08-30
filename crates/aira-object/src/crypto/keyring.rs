@@ -228,6 +228,7 @@ pub fn register_node_identity(root: impl AsRef<Path>) -> Result<Option<AiraRef>,
     set_primary_signer(id.clone());
     Ok(Some(id))
 }
+
 /// Snapshot of the process keyring (for CLI sign).
 pub fn process_keyring_snapshot() -> Keyring {
     process_keyring()
@@ -279,13 +280,13 @@ pub fn active_identity() -> AiraRef {
 }
 
 /// Sign `message` with the primary identity's registered signing key.
-pub fn active_signature(message: &[u8]) -> Signature {
+///
+/// No silent fallback to [`local_test_signature`]. Demo/test use the default
+/// primary `aira:identity:local-test` (which has a process signing key). A
+/// non-local-test primary without a registered signing key returns [`CryptoError::NoSigningKey`].
+pub fn active_signature(message: &[u8]) -> Result<Signature, CryptoError> {
     let id = primary_signer();
-    let ring = process_keyring_snapshot();
-    match ring.sign(&id, message) {
-        Ok(sig) => sig,
-        Err(_) => local_test_signature(message),
-    }
+    process_keyring_snapshot().sign(&id, message)
 }
 
 /// Sign `message` with an explicit identity — no local-test fallback.

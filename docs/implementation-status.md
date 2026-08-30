@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.3** (Analyze-218 / QUEUE `#183`; Phase H `#152`–`#183` **DONE** @ RFC-0077). Phase I **IN PROGRESS** (`#184`–`#189` **DONE**; first OPEN `#190`). Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.3** (Analyze-218 / QUEUE `#183`; Phase H `#152`–`#183` **DONE** @ RFC-0077). Phase I **IN PROGRESS** (`#184`–`#190` **DONE**; first OPEN `#191`). Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#190`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#191`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -322,7 +322,7 @@ Plan: [`phase-h-plan.md`](phase-h-plan.md). Consolidating RFC: [`AIRA-RFC-0077`]
 | #187 | Semantic verify math.eval.safe | independent eval; `wrong_finite_math_result_is_not_verified`; RFC-0085 | **DONE** @ this PR |
 | #188 | CSU PolicyGate in invoke | `invoke_binds_policy_gate_check_policy_allows`; `check_policy_fail_closed_without_bound_gate`; RFC-0086 | **DONE** @ this PR |
 | #189 | Durable reuse index | `local_session_repeat_problem_reuses_without_execution`; `reuse-index.json`; RFC-0087 | **DONE** @ this PR |
-| #190 | Fail-closed signing | no silent local-test fallback | **OPEN** |
+| #190 | Fail-closed signing | `active_signature_does_not_fallback_to_local_test`; `local_session_rejects_corrupt_identity`; RFC-0088 | **DONE** @ this PR |
 | #191 | Atomic session persist | temp+rename; corrupt ≠ silent wipe | **OPEN** |
 | #192 | Artifact metadata recovery | second descriptor same hash | **OPEN** |
 | #193 | Runtime Clock | Clock trait; not all `2026-07-10T12:00:00Z` | **OPEN** |
@@ -355,7 +355,7 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 **Phase H `#152`–`#183` labelled Reference v0.3** (не змінює anti-mission): protocol-depth docs in README / this file / [conformance.md](conformance.md); consolidating [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md). Plan: [`phase-h-plan.md`](phase-h-plan.md).
 
-**Phase I `#184`–`#198` IN PROGRESS** (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); `#184`–`#189` **DONE**; first OPEN `#190`.
+**Phase I `#184`–`#198` IN PROGRESS** (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); `#184`–`#190` **DONE**; first OPEN `#191`.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 

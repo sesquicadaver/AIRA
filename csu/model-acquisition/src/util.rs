@@ -56,7 +56,8 @@ pub(crate) fn publish_verify_evidence(
     body.insert("reason_refs".into(), json!([input.reason_ref]));
     let for_sign = Value::Object(body.clone());
     let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
-    let sig: Signature = active_signature(&raw);
+    let sig: Signature =
+        active_signature(&raw).map_err(|e| AcquisitionError::Other(e.to_string()))?;
     body.insert(
         "signature".into(),
         serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,
@@ -149,7 +150,8 @@ pub(crate) fn build_quarantine_receipt(
     body.insert("activated".into(), json!(false));
     let for_sign = Value::Object(body.clone());
     let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
-    let sig: Signature = active_signature(&raw);
+    let sig: Signature =
+        active_signature(&raw).map_err(|e| AcquisitionError::Other(e.to_string()))?;
     body.insert(
         "signature".into(),
         serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,
@@ -168,7 +170,8 @@ pub(crate) fn build_decision(
     let for_sign = Value::Object(body.clone());
     let bytes =
         serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
-    let sig: Signature = active_signature(&bytes);
+    let sig: Signature =
+        active_signature(&bytes).map_err(|e| AcquisitionError::Other(e.to_string()))?;
     body.insert(
         "signature".into(),
         serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,

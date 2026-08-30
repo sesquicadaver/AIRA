@@ -22,7 +22,7 @@ fn phase_i_plan_present() {
         "AIRA-RFC-0078",
         "confirmed free",
         "IN PROGRESS",
-        "first OPEN `#190`",
+        "first OPEN `#191`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-i-plan missing: {needle}");
@@ -61,8 +61,12 @@ fn phase_i_queue_wiring_184_done() {
         "QUEUE #189 must be DONE after durable reuse"
     );
     assert!(
-        text.contains("| 190 | **OPEN**"),
-        "QUEUE #190 must be first remaining OPEN"
+        text.contains("| 190 | **DONE**"),
+        "QUEUE #190 must be DONE after fail-closed signing"
+    );
+    assert!(
+        text.contains("| 191 | **OPEN**"),
+        "QUEUE #191 must be first remaining OPEN"
     );
     assert!(
         !text.contains("| 184 | **OPEN**"),
@@ -88,7 +92,11 @@ fn phase_i_queue_wiring_184_done() {
         !text.contains("| 189 | **OPEN**"),
         "QUEUE #189 must not stay OPEN after durable reuse"
     );
-    for n in 190..=198 {
+    assert!(
+        !text.contains("| 190 | **OPEN**"),
+        "QUEUE #190 must not stay OPEN after fail-closed signing"
+    );
+    for n in 191..=198 {
         let needle = format!("| {n} | **OPEN**");
         assert!(text.contains(&needle), "QUEUE missing OPEN row: {needle}");
     }
@@ -100,6 +108,7 @@ fn phase_i_queue_wiring_184_done() {
         "Analyze-222",
         "Analyze-223",
         "Analyze-224",
+        "Analyze-225",
         "Analyze-233",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -110,6 +119,7 @@ fn phase_i_queue_wiring_184_done() {
 fn phase_i_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-i-plan.md"));
+    assert!(readme.contains("#191"));
     assert!(readme.contains("#190"));
     assert!(readme.contains("#189"));
     assert!(readme.contains("#188"));
@@ -121,6 +131,7 @@ fn phase_i_readme_and_docs_index() {
     assert!(docs.contains("phase-i-plan.md"));
     assert!(docs.contains("#184"));
     assert!(docs.contains("IN PROGRESS"));
+    assert!(docs.contains("#191"));
     assert!(docs.contains("#190"));
     assert!(docs.contains("#189"));
     assert!(docs.contains("#188"));
@@ -131,7 +142,7 @@ fn phase_h_points_to_active_phase_i() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-h-plan.md")).unwrap();
     assert!(text.contains("phase-i-plan.md"));
     assert!(text.contains("#184"));
-    assert!(text.contains("first OPEN `#190`"));
+    assert!(text.contains("first OPEN `#191`"));
 }
 
 #[test]
@@ -276,5 +287,28 @@ fn phase_i_durable_reuse_189() {
             .expect("RFC-0087");
     for needle in ["#189", "reuse-index.json", "reuse:ready_solution"] {
         assert!(rfc.contains(needle), "RFC-0087 missing: {needle}");
+    }
+}
+
+#[test]
+fn phase_i_fail_closed_signing_190() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0088",
+        "active_signature_does_not_fallback_to_local_test",
+        "local_session_rejects_corrupt_identity",
+        "| #190 | Fail-closed signing",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #190 missing: {needle}"
+        );
+    }
+    let rfc =
+        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0088-fail-closed-signing.md"))
+            .expect("RFC-0088");
+    for needle in ["#190", "active_signature", "local-test"] {
+        assert!(rfc.contains(needle), "RFC-0088 missing: {needle}");
     }
 }

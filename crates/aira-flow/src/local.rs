@@ -452,11 +452,7 @@ impl LocalSession {
             )));
         }
         let config = load_config(&paths.root)?;
-        // Register node identity + trust store BEFORE plane construction.
-        let _ = aira_object::register_node_identity(&paths.root);
-        let _ = aira_object::ensure_trust_defaults(&paths.root);
-        // Analyze-62: rehydrate durable CSU tenants AFTER trust sync.
-        let _ = aira_object::load_all_csu_tenant_signing(&paths.root);
+        bind_node_crypto(&paths.root)?;
         let nonce = peek_run_nonce(&paths)?;
         let plane = OperationalPlane::open_with_ready_nonce(paths.artifacts(), vec![], nonce)?;
         Ok(Self {
@@ -476,10 +472,7 @@ impl LocalSession {
 
     /// Submit problem, drain pipeline, persist events + problem index.
     pub fn submit_problem(&mut self, text: &str) -> Result<SubmitOutcome, FlowError> {
-        // Ensure primary signer + trust store reflect node identity for rebuilt plane.
-        let _ = aira_object::register_node_identity(&self.paths.root);
-        let _ = aira_object::ensure_trust_defaults(&self.paths.root);
-        let _ = aira_object::load_all_csu_tenant_signing(&self.paths.root);
+        bind_node_crypto(&self.paths.root)?;
         // Allocate a fresh nonce and rebuild plane so ids never collide with prior runs.
         // Seed Reduction from the durable reuse index for this problem text (#189).
         let nonce = alloc_run_nonce(&self.paths)?;
@@ -640,6 +633,14 @@ pub fn open_node_sqlite_object_store(paths: &NodePaths) -> Result<SqliteObjectSt
 
 fn run_counter_path(paths: &NodePaths) -> PathBuf {
     paths.root.join("run-counter")
+}
+
+/// Load node identity, trust, and CSU tenants. Errors are not swallowed (#190).
+fn bind_node_crypto(root: &Path) -> Result<(), FlowError> {
+    aira_object::register_node_identity(root).map_err(|e| FlowError::Other(e.to_string()))?;
+    aira_object::ensure_trust_defaults(root).map_err(|e| FlowError::Other(e.to_string()))?;
+    aira_object::load_all_csu_tenant_signing(root).map_err(|e| FlowError::Other(e.to_string()))?;
+    Ok(())
 }
 
 fn peek_run_nonce(paths: &NodePaths) -> Result<u64, FlowError> {

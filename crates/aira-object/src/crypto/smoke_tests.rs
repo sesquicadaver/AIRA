@@ -99,11 +99,26 @@ fn node_identity_keyring_sign_verify() {
 
     set_primary_signer(loaded_id.clone());
     assert_eq!(active_identity().as_str(), id);
-    let active = active_signature(msg);
+    let active = active_signature(msg).unwrap();
     assert_eq!(active.key_ref.as_str(), id);
     verify_ed25519(&active, msg).unwrap();
     reset_primary_signer();
     assert_eq!(primary_signer().as_str(), LOCAL_TEST_KEY_REF);
+}
+
+#[test]
+fn active_signature_does_not_fallback_to_local_test() {
+    reset_primary_signer();
+    let missing = AiraRef::parse("aira:identity:no-signing-key").unwrap();
+    set_primary_signer(missing.clone());
+    let err = active_signature(b"must-not-become-local-test").unwrap_err();
+    assert!(
+        matches!(err, CryptoError::NoSigningKey(ref id) if id == missing.as_str()),
+        "{err:?}"
+    );
+    reset_primary_signer();
+    let demo = active_signature(b"explicit-demo-local-test").unwrap();
+    assert_eq!(demo.key_ref.as_str(), LOCAL_TEST_KEY_REF);
 }
 
 #[test]
