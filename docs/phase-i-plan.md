@@ -1,6 +1,6 @@
 # Phase I — Semantic contract stabilization (post-H)
 
-**Статус:** складено 2026-08-28; **IN PROGRESS** 2026-08-30 → QUEUE `#184`–`#188` **DONE**; first OPEN `#189`.  
+**Статус:** складено 2026-08-28; **IN PROGRESS** 2026-08-30 → QUEUE `#184`–`#189` **DONE**; first OPEN `#190`.  
 **Джерела:** незалежний аудит `main` @ `b66bcf1` (Handle / Verification / Policy / Reuse / identity / persistence); [`implementation-status.md`](implementation-status.md); [`phase-h-plan.md`](phase-h-plan.md) §7.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase I `#184`–`#198` (після `#183` DONE).  
 **Не змінює:** анти-місію README; Book semantics без per-atom RFC; production distributed OperationalPlane.
@@ -143,11 +143,12 @@ Docs/RFC: Phase I closed; no OPEN I atoms.
 - `#186`: [`AIRA-RFC-0084`](../specs/rfc/AIRA-RFC-0084-handle-integrity.md).
 - `#187`: [`AIRA-RFC-0085`](../specs/rfc/AIRA-RFC-0085-semantic-verify-math.md).
 - `#188`: [`AIRA-RFC-0086`](../specs/rfc/AIRA-RFC-0086-csu-policy-gate-invoke.md).
+- `#189`: [`AIRA-RFC-0087`](../specs/rfc/AIRA-RFC-0087-durable-reuse-index.md).
 
 ## 9. Activation rule
 
 ```text
 #183 DONE (RFC-0077) → цей план став активною чергою.
-#184 wiring DONE; #185 status honesty DONE; #186 Handle integrity DONE (RFC-0084); #187 semantic verify DONE (RFC-0085); #188 PolicyGate invoke DONE (RFC-0086).
-first OPEN `#189` (durable reuse).
+#184 wiring DONE; #185 status honesty DONE; #186 Handle integrity DONE (RFC-0084); #187 semantic verify DONE (RFC-0085); #188 PolicyGate invoke DONE (RFC-0086); #189 durable reuse DONE (RFC-0087).
+first OPEN `#190` (fail-closed signing).
 ```

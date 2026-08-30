@@ -285,6 +285,69 @@ mod tests {
     }
 
     #[test]
+    fn local_session_repeat_problem_reuses_without_execution() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        assert!(root.join("problems/reuse-index.json").exists());
+
+        let mut session = LocalSession::open(&root).unwrap();
+        let first = session.submit_problem("Calculate 2 + 2").unwrap();
+        assert!(matches!(first, SubmitOutcome::Completed { .. }));
+        assert!(
+            session
+                .plane()
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleCompleted),
+            "first submit must execute"
+        );
+
+        let second = session.submit_problem("Calculate 2 + 2").unwrap();
+        assert!(matches!(second, SubmitOutcome::Completed { .. }));
+        assert!(
+            !session
+                .plane()
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleCompleted),
+            "repeat submit must skip execution"
+        );
+        assert!(session
+            .plane()
+            .events()
+            .iter()
+            .any(|e| e.payload_ref.as_deref() == Some("reuse:ready_solution")));
+
+        drop(session);
+        let mut reopened = LocalSession::open(&root).unwrap();
+        let third = reopened.submit_problem("Calculate 2 + 2").unwrap();
+        assert!(matches!(third, SubmitOutcome::Completed { .. }));
+        assert!(!reopened
+            .plane()
+            .events()
+            .iter()
+            .any(|e| e.event_type == EventType::CapsuleCompleted));
+        assert!(reopened
+            .plane()
+            .events()
+            .iter()
+            .any(|e| e.payload_ref.as_deref() == Some("reuse:ready_solution")));
+
+        let other = reopened.submit_problem("echo hello").unwrap();
+        assert!(matches!(other, SubmitOutcome::Completed { .. }));
+        assert!(
+            reopened
+                .plane()
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleCompleted),
+            "different problem text must not reuse 2+2"
+        );
+    }
+
+    #[test]
     fn local_session_submit_signs_with_node_identity() {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
