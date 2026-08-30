@@ -5,6 +5,7 @@
 
 mod audit;
 mod canonical;
+mod clock;
 mod crypto;
 mod descriptor;
 mod handle;
@@ -19,6 +20,7 @@ pub use canonical::{
     sign_canonical_descriptor, strip_top_level_signature, verify_canonical_descriptor,
     verify_producer_signature_binding,
 };
+pub use clock::{now, reset_clock, set_clock, Clock, FixedClock, SystemClock, MVP_FIXED_TIMESTAMP};
 pub use crypto::{
     active_identity, active_signature, ensure_trust_defaults, is_cryptographic_signature,
     list_node_secret_backups, local_test_public_key_hex, local_test_signature,
@@ -193,6 +195,26 @@ mod tests {
         let mut id = d;
         id.object_id = AiraRef::parse("aira:problem:MUTATED").unwrap();
         assert!(id.verify_canonical().is_err());
+    }
+
+    #[test]
+    fn system_clock_is_not_the_mvp_fixed_timestamp() {
+        reset_clock();
+        assert_ne!(SystemClock.now().as_str(), MVP_FIXED_TIMESTAMP);
+        assert_ne!(now().as_str(), MVP_FIXED_TIMESTAMP);
+    }
+
+    #[test]
+    fn fixed_clock_now_is_the_installed_time() {
+        let fixed = FixedClock::parse("2026-08-30T16:00:00Z").unwrap();
+        assert_eq!(fixed.now().as_str(), "2026-08-30T16:00:00Z");
+        assert_eq!(FixedClock::mvp().now().as_str(), MVP_FIXED_TIMESTAMP);
+        set_clock(std::sync::Arc::new(
+            FixedClock::parse("2026-08-30T16:41:00Z").unwrap(),
+        ));
+        assert_eq!(now().as_str(), "2026-08-30T16:41:00Z");
+        reset_clock();
+        assert_ne!(now().as_str(), "2026-08-30T16:41:00Z");
     }
 
     #[test]

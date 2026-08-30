@@ -11,7 +11,9 @@ use std::path::Path;
 
 use aira_artifact::{ArtifactStore, ArtifactType, CasArtifactStore};
 use aira_core::{MemoryObjectStore, ObjectStore};
-use aira_csu::support::{json_bytes, local_identity, local_signature, make_artifact, make_event};
+use aira_csu::support::{
+    json_bytes, local_identity, local_signature, make_artifact, make_event, mvp_timestamp,
+};
 use aira_csu::{Csu, CsuRuntime, DISPATCH_POLICY_ACTION};
 use aira_csu_context_basic::ContextBasicCsu;
 use aira_csu_epistemic_basic::EpistemicBasicCsu;
@@ -20,7 +22,7 @@ use aira_csu_execution_basic::ExecutionBasicCsu;
 use aira_csu_reduction_basic::ReductionBasicCsu;
 use aira_csu_verification_basic::VerificationBasicCsu;
 use aira_event::{EventDescriptor, EventSink, EventType, MemoryEventLog};
-use aira_object::{AiraRef, ContentHash, ObjectDescriptor, ObjectType, Timestamp};
+use aira_object::{AiraRef, ContentHash, ObjectDescriptor, ObjectType};
 use serde_json::{json, Value};
 use thiserror::Error;
 
@@ -180,7 +182,7 @@ impl OperationalPlane {
             object_id: problem_id.clone(),
             object_type: ObjectType::ProblemStatement,
             schema_version: "0.1".into(),
-            created_at: Timestamp::parse("2026-07-10T12:00:00Z").map_err(map_obj)?,
+            created_at: mvp_timestamp(),
             producer_identity: local_identity(),
             policy_refs: vec![AiraRef::parse("aira:policy:default").map_err(map_obj)?],
             provenance_refs: vec![],
@@ -348,7 +350,7 @@ impl OperationalPlane {
             object_id: problem_id.clone(),
             object_type: ObjectType::ProblemStatement,
             schema_version: "0.1".into(),
-            created_at: Timestamp::parse("2026-07-10T12:00:00Z").map_err(map_obj)?,
+            created_at: mvp_timestamp(),
             producer_identity: local_identity(),
             policy_refs: vec![AiraRef::parse("aira:policy:default").map_err(map_obj)?],
             provenance_refs: vec![],
