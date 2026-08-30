@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.3** (Analyze-218 / QUEUE `#183`; Phase H `#152`–`#183` **DONE** @ RFC-0077). Phase I **IN PROGRESS** (`#184`–`#193` **DONE**; first OPEN `#194`). Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.3** (Analyze-218 / QUEUE `#183`; Phase H `#152`–`#183` **DONE** @ RFC-0077). Phase I **IN PROGRESS** (`#184`–`#194` **DONE**; first OPEN `#195`). Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#194`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#195`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -67,7 +67,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 
 | Requirement | Source | Implemented in | Tested by | Status | Notes |
 |-------------|--------|----------------|-----------|--------|-------|
-| Common envelope + signature | Book II §6; B2-001/002 | `aira-protocol` + schemas | `c2.protocol.envelope_schema`; `c2.protocol.envelope_unsigned`; `c2.protocol.envelope_canonical_mutations`; `c2.protocol.response_canonical_mutations`; `envelope_rejects_local_test_domain_fallback` | **PARTIAL** | SEC-2 canonical descriptor (#135) |
+| Common envelope + signature | Book II §6; B2-001/002 | `aira-protocol` + schemas | `c2.protocol.envelope_schema`; `c2.protocol.envelope_unsigned`; `c2.protocol.envelope_canonical_mutations`; `c2.protocol.response_canonical_mutations`; `envelope_rejects_local_test_domain_fallback`; `recv_envelope_rejects_expired`; `recv_envelope_rejects_replayed_message_id` | **PARTIAL** | SEC-2 canonical descriptor (#135); `#194` / RFC-0092 receive freshness + replay window |
 | Unsupported version without side effects | B2-003 | `EventProtocolAdapter` | `c2.ep.unsupported_version_no_side_effects` | **PARTIAL** | Local adapter |
 | Event Protocol publish idempotency | Book II §12; B2-008 | `aira-protocol` event adapter | `c2.event.publish_idempotent`; `event_protocol_publish_idempotent_and_unsupported_version` | **PARTIAL** | In-process; C2 case #122 |
 | Artifact Protocol publish/resolve + hash | Book II §11; B2-007 | `aira-protocol` artifact adapter | `c2.artifact.hash_mismatch`; `artifact_protocol_publish_resolve_and_hash_check` | **PARTIAL** | In-process; C2 case #123 |
@@ -326,7 +326,7 @@ Plan: [`phase-h-plan.md`](phase-h-plan.md). Consolidating RFC: [`AIRA-RFC-0077`]
 | #191 | Atomic session persist | `local_session_corrupt_problems_index_is_not_silent_wipe`; RFC-0089 | **DONE** @ this PR |
 | #192 | Artifact metadata recovery | `second_descriptor_same_content_hash_recoverable`; RFC-0090 | **DONE** @ this PR |
 | #193 | Runtime Clock | `system_clock_is_not_the_mvp_fixed_timestamp`; `local_session_artifacts_are_not_all_mvp_fixed_timestamp`; RFC-0091 | **DONE** @ this PR |
-| #194 | Envelope freshness/replay | expires_at / skew / message-id window | **OPEN** |
+| #194 | Envelope freshness/replay | `recv_envelope_rejects_expired`; `recv_envelope_rejects_replayed_message_id`; RFC-0092 | **DONE** @ this PR |
 | #195 | Run nonce concurrency | UUIDv7 or transactional seq | **OPEN** |
 | #196 | Instance-scoped crypto | not required process-global OnceLock | **OPEN** |
 | #197 | MSRV + supply-chain CI | rust-version↔CI; pin SHA or accept; deny/audit non-blocking OK | **OPEN** |
@@ -355,7 +355,7 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 **Phase H `#152`–`#183` labelled Reference v0.3** (не змінює anti-mission): protocol-depth docs in README / this file / [conformance.md](conformance.md); consolidating [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md). Plan: [`phase-h-plan.md`](phase-h-plan.md).
 
-**Phase I `#184`–`#198` IN PROGRESS** (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); `#184`–`#193` **DONE**; first OPEN `#194`.
+**Phase I `#184`–`#198` IN PROGRESS** (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); `#184`–`#194` **DONE**; first OPEN `#195`.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 

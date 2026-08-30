@@ -82,7 +82,7 @@ pub fn utc_now_rfc3339() -> Result<String, CryptoError> {
         .map_err(|e| CryptoError::InvalidTimestamp(e.to_string()))
 }
 
-pub(super) fn parse_rfc3339(s: &str) -> Result<OffsetDateTime, CryptoError> {
+pub(crate) fn parse_rfc3339(s: &str) -> Result<OffsetDateTime, CryptoError> {
     OffsetDateTime::parse(s.trim(), &Rfc3339)
         .map_err(|e| CryptoError::InvalidTimestamp(format!("{} ({e})", s.trim())))
 }

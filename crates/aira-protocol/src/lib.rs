@@ -2,6 +2,7 @@
 //!
 //! Protocol Envelope + local adapters for Event / Artifact / Identity / Discovery.
 
+mod admit;
 mod artifact_adapter;
 mod capability_ad;
 mod crp;
@@ -12,6 +13,10 @@ mod federation;
 mod identity;
 mod settlement;
 
+pub use admit::{
+    admit_envelope, EnvelopeAdmitPolicy, EnvelopeReplayEntry, EnvelopeReplayWindow,
+    DEFAULT_MAX_SKEW_SECS, DEFAULT_REPLAY_CAP, DEFAULT_REPLAY_TTL_SECS,
+};
 pub use artifact_adapter::{ArtifactOpResult, ArtifactProtocolAdapter, AP_VERSION};
 pub use capability_ad::{
     CapabilityAdBody, CapabilityAdvertisement, CapabilityAdvertisementStore, ValidityWindow,

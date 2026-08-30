@@ -88,6 +88,10 @@ pub enum ProtocolError {
     UnsupportedProtocol(String),
     #[error("duplicate message: {0}")]
     Duplicate(AiraRef),
+    #[error("envelope expired")]
+    Expired,
+    #[error("envelope clock skew")]
+    ClockSkew,
     #[error("invalid artifact: {0}")]
     InvalidArtifact(String),
     #[error("not found: {0}")]

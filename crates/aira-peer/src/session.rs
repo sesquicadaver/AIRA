@@ -134,6 +134,7 @@ impl AuthenticatedPeer {
             let ring = trust.to_keyring()?;
             env.validate_signature_with_keyring(&ring)
                 .map_err(|_| PeerError::InvalidSignature)?;
+            crate::replay::admit_received_envelope(&self.local_root, &env)?;
             return Ok(env);
         }
 
@@ -148,6 +149,7 @@ impl AuthenticatedPeer {
             let ring = trust.to_keyring()?;
             env.validate_signature_with_keyring(&ring)
                 .map_err(|_| PeerError::InvalidSignature)?;
+            crate::replay::admit_received_envelope(&self.local_root, &env)?;
             return Ok(env);
         }
 

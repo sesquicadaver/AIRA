@@ -22,7 +22,7 @@ fn phase_i_plan_present() {
         "AIRA-RFC-0078",
         "confirmed free",
         "IN PROGRESS",
-        "first OPEN `#194`",
+        "first OPEN `#195`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-i-plan missing: {needle}");
@@ -77,8 +77,12 @@ fn phase_i_queue_wiring_184_done() {
         "QUEUE #193 must be DONE after runtime Clock"
     );
     assert!(
-        text.contains("| 194 | **OPEN**"),
-        "QUEUE #194 must be first remaining OPEN"
+        text.contains("| 194 | **DONE**"),
+        "QUEUE #194 must be DONE after envelope freshness"
+    );
+    assert!(
+        text.contains("| 195 | **OPEN**"),
+        "QUEUE #195 must be first remaining OPEN"
     );
     assert!(
         !text.contains("| 184 | **OPEN**"),
@@ -120,7 +124,11 @@ fn phase_i_queue_wiring_184_done() {
         !text.contains("| 193 | **OPEN**"),
         "QUEUE #193 must not stay OPEN after runtime Clock"
     );
-    for n in 194..=198 {
+    assert!(
+        !text.contains("| 194 | **OPEN**"),
+        "QUEUE #194 must not stay OPEN after envelope freshness"
+    );
+    for n in 195..=198 {
         let needle = format!("| {n} | **OPEN**");
         assert!(text.contains(&needle), "QUEUE missing OPEN row: {needle}");
     }
@@ -136,6 +144,7 @@ fn phase_i_queue_wiring_184_done() {
         "Analyze-226",
         "Analyze-227",
         "Analyze-228",
+        "Analyze-229",
         "Analyze-233",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -146,6 +155,7 @@ fn phase_i_queue_wiring_184_done() {
 fn phase_i_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-i-plan.md"));
+    assert!(readme.contains("#195"));
     assert!(readme.contains("#194"));
     assert!(readme.contains("#193"));
     assert!(readme.contains("#192"));
@@ -161,6 +171,7 @@ fn phase_i_readme_and_docs_index() {
     assert!(docs.contains("phase-i-plan.md"));
     assert!(docs.contains("#184"));
     assert!(docs.contains("IN PROGRESS"));
+    assert!(docs.contains("#195"));
     assert!(docs.contains("#194"));
     assert!(docs.contains("#193"));
     assert!(docs.contains("#192"));
@@ -175,7 +186,7 @@ fn phase_h_points_to_active_phase_i() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-h-plan.md")).unwrap();
     assert!(text.contains("phase-i-plan.md"));
     assert!(text.contains("#184"));
-    assert!(text.contains("first OPEN `#194`"));
+    assert!(text.contains("first OPEN `#195`"));
 }
 
 #[test]
@@ -411,5 +422,29 @@ fn phase_i_runtime_clock_193() {
         .expect("RFC-0091");
     for needle in ["#193", "Clock", "SystemClock"] {
         assert!(rfc.contains(needle), "RFC-0091 missing: {needle}");
+    }
+}
+
+#[test]
+fn phase_i_envelope_freshness_194() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0092",
+        "recv_envelope_rejects_expired",
+        "recv_envelope_rejects_replayed_message_id",
+        "| #194 | Envelope freshness/replay",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #194 missing: {needle}"
+        );
+    }
+    let rfc = std::fs::read_to_string(
+        repo_root().join("specs/rfc/AIRA-RFC-0092-envelope-freshness-replay.md"),
+    )
+    .expect("RFC-0092");
+    for needle in ["#194", "expires_at", "message_id"] {
+        assert!(rfc.contains(needle), "RFC-0092 missing: {needle}");
     }
 }
