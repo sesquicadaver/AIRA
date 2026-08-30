@@ -175,4 +175,12 @@ mod tests {
             EventError::InvalidSignature
         ));
     }
+
+    #[test]
+    fn research_event_types_are_non_operational_until_promoted() {
+        assert!(EventType::ResearchArtifactCreated.is_research_until_promoted());
+        assert!(EventType::ArtifactPromotionCandidate.is_research_until_promoted());
+        assert!(!EventType::ProblemSubmitted.is_research_until_promoted());
+        assert!(!EventType::ArtifactPublished.is_research_until_promoted());
+    }
 }

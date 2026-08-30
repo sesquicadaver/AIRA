@@ -22,6 +22,18 @@ pub enum ArtifactType {
     CustomArtifact,
 }
 
+impl ArtifactType {
+    /// Book V research types that MUST NOT enter OperationalPlane until RFC-P promotion (#179).
+    pub fn is_research_until_promoted(self) -> bool {
+        matches!(
+            self,
+            Self::ResearchArtifact
+                | Self::OpenResearchArtifact
+                | Self::BestCurrentHypothesisArtifact
+        )
+    }
+}
+
 /// Immutable artifact descriptor.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArtifactDescriptor {

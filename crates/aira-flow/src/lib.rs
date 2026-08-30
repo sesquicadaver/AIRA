@@ -624,4 +624,63 @@ mod tests {
             "reopened session must see durable file-chain events"
         );
     }
+
+    #[test]
+    fn research_artifact_rejected_as_operational_input() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let before = plane.events().len();
+
+        let research_ev = make_event(
+            "aira:event:research1",
+            EventType::ResearchArtifactCreated,
+            vec![],
+            vec![],
+            vec![],
+            None,
+        );
+        let err = plane.inject_and_drain(research_ev).unwrap_err();
+        assert!(
+            matches!(err, FlowError::ResearchNonOperational(_)),
+            "{err:?}"
+        );
+        assert_eq!(plane.events().len(), before);
+
+        let promo_ev = make_event(
+            "aira:event:promo1",
+            EventType::ArtifactPromotionCandidate,
+            vec![],
+            vec![],
+            vec![],
+            None,
+        );
+        let err = plane.inject_and_drain(promo_ev).unwrap_err();
+        assert!(matches!(err, FlowError::ResearchNonOperational(_)));
+        assert_eq!(plane.events().len(), before);
+
+        let payload = json_bytes(&json!({"kind": "research"}));
+        let research_art = make_artifact(
+            "aira:artifact:research-op1",
+            ArtifactType::ResearchArtifact,
+            &payload,
+            vec![],
+        );
+        let art_id = research_art.artifact_id.clone();
+        plane
+            .artifacts_mut()
+            .publish(research_art, &payload)
+            .unwrap();
+        let published = make_event(
+            "aira:event:artpub-research1",
+            EventType::ArtifactPublished,
+            vec![],
+            vec![art_id],
+            vec![],
+            None,
+        );
+        let err = plane.inject_and_drain(published).unwrap_err();
+        assert!(matches!(err, FlowError::ResearchNonOperational(_)));
+        assert_eq!(plane.events().len(), before);
+    }
 }

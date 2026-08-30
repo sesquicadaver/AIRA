@@ -34,7 +34,7 @@ A numbered instance (`AIRA-RFC-P-NNNN`) is a *use* of this process, not a substi
 
 ```text
 promotion-candidate schema fixtures          (#178)
-runtime non-operational gate + test          (#179)
+runtime non-operational gate + test          (#179 DONE)
 run_c5 scaffold                              (#180)
 implementation-status C5 / promotion rollup  (#181)
 Reference v0.3 / RFC-0077                    (#182–#183)
@@ -97,7 +97,7 @@ Research Artifact
   → Optional / Reference / Rejected
 ```
 
-Fail-closed **intent** for this reference: a research or promotion-candidate artifact presented as operational input is **rejected**. Encoding that reject is `#179`; this doc is the policy that `#179` will test. Until `#179` the reject is **unenforced** in `OperationalPlane` (docs-only atom).
+Fail-closed for this reference: a research or promotion-candidate artifact presented as operational input is **rejected** (`OperationalPlane` inject/drain, RFC-0082 / `#179`). CAS may still store research artifacts. `run_c5` remains `#180`.
 
 Canary Deployment is a Book V §8 pipeline step. Phase H `#180` is a **local** `run_c5` scaffold, not a canary harness and not a distributed deploy.
 
@@ -194,7 +194,7 @@ Core що «вирішує задачі» замість CSU contracts
 |-------|------|------------------|
 | `#177` | this file | policy: Book V → operational лише через promotion |
 | `#178` | promotion-candidate fixtures | schema + invalid-without-required-fields (**DONE**) |
-| `#179` | non-operational gate | research/promotion artifact **rejected as operational** |
+| `#179` | non-operational gate | research/promotion artifact **rejected as operational** (**DONE**, RFC-0082) |
 | `#180` | `run_c5` | research separation + promotion gate local cases |
 | `#181` | status rollup | `implementation-status` C5 / promotion notes |
 

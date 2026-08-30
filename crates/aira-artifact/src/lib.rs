@@ -315,4 +315,15 @@ mod tests {
             ArtifactError::InvalidSignature(_)
         ));
     }
+
+    #[test]
+    fn research_types_are_non_operational_until_promoted() {
+        assert!(ArtifactType::ResearchArtifact.is_research_until_promoted());
+        assert!(ArtifactType::OpenResearchArtifact.is_research_until_promoted());
+        assert!(ArtifactType::BestCurrentHypothesisArtifact.is_research_until_promoted());
+        assert!(!ArtifactType::OperationalArtifact.is_research_until_promoted());
+        assert!(!ArtifactType::EvidenceArtifact.is_research_until_promoted());
+        assert!(!ArtifactType::NegativeResultArtifact.is_research_until_promoted());
+        assert!(!ArtifactType::VerifiedResultArtifact.is_research_until_promoted());
+    }
 }
