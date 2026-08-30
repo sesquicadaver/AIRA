@@ -1,6 +1,6 @@
 # RFC-P — Research Promotion (Reference working copy)
 
-**QUEUE:** `#177` (Analyze-212) process; `#178`–`#180` **DONE**. **Статус:** status rollup — `#181`.  
+**QUEUE:** `#177` (Analyze-212) process; `#178`–`#181` **DONE**. **Статус:** H5 complete; next `#182` v0.3 docs.  
 **Канон виконання:** [`QUEUE.md`](../QUEUE.md). **План:** [`phase-h-plan.md`](phase-h-plan.md) H5.  
 **Нормативні джерела:** Book V §3 / §7 / §8 / §28 / §30; [`specs/rfc-process.md`](../specs/rfc-process.md) §12–§13 / §31 (RFC-R / RFC-P / Promotion Gate).  
 **Контрактний тест:** `crates/aira-desktop-runtime/tests/phase_h_doc.rs`.
@@ -36,7 +36,7 @@ A numbered instance (`AIRA-RFC-P-NNNN`) is a *use* of this process, not a substi
 promotion-candidate schema fixtures          (#178)
 runtime non-operational gate + test          (#179 DONE)
 run_c5 scaffold                              (#180 DONE)
-implementation-status C5 / promotion rollup  (#181)
+implementation-status C5 / promotion rollup  (#181 DONE)
 Reference v0.3 / RFC-0077                    (#182–#183)
 PHM / HIE / Goal Compiler / DSM as runtime
 GPU / LLM / blockchain / scheduler (anti-mission)
@@ -196,7 +196,7 @@ Core що «вирішує задачі» замість CSU contracts
 | `#178` | promotion-candidate fixtures | schema + invalid-without-required-fields (**DONE**) |
 | `#179` | non-operational gate | research/promotion artifact **rejected as operational** (**DONE**, RFC-0082) |
 | `#180` | `run_c5` | research separation + promotion gate local cases (**DONE**, RFC-0083) |
-| `#181` | status rollup | `implementation-status` C5 / promotion notes |
+| `#181` | status rollup | `implementation-status` C5 / promotion notes (**DONE**; Research remains **RESEARCH**) |
 
 Per-atom numbered RFC for the **gate** is `#179`/`#180` ([`phase-h-plan.md`](phase-h-plan.md) §6). Consolidating Phase H RFC is RFC-0077 (`#183`).
 
@@ -208,4 +208,4 @@ Per-atom numbered RFC for the **gate** is `#179`/`#180` ([`phase-h-plan.md`](pha
 | RFC classes | [`specs/rfc-process.md`](../specs/rfc-process.md) |
 | OperationalPlane (C1 demo, not research) | [`operational-plane.md`](operational-plane.md) |
 | Conformance C5 scaffold | [`conformance.md`](conformance.md) |
-| Status (Research rows stay **RESEARCH** until `#181`) | [`implementation-status.md`](implementation-status.md) |
+| Status (Research rows remain **RESEARCH**; gate + C5 documented `#181`) | [`implementation-status.md`](implementation-status.md) |

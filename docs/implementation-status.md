@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#180` DONE; `#181` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#181` DONE; `#182` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#181`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#182`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -37,7 +37,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Human Final Collapse / no silent pick | Book 0 A6; B0-004 | `is_normative_split` string heuristic + OperationalArtifact | `normative_split_stub_does_not_autocollapse` | **STUB** | Not a full Differentiated Solution Field CSU |
 | Evidence primacy | Book 0 A5; B0-005 | `schemas/evidence/claim-artifact.schema.json`; `csu/evidence-basic`; failure evidence path | `schema validate --fixtures` claim/assumption (#125); `c1.failure.to_evidence`; `failure_creates_failure_evidence` | **PARTIAL** | B0-005 schema gate for Claim vs Assumption; Epistemic basic + path `#146`–`#147` |
 | Epistemic Status as distinct coordinate | Book 0 §6 | `schemas/evidence/epistemic-assessment.schema.json`; `csu/epistemic-basic` | schema fixtures (#108); `epi_001_…`; `epistemic_assessment_roundtrip_via_plane_and_session` | **PARTIAL** | Full Epistemic plane still out |
-| Evolution / Research plane | Book 0 §10; Book V | — | `phase_h_rfc_p_promotion_doc` | **RESEARCH** | Isolated; not mixed into Core; process only [`rfc-p-promotion.md`](rfc-p-promotion.md) (`#177`); Book V → operational лише через promotion; no runtime |
+| Evolution / Research plane | Book 0 §10; Book V | RFC-P doc + plane gate + `run_c5` | `phase_h_rfc_p_promotion_doc`; `research_artifact_rejected_as_operational_input`; `c5.research.separation` | **RESEARCH** | Isolated; not mixed into Core; [`rfc-p-promotion.md`](rfc-p-promotion.md) (`#177`–`#181`); Book V → operational лише через promotion; gate RFC-0082; C5 RFC-0083 (not a merge gate); **H5 DONE**; no promoted research item |
 | Cost / escalation / Goal Compiler | Book 0 §8–9; Book V | — | — | **RESEARCH** | Out of MVP |
 
 ---
@@ -107,7 +107,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | R1 Minimal Operational Node | Book IV §23 R1 | `aira-flow`, `aira-cli`, basic CSUs, `.aira` layout | C1; `local_init_submit_status_and_artifact`; `run_alpha_acceptance` | **DONE** | `config.node.profile = "C1"` |
 | R2 Local Protocol Node | Book IV §23 R2 | `aira-protocol` | `run_c2` + CI `conformance-c2` (#117) | **PARTIAL** | Partial C2 local; CI regression gate |
 | R3 Federation-Capable Node | Book IV §23 R3 | join/leave + IO policy deny (#162) | federation tests; `federation_export_import_deny_by_default_audits` | **POST-MVP** | Local ceremony + deny-by-default export/import; not a federation runtime |
-| R4 Research-Capable Node | Book IV §23 R4 | — | — | **RESEARCH** | Book V |
+| R4 Research-Capable Node | Book IV §23 R4 | RFC-P + `OperationalPlane` reject + `run_c5` | `c5.research.separation`; `c5.promotion.gate_reject`; RFC-0082/0083 | **RESEARCH** | Book V; local C5 scaffold + non-operational gate; not a research runtime; no RFC-P instance promoted |
 | Object / Artifact / Event stores | Book IV §6 | plane memory objects + node `SqliteObjectStore` (#158); CAS artifacts; file-chain events (#157) | `plane_memory_beside_node_sqlite_object_path`; `session_durable_file_chain_roundtrip`; core/artifact tests | **PARTIAL** | **H1 DONE** (`#154`–`#159`): durable events + SQLite path documented; plane drain still memory objects/events |
 | Policy + Invariant + CSU runtime | Book IV §9–12 | matching crates | C0/C1 | **DONE** | |
 | Minimal operational flow submit→verify | Book IV §15 | `OperationalPlane` | C1 + demos | **DONE** | Reference-local only ([operational-plane.md](operational-plane.md)) |
@@ -170,7 +170,7 @@ Conformance spec §19 lists extra fixture *names* (event chain, policy deny, res
 | C2 | Protocol-compatible | `run_c2` | 11 cases incl. `c2.event.publish_equivocation` (SEC-4 #137); `c2.protocol.envelope_canonical_mutations`, `c2.protocol.response_canonical_mutations` (SEC-2 #135) | **yes** (`conformance-c2`, #117) | **DONE** |
 | C3 | Local federation + CAP + IO deny + CRP | `run_c3` | **8** cases incl. `c3.federation.export_deny` + `c3.capability.advertisement` + `c3.crp.reject_node_route` + `c3.crp.route_candidate`; optional CI `conformance-c3` (#164, non-gate) | **optional** (`conformance-c3`; not merge gate) | **DONE** (scaffold + `#153` + `#161` + `#163` + `#164` + `#167` + `#170`) |
 | C4 | Settlement audit receipts | `run_c4` | **3** cases: `c4.settlement.receipt_emit_verify`, `c4.settlement.privacy_reject`, `c4.settlement.link_prior_route`; RFC-0081 | **no** | **DONE** scaffold (`#175`) |
-| C5 | Research separation + promotion gate | `run_c5` | **3** cases: `c5.research.separation`, `c5.promotion.gate_reject`, `c5.promotion.candidate_schema`; RFC-0083 | **no** | **DONE** scaffold (`#180`) |
+| C5 | Research separation + promotion gate | `run_c5` | **3** cases: `c5.research.separation`, `c5.promotion.gate_reject`, `c5.promotion.candidate_schema`; RFC-0083 | **no** | **DONE** scaffold (`#180`); not a merge gate; Research remains **RESEARCH** (`#181`) |
 | Security baseline | Conformance §14 subset | `run_security_baseline` | unsigned CSU/artifact; private deny; secret in events | crate tests | **DONE** |
 | Alpha acceptance | MVP | `run_alpha_acceptance` | init layout, 2+2, failure evidence, C0/C1 | crate tests | **DONE** |
 
@@ -301,8 +301,8 @@ Plan: [`phase-g-plan.md`](phase-g-plan.md) **DONE**. RFC: [`AIRA-RFC-0069`](../s
 | #177 | RFC-P promotion doc | `docs/rfc-p-promotion.md`; Book V → operational лише через promotion | **DONE** @ PR #141 |
 | #178 | Promotion-candidate fixtures | `aira:schema:research:promotion-candidate:0.1`; `promotion_candidate_schema_loads` | **DONE** @ PR #142 |
 | #179 | Non-operational gate | `ResearchNonOperational`; `research_artifact_rejected_as_operational_input`; RFC-0082 | **DONE** @ PR #143 |
-| #180 | `run_c5` scaffold | 3 cases; RFC-0083; `c5.research.separation` | **DONE** @ this PR |
-| #181 | Promotion status rollup | `implementation-status` C5 / promotion notes |
+| #180 | `run_c5` scaffold | 3 cases; RFC-0083; `c5.research.separation` | **DONE** @ PR #144 |
+| #181 | Promotion status rollup | this file C5 / Research / R4 notes; **H5 DONE**; no promoted research item | **DONE** @ this PR |
 | #182–#183 | Docs + RFC-0077 | Reference v0.3; QUEUE H closed |
 
 Plan: [`phase-h-plan.md`](phase-h-plan.md). Consolidating RFC: RFC-0077 (`#183`).
