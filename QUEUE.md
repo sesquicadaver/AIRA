@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-30  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **DONE** (2026-08-28, RFC-0069). Phase H Protocol depth v0.3 [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — `#152`–`#182` **DONE**; `#183` **OPEN**.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **DONE** (2026-08-28, RFC-0069). Phase H Protocol depth v0.3 [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — `#152`–`#183` **DONE** (2026-08-30, RFC-0077).
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#182` **DONE**; `#183` **OPEN** |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#183` **DONE** @ RFC-0077; **no OPEN** |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — перший OPEN `#183` |
+| Активна черга | **немає OPEN** — Phase H [`docs/phase-h-plan.md`](docs/phase-h-plan.md) **DONE**; Phase I [`docs/phase-i-plan.md`](docs/phase-i-plan.md) **PLANNED** |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** (2026-08-28). Phase H — [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#182` **DONE**; `#183` **OPEN**.
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** (2026-08-28). Phase H — [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#183` **DONE** (RFC-0077). Phase I — [`docs/phase-i-plan.md`](docs/phase-i-plan.md); `#184`–`#198` **PLANNED** (не OPEN).
 
 ---
 
@@ -341,11 +341,11 @@ G0 govern (#120–#121)
 | 180 | **DONE** | ~~Analyze-215 — run_c5 scaffold~~ | research separation + promotion cases | runner + doc | status rollup (#181) |
 | 181 | **DONE** | ~~Analyze-216 — promotion status~~ | implementation-status C5/promotion notes | matrix updated | v0.3 docs (#182) |
 | 182 | **DONE** | ~~Analyze-217 — Reference v0.3 docs~~ | README + implementation-status v0.3 | docs sync | RFC-0077 (#183) |
-| 183 | **OPEN** | Analyze-218 — Phase H RFC-0077 | consolidating RFC; close H | QUEUE H DONE; no OPEN | Phase I [`docs/phase-i-plan.md`](docs/phase-i-plan.md) `#184`–`#198` |
+| 183 | **DONE** | ~~Analyze-218 — Phase H RFC-0077~~ | consolidating RFC; close H | QUEUE H DONE; no OPEN | Phase I [`docs/phase-i-plan.md`](docs/phase-i-plan.md) `#184`–`#198` |
 
 ### Наступний цикл (Phase H)
 
-**Перший OPEN:** `#183` (RFC-0077 closure). `#152`–`#182` DONE. Далі Phase I лише після `#183`.
+**Phase H COMPLETE** (`#152`–`#183` DONE @ RFC-0077). **Немає OPEN.** Phase I лишається **PLANNED**.
 
 ```text
 H0 govern (#152–#153)
@@ -361,8 +361,8 @@ H0 govern (#152–#153)
 
 ### Post-H (зафіксовано, не активне)
 
-Після DONE `#183` — Phase I semantic stabilization: [`docs/phase-i-plan.md`](docs/phase-i-plan.md) (`#184`–`#198`).  
-**Не додавати `#184` як OPEN і не виконувати атоми I, доки `#183` ≠ DONE.** Не паралелити з хвостом H.
+Phase H **DONE**. Phase I semantic stabilization: [`docs/phase-i-plan.md`](docs/phase-i-plan.md) (`#184`–`#198`) лишається **PLANNED**.  
+**Не додавати `#184` як OPEN у цьому атомі.** Активація I — лише окремий план-перед-чергою після closure.
 
 ---
 
@@ -396,7 +396,7 @@ H0 govern (#152–#153)
 | Desktop one-click / UX (розробник 2026-08-20) | [`NEXT_PROBLEM.md`](NEXT_PROBLEM.md) RESOLVED → [`docs/desktop-ux.md`](docs/desktop-ux.md); [`docs/phase-e-plan.md`](docs/phase-e-plan.md); `#75`–`#106` DONE (2026-08-22) |
 | Post-E stabilization (phase-e §Пізніше; EVO-2) | [`docs/phase-f-plan.md`](docs/phase-f-plan.md); `#107`–`#119` **DONE** (2026-08-24) |
 | Reference v0.2 (local C2 depth, SEC hardening, C3 scaffold, SDK, packaging) | [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** @ RFC-0069 |
-| Protocol depth v0.3 | [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#183` (OPEN `#183`) |
-| Semantic contract stabilization (post-H) | [`docs/phase-i-plan.md`](docs/phase-i-plan.md); `#184`–`#198` **PLANNED** (після `#183`) |
+| Protocol depth v0.3 | [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#183` **DONE** @ RFC-0077 |
+| Semantic contract stabilization (post-H) | [`docs/phase-i-plan.md`](docs/phase-i-plan.md); `#184`–`#198` **PLANNED** (не OPEN) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

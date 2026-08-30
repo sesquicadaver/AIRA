@@ -1,6 +1,6 @@
 # RFC-P — Research Promotion (Reference working copy)
 
-**QUEUE:** `#177` (Analyze-212) process; `#178`–`#182` **DONE**. **Статус:** docs v0.3; next `#183` RFC-0077.  
+**QUEUE:** `#177` (Analyze-212) process; `#178`–`#183` **DONE**. **Статус:** H closed @ RFC-0077.  
 **Канон виконання:** [`QUEUE.md`](../QUEUE.md). **План:** [`phase-h-plan.md`](phase-h-plan.md) H5.  
 **Нормативні джерела:** Book V §3 / §7 / §8 / §28 / §30; [`specs/rfc-process.md`](../specs/rfc-process.md) §12–§13 / §31 (RFC-R / RFC-P / Promotion Gate).  
 **Контрактний тест:** `crates/aira-desktop-runtime/tests/phase_h_doc.rs`.
@@ -38,7 +38,7 @@ runtime non-operational gate + test          (#179 DONE)
 run_c5 scaffold                              (#180 DONE)
 implementation-status C5 / promotion rollup  (#181 DONE)
 Reference v0.3 docs                           (#182 DONE)
-RFC-0077                                      (#183)
+RFC-0077                                      (#183 DONE)
 PHM / HIE / Goal Compiler / DSM as runtime
 GPU / LLM / blockchain / scheduler (anti-mission)
 silent mix of Research into Core / OperationalPlane
