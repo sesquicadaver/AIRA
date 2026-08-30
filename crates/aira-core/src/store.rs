@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use aira_object::object_store_access;
 use aira_object::{AiraRef, Handle, ObjectDescriptor};
 
 use crate::error::{CoreError, InvariantViolation};
@@ -68,6 +69,20 @@ pub(crate) fn verify_stored_descriptor(
     Ok(descriptor)
 }
 
+/// `open` bind: stored descriptor id must equal the handle's public object_ref (#186).
+pub(crate) fn bind_handle_open(
+    handle: &Handle,
+    descriptor: ObjectDescriptor,
+) -> Result<ObjectDescriptor, CoreError> {
+    if descriptor.object_id != *handle.object_ref() {
+        return Err(CoreError::HandleBindMismatch {
+            claimed: handle.object_ref().clone(),
+            stored: descriptor.object_id,
+        });
+    }
+    verify_stored_descriptor(descriptor)
+}
+
 impl ObjectStore for MemoryObjectStore {
     fn create(&mut self, descriptor: ObjectDescriptor) -> Result<Handle, CoreError> {
         admit_object(&descriptor)?;
@@ -78,7 +93,7 @@ impl ObjectStore for MemoryObjectStore {
             });
         }
         let token = self.next_token.fetch_add(1, Ordering::Relaxed) + 1;
-        let handle = Handle::new(descriptor.object_id.clone(), token);
+        let handle = object_store_access::mint(descriptor.object_id.clone(), token);
         self.by_id.insert(id_key, token);
         self.by_token.insert(token, descriptor);
         Ok(handle)
@@ -87,10 +102,10 @@ impl ObjectStore for MemoryObjectStore {
     fn open(&self, handle: &Handle) -> Result<ObjectDescriptor, CoreError> {
         let descriptor = self
             .by_token
-            .get(&handle.storage_token())
+            .get(&object_store_access::storage_token(handle))
             .cloned()
             .ok_or_else(|| CoreError::NotFound(handle.object_ref().clone()))?;
-        verify_stored_descriptor(descriptor)
+        bind_handle_open(handle, descriptor)
     }
 
     fn get_by_object_id(&self, object_id: &AiraRef) -> Result<Option<ObjectDescriptor>, CoreError> {
@@ -118,7 +133,7 @@ mod tests {
         let desc = ObjectDescriptor::example_problem();
         let object_id = desc.object_id.clone();
         let handle = store.create(desc).unwrap();
-        let token = handle.storage_token();
+        let token = object_store_access::storage_token(&handle);
         let mut tampered = ObjectDescriptor::example_problem();
         tampered.schema_version = "0.2".into();
         store.by_token.insert(token, tampered);

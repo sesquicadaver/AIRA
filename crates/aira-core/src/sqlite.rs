@@ -2,11 +2,12 @@
 
 use std::path::Path;
 
+use aira_object::object_store_access;
 use aira_object::{AiraRef, Handle, ObjectDescriptor};
 use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::error::CoreError;
-use crate::store::{verify_stored_descriptor, ObjectStore};
+use crate::store::{bind_handle_open, verify_stored_descriptor, ObjectStore};
 
 /// SQLite `objects` table schema token (migration smoke / doc anchor #143).
 pub const OBJECTS_SCHEMA_VERSION: u32 = 1;
@@ -136,7 +137,7 @@ impl ObjectStore for SqliteObjectStore {
         );
 
         match result {
-            Ok(_) => Ok(Handle::new(descriptor.object_id, token)),
+            Ok(_) => Ok(object_store_access::mint(descriptor.object_id, token)),
             Err(rusqlite::Error::SqliteFailure(e, _))
                 if e.code == rusqlite::ErrorCode::ConstraintViolation =>
             {
@@ -153,13 +154,13 @@ impl ObjectStore for SqliteObjectStore {
             .conn
             .query_row(
                 "SELECT descriptor_json FROM objects WHERE rowid_token = ?1",
-                params![handle.storage_token() as i64],
+                params![object_store_access::storage_token(handle) as i64],
                 |r| r.get(0),
             )
             .map_err(|_| CoreError::NotFound(handle.object_ref().clone()))?;
         let descriptor =
             serde_json::from_str(&json).map_err(|e| CoreError::Storage(e.to_string()))?;
-        verify_stored_descriptor(descriptor)
+        bind_handle_open(handle, descriptor)
     }
 
     fn get_by_object_id(&self, object_id: &AiraRef) -> Result<Option<ObjectDescriptor>, CoreError> {

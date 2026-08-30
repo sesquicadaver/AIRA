@@ -30,6 +30,8 @@ pub enum CoreError {
     Unsigned(AiraRef),
     #[error("invalid object signature: {0}")]
     InvalidSignature(AiraRef),
+    #[error("handle bind mismatch: claimed {claimed}, stored {stored}")]
+    HandleBindMismatch { claimed: AiraRef, stored: AiraRef },
     #[error("storage error: {0}")]
     Storage(String),
     #[error(transparent)]

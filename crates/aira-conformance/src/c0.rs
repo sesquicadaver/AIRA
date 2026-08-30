@@ -114,7 +114,7 @@ fn test_handle_opacity() -> CaseResult {
         Err(e) => return fail(id, e.to_string()),
     };
     let token = 0xDEADBEEF_u64;
-    let handle = aira_object::Handle::new(object_ref.clone(), token);
+    let handle = aira_object::object_store_access::mint(object_ref.clone(), token);
     let dbg = format!("{handle:?}");
     if dbg.contains(&token.to_string()) {
         return fail(id, "Debug output leaks storage_token numeric value");
