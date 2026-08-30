@@ -1,6 +1,6 @@
 # Phase I — Semantic contract stabilization (post-H)
 
-**Статус:** складено 2026-08-28; **не активна черга** до DONE Phase H `#183`.  
+**Статус:** складено 2026-08-28; Phase H **DONE**; **не активна черга** (I не OPEN).  
 **Джерела:** незалежний аудит `main` @ `b66bcf1` (Handle / Verification / Policy / Reuse / identity / persistence); [`implementation-status.md`](implementation-status.md); [`phase-h-plan.md`](phase-h-plan.md) §7.  
 **Не канон backlog:** канон виконання — [`QUEUE.md`](../QUEUE.md). Атоми `#184+` додаються в QUEUE **лише** після закриття `#183` (без паралельної черги з Phase H).  
 **Не змінює:** анти-місію README; Book semantics без per-atom RFC; production distributed OperationalPlane.

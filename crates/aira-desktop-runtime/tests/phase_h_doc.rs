@@ -156,8 +156,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #182 must be DONE after Reference v0.3 docs"
     );
     assert!(
-        text.contains("| 183 | **OPEN**"),
-        "QUEUE #183 must be next OPEN"
+        text.contains("| 183 | **DONE**"),
+        "QUEUE #183 must be DONE after RFC-0077 closure"
+    );
+    assert!(
+        !text.contains("| **OPEN** |"),
+        "QUEUE H closed: no OPEN rows"
     );
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -169,9 +173,11 @@ fn phase_h_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-h-plan.md"));
     assert!(readme.contains("#152"));
+    assert!(readme.contains("AIRA-RFC-0077"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-h-plan.md"));
     assert!(docs.contains("#152"));
+    assert!(docs.contains("RFC-0077"));
 }
 
 #[test]
@@ -282,10 +288,31 @@ fn phase_h_h1_stores_status_rollup() {
         "Reference v0.3",
         "v0.3 protocol-depth posture",
         "conformance index",
+        "AIRA-RFC-0077",
+        "QUEUE H closed",
+        "no OPEN",
     ] {
         assert!(
             text.contains(needle),
             "implementation-status missing: {needle}"
         );
+    }
+}
+
+#[test]
+fn phase_h_rfc_0077_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0077 file");
+    for needle in [
+        "Phase H",
+        "#152",
+        "#183",
+        "v0.3",
+        "RFC-0079",
+        "RFC-0083",
+        "no OPEN",
+        "GPU marketplace",
+    ] {
+        assert!(text.contains(needle), "RFC-0077 missing: {needle}");
     }
 }
