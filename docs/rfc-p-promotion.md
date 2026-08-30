@@ -193,7 +193,7 @@ Core що «вирішує задачі» замість CSU contracts
 | QUEUE | Atom | Role vs this doc |
 |-------|------|------------------|
 | `#177` | this file | policy: Book V → operational лише через promotion |
-| `#178` | promotion-candidate fixtures | schema + invalid-without-required-fields |
+| `#178` | promotion-candidate fixtures | schema + invalid-without-required-fields (**DONE**) |
 | `#179` | non-operational gate | research/promotion artifact **rejected as operational** |
 | `#180` | `run_c5` | research separation + promotion gate local cases |
 | `#181` | status rollup | `implementation-status` C5 / promotion notes |
