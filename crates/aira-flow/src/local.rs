@@ -519,7 +519,13 @@ impl LocalSession {
             }
         }
 
-        let mut idx = read_json::<ProblemsIndex>(&self.paths.problems_index()).unwrap_or_default();
+        // Fail-closed: corrupt index is not replaced with empty (#191).
+        let mut idx = if self.paths.problems_index().exists() {
+            read_json::<ProblemsIndex>(&self.paths.problems_index())
+                .map_err(|e| FlowError::Other(format!("problems index: {e}")))?
+        } else {
+            ProblemsIndex::default()
+        };
         let record = match outcome {
             SubmitOutcome::Completed {
                 problem_id,
@@ -703,7 +709,15 @@ fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), FlowError> {
         fs::create_dir_all(parent).map_err(|e| FlowError::Other(e.to_string()))?;
     }
     let json = serde_json::to_string_pretty(value).map_err(|e| FlowError::Other(e.to_string()))?;
-    fs::write(path, json).map_err(|e| FlowError::Other(e.to_string()))
+    let name = path
+        .file_name()
+        .ok_or_else(|| FlowError::Other("json path has no file name".into()))?;
+    let tmp = path.with_file_name(format!("{}.tmp", name.to_string_lossy()));
+    fs::write(&tmp, json).map_err(|e| FlowError::Other(e.to_string()))?;
+    fs::rename(&tmp, path).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        FlowError::Other(e.to_string())
+    })
 }
 
 fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T, FlowError> {

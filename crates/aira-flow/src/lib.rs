@@ -263,6 +263,8 @@ mod tests {
 
         let mut session = LocalSession::open(&root).unwrap();
         let out = session.submit_problem("Calculate 2 + 2").unwrap();
+        assert!(!root.join("problems/index.json.tmp").exists());
+        assert!(!root.join("events/event-log.json.tmp").exists());
         let SubmitOutcome::Completed {
             problem_id,
             verified_artifact_id,
@@ -303,6 +305,33 @@ mod tests {
         assert!(
             err.contains("identity") || err.contains("io") || err.contains("json"),
             "expected identity load error, got {err}"
+        );
+    }
+
+    #[test]
+    fn local_session_corrupt_problems_index_is_not_silent_wipe() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let idx_path = root.join("problems/index.json");
+        let poison = "{not-a-problems-index";
+        std::fs::write(&idx_path, poison).unwrap();
+
+        let mut session = LocalSession::open(&root).unwrap();
+        let err = match session.submit_problem("Calculate 2 + 2") {
+            Ok(_) => panic!("corrupt problems index must not persist as empty"),
+            Err(e) => e.to_string(),
+        };
+        assert!(
+            err.contains("problems index") || err.contains("json") || err.contains("expected"),
+            "expected problems index parse error, got {err}"
+        );
+        assert_eq!(std::fs::read_to_string(&idx_path).unwrap(), poison);
+        let tmp = root.join("problems/index.json.tmp");
+        assert!(
+            !tmp.exists(),
+            "failed persist must not leave a committed index"
         );
     }
 
