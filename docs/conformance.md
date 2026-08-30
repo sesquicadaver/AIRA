@@ -11,7 +11,7 @@ Repo-level ТЗ → module → tests map: [implementation-status.md](implementat
 | C2 | `run_c2` | partial **local** protocols (M13): envelope/response/identity schemas, discovery Capability≠Node, UNSUPPORTED_VERSION without side effects | **yes** (job `conformance-c2`, QUEUE #117) |
 | C3 | `run_c3` | **8 named local cases**: federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170) | **optional job** `conformance-c3` (#164) — **not** a merge gate ([governance](ci-governance.md#job-conformance-c3-queue-164)) |
 | C4 | `run_c4` (Phase H `#175`) | **3 named local cases**: receipt emit/verify + privacy reject + link prior CRP route (RFC-0081) | no |
-| C5 | `run_c5` (Phase H `#180`) | research separation + promotion gate scaffold | no |
+| C5 | `run_c5` (Phase H `#180`) | research separation + promotion gate scaffold; process [`rfc-p-promotion.md`](rfc-p-promotion.md) (`#177`) | no |
 
 Reports validate against `aira:schema:conformance:report:0.1` and are published as immutable `ConformanceArtifact`.
 

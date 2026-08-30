@@ -132,8 +132,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #176 must be DONE after settlement status PARTIAL"
     );
     assert!(
-        text.contains("| 177 | **OPEN**"),
-        "QUEUE #177 must be next OPEN"
+        text.contains("| 177 | **DONE**"),
+        "QUEUE #177 must be DONE after RFC-P promotion doc"
+    );
+    assert!(
+        text.contains("| 178 | **OPEN**"),
+        "QUEUE #178 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
@@ -156,6 +160,43 @@ fn phase_g_points_to_phase_h() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-g-plan.md")).unwrap();
     assert!(text.contains("phase-h-plan.md"));
     assert!(text.contains("#152"));
+}
+
+#[test]
+fn phase_h_rfc_p_promotion_doc() {
+    let text = std::fs::read_to_string(repo_root().join("docs/rfc-p-promotion.md")).unwrap();
+    for needle in [
+        "RFC-P",
+        "Book V → operational лише через promotion",
+        "Direct Operational Authority",
+        "Artifact Promotion Candidate",
+        "non-operational until promote",
+        "research or promotion-candidate artifact presented as operational input is **rejected**",
+        "RFC-P **MUST** contain",
+        "security analysis",
+        "failure model",
+        "replication evidence",
+        "disabled by default",
+        "AIRA-RES-PHM",
+        "AIRA-RES-HIE",
+        "AIRA-RES-GC",
+        "#178",
+        "#179",
+        "#180",
+        "run_c5",
+        "QUEUE",
+        "#177",
+    ] {
+        assert!(
+            text.contains(needle),
+            "rfc-p-promotion.md missing: {needle}"
+        );
+    }
+    let index = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
+    assert!(
+        index.contains("rfc-p-promotion.md"),
+        "docs/README.md must index rfc-p-promotion.md"
+    );
 }
 
 #[test]
@@ -201,6 +242,11 @@ fn phase_h_h1_stores_status_rollup() {
         "RFC-0081",
         "Local audit receipts only",
         "no blockchain ledger",
+        "rfc-p-promotion.md",
+        "RFC-P promotion doc",
+        "Book V → operational лише через promotion",
+        "process only",
+        "no runtime",
     ] {
         assert!(
             text.contains(needle),

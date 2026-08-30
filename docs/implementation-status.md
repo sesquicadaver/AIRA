@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#176` DONE; `#177` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#177` DONE; `#178` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#177`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#178`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -37,7 +37,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Human Final Collapse / no silent pick | Book 0 A6; B0-004 | `is_normative_split` string heuristic + OperationalArtifact | `normative_split_stub_does_not_autocollapse` | **STUB** | Not a full Differentiated Solution Field CSU |
 | Evidence primacy | Book 0 A5; B0-005 | `schemas/evidence/claim-artifact.schema.json`; `csu/evidence-basic`; failure evidence path | `schema validate --fixtures` claim/assumption (#125); `c1.failure.to_evidence`; `failure_creates_failure_evidence` | **PARTIAL** | B0-005 schema gate for Claim vs Assumption; Epistemic basic + path `#146`–`#147` |
 | Epistemic Status as distinct coordinate | Book 0 §6 | `schemas/evidence/epistemic-assessment.schema.json`; `csu/epistemic-basic` | schema fixtures (#108); `epi_001_…`; `epistemic_assessment_roundtrip_via_plane_and_session` | **PARTIAL** | Full Epistemic plane still out |
-| Evolution / Research plane | Book 0 §10; Book V | — | — | **RESEARCH** | Isolated; not mixed into Core |
+| Evolution / Research plane | Book 0 §10; Book V | — | `phase_h_rfc_p_promotion_doc` | **RESEARCH** | Isolated; not mixed into Core; process only [`rfc-p-promotion.md`](rfc-p-promotion.md) (`#177`); Book V → operational лише через promotion; no runtime |
 | Cost / escalation / Goal Compiler | Book 0 §8–9; Book V | — | — | **RESEARCH** | Out of MVP |
 
 ---
@@ -295,8 +295,8 @@ Plan: [`phase-g-plan.md`](phase-g-plan.md) **DONE**. RFC: [`AIRA-RFC-0069`](../s
 | #173 | Settlement receipt store | `SettlementReceiptStore` JSONL; verify-on-read; RFC-0080 | **DONE** @ PR #137 |
 | #174 | B2-011 privacy smoke | `validate_settlement_privacy`; `b2_011_settlement_privacy_smoke` | **DONE** @ PR #138 |
 | #175 | `run_c4` scaffold | 3 cases; RFC-0081; `c4.settlement.receipt_emit_verify` | **DONE** @ PR #139 |
-| #176 | Settlement status PARTIAL | Book II Settlement ABSENT→**PARTIAL** | **DONE** @ this PR |
-| #177 | RFC-P promotion doc | `docs/rfc-p-promotion.md` |
+| #176 | Settlement status PARTIAL | Book II Settlement ABSENT→**PARTIAL** | **DONE** @ PR #140 |
+| #177 | RFC-P promotion doc | `docs/rfc-p-promotion.md`; Book V → operational лише через promotion | **DONE** @ this PR |
 | #178–#181 | Promotion gate | RFC-P; `run_c5`; non-operational |
 | #182–#183 | Docs + RFC-0077 | Reference v0.3; QUEUE H closed |
 

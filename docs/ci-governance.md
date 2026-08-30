@@ -70,7 +70,7 @@ pull_request: main, develop
 
 ## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony (`run_c3`): **8** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170). Optional CI job `conformance-c3` (`#164`, non-gate). Next: RFC-P promotion doc `#177`. Settlement **PARTIAL** (`#176`); `run_c4` local (`#175`, not a CI job).
+Local federation ceremony (`run_c3`): **8** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170). Optional CI job `conformance-c3` (`#164`, non-gate). RFC-P process doc `#177` DONE ([`rfc-p-promotion.md`](rfc-p-promotion.md)). Next: promotion fixtures `#178`. Settlement **PARTIAL** (`#176`); `run_c4` local (`#175`, not a CI job).
 
 ### Current posture (QUEUE #153 + `#164`)
 
@@ -127,6 +127,6 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
 - Phase G plan (DONE): [`phase-g-plan.md`](phase-g-plan.md)
 - Phase I plan (PLANNED after `#183`): [`phase-i-plan.md`](phase-i-plan.md) — Handle/Verify/Policy/Reuse stabilization; not active until H closes
-- Phase H plan (OPEN `#177`): [`phase-h-plan.md`](phase-h-plan.md) — `#176` Settlement PARTIAL DONE; next RFC-P doc
+- Phase H plan (OPEN `#178`): [`phase-h-plan.md`](phase-h-plan.md) — `#177` RFC-P doc DONE ([`rfc-p-promotion.md`](rfc-p-promotion.md)); next promotion fixtures
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
 - RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`)
