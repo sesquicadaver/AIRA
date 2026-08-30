@@ -3,16 +3,16 @@
 **Оновлено:** 2026-08-30  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **DONE** (2026-08-28, RFC-0069). Phase H Protocol depth v0.3 [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — `#152`–`#183` **DONE** (2026-08-30, RFC-0077). Phase I Semantic contract stabilization [`docs/phase-i-plan.md`](docs/phase-i-plan.md) — `#184`–`#196` **DONE**; first OPEN `#197`.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **DONE** (2026-08-28, RFC-0069). Phase H Protocol depth v0.3 [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — `#152`–`#183` **DONE** (2026-08-30, RFC-0077). Phase I Semantic contract stabilization [`docs/phase-i-plan.md`](docs/phase-i-plan.md) — `#184`–`#197` **DONE**; first OPEN `#198`.
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#183` **DONE** @ RFC-0077; Phase I `#184`–`#196` **DONE**; first OPEN `#197` |
+| `main` | Phase G `#120`–`#151` **DONE** @ RFC-0069; Phase H `#152`–`#183` **DONE** @ RFC-0077; Phase I `#184`–`#197` **DONE**; first OPEN `#198` |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase I [`docs/phase-i-plan.md`](docs/phase-i-plan.md) — first OPEN `#197` (MSRV + supply-chain CI); `#184`–`#196` **DONE** |
+| Активна черга | Phase I [`docs/phase-i-plan.md`](docs/phase-i-plan.md) — first OPEN `#198` (Phase I docs + RFC); `#184`–`#197` **DONE** |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** (2026-08-28). Phase H — [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#183` **DONE** (RFC-0077). Phase I — [`docs/phase-i-plan.md`](docs/phase-i-plan.md); `#184`–`#198` **IN PROGRESS** (first OPEN `#197`).
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** (2026-08-28). Phase H — [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#183` **DONE** (RFC-0077). Phase I — [`docs/phase-i-plan.md`](docs/phase-i-plan.md); `#184`–`#198` **IN PROGRESS** (first OPEN `#198`).
 
 ---
 
@@ -379,12 +379,12 @@ H0 govern (#152–#153)
 | 194 | **DONE** | ~~Analyze-229 — Envelope freshness/replay~~ | `expires_at` / skew / message-id replay window | тести | run nonce (#195) |
 | 195 | **DONE** | ~~Analyze-230 — Run nonce concurrency~~ | UUIDv7 або transactional seq замість racy `run-counter` | тест | instance crypto (#196) |
 | 196 | **DONE** | ~~Analyze-231 — Instance-scoped crypto~~ | не обов’язковий process-global OnceLock signer; scoped Keyring API або doc | мінімальний тест ізоляції | MSRV CI (#197) |
-| 197 | **OPEN** | Analyze-232 — MSRV + supply-chain CI | rust-version↔CI; pin Actions SHA або documented accept; `cargo deny`/`audit` non-blocking OK | CI/doc | docs RFC (#198) |
+| 197 | **DONE** | ~~Analyze-232 — MSRV + supply-chain CI~~ | rust-version↔CI; pin Actions SHA або documented accept; `cargo deny`/`audit` non-blocking OK | CI/doc | docs RFC (#198) |
 | 198 | **OPEN** | Analyze-233 — Phase I docs + RFC | README + implementation-status stable tag; consolidating RFC-0078; QUEUE I closed | QUEUE I DONE | — |
 
 ### Наступний цикл (Phase I)
 
-Перший OPEN: **`#197`** (MSRV + supply-chain CI). `#184`–`#196` **DONE**.
+Перший OPEN: **`#198`** (Phase I docs + RFC). `#184`–`#197` **DONE**.
 
 ```text
 I0 govern + status honesty (#184–#185)
@@ -429,6 +429,6 @@ I0 govern + status honesty (#184–#185)
 | Post-E stabilization (phase-e §Пізніше; EVO-2) | [`docs/phase-f-plan.md`](docs/phase-f-plan.md); `#107`–`#119` **DONE** (2026-08-24) |
 | Reference v0.2 (local C2 depth, SEC hardening, C3 scaffold, SDK, packaging) | [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** @ RFC-0069 |
 | Protocol depth v0.3 | [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#183` **DONE** @ RFC-0077 |
-| Semantic contract stabilization (post-H) | [`docs/phase-i-plan.md`](docs/phase-i-plan.md); `#184`–`#198` **IN PROGRESS**; first OPEN `#197` |
+| Semantic contract stabilization (post-H) | [`docs/phase-i-plan.md`](docs/phase-i-plan.md); `#184`–`#198` **IN PROGRESS**; first OPEN `#198` |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

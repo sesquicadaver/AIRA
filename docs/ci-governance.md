@@ -45,7 +45,9 @@ pull_request: main, develop
 
 ## Toolchain
 
-- Rust **1.94.0** (`rust-toolchain.toml` + `dtolnay/rust-toolchain@1.94.0` in CI).
+- Rust **1.94.0** (`rust-toolchain.toml` + SHA-pinned `dtolnay/rust-toolchain` with `toolchain: 1.94.0`).
+- Workspace Cargo `rust-version = "1.94"` (QUEUE `#197` / RFC-0095) — aligned with CI, not the stale 1.75 claim.
+- GitHub Actions `uses:` are pinned to commit SHA (tag in comment). Floating `@v4` / `@v2` tags are not used.
 - `RUSTFLAGS=-D warnings` for all workspace builds in CI.
 
 ## Job steps (order)
@@ -70,7 +72,7 @@ pull_request: main, develop
 
 ## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony (`run_c3`): **8** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170). Optional CI job `conformance-c3` (`#164`, non-gate). RFC-P process doc `#177` DONE; promotion-candidate fixtures `#178` DONE; non-operational gate `#179` DONE (RFC-0082); `run_c5` `#180` DONE (RFC-0083, not a CI job); promotion status `#181` DONE (Research remains RESEARCH); Reference v0.3 docs `#182` DONE; RFC-0077 `#183` DONE. Phase H closed; no OPEN. Phase I IN PROGRESS (`#184`–`#196` DONE; first OPEN `#197`). Settlement **PARTIAL** (`#176`); `run_c4` local (`#175`, not a CI job).
+Local federation ceremony (`run_c3`): **8** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170). Optional CI job `conformance-c3` (`#164`, non-gate). RFC-P process doc `#177` DONE; promotion-candidate fixtures `#178` DONE; non-operational gate `#179` DONE (RFC-0082); `run_c5` `#180` DONE (RFC-0083, not a CI job); promotion status `#181` DONE (Research remains RESEARCH); Reference v0.3 docs `#182` DONE; RFC-0077 `#183` DONE. Phase H closed; no OPEN. Phase I IN PROGRESS (`#184`–`#197` DONE; first OPEN `#198`). Settlement **PARTIAL** (`#176`); `run_c4` local (`#175`, not a CI job).
 
 ### Current posture (QUEUE #153 + `#164`)
 
@@ -118,6 +120,13 @@ discv5 / ICE / TURN as merge-gate dependencies
 CRP marketplace / settlement ledger / scheduler
 ```
 
+## Job `cargo-deny` (QUEUE `#197`)
+
+1. `cargo deny check` via SHA-pinned `EmbarkStudios/cargo-deny-action` and repo [`deny.toml`](../deny.toml).
+2. **Not** a merge gate: do **not** add `cargo-deny` to branch-protection required checks (same posture as `conformance-c3`).
+3. Informational supply-chain job (licenses / advisories / bans / sources). Required checks stay: `fmt-clippy-test-schema-c0-c1`, `conformance-c2`.
+4. First-pass `deny.toml`: `unmaintained = "none"` (`rustls-pemfile` is still a direct TLS dep). Ignore `RUSTSEC-2026-0253` (`lru` via `rqrr`).
+
 ## External checks
 
 GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` and is not part of the required check name above unless explicitly added to branch protection.
@@ -126,7 +135,7 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
 - Phase G plan (DONE): [`phase-g-plan.md`](phase-g-plan.md)
-- Phase I plan (IN PROGRESS): [`phase-i-plan.md`](phase-i-plan.md) — Handle/Verify/Policy/Reuse stabilization; first OPEN `#197`
+- Phase I plan (IN PROGRESS): [`phase-i-plan.md`](phase-i-plan.md) — Handle/Verify/Policy/Reuse stabilization; first OPEN `#198`
 - Phase H plan (DONE `#183`): [`phase-h-plan.md`](phase-h-plan.md) — RFC-0077; QUEUE H closed
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
-- RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`)
+- RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`); MSRV + supply-chain [`AIRA-RFC-0095`](../specs/rfc/AIRA-RFC-0095-msrv-supply-chain-ci.md) (`#197`)

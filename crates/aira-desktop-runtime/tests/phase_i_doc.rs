@@ -22,7 +22,7 @@ fn phase_i_plan_present() {
         "AIRA-RFC-0078",
         "confirmed free",
         "IN PROGRESS",
-        "first OPEN `#197`",
+        "first OPEN `#198`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-i-plan missing: {needle}");
@@ -89,8 +89,12 @@ fn phase_i_queue_wiring_184_done() {
         "QUEUE #196 must be DONE after instance-scoped crypto"
     );
     assert!(
-        text.contains("| 197 | **OPEN**"),
-        "QUEUE #197 must be first remaining OPEN"
+        text.contains("| 197 | **DONE**"),
+        "QUEUE #197 must be DONE after MSRV supply-chain"
+    );
+    assert!(
+        text.contains("| 198 | **OPEN**"),
+        "QUEUE #198 must be first remaining OPEN"
     );
     assert!(
         !text.contains("| 184 | **OPEN**"),
@@ -144,7 +148,11 @@ fn phase_i_queue_wiring_184_done() {
         !text.contains("| 196 | **OPEN**"),
         "QUEUE #196 must not stay OPEN after instance-scoped crypto"
     );
-    for n in 197..=198 {
+    assert!(
+        !text.contains("| 197 | **OPEN**"),
+        "QUEUE #197 must not stay OPEN after MSRV supply-chain"
+    );
+    for n in 198..=198 {
         let needle = format!("| {n} | **OPEN**");
         assert!(text.contains(&needle), "QUEUE missing OPEN row: {needle}");
     }
@@ -163,6 +171,7 @@ fn phase_i_queue_wiring_184_done() {
         "Analyze-229",
         "Analyze-230",
         "Analyze-231",
+        "Analyze-232",
         "Analyze-233",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -173,6 +182,7 @@ fn phase_i_queue_wiring_184_done() {
 fn phase_i_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-i-plan.md"));
+    assert!(readme.contains("#198"));
     assert!(readme.contains("#197"));
     assert!(readme.contains("#196"));
     assert!(readme.contains("#195"));
@@ -191,6 +201,7 @@ fn phase_i_readme_and_docs_index() {
     assert!(docs.contains("phase-i-plan.md"));
     assert!(docs.contains("#184"));
     assert!(docs.contains("IN PROGRESS"));
+    assert!(docs.contains("#198"));
     assert!(docs.contains("#197"));
     assert!(docs.contains("#196"));
     assert!(docs.contains("#195"));
@@ -208,7 +219,7 @@ fn phase_h_points_to_active_phase_i() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-h-plan.md")).unwrap();
     assert!(text.contains("phase-i-plan.md"));
     assert!(text.contains("#184"));
-    assert!(text.contains("first OPEN `#197`"));
+    assert!(text.contains("first OPEN `#198`"));
 }
 
 #[test]
@@ -513,5 +524,28 @@ fn phase_i_instance_crypto_196() {
     .expect("RFC-0094");
     for needle in ["#196", "bind_thread_crypto", "OnceLock"] {
         assert!(rfc.contains(needle), "RFC-0094 missing: {needle}");
+    }
+}
+
+#[test]
+fn phase_i_msrv_supply_chain_197() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0095",
+        "workspace_rust_version_matches_ci_pin",
+        "| #197 | MSRV + supply-chain CI",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #197 missing: {needle}"
+        );
+    }
+    let rfc = std::fs::read_to_string(
+        repo_root().join("specs/rfc/AIRA-RFC-0095-msrv-supply-chain-ci.md"),
+    )
+    .expect("RFC-0095");
+    for needle in ["#197", "rust-version", "cargo deny"] {
+        assert!(rfc.contains(needle), "RFC-0095 missing: {needle}");
     }
 }
