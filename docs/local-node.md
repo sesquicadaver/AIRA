@@ -17,7 +17,7 @@
   http/              # optional self-signed TLS PEM (`--tls-self-signed`)
   events/event-log.json           # legacy JSON event log (recovery helpers)
   events/file-chain-log.json      # durable FileChainEventLog (#157)
-  problems/index.json
+  problems/index.json            # persist: temp+rename; corrupt ≠ empty wipe (#191)
   conformance/reports/
 ```
 

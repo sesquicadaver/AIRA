@@ -1,6 +1,6 @@
 # AIRA documentation index
 
-**Оновлено:** 2026-08-30. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase I first OPEN `#191`; `#184`–`#190` **DONE**; Phase H `#152`–`#183` **DONE** @ RFC-0077; Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.3**; [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md)).
+**Оновлено:** 2026-08-30. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase I first OPEN `#192`; `#184`–`#191` **DONE**; Phase H `#152`–`#183` **DONE** @ RFC-0077; Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.3**; [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md)).
 
 ## Anti-mission (ніколи в product / QUEUE)
 
@@ -23,13 +23,13 @@ Core що «вирішує задачі» замість CSU contracts
 | F | [`phase-f-plan.md`](phase-f-plan.md) | `#107`–`#119` | **DONE** |
 | G | [`phase-g-plan.md`](phase-g-plan.md) | `#120`–`#151` | **DONE** (RFC-0069) |
 | H | [`phase-h-plan.md`](phase-h-plan.md) | `#152`–`#183` | **DONE** (RFC-0077) |
-| I | [`phase-i-plan.md`](phase-i-plan.md) | `#184`–`#198` | **IN PROGRESS** (`#184` `#185` `#186` `#187` `#188` `#189` `#190` **DONE**; first OPEN `#191`) |
+| I | [`phase-i-plan.md`](phase-i-plan.md) | `#184`–`#198` | **IN PROGRESS** (`#184` `#185` `#186` `#187` `#188` `#189` `#190` `#191` **DONE**; first OPEN `#192`) |
 
 ## Core reference
 
 | Doc | Topic |
 |-----|-------|
-| [`implementation-status.md`](implementation-status.md) | Book 0–IV matrix; C0–C5; Phase gates; **Reference v0.3**; Phase I OPEN `#191` |
+| [`implementation-status.md`](implementation-status.md) | Book 0–IV matrix; C0–C5; Phase gates; **Reference v0.3**; Phase I OPEN `#192` |
 | [`rfc-p-promotion.md`](rfc-p-promotion.md) | RFC-P: Book V → operational лише через promotion (`#177`) |
 | [`operational-plane.md`](operational-plane.md) | C1 reference/demo plane (не production runtime) |
 | [`conformance.md`](conformance.md) | C0–C5 runners; v0.3 index; security baseline |
