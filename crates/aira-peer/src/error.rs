@@ -27,6 +27,12 @@ pub enum PeerError {
     Crypto(String),
     #[error("protocol: {0}")]
     Protocol(String),
+    #[error("envelope expired")]
+    Expired,
+    #[error("envelope clock skew")]
+    ClockSkew,
+    #[error("duplicate envelope: {0}")]
+    Replay(String),
     #[error("stun: {0}")]
     Stun(String),
     #[error("discv: {0}")]

@@ -23,6 +23,7 @@ mod handshake;
 mod noise;
 mod notify;
 mod relay;
+mod replay;
 mod session;
 mod stun;
 mod trust_delta;
@@ -64,6 +65,7 @@ pub use relay::{
     RELAY_DELIVER_MESSAGE_TYPE, RELAY_DELIVER_SCHEMA, RELAY_HUB_REGISTRY_SCHEMA,
     RELAY_HUB_TTL_DAYS_RECOMMENDED,
 };
+pub use replay::{admit_received_envelope, envelope_replay_path};
 pub use session::{
     accept, accept_tcp, complete_accept, dial, listen, listen_explicit, AuthenticatedPeer,
     DEFAULT_PEER_TIMEOUT,

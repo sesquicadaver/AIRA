@@ -11,6 +11,7 @@ Decentralized node-to-node messaging **without a controlling center**.
 - **Noise** = `Noise_XX_25519_ChaChaPoly_BLAKE2s` (`snow`); remote static must match hello
 - **Payload** = Book II `ProtocolEnvelope` inside **Noise-encrypted** length-prefixed frames
 - **Envelope signature** (SEC-2 / QUEUE #135) = canonical descriptor hash (full envelope, not `payload_hash` bytes alone); `signature.key_ref` must equal `issuer_identity`; peer `recv_envelope` verifies via trust keyring
+- **Envelope freshness** (QUEUE `#194` / RFC-0092) = after signature, reject expired `expires_at`, `|created_at − now|` beyond 300s skew, or a `message_id` already seen in the 600s replay window (`peers/envelope_replay.json`)
 - **Trust-delta** = `peer.trust.delta` (`aira:peer:trust-delta:v1`) — revoke / rotate / unrevoke / **rekey**; apply only with `--apply-trust`
 - **Self-sovereign apply** (Analyze-52) = `subject_id` must equal envelope `issuer` for every op; third-party CRL stays on local CLI `trust revoke` / `trust rotate`
 - **Gossip** (Analyze-43/53, opt-in `--gossip`) = forward the **original** signed trust-delta once per `message_id` (`peers/gossip_seen.json`); skip forward when `subject_id ≠ issuer` (mark-seen); apply still enforces issuer==subject

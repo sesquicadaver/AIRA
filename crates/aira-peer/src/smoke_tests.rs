@@ -9,6 +9,8 @@ use aira_object::{
 };
 use aira_protocol::{ProtocolEnvelope, ProtocolId, ScopeDescriptor};
 use ed25519_dalek::SigningKey;
+use rand::rngs::OsRng;
+use rand::RngCore;
 use tempfile::tempdir;
 
 fn write_node_identity(root: &std::path::Path, name: &str, seed: [u8; 32]) -> (AiraRef, String) {
@@ -60,11 +62,15 @@ fn mutual_trust(
 
 fn make_envelope(issuer: &AiraRef, ring: &Keyring, payload: &str) -> ProtocolEnvelope {
     let hash = ContentHash::sha256_bytes(payload.as_bytes());
+    let mut nonce = [0u8; 8];
+    OsRng.fill_bytes(&mut nonce);
+    let message_id =
+        AiraRef::parse(format!("aira:message:peer-ping-{}", hex::encode(nonce))).unwrap();
     ProtocolEnvelope {
         protocol_id: ProtocolId::Identity,
         protocol_version: "0.1".into(),
         message_type: "peer.ping".into(),
-        message_id: AiraRef::parse("aira:message:peer-ping-1").unwrap(),
+        message_id,
         correlation_id: None,
         causal_refs: vec![],
         issuer_identity: issuer.clone(),
@@ -72,7 +78,7 @@ fn make_envelope(issuer: &AiraRef, ring: &Keyring, payload: &str) -> ProtocolEnv
         policy_refs: vec![],
         payload_hash: hash,
         payload_ref: None,
-        created_at: Timestamp::parse("2026-07-16T12:00:00Z").unwrap(),
+        created_at: aira_object::now(),
         expires_at: None,
         signature: ProtocolEnvelope::placeholder_signature(issuer),
     }
@@ -112,6 +118,94 @@ async fn trusted_peers_hello_and_envelope_roundtrip() {
     let got = server.recv_envelope().await.unwrap();
     assert_eq!(got.issuer_identity, id_a);
     assert_eq!(got.message_type, "peer.ping");
+}
+
+#[tokio::test]
+async fn recv_envelope_rejects_expired() {
+    let dir_a = tempdir().unwrap();
+    let dir_b = tempdir().unwrap();
+    let root_a = dir_a.path();
+    let root_b = dir_b.path();
+    init_node(root_a).unwrap();
+    init_node(root_b).unwrap();
+    let (id_a, pub_a) = write_node_identity(root_a, "alice-exp", [41u8; 32]);
+    let (id_b, pub_b) = write_node_identity(root_b, "bob-exp", [43u8; 32]);
+    mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
+
+    let listener = listen("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let mut book = AddressBook::default();
+    book.upsert(id_b.as_str(), addr.to_string());
+    book.save(root_a).unwrap();
+
+    let root_b2 = root_b.to_path_buf();
+    let accept_task = tokio::spawn(async move { accept(&listener, root_b2).await });
+
+    let mut client = dial(root_a, id_b.as_str()).await.unwrap();
+    let mut server = accept_task.await.unwrap().unwrap();
+
+    let (_ida, ring_a) = Keyring::load_node_identity(root_a).unwrap();
+    let hash = ContentHash::sha256_bytes(b"expired");
+    let env = ProtocolEnvelope {
+        protocol_id: ProtocolId::Identity,
+        protocol_version: "0.1".into(),
+        message_type: "peer.ping".into(),
+        message_id: AiraRef::parse("aira:message:peer-expired-1").unwrap(),
+        correlation_id: None,
+        causal_refs: vec![],
+        issuer_identity: id_a.clone(),
+        target_scope: ScopeDescriptor::local("peer-p0"),
+        policy_refs: vec![],
+        payload_hash: hash,
+        payload_ref: None,
+        created_at: aira_object::now(),
+        expires_at: Some("2020-01-01T00:00:00Z".into()),
+        signature: ProtocolEnvelope::placeholder_signature(&id_a),
+    }
+    .attach_canonical_signature_with_keyring(&ring_a, &id_a)
+    .unwrap();
+    client.send_envelope(&env).await.unwrap();
+    let err = server.recv_envelope().await.unwrap_err();
+    assert!(
+        matches!(err, PeerError::Expired),
+        "expected Expired, got {err}"
+    );
+}
+
+#[tokio::test]
+async fn recv_envelope_rejects_replayed_message_id() {
+    let dir_a = tempdir().unwrap();
+    let dir_b = tempdir().unwrap();
+    let root_a = dir_a.path();
+    let root_b = dir_b.path();
+    init_node(root_a).unwrap();
+    init_node(root_b).unwrap();
+    let (id_a, pub_a) = write_node_identity(root_a, "alice-rp", [51u8; 32]);
+    let (id_b, pub_b) = write_node_identity(root_b, "bob-rp", [53u8; 32]);
+    mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
+
+    let listener = listen("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let mut book = AddressBook::default();
+    book.upsert(id_b.as_str(), addr.to_string());
+    book.save(root_a).unwrap();
+
+    let root_b2 = root_b.to_path_buf();
+    let accept_task = tokio::spawn(async move { accept(&listener, root_b2).await });
+
+    let mut client = dial(root_a, id_b.as_str()).await.unwrap();
+    let mut server = accept_task.await.unwrap().unwrap();
+
+    let (_ida, ring_a) = Keyring::load_node_identity(root_a).unwrap();
+    let env = make_envelope(&id_a, &ring_a, "replay-payload");
+    client.send_envelope(&env).await.unwrap();
+    server.recv_envelope().await.unwrap();
+    client.send_envelope(&env).await.unwrap();
+    let err = server.recv_envelope().await.unwrap_err();
+    assert!(
+        matches!(err, PeerError::Replay(_)),
+        "expected Replay, got {err}"
+    );
 }
 
 #[tokio::test]

@@ -20,7 +20,10 @@ pub use canonical::{
     sign_canonical_descriptor, strip_top_level_signature, verify_canonical_descriptor,
     verify_producer_signature_binding,
 };
-pub use clock::{now, reset_clock, set_clock, Clock, FixedClock, SystemClock, MVP_FIXED_TIMESTAMP};
+pub use clock::{
+    now, reset_clock, set_clock, unix_seconds, unix_seconds_str, Clock, FixedClock, SystemClock,
+    MVP_FIXED_TIMESTAMP,
+};
 pub use crypto::{
     active_identity, active_signature, ensure_trust_defaults, is_cryptographic_signature,
     list_node_secret_backups, local_test_public_key_hex, local_test_signature,

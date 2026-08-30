@@ -71,3 +71,13 @@ pub fn reset_clock() {
 pub fn now() -> Timestamp {
     slot().read().unwrap_or_else(|e| e.into_inner()).now()
 }
+
+/// Unix seconds for a stored RFC3339 timestamp.
+pub fn unix_seconds(ts: &Timestamp) -> Result<i64, crate::CryptoError> {
+    crate::crypto::parse_rfc3339(ts.as_str()).map(|dt| dt.unix_timestamp())
+}
+
+/// Unix seconds for a raw RFC3339 string (`expires_at`).
+pub fn unix_seconds_str(s: &str) -> Result<i64, crate::CryptoError> {
+    crate::crypto::parse_rfc3339(s).map(|dt| dt.unix_timestamp())
+}

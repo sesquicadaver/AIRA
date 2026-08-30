@@ -7,6 +7,7 @@ mod keyring;
 mod rotation;
 mod trust_store;
 
+pub(crate) use error::parse_rfc3339;
 pub use error::{utc_now_rfc3339, CryptoError, LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF};
 pub use keyring::{
     active_identity, active_signature, is_cryptographic_signature, local_test_public_key_hex,
