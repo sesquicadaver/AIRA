@@ -144,8 +144,12 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #179 must be DONE after non-operational gate"
     );
     assert!(
-        text.contains("| 180 | **OPEN**"),
-        "QUEUE #180 must be next OPEN"
+        text.contains("| 180 | **DONE**"),
+        "QUEUE #180 must be DONE after run_c5 scaffold"
+    );
+    assert!(
+        text.contains("| 181 | **OPEN**"),
+        "QUEUE #181 must be next OPEN"
     );
     assert!(text.contains("| 183 | **OPEN**"), "QUEUE missing #183");
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
@@ -261,6 +265,11 @@ fn phase_h_h1_stores_status_rollup() {
         "ResearchNonOperational",
         "research_artifact_rejected_as_operational_input",
         "RFC-0082",
+        "run_c5",
+        "c5.research.separation",
+        "c5.promotion.gate_reject",
+        "c5.promotion.candidate_schema",
+        "RFC-0083",
     ] {
         assert!(
             text.contains(needle),

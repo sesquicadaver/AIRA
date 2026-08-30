@@ -1,6 +1,6 @@
 # RFC-P — Research Promotion (Reference working copy)
 
-**QUEUE:** `#177` (Analyze-212) process; `#178` (Analyze-213) fixtures **DONE**. **Статус:** gate/C5 — наступні атоми.  
+**QUEUE:** `#177` (Analyze-212) process; `#178`–`#180` **DONE**. **Статус:** status rollup — `#181`.  
 **Канон виконання:** [`QUEUE.md`](../QUEUE.md). **План:** [`phase-h-plan.md`](phase-h-plan.md) H5.  
 **Нормативні джерела:** Book V §3 / §7 / §8 / §28 / §30; [`specs/rfc-process.md`](../specs/rfc-process.md) §12–§13 / §31 (RFC-R / RFC-P / Promotion Gate).  
 **Контрактний тест:** `crates/aira-desktop-runtime/tests/phase_h_doc.rs`.
@@ -35,7 +35,7 @@ A numbered instance (`AIRA-RFC-P-NNNN`) is a *use* of this process, not a substi
 ```text
 promotion-candidate schema fixtures          (#178)
 runtime non-operational gate + test          (#179 DONE)
-run_c5 scaffold                              (#180)
+run_c5 scaffold                              (#180 DONE)
 implementation-status C5 / promotion rollup  (#181)
 Reference v0.3 / RFC-0077                    (#182–#183)
 PHM / HIE / Goal Compiler / DSM as runtime
@@ -97,7 +97,7 @@ Research Artifact
   → Optional / Reference / Rejected
 ```
 
-Fail-closed for this reference: a research or promotion-candidate artifact presented as operational input is **rejected** (`OperationalPlane` inject/drain, RFC-0082 / `#179`). CAS may still store research artifacts. `run_c5` remains `#180`.
+Fail-closed for this reference: a research or promotion-candidate artifact presented as operational input is **rejected** (`OperationalPlane` inject/drain, RFC-0082 / `#179`). CAS may still store research artifacts. `run_c5` local scaffold is `#180` (RFC-0083).
 
 Canary Deployment is a Book V §8 pipeline step. Phase H `#180` is a **local** `run_c5` scaffold, not a canary harness and not a distributed deploy.
 
@@ -160,7 +160,7 @@ covered by safety policy
 excluded from core conformance tests
 ```
 
-C5 (`run_c5`, `#180`) is the local scaffold for **research separation + promotion gate**, not a merge gate and not a licence to run research as operational.
+C5 (`run_c5`, `#180`, RFC-0083) is the local scaffold for **research separation + promotion gate**, not a merge gate and not a licence to run research as operational.
 
 ## 9. Research-only items (not promotion candidates here)
 
@@ -195,7 +195,7 @@ Core що «вирішує задачі» замість CSU contracts
 | `#177` | this file | policy: Book V → operational лише через promotion |
 | `#178` | promotion-candidate fixtures | schema + invalid-without-required-fields (**DONE**) |
 | `#179` | non-operational gate | research/promotion artifact **rejected as operational** (**DONE**, RFC-0082) |
-| `#180` | `run_c5` | research separation + promotion gate local cases |
+| `#180` | `run_c5` | research separation + promotion gate local cases (**DONE**, RFC-0083) |
 | `#181` | status rollup | `implementation-status` C5 / promotion notes |
 
 Per-atom numbered RFC for the **gate** is `#179`/`#180` ([`phase-h-plan.md`](phase-h-plan.md) §6). Consolidating Phase H RFC is RFC-0077 (`#183`).
@@ -207,5 +207,5 @@ Per-atom numbered RFC for the **gate** is `#179`/`#180` ([`phase-h-plan.md`](pha
 | Book V | `Manifesto etc/Book V — Research Track v0.1.md` |
 | RFC classes | [`specs/rfc-process.md`](../specs/rfc-process.md) |
 | OperationalPlane (C1 demo, not research) | [`operational-plane.md`](operational-plane.md) |
-| Conformance C5 placeholder | [`conformance.md`](conformance.md) |
+| Conformance C5 scaffold | [`conformance.md`](conformance.md) |
 | Status (Research rows stay **RESEARCH** until `#181`) | [`implementation-status.md`](implementation-status.md) |

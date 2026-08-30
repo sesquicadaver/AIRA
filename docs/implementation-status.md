@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#179` DONE; `#180` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.2** (Analyze-181 / QUEUE `#151`; Phase G `#120`–`#151` **DONE** @ RFC-0069). Phase H Protocol depth → **v0.3** target ([`phase-h-plan.md`](phase-h-plan.md); `#152`–`#180` DONE; `#181` **OPEN**). Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#180`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (Phase H `#181`+) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -170,6 +170,7 @@ Conformance spec §19 lists extra fixture *names* (event chain, policy deny, res
 | C2 | Protocol-compatible | `run_c2` | 11 cases incl. `c2.event.publish_equivocation` (SEC-4 #137); `c2.protocol.envelope_canonical_mutations`, `c2.protocol.response_canonical_mutations` (SEC-2 #135) | **yes** (`conformance-c2`, #117) | **DONE** |
 | C3 | Local federation + CAP + IO deny + CRP | `run_c3` | **8** cases incl. `c3.federation.export_deny` + `c3.capability.advertisement` + `c3.crp.reject_node_route` + `c3.crp.route_candidate`; optional CI `conformance-c3` (#164, non-gate) | **optional** (`conformance-c3`; not merge gate) | **DONE** (scaffold + `#153` + `#161` + `#163` + `#164` + `#167` + `#170`) |
 | C4 | Settlement audit receipts | `run_c4` | **3** cases: `c4.settlement.receipt_emit_verify`, `c4.settlement.privacy_reject`, `c4.settlement.link_prior_route`; RFC-0081 | **no** | **DONE** scaffold (`#175`) |
+| C5 | Research separation + promotion gate | `run_c5` | **3** cases: `c5.research.separation`, `c5.promotion.gate_reject`, `c5.promotion.candidate_schema`; RFC-0083 | **no** | **DONE** scaffold (`#180`) |
 | Security baseline | Conformance §14 subset | `run_security_baseline` | unsigned CSU/artifact; private deny; secret in events | crate tests | **DONE** |
 | Alpha acceptance | MVP | `run_alpha_acceptance` | init layout, 2+2, failure evidence, C0/C1 | crate tests | **DONE** |
 
@@ -299,8 +300,9 @@ Plan: [`phase-g-plan.md`](phase-g-plan.md) **DONE**. RFC: [`AIRA-RFC-0069`](../s
 | #176 | Settlement status PARTIAL | Book II Settlement ABSENT→**PARTIAL** | **DONE** @ PR #140 |
 | #177 | RFC-P promotion doc | `docs/rfc-p-promotion.md`; Book V → operational лише через promotion | **DONE** @ PR #141 |
 | #178 | Promotion-candidate fixtures | `aira:schema:research:promotion-candidate:0.1`; `promotion_candidate_schema_loads` | **DONE** @ PR #142 |
-| #179 | Non-operational gate | `ResearchNonOperational`; `research_artifact_rejected_as_operational_input`; RFC-0082 | **DONE** @ this PR |
-| #180–#181 | Promotion gate | `run_c5`; status rollup |
+| #179 | Non-operational gate | `ResearchNonOperational`; `research_artifact_rejected_as_operational_input`; RFC-0082 | **DONE** @ PR #143 |
+| #180 | `run_c5` scaffold | 3 cases; RFC-0083; `c5.research.separation` | **DONE** @ this PR |
+| #181 | Promotion status rollup | `implementation-status` C5 / promotion notes |
 | #182–#183 | Docs + RFC-0077 | Reference v0.3; QUEUE H closed |
 
 Plan: [`phase-h-plan.md`](phase-h-plan.md). Consolidating RFC: RFC-0077 (`#183`).
