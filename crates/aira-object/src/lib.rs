@@ -31,6 +31,7 @@ pub use crypto::{
     NODE_SECRET_BACKUP_META_FILE,
 };
 pub use descriptor::{ObjectDescriptor, ObjectType};
+pub use handle::object_store_access;
 pub use handle::Handle;
 pub use tenant::{
     csu_tenant_registered, encode_csu_dir_name, list_csu_tenant_secret_backups,
@@ -105,7 +106,28 @@ mod tests {
         assert!(dbg.contains("<opaque>"));
         // Public API exposes only the logical ref, not storage internals.
         assert_eq!(h.object_ref(), &object_ref);
-        assert!(h.storage_token_for_tests() > 0);
+        assert!(h.storage_token() > 0);
+    }
+
+    #[test]
+    fn handle_new_and_storage_token_are_not_public_methods() {
+        let src = include_str!("handle.rs");
+        assert!(
+            src.contains("pub(crate) fn new("),
+            "Handle::new must be crate-private"
+        );
+        assert!(
+            src.contains("pub(crate) fn storage_token("),
+            "Handle::storage_token must be crate-private"
+        );
+        assert!(
+            !src.contains("pub fn new("),
+            "Handle::new must not be a public method"
+        );
+        assert!(
+            !src.contains("pub fn storage_token(&self)"),
+            "Handle::storage_token must not be a public method"
+        );
     }
 
     #[test]

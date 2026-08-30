@@ -6,6 +6,10 @@ use crate::types::AiraRef;
 ///
 /// Debug output intentionally omits any filesystem / SQL path. The only
 /// public logical identifier is [`Handle::object_ref`].
+///
+/// Construction and storage-token access are **not** on this type's public
+/// API (`Handle::new` / `Handle::storage_token` are `pub(crate)`). Store
+/// implementations in `aira-core` use [`object_store_access`].
 #[derive(Clone, PartialEq, Eq)]
 pub struct Handle {
     object_ref: AiraRef,
@@ -15,7 +19,7 @@ pub struct Handle {
 
 impl Handle {
     /// Construct a handle from a logical object ref and internal token.
-    pub fn new(object_ref: AiraRef, storage_token: u64) -> Self {
+    pub(crate) fn new(object_ref: AiraRef, storage_token: u64) -> Self {
         Self {
             object_ref,
             storage_token,
@@ -28,14 +32,8 @@ impl Handle {
     }
 
     /// Internal store token (row id / generation). **Not** a filesystem path.
-    pub fn storage_token(&self) -> u64 {
+    pub(crate) fn storage_token(&self) -> u64 {
         self.storage_token
-    }
-
-    /// Test-only alias.
-    #[doc(hidden)]
-    pub fn storage_token_for_tests(&self) -> u64 {
-        self.storage_token()
     }
 }
 
@@ -45,5 +43,24 @@ impl std::fmt::Debug for Handle {
             .field("object_ref", &self.object_ref.as_str())
             .field("token", &"<opaque>")
             .finish()
+    }
+}
+
+/// Mint and token access for `aira-core` ObjectStore implementations.
+///
+/// This is **not** a CSU API. CSUs receive [`Handle`] only from `ObjectStore::create`
+/// and may read [`Handle::object_ref`]. Forged mint + `open` is still bind-checked
+/// (`object_id == handle.object_ref`) in Core.
+pub mod object_store_access {
+    use super::{AiraRef, Handle};
+
+    /// Mint a handle for a store that just persisted `object_ref` at `storage_token`.
+    pub fn mint(object_ref: AiraRef, storage_token: u64) -> Handle {
+        Handle::new(object_ref, storage_token)
+    }
+
+    /// Read the store token. For ObjectStore backends only.
+    pub fn storage_token(handle: &Handle) -> u64 {
+        handle.storage_token()
     }
 }

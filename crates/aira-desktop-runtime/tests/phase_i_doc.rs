@@ -22,7 +22,7 @@ fn phase_i_plan_present() {
         "AIRA-RFC-0078",
         "confirmed free",
         "IN PROGRESS",
-        "first OPEN `#186`",
+        "first OPEN `#187`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-i-plan missing: {needle}");
@@ -45,8 +45,12 @@ fn phase_i_queue_wiring_184_done() {
         "QUEUE #185 must be DONE after status honesty"
     );
     assert!(
-        text.contains("| 186 | **OPEN**"),
-        "QUEUE #186 must be first remaining OPEN"
+        text.contains("| 186 | **DONE**"),
+        "QUEUE #186 must be DONE after Handle integrity"
+    );
+    assert!(
+        text.contains("| 187 | **OPEN**"),
+        "QUEUE #187 must be first remaining OPEN"
     );
     assert!(
         !text.contains("| 184 | **OPEN**"),
@@ -56,7 +60,11 @@ fn phase_i_queue_wiring_184_done() {
         !text.contains("| 185 | **OPEN**"),
         "QUEUE #185 must not stay OPEN after honesty rollup"
     );
-    for n in 186..=198 {
+    assert!(
+        !text.contains("| 186 | **OPEN**"),
+        "QUEUE #186 must not stay OPEN after Handle integrity"
+    );
+    for n in 187..=198 {
         let needle = format!("| {n} | **OPEN**");
         assert!(text.contains(&needle), "QUEUE missing OPEN row: {needle}");
     }
@@ -65,7 +73,7 @@ fn phase_i_queue_wiring_184_done() {
         "I1 P0 Core/CSU semantics",
         "RFC-0078",
         "Analyze-219",
-        "Analyze-220",
+        "Analyze-221",
         "Analyze-233",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -76,6 +84,7 @@ fn phase_i_queue_wiring_184_done() {
 fn phase_i_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-i-plan.md"));
+    assert!(readme.contains("#187"));
     assert!(readme.contains("#186"));
     assert!(readme.contains("#185"));
     assert!(readme.contains("#184"));
@@ -83,7 +92,7 @@ fn phase_i_readme_and_docs_index() {
     assert!(docs.contains("phase-i-plan.md"));
     assert!(docs.contains("#184"));
     assert!(docs.contains("IN PROGRESS"));
-    assert!(docs.contains("#186"));
+    assert!(docs.contains("#187"));
 }
 
 #[test]
@@ -91,7 +100,7 @@ fn phase_h_points_to_active_phase_i() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-h-plan.md")).unwrap();
     assert!(text.contains("phase-i-plan.md"));
     assert!(text.contains("#184"));
-    assert!(text.contains("first OPEN `#186`"));
+    assert!(text.contains("first OPEN `#187`"));
 }
 
 #[test]
@@ -140,5 +149,30 @@ fn phase_i_status_honesty_185() {
             text.contains(needle),
             "implementation-status honesty missing: {needle}"
         );
+    }
+}
+
+#[test]
+fn phase_i_handle_integrity_186() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0084",
+        "object_store_access",
+        "HandleBindMismatch",
+        "handle_cross_object_token_bind_rejects",
+        "pub(crate)",
+        "| #186 | Handle integrity",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #186 missing: {needle}"
+        );
+    }
+    let rfc =
+        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0084-handle-integrity.md"))
+            .expect("RFC-0084");
+    for needle in ["#186", "HandleBindMismatch", "object_store_access"] {
+        assert!(rfc.contains(needle), "RFC-0084 missing: {needle}");
     }
 }

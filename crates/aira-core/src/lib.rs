@@ -217,4 +217,70 @@ mod tests {
             .iter()
             .any(|e| e.event_type == EventType::PolicyEvaluated));
     }
+
+    fn signed_problem(object_id: &str) -> ObjectDescriptor {
+        let mut desc = ObjectDescriptor::example_problem();
+        desc.object_id = AiraRef::parse(object_id).unwrap();
+        desc.attach_canonical_signature().expect("canonical sign")
+    }
+
+    #[test]
+    fn handle_forged_unknown_token_open_fails() {
+        let mut store = MemoryObjectStore::new();
+        let desc = ObjectDescriptor::example_problem();
+        store.create(desc.clone()).unwrap();
+        let forged = aira_object::object_store_access::mint(desc.object_id.clone(), 0xDEAD_u64);
+        assert!(matches!(store.open(&forged), Err(CoreError::NotFound(_))));
+    }
+
+    #[test]
+    fn handle_cross_object_token_bind_rejects() {
+        let mut store = MemoryObjectStore::new();
+        let a = signed_problem("aira:problem:01HANDLEA");
+        let b = signed_problem("aira:problem:01HANDLEB");
+        let handle_a = store.create(a.clone()).unwrap();
+        store.create(b.clone()).unwrap();
+        let crossed = aira_object::object_store_access::mint(
+            b.object_id.clone(),
+            aira_object::object_store_access::storage_token(&handle_a),
+        );
+        assert!(matches!(
+            store.open(&crossed),
+            Err(CoreError::HandleBindMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn handle_cross_store_open_fails() {
+        let mut store_a = MemoryObjectStore::new();
+        let mut store_b = MemoryObjectStore::new();
+        let a = signed_problem("aira:problem:01STOREA");
+        let b = signed_problem("aira:problem:01STOREB");
+        let handle_a = store_a.create(a).unwrap();
+        store_b.create(b).unwrap();
+        // Same generation token in both empty-started stores; bind must fail.
+        assert!(matches!(
+            store_b.open(&handle_a),
+            Err(CoreError::HandleBindMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn sqlite_handle_cross_object_token_bind_rejects() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("objects.db");
+        let mut store = SqliteObjectStore::open(&path).unwrap();
+        let a = signed_problem("aira:problem:01SQLA");
+        let b = signed_problem("aira:problem:01SQLB");
+        let handle_a = store.create(a).unwrap();
+        store.create(b.clone()).unwrap();
+        let crossed = aira_object::object_store_access::mint(
+            b.object_id.clone(),
+            aira_object::object_store_access::storage_token(&handle_a),
+        );
+        assert!(matches!(
+            store.open(&crossed),
+            Err(CoreError::HandleBindMismatch { .. })
+        ));
+    }
 }
