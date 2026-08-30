@@ -1,6 +1,6 @@
 # RFC-P — Research Promotion (Reference working copy)
 
-**QUEUE:** `#177` (Analyze-212). **Статус:** process doc merged; gate/fixtures/C5 — наступні атоми.  
+**QUEUE:** `#177` (Analyze-212) process; `#178` (Analyze-213) fixtures **DONE**. **Статус:** gate/C5 — наступні атоми.  
 **Канон виконання:** [`QUEUE.md`](../QUEUE.md). **План:** [`phase-h-plan.md`](phase-h-plan.md) H5.  
 **Нормативні джерела:** Book V §3 / §7 / §8 / §28 / §30; [`specs/rfc-process.md`](../specs/rfc-process.md) §12–§13 / §31 (RFC-R / RFC-P / Promotion Gate).  
 **Контрактний тест:** `crates/aira-desktop-runtime/tests/phase_h_doc.rs`.
