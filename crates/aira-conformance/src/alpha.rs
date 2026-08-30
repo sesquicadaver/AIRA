@@ -46,19 +46,8 @@ fn test_init_and_identity_layout(aira: &Path) -> CaseResult {
             return fail(id, format!("missing {need}"));
         }
     }
-    // Identity file may be created by CLI; for library DoD we write a stub descriptor.
-    let id_path = aira.join("identity/local.identity.json");
-    if !id_path.exists() {
-        let _ = std::fs::create_dir_all(aira.join("identity"));
-        let stub = json!({
-            "identity_id": "aira:identity:local",
-            "identity_type": "local",
-            "created_at": "2026-07-16T00:00:00Z"
-        });
-        if let Err(e) = std::fs::write(&id_path, serde_json::to_string_pretty(&stub).unwrap()) {
-            return fail(id, e.to_string());
-        }
-    }
+    // Identity file is created by CLI `identity create`. Incomplete stubs are not written
+    // (QUEUE #190: LocalSession fail-closed on identity load errors).
     pass(id)
 }
 

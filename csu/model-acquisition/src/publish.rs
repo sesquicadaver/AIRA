@@ -245,7 +245,8 @@ fn build_signed_model_artifact(
     );
     let for_sign = Value::Object(body.clone());
     let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
-    let sig: Signature = active_signature(&raw);
+    let sig: Signature =
+        active_signature(&raw).map_err(|e| AcquisitionError::Other(e.to_string()))?;
     body.insert(
         "signature".into(),
         serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,
@@ -276,7 +277,8 @@ fn build_signed_share_offer(
     body.insert("created_at".into(), json!(created_at));
     let for_sign = Value::Object(body.clone());
     let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
-    let sig: Signature = active_signature(&raw);
+    let sig: Signature =
+        active_signature(&raw).map_err(|e| AcquisitionError::Other(e.to_string()))?;
     body.insert(
         "signature".into(),
         serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,
@@ -320,7 +322,8 @@ fn build_signed_capability_ad(
     body.insert("confidence".into(), json!(1.0));
     let for_sign = Value::Object(body.clone());
     let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
-    let sig: Signature = active_signature(&raw);
+    let sig: Signature =
+        active_signature(&raw).map_err(|e| AcquisitionError::Other(e.to_string()))?;
     body.insert(
         "signature".into(),
         serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,

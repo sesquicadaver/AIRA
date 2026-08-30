@@ -308,7 +308,8 @@ pub fn write_acquisition_policy(
     let for_sign = Value::Object(body.clone());
     let bytes =
         serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
-    let sig: Signature = active_signature(&bytes);
+    let sig: Signature =
+        active_signature(&bytes).map_err(|e| AcquisitionError::Other(e.to_string()))?;
     body.insert(
         "signature".into(),
         serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,
