@@ -1,6 +1,6 @@
 # Phase I — Semantic contract stabilization (post-H)
 
-**Статус:** складено 2026-08-28; **IN PROGRESS** 2026-08-30 → QUEUE `#184` wiring **DONE**; first OPEN `#185`.  
+**Статус:** складено 2026-08-28; **IN PROGRESS** 2026-08-30 → QUEUE `#184`–`#185` **DONE**; first OPEN `#186`.  
 **Джерела:** незалежний аудит `main` @ `b66bcf1` (Handle / Verification / Policy / Reuse / identity / persistence); [`implementation-status.md`](implementation-status.md); [`phase-h-plan.md`](phase-h-plan.md) §7.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase I `#184`–`#198` (після `#183` DONE).  
 **Не змінює:** анти-місію README; Book semantics без per-atom RFC; production distributed OperationalPlane.
@@ -145,6 +145,6 @@ Docs/RFC: Phase I closed; no OPEN I atoms.
 
 ```text
 #183 DONE (RFC-0077) → цей план став активною чергою.
-#184 wiring DONE: QUEUE #184–#198; README / docs/README / implementation-status pointer.
-first OPEN `#185` (status honesty).
+#184 wiring DONE; #185 status honesty DONE.
+first OPEN `#186` (Handle integrity).
 ```
