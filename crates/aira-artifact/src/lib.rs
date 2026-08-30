@@ -143,6 +143,39 @@ mod tests {
     }
 
     #[test]
+    fn second_descriptor_same_content_hash_recoverable() {
+        let dir = tempfile::tempdir().unwrap();
+        let payload = b"shared-bytes";
+        let id1 =
+            "aira:artifact:sha256_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1";
+        let id2 =
+            "aira:artifact:sha256_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa2";
+        let d1 = descriptor_for(payload, id1);
+        let d2 = descriptor_for(payload, id2);
+        assert_eq!(d1.content_hash, d2.content_hash);
+        {
+            let mut store = CasArtifactStore::open(dir.path()).unwrap();
+            store.publish(d1.clone(), payload).unwrap();
+            store.publish(d2.clone(), payload).unwrap();
+            let (got1, b1) = store.resolve(&d1.artifact_id).unwrap();
+            let (got2, b2) = store.resolve(&d2.artifact_id).unwrap();
+            assert_eq!(got1.artifact_id.as_str(), id1);
+            assert_eq!(got2.artifact_id.as_str(), id2);
+            assert_eq!(b1, payload);
+            assert_eq!(b2, payload);
+        }
+        std::fs::remove_file(dir.path().join("index.json")).unwrap();
+        let store = CasArtifactStore::open(dir.path()).unwrap();
+        let (got1, b1) = store.resolve(&d1.artifact_id).unwrap();
+        let (got2, b2) = store.resolve(&d2.artifact_id).unwrap();
+        assert_eq!(got1.artifact_id.as_str(), id1);
+        assert_eq!(got2.artifact_id.as_str(), id2);
+        assert_eq!(b1, payload);
+        assert_eq!(b2, payload);
+        assert_eq!(got1.content_hash, got2.content_hash);
+    }
+
+    #[test]
     fn unsigned_artifact_rejected_and_private_denied() {
         let dir = tempfile::tempdir().unwrap();
         let mut store = CasArtifactStore::open(dir.path()).unwrap();

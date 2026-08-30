@@ -8,7 +8,7 @@
   # config.yaml      # optional read-equivalent alternative (xor with config.json)
   identity/          # aira identity create + trust.json + trust-audit.jsonl
   db/aira.sqlite     # SqliteObjectStore schema (node path; plane still uses MemoryObjectStore)
-  artifacts/         # CAS + index.json
+  artifacts/         # CAS + index.json + descriptors/{hex(id)}.json (#192)
   federation/membership.json  # optional local join pin (Analyze-70)
   federation/io-policy.json   # export/import allow flags; deny-by-default (#162)
   csu/registry.json

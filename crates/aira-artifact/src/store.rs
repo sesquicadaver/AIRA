@@ -163,21 +163,54 @@ impl CasArtifactStore {
         };
         let json = serde_json::to_string_pretty(&file)
             .map_err(|e| ArtifactError::Storage(e.to_string()))?;
-        fs::write(self.index_path(), json).map_err(|e| ArtifactError::Storage(e.to_string()))?;
-        Ok(())
+        write_json_atomic(&self.index_path(), &json)
     }
 
     fn load_index(&mut self) -> Result<(), ArtifactError> {
         let path = self.index_path();
-        if !path.exists() {
-            return Ok(());
+        if path.exists() {
+            let raw =
+                fs::read_to_string(&path).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+            let file: IndexFile =
+                serde_json::from_str(&raw).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+            self.index = file.artifacts;
+            self.supersessions = file.supersessions;
         }
-        let raw = fs::read_to_string(&path).map_err(|e| ArtifactError::Storage(e.to_string()))?;
-        let file: IndexFile =
-            serde_json::from_str(&raw).map_err(|e| ArtifactError::Storage(e.to_string()))?;
-        self.index = file.artifacts;
-        self.supersessions = file.supersessions;
+        if self.merge_on_disk_descriptors()? {
+            self.save_index()?;
+        }
         Ok(())
+    }
+
+    fn merge_on_disk_descriptors(&mut self) -> Result<bool, ArtifactError> {
+        let dir = Self::descriptor_dir(&self.root);
+        if !dir.exists() {
+            return Ok(false);
+        }
+        let mut merged = false;
+        let rd = fs::read_dir(&dir).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+        for ent in rd {
+            let ent = ent.map_err(|e| ArtifactError::Storage(e.to_string()))?;
+            let path = ent.path();
+            let name = path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or_default();
+            if !name.ends_with(".json") || name.ends_with(".tmp") {
+                continue;
+            }
+            let raw =
+                fs::read_to_string(&path).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+            let desc: ArtifactDescriptor =
+                serde_json::from_str(&raw).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+            admit_artifact(&desc)?;
+            let key = desc.artifact_id.as_str().to_string();
+            if let std::collections::hash_map::Entry::Vacant(e) = self.index.entry(key) {
+                e.insert(desc);
+                merged = true;
+            }
+        }
+        Ok(merged)
     }
 
     fn cas_path_for(root: &Path, hash: &ContentHash) -> Result<PathBuf, ArtifactError> {
@@ -193,6 +226,16 @@ impl CasArtifactStore {
             .join(&hex[0..2])
             .join(&hex[2..4])
             .join(format!("{hex}.bin")))
+    }
+
+    fn descriptor_dir(root: &Path) -> PathBuf {
+        root.join("descriptors")
+    }
+
+    /// Per-artifact-id descriptor file (shared CAS blob does not overwrite this).
+    fn descriptor_path_for(root: &Path, artifact_id: &AiraRef) -> PathBuf {
+        let hex = hex::encode(artifact_id.as_str().as_bytes());
+        Self::descriptor_dir(root).join(format!("{hex}.json"))
     }
 }
 
@@ -223,12 +266,16 @@ impl ArtifactStore for CasArtifactStore {
             fs::write(&cas_path, payload).map_err(|e| ArtifactError::Storage(e.to_string()))?;
         }
 
+        let json = serde_json::to_string_pretty(&descriptor)
+            .map_err(|e| ArtifactError::Storage(e.to_string()))?;
+        write_json_atomic(
+            &Self::descriptor_path_for(&self.root, &descriptor.artifact_id),
+            &json,
+        )?;
         let meta_path = cas_path.with_extension("json");
-        // Only write descriptor sidecar if absent (same CAS content may be shared).
+        // Legacy first-writer CAS sidecar (C0 / RFC-0062). Per-id file is the recovery source.
         if !meta_path.exists() {
-            let json = serde_json::to_string_pretty(&descriptor)
-                .map_err(|e| ArtifactError::Storage(e.to_string()))?;
-            fs::write(&meta_path, json).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+            write_json_atomic(&meta_path, &json)?;
         }
 
         self.index.insert(key, descriptor.clone());
@@ -300,6 +347,25 @@ impl CasArtifactStore {
                 actual: actual.as_str().to_string(),
             });
         }
+        let desc_path = Self::descriptor_path_for(&self.root, artifact_id);
+        if desc_path.exists() {
+            let raw = fs::read_to_string(&desc_path)
+                .map_err(|e| ArtifactError::Storage(e.to_string()))?;
+            let sidecar: ArtifactDescriptor =
+                serde_json::from_str(&raw).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+            let sidecar = verify_stored_artifact(sidecar)?;
+            if sidecar.artifact_id != *artifact_id {
+                return Err(ArtifactError::Storage(format!(
+                    "descriptor id mismatch for {artifact_id}"
+                )));
+            }
+            if sidecar.content_hash != desc.content_hash {
+                return Err(ArtifactError::HashMismatch {
+                    expected: desc.content_hash.as_str().to_string(),
+                    actual: sidecar.content_hash.as_str().to_string(),
+                });
+            }
+        }
         let meta_path = path.with_extension("json");
         if meta_path.exists() {
             let raw = fs::read_to_string(&meta_path)
@@ -316,4 +382,19 @@ impl CasArtifactStore {
         }
         Ok((desc, bytes))
     }
+}
+
+fn write_json_atomic(path: &Path, json: &str) -> Result<(), ArtifactError> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+    }
+    let name = path
+        .file_name()
+        .ok_or_else(|| ArtifactError::Storage("json path has no file name".into()))?;
+    let tmp = path.with_file_name(format!("{}.tmp", name.to_string_lossy()));
+    fs::write(&tmp, json).map_err(|e| ArtifactError::Storage(e.to_string()))?;
+    fs::rename(&tmp, path).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        ArtifactError::Storage(e.to_string())
+    })
 }
