@@ -27,6 +27,7 @@ mod tests {
     use super::*;
     use aira_event::{EventDescriptor, EventType, MemoryEventLog};
     use aira_object::{AiraRef, ContentHash, Signature, Timestamp};
+    use aira_policy::{PolicyDecisionKind, PolicyQuery};
     use serde_json::json;
     use std::path::PathBuf;
 
@@ -98,6 +99,40 @@ mod tests {
             _ctx: &mut CsuExecutionContext<'_, '_>,
         ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
             self.received.fetch_add(1, Ordering::SeqCst);
+            Ok(vec![])
+        }
+    }
+
+    struct PolicyProbeCsu {
+        manifest: CsuManifest,
+        action: String,
+        last: Arc<std::sync::Mutex<Option<PolicyDecisionKind>>>,
+    }
+
+    impl Csu for PolicyProbeCsu {
+        fn manifest(&self) -> &CsuManifest {
+            &self.manifest
+        }
+
+        fn on_event(
+            &mut self,
+            event: &EventDescriptor,
+            ctx: &mut CsuExecutionContext<'_, '_>,
+        ) -> Result<Vec<CsuOutput>, CsuHandlerError> {
+            let query = PolicyQuery {
+                subject: ctx.csu_id.clone(),
+                csu_ref: Some(ctx.csu_id.as_str().to_string()),
+                action: self.action.clone(),
+                object_refs: event.object_refs.clone(),
+                artifact_refs: event.artifact_refs.clone(),
+                context_refs: vec![],
+                evidence_refs: vec![],
+                requested_at: event.created_at.clone(),
+            };
+            let decision = ctx.check_policy(query).map_err(|e| CsuHandlerError {
+                message: e.to_string(),
+            })?;
+            *self.last.lock().unwrap() = Some(decision.decision);
             Ok(vec![])
         }
     }
@@ -385,6 +420,90 @@ mod tests {
             .allow_action(DISPATCH_POLICY_ACTION);
         rt.dispatch(&ev, &mut log).unwrap();
         assert_eq!(received.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn invoke_binds_policy_gate_check_policy_allows() {
+        let mut log = MemoryEventLog::new();
+        let mut rt = CsuRuntime::new(producer(), sig());
+        bind_dispatch_policy(&mut rt);
+        rt.policy_gate_mut()
+            .unwrap()
+            .allow_action("csu.effect.publish");
+        let mut manifest = sample_manifest();
+        manifest.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
+        manifest.resign_canonical().unwrap();
+        let id = manifest.csu_id.clone();
+        let last = Arc::new(std::sync::Mutex::new(None));
+        rt.register_handler(
+            Box::new(PolicyProbeCsu {
+                manifest,
+                action: "csu.effect.publish".into(),
+                last: last.clone(),
+            }),
+            Some(&mut log),
+        )
+        .unwrap();
+        rt.activate(&id, Some(&mut log)).unwrap();
+        rt.dispatch(&sample_event(EventType::ProblemSubmitted), &mut log)
+            .unwrap();
+        assert_eq!(*last.lock().unwrap(), Some(PolicyDecisionKind::Allow));
+        rt.dispatch(&sample_event(EventType::ProblemSubmitted), &mut log)
+            .unwrap();
+        assert_eq!(*last.lock().unwrap(), Some(PolicyDecisionKind::Allow));
+    }
+
+    #[test]
+    fn invoke_bound_gate_unknown_effect_is_deny_not_isolation() {
+        let mut log = MemoryEventLog::new();
+        let mut rt = CsuRuntime::new(producer(), sig());
+        bind_dispatch_policy(&mut rt);
+        let mut manifest = sample_manifest();
+        manifest.event_subscriptions = vec![json!({"event_type": "ProblemSubmitted"})];
+        manifest.resign_canonical().unwrap();
+        let id = manifest.csu_id.clone();
+        let last = Arc::new(std::sync::Mutex::new(None));
+        rt.register_handler(
+            Box::new(PolicyProbeCsu {
+                manifest,
+                action: "csu.effect.unknown".into(),
+                last: last.clone(),
+            }),
+            Some(&mut log),
+        )
+        .unwrap();
+        rt.activate(&id, Some(&mut log)).unwrap();
+        rt.dispatch(&sample_event(EventType::ProblemSubmitted), &mut log)
+            .unwrap();
+        assert_eq!(*last.lock().unwrap(), Some(PolicyDecisionKind::Deny));
+    }
+
+    #[test]
+    fn check_policy_fail_closed_without_bound_gate() {
+        let mut log = MemoryEventLog::new();
+        let mut ctx = CsuExecutionContext::new(
+            AiraRef::parse("aira:csu:execution.basic").unwrap(),
+            &mut log,
+            None,
+            None,
+        );
+        let err = ctx
+            .check_policy(PolicyQuery {
+                subject: AiraRef::parse("aira:csu:execution.basic").unwrap(),
+                csu_ref: Some("aira:csu:execution.basic".into()),
+                action: "csu.effect.publish".into(),
+                object_refs: vec![],
+                artifact_refs: vec![],
+                context_refs: vec![],
+                evidence_refs: vec![],
+                requested_at: Timestamp::parse("2026-07-10T12:00:00Z").unwrap(),
+            })
+            .unwrap_err();
+        assert!(matches!(err, CsuError::Isolation(_)));
+        assert!(
+            err.to_string().contains("policy gate not bound"),
+            "unexpected isolation: {err}"
+        );
     }
 
     #[test]

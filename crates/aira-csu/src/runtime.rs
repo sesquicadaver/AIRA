@@ -49,7 +49,7 @@ pub struct CsuExecutionContext<'e, 'a> {
     pub csu_id: AiraRef,
     events: &'e mut dyn EventSink,
     artifacts: Option<&'a mut dyn ArtifactStore>,
-    policy: Option<&'a mut PolicyGate>,
+    policy: Option<PolicyGate>,
 }
 
 impl<'e, 'a> CsuExecutionContext<'e, 'a> {
@@ -57,7 +57,7 @@ impl<'e, 'a> CsuExecutionContext<'e, 'a> {
         csu_id: AiraRef,
         events: &'e mut dyn EventSink,
         artifacts: Option<&'a mut dyn ArtifactStore>,
-        policy: Option<&'a mut PolicyGate>,
+        policy: Option<PolicyGate>,
     ) -> Self {
         Self {
             csu_id,
@@ -65,6 +65,10 @@ impl<'e, 'a> CsuExecutionContext<'e, 'a> {
             artifacts,
             policy,
         }
+    }
+
+    fn into_policy(mut self) -> Option<PolicyGate> {
+        self.policy.take()
     }
 
     /// Append an event via Core Event API.
@@ -354,14 +358,21 @@ impl CsuRuntime {
         events: &mut dyn EventSink,
         artifacts: Option<&mut dyn ArtifactStore>,
     ) -> Result<Vec<CsuOutput>, CsuError> {
-        let result = {
+        let policy = self.policy_gate.take();
+        if !self.handlers.contains_key(csu_id.as_str()) {
+            self.policy_gate = policy;
+            return Err(CsuError::NotFound(csu_id.clone()));
+        }
+        let (result, policy) = {
             let handler = self
                 .handlers
                 .get_mut(csu_id.as_str())
-                .ok_or_else(|| CsuError::NotFound(csu_id.clone()))?;
-            let mut ctx = CsuExecutionContext::new(csu_id.clone(), events, artifacts, None);
-            handler.on_event(event, &mut ctx)
+                .expect("handler present after contains_key");
+            let mut ctx = CsuExecutionContext::new(csu_id.clone(), events, artifacts, policy);
+            let result = handler.on_event(event, &mut ctx);
+            (result, ctx.into_policy())
         };
+        self.policy_gate = policy;
         match result {
             Ok(outputs) => {
                 for out in &outputs {
