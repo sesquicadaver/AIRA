@@ -15,7 +15,7 @@ use serde_json::json;
 pub struct EpistemicBasicCsu {
     manifest: CsuManifest,
     seq: u64,
-    run_nonce: u64,
+    run_nonce: String,
     /// Prior assessment artifact ids (revision history).
     revision_refs: Vec<String>,
 }
@@ -39,14 +39,14 @@ impl EpistemicBasicCsu {
                 &["ArtifactPublished"],
             ),
             seq: 1,
-            run_nonce: 0,
+            run_nonce: String::from("0"),
             revision_refs: Vec::new(),
         }
     }
 
     /// Namespace ids for multi-run local nodes.
-    pub fn with_run_nonce(mut self, run_nonce: u64) -> Self {
-        self.run_nonce = run_nonce;
+    pub fn with_run_nonce(mut self, run_nonce: impl Into<String>) -> Self {
+        self.run_nonce = run_nonce.into();
         self
     }
 

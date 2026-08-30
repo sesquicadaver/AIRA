@@ -453,7 +453,7 @@ impl LocalSession {
         }
         let config = load_config(&paths.root)?;
         bind_node_crypto(&paths.root)?;
-        let nonce = peek_run_nonce(&paths)?;
+        let nonce = alloc_run_nonce();
         let plane = OperationalPlane::open_with_ready_nonce(paths.artifacts(), vec![], nonce)?;
         Ok(Self {
             paths,
@@ -475,7 +475,7 @@ impl LocalSession {
         bind_node_crypto(&self.paths.root)?;
         // Allocate a fresh nonce and rebuild plane so ids never collide with prior runs.
         // Seed Reduction from the durable reuse index for this problem text (#189).
-        let nonce = alloc_run_nonce(&self.paths)?;
+        let nonce = alloc_run_nonce();
         let ready = load_ready_solutions_for_text(&self.paths, text)?;
         self.plane = OperationalPlane::open_with_ready_nonce(self.paths.artifacts(), ready, nonce)?;
         let outcome = self.plane.submit_problem(text)?;
@@ -637,8 +637,9 @@ pub fn open_node_sqlite_object_store(paths: &NodePaths) -> Result<SqliteObjectSt
     SqliteObjectStore::open(paths.sqlite()).map_err(|e| FlowError::Core(e.to_string()))
 }
 
-fn run_counter_path(paths: &NodePaths) -> PathBuf {
-    paths.root.join("run-counter")
+/// Allocate a process-safe run nonce (UUIDv7). No shared `run-counter` file.
+pub(crate) fn alloc_run_nonce() -> String {
+    uuid::Uuid::now_v7().simple().to_string()
 }
 
 /// Load node identity, trust, and CSU tenants. Errors are not swallowed (#190).
@@ -647,22 +648,6 @@ fn bind_node_crypto(root: &Path) -> Result<(), FlowError> {
     aira_object::ensure_trust_defaults(root).map_err(|e| FlowError::Other(e.to_string()))?;
     aira_object::load_all_csu_tenant_signing(root).map_err(|e| FlowError::Other(e.to_string()))?;
     Ok(())
-}
-
-fn peek_run_nonce(paths: &NodePaths) -> Result<u64, FlowError> {
-    let path = run_counter_path(paths);
-    if !path.exists() {
-        return Ok(1);
-    }
-    let raw = fs::read_to_string(&path).map_err(|e| FlowError::Other(e.to_string()))?;
-    Ok(raw.trim().parse::<u64>().unwrap_or(0).saturating_add(1))
-}
-
-fn alloc_run_nonce(paths: &NodePaths) -> Result<u64, FlowError> {
-    let path = run_counter_path(paths);
-    let next = peek_run_nonce(paths)?;
-    fs::write(&path, format!("{next}\n")).map_err(|e| FlowError::Other(e.to_string()))?;
-    Ok(next)
 }
 
 fn problem_text_hash(text: &str) -> String {

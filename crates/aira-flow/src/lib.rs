@@ -288,6 +288,55 @@ mod tests {
     }
 
     #[test]
+    fn alloc_run_nonce_concurrent_is_unique() {
+        use std::collections::HashSet;
+        use std::sync::{Arc, Mutex};
+        use std::thread;
+        let seen = Arc::new(Mutex::new(HashSet::new()));
+        let mut joins = Vec::new();
+        for _ in 0..32 {
+            let seen = Arc::clone(&seen);
+            joins.push(thread::spawn(move || {
+                let n = crate::local::alloc_run_nonce();
+                assert_eq!(n.len(), 32, "UUIDv7 simple hex");
+                assert!(
+                    seen.lock().unwrap().insert(n.clone()),
+                    "duplicate nonce {n}"
+                );
+            }));
+        }
+        for j in joins {
+            j.join().unwrap();
+        }
+        assert_eq!(seen.lock().unwrap().len(), 32);
+    }
+
+    #[test]
+    fn two_submits_allocate_distinct_problem_ids() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        std::fs::write(root.join("run-counter"), "1\n").unwrap();
+        let mut session = LocalSession::open(&root).unwrap();
+        let a = match session.submit_problem("Calculate 2 + 2").unwrap() {
+            SubmitOutcome::Completed { problem_id, .. } => problem_id,
+            other => panic!("{other:?}"),
+        };
+        let b = match session.submit_problem("echo hello").unwrap() {
+            SubmitOutcome::Completed { problem_id, .. } => problem_id,
+            other => panic!("{other:?}"),
+        };
+        assert_ne!(a.as_str(), b.as_str());
+        assert_eq!(
+            std::fs::read_to_string(root.join("run-counter")).unwrap(),
+            "1\n"
+        );
+        assert!(a.as_str().starts_with("aira:problem:flow"));
+        assert!(b.as_str().starts_with("aira:problem:flow"));
+    }
+
+    #[test]
     fn local_session_artifacts_are_not_all_mvp_fixed_timestamp() {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();

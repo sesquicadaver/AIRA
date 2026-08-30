@@ -17,7 +17,7 @@ use aira_object::{AiraRef, ContentHash};
 pub struct ArtifactBasicCsu {
     manifest: CsuManifest,
     seq: u64,
-    run_nonce: u64,
+    run_nonce: String,
 }
 
 impl Default for ArtifactBasicCsu {
@@ -42,13 +42,13 @@ impl ArtifactBasicCsu {
                 ],
             ),
             seq: 1,
-            run_nonce: 0,
+            run_nonce: String::from("0"),
         }
     }
 
     /// Namespace ids for multi-run local nodes (Epic 8).
-    pub fn with_run_nonce(mut self, run_nonce: u64) -> Self {
-        self.run_nonce = run_nonce;
+    pub fn with_run_nonce(mut self, run_nonce: impl Into<String>) -> Self {
+        self.run_nonce = run_nonce.into();
         self
     }
 
