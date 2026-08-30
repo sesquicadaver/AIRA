@@ -12,7 +12,7 @@ Repo-level ТЗ → module → tests map: [implementation-status.md](implementat
 | C4 | Settlement audit receipts scaffold | no |
 | C5 | Research separation + promotion gate scaffold | no |
 
-C4/C5 are local scaffolds only. Research remains **RESEARCH**. Consolidating Phase H RFC: [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md). Phase I semantic contracts: [`phase-i-plan.md`](phase-i-plan.md) (`#184`–`#195` **DONE**; first OPEN `#196`).
+C4/C5 are local scaffolds only. Research remains **RESEARCH**. Consolidating Phase H RFC: [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md). Phase I semantic contracts: [`phase-i-plan.md`](phase-i-plan.md) (`#184`–`#196` **DONE**; first OPEN `#197`).
 
 ## Profiles
 

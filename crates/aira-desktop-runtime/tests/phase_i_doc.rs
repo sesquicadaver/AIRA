@@ -22,7 +22,7 @@ fn phase_i_plan_present() {
         "AIRA-RFC-0078",
         "confirmed free",
         "IN PROGRESS",
-        "first OPEN `#196`",
+        "first OPEN `#197`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-i-plan missing: {needle}");
@@ -85,8 +85,12 @@ fn phase_i_queue_wiring_184_done() {
         "QUEUE #195 must be DONE after run nonce"
     );
     assert!(
-        text.contains("| 196 | **OPEN**"),
-        "QUEUE #196 must be first remaining OPEN"
+        text.contains("| 196 | **DONE**"),
+        "QUEUE #196 must be DONE after instance-scoped crypto"
+    );
+    assert!(
+        text.contains("| 197 | **OPEN**"),
+        "QUEUE #197 must be first remaining OPEN"
     );
     assert!(
         !text.contains("| 184 | **OPEN**"),
@@ -136,7 +140,11 @@ fn phase_i_queue_wiring_184_done() {
         !text.contains("| 195 | **OPEN**"),
         "QUEUE #195 must not stay OPEN after run nonce"
     );
-    for n in 196..=198 {
+    assert!(
+        !text.contains("| 196 | **OPEN**"),
+        "QUEUE #196 must not stay OPEN after instance-scoped crypto"
+    );
+    for n in 197..=198 {
         let needle = format!("| {n} | **OPEN**");
         assert!(text.contains(&needle), "QUEUE missing OPEN row: {needle}");
     }
@@ -154,6 +162,7 @@ fn phase_i_queue_wiring_184_done() {
         "Analyze-228",
         "Analyze-229",
         "Analyze-230",
+        "Analyze-231",
         "Analyze-233",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -164,6 +173,7 @@ fn phase_i_queue_wiring_184_done() {
 fn phase_i_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-i-plan.md"));
+    assert!(readme.contains("#197"));
     assert!(readme.contains("#196"));
     assert!(readme.contains("#195"));
     assert!(readme.contains("#194"));
@@ -181,6 +191,7 @@ fn phase_i_readme_and_docs_index() {
     assert!(docs.contains("phase-i-plan.md"));
     assert!(docs.contains("#184"));
     assert!(docs.contains("IN PROGRESS"));
+    assert!(docs.contains("#197"));
     assert!(docs.contains("#196"));
     assert!(docs.contains("#195"));
     assert!(docs.contains("#194"));
@@ -197,7 +208,7 @@ fn phase_h_points_to_active_phase_i() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-h-plan.md")).unwrap();
     assert!(text.contains("phase-i-plan.md"));
     assert!(text.contains("#184"));
-    assert!(text.contains("first OPEN `#196`"));
+    assert!(text.contains("first OPEN `#197`"));
 }
 
 #[test]
@@ -479,5 +490,28 @@ fn phase_i_run_nonce_195() {
             .expect("RFC-0093");
     for needle in ["#195", "UUIDv7", "run-counter"] {
         assert!(rfc.contains(needle), "RFC-0093 missing: {needle}");
+    }
+}
+
+#[test]
+fn phase_i_instance_crypto_196() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0094",
+        "thread_crypto_scopes_do_not_leak",
+        "| #196 | Instance-scoped crypto",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #196 missing: {needle}"
+        );
+    }
+    let rfc = std::fs::read_to_string(
+        repo_root().join("specs/rfc/AIRA-RFC-0094-instance-scoped-crypto.md"),
+    )
+    .expect("RFC-0094");
+    for needle in ["#196", "bind_thread_crypto", "OnceLock"] {
+        assert!(rfc.contains(needle), "RFC-0094 missing: {needle}");
     }
 }

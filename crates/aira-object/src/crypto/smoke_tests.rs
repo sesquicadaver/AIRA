@@ -122,6 +122,69 @@ fn active_signature_does_not_fallback_to_local_test() {
 }
 
 #[test]
+fn thread_crypto_scopes_do_not_leak() {
+    reset_primary_signer();
+    fn scoped(seed: u8, name: &str) -> (AiraRef, Keyring) {
+        let id = AiraRef::parse(format!("aira:identity:{name}")).unwrap();
+        let sk = SigningKey::from_bytes(&[seed; 32]);
+        let mut ring = Keyring::new();
+        ring.insert_signing(id.clone(), sk);
+        (id, ring)
+    }
+    let (id_a, ring_a) = scoped(71, "thread-scope-a");
+    let (id_b, ring_b) = scoped(73, "thread-scope-b");
+    {
+        let _g = bind_thread_crypto(ring_a.clone(), id_a.clone());
+        assert_eq!(active_identity().as_str(), id_a.as_str());
+        active_signature(b"same-thread").unwrap();
+    }
+    assert_eq!(primary_signer().as_str(), LOCAL_TEST_KEY_REF);
+    assert!(process_keyring_snapshot()
+        .verifying_key(id_a.as_str())
+        .is_none());
+
+    let a = std::thread::spawn({
+        let id_a = id_a.clone();
+        let ring_a = ring_a.clone();
+        let id_b = id_b.clone();
+        move || {
+            let _g = bind_thread_crypto(ring_a, id_a.clone());
+            assert_eq!(active_identity().as_str(), id_a.as_str());
+            let sig = active_signature(b"scope-a").unwrap();
+            verify_ed25519(&sig, b"scope-a").unwrap();
+            let foreign = sign_with_key(id_b.clone(), &SigningKey::from_bytes(&[73u8; 32]), b"x");
+            assert!(verify_ed25519(&foreign, b"x").is_err());
+            sig
+        }
+    });
+    let b = std::thread::spawn({
+        let id_b = id_b.clone();
+        let ring_b = ring_b.clone();
+        let id_a = id_a.clone();
+        move || {
+            let _g = bind_thread_crypto(ring_b, id_b.clone());
+            assert_eq!(active_identity().as_str(), id_b.as_str());
+            let sig = active_signature(b"scope-b").unwrap();
+            verify_ed25519(&sig, b"scope-b").unwrap();
+            let foreign = sign_with_key(id_a.clone(), &SigningKey::from_bytes(&[71u8; 32]), b"x");
+            assert!(verify_ed25519(&foreign, b"x").is_err());
+            sig
+        }
+    });
+    let sig_a = a.join().unwrap();
+    let sig_b = b.join().unwrap();
+    assert_ne!(sig_a.key_ref.as_str(), sig_b.key_ref.as_str());
+    assert!(verify_ed25519(&sig_a, b"scope-a").is_err());
+    assert!(verify_ed25519(&sig_b, b"scope-b").is_err());
+    assert!(process_keyring_snapshot()
+        .verifying_key(id_a.as_str())
+        .is_none());
+    assert!(process_keyring_snapshot()
+        .verifying_key(id_b.as_str())
+        .is_none());
+}
+
+#[test]
 fn trust_store_peer_verify_without_signing_key() {
     let dir = tempdir().unwrap();
     let root = dir.path();

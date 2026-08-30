@@ -1,5 +1,6 @@
-//! In-memory keyring + process signer (Analyze-82).
+//! In-memory keyring + process signer (Analyze-82) + thread-local scope (#196).
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -201,18 +202,95 @@ pub(super) fn process_keyring() -> &'static RwLock<Keyring> {
     RING.get_or_init(|| RwLock::new(Keyring::with_local_test()))
 }
 
-/// Merge verifying/signing keys from `ring` into the process keyring (local-test preserved).
+#[derive(Clone)]
+struct ThreadCrypto {
+    ring: Keyring,
+    primary: AiraRef,
+}
+
+thread_local! {
+    // MSRV 1.75: `const { RefCell::new(None) }` needs 1.79+ (`#197`).
+    #[allow(clippy::missing_const_for_thread_local)]
+    static THREAD: RefCell<Option<ThreadCrypto>> = RefCell::new(None);
+}
+
+/// Restores the previous thread-local crypto bind on drop (QUEUE `#196`).
+pub struct ThreadCryptoGuard {
+    prev: Option<ThreadCrypto>,
+}
+
+impl Drop for ThreadCryptoGuard {
+    fn drop(&mut self) {
+        THREAD.with(|t| {
+            *t.borrow_mut() = self.prev.take();
+        });
+    }
+}
+
+/// Bind a thread-local keyring + primary for embed/tests.
+///
+/// Process OnceLock remains the default when no bind is active. Nested binds
+/// restore the previous thread bind (or process default) on drop.
+pub fn bind_thread_crypto(ring: Keyring, primary: AiraRef) -> ThreadCryptoGuard {
+    THREAD.with(|t| {
+        let prev = t.replace(Some(ThreadCrypto { ring, primary }));
+        ThreadCryptoGuard { prev }
+    })
+}
+
+fn with_ring_read<R>(f: impl FnOnce(&Keyring) -> R) -> R {
+    THREAD.with(|t| {
+        let borrow = t.borrow();
+        if let Some(scope) = borrow.as_ref() {
+            f(&scope.ring)
+        } else {
+            drop(borrow);
+            let guard = process_keyring().read().unwrap_or_else(|e| e.into_inner());
+            f(&guard)
+        }
+    })
+}
+
+fn with_ring_write<R>(f: impl FnOnce(&mut Keyring) -> R) -> R {
+    THREAD.with(|t| {
+        let mut borrow = t.borrow_mut();
+        if let Some(scope) = borrow.as_mut() {
+            f(&mut scope.ring)
+        } else {
+            drop(borrow);
+            let mut guard = process_keyring().write().unwrap_or_else(|e| e.into_inner());
+            f(&mut guard)
+        }
+    })
+}
+
+fn with_primary_read<R>(f: impl FnOnce(&AiraRef) -> R) -> R {
+    THREAD.with(|t| {
+        let borrow = t.borrow();
+        if let Some(scope) = borrow.as_ref() {
+            f(&scope.primary)
+        } else {
+            drop(borrow);
+            let guard = primary_slot().read().unwrap_or_else(|e| e.into_inner());
+            f(&guard)
+        }
+    })
+}
+
+/// Merge verifying/signing keys from `ring` into the active keyring (local-test preserved).
 ///
 /// For each `key_ref` present in `ring.verifying`, the verifying list is **replaced**
 /// (supports dual-key grace cutover and trust upserts). Signing keys are upserted.
+/// Writes the thread bind when [`bind_thread_crypto`] is active; otherwise the process ring.
 pub fn register_keyring(ring: &Keyring) {
-    let mut guard = process_keyring().write().unwrap_or_else(|e| e.into_inner());
-    for (id, vks) in &ring.verifying {
-        guard.verifying.insert(id.clone(), vks.clone());
-    }
-    for (id, sk) in &ring.signing {
-        guard.signing.insert(id.clone(), sk.clone());
-    }
+    with_ring_write(|guard| {
+        for (id, vks) in &ring.verifying {
+            guard.verifying.insert(id.clone(), vks.clone());
+        }
+        for (id, sk) in &ring.signing {
+            guard.signing.insert(id.clone(), sk.clone());
+        }
+    });
 }
 
 /// Load node identity from `root` and register into the process keyring.
@@ -229,12 +307,9 @@ pub fn register_node_identity(root: impl AsRef<Path>) -> Result<Option<AiraRef>,
     Ok(Some(id))
 }
 
-/// Snapshot of the process keyring (for CLI sign).
+/// Snapshot of the active keyring (thread bind, else process).
 pub fn process_keyring_snapshot() -> Keyring {
-    process_keyring()
-        .read()
-        .unwrap_or_else(|e| e.into_inner())
-        .clone()
+    with_ring_read(|ring| ring.clone())
 }
 
 fn primary_slot() -> &'static RwLock<AiraRef> {
@@ -244,8 +319,16 @@ fn primary_slot() -> &'static RwLock<AiraRef> {
 
 /// Set the identity used by [`active_identity`] / [`active_signature`].
 pub fn set_primary_signer(key_ref: AiraRef) {
-    let mut g = primary_slot().write().unwrap_or_else(|e| e.into_inner());
-    *g = key_ref;
+    THREAD.with(|t| {
+        let mut borrow = t.borrow_mut();
+        if let Some(scope) = borrow.as_mut() {
+            scope.primary = key_ref;
+        } else {
+            drop(borrow);
+            let mut g = primary_slot().write().unwrap_or_else(|e| e.into_inner());
+            *g = key_ref;
+        }
+    });
 }
 
 /// Reset primary signer to local-test (tests).
@@ -262,16 +345,12 @@ pub fn unregister_verifying(key_ref: &AiraRef) -> bool {
     if id == LOCAL_TEST_KEY_REF || id == primary_signer().as_str() {
         return false;
     }
-    let mut guard = process_keyring().write().unwrap_or_else(|e| e.into_inner());
-    guard.verifying.remove(id).is_some()
+    with_ring_write(|guard| guard.verifying.remove(id).is_some())
 }
 
 /// Current primary producer identity (node identity when registered, else local-test).
 pub fn primary_signer() -> AiraRef {
-    primary_slot()
-        .read()
-        .unwrap_or_else(|e| e.into_inner())
-        .clone()
+    with_primary_read(|id| id.clone())
 }
 
 /// Alias for [`primary_signer`].
@@ -286,14 +365,14 @@ pub fn active_identity() -> AiraRef {
 /// non-local-test primary without a registered signing key returns [`CryptoError::NoSigningKey`].
 pub fn active_signature(message: &[u8]) -> Result<Signature, CryptoError> {
     let id = primary_signer();
-    process_keyring_snapshot().sign(&id, message)
+    with_ring_read(|ring| ring.sign(&id, message))
 }
 
 /// Sign `message` with an explicit identity — no local-test fallback.
 ///
 /// Used for per-CSU `publisher_identity` emits (Analyze-29).
 pub fn signature_for(key_ref: &AiraRef, message: &[u8]) -> Result<Signature, CryptoError> {
-    process_keyring_snapshot().sign(key_ref, message)
+    with_ring_read(|ring| ring.sign(key_ref, message))
 }
 
 /// Signing key for `aira:identity:local-test`.
@@ -330,13 +409,13 @@ pub fn sign_with_key(key_ref: AiraRef, signing: &SigningKey, message: &[u8]) -> 
     }
 }
 
-/// Verify an Ed25519 signature over `message` using the process keyring.
+/// Verify an Ed25519 signature over `message` using the active keyring.
 ///
 /// The process keyring always includes `aira:identity:local-test`. Node identities
-/// registered via [`register_node_identity`] are also resolved.
+/// registered via [`register_node_identity`] are also resolved. A thread bind
+/// ([`bind_thread_crypto`]) uses that ring instead.
 pub fn verify_ed25519(signature: &Signature, message: &[u8]) -> Result<(), CryptoError> {
-    let ring = process_keyring().read().unwrap_or_else(|e| e.into_inner());
-    ring.verify(signature, message)
+    with_ring_read(|ring| ring.verify(signature, message))
 }
 
 /// True when signature material is non-empty and not the legacy TESTSIG placeholder.
