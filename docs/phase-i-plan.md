@@ -1,8 +1,8 @@
 # Phase I — Semantic contract stabilization (post-H)
 
-**Статус:** складено 2026-08-28; Phase H **DONE**; **не активна черга** (I не OPEN).  
+**Статус:** складено 2026-08-28; **IN PROGRESS** 2026-08-30 → QUEUE `#184` wiring **DONE**; first OPEN `#185`.  
 **Джерела:** незалежний аудит `main` @ `b66bcf1` (Handle / Verification / Policy / Reuse / identity / persistence); [`implementation-status.md`](implementation-status.md); [`phase-h-plan.md`](phase-h-plan.md) §7.  
-**Не канон backlog:** канон виконання — [`QUEUE.md`](../QUEUE.md). Атоми `#184+` додаються в QUEUE **лише** після закриття `#183` (без паралельної черги з Phase H).  
+**Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase I `#184`–`#198` (після `#183` DONE).  
 **Не змінює:** анти-місію README; Book semantics без per-atom RFC; production distributed OperationalPlane.
 
 ## 0. Навіщо Phase I (після H, не замість H)
@@ -138,19 +138,13 @@ Docs/RFC: Phase I closed; no OPEN I atoms.
 
 ## 8. RFC
 
-- Consolidating: `specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md` (`#198`) — provisional id; confirm free at wiring.
+- Consolidating: `specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md` (`#198`) — id **confirmed free** at `#184` wiring (no `AIRA-RFC-0078*` in `specs/rfc/`).
 - Per-atom RFC при ABI-зміні Handle, Verification contract, Clock у public API.
 
 ## 9. Activation rule
 
 ```text
-До DONE #183:
-  - цей файл існує як зафіксований post-H план;
-  - QUEUE НЕ бере #184 як перший OPEN;
-  - Phase H виконується лінійно #163…#183.
-
-Після DONE #183:
-  - додати секцію Phase I в QUEUE.md (#184–#198);
-  - перший OPEN = #184;
-  - оновити README / docs/README / implementation-status pointer.
+#183 DONE (RFC-0077) → цей план став активною чергою.
+#184 wiring DONE: QUEUE #184–#198; README / docs/README / implementation-status pointer.
+first OPEN `#185` (status honesty).
 ```

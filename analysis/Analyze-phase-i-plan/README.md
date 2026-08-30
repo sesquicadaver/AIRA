@@ -8,4 +8,4 @@ User chose option 2: fix remediation P0–P2 from audit `main` @ `b66bcf1` into 
 - Wired from phase-h §7, QUEUE post-H note, docs index
 
 ## Activation
-QUEUE atoms I додаються / стають першим OPEN лише після DONE `#183`.
+`#183` DONE → QUEUE I `#184`–`#198` (Analyze-219 / `#184` wiring). First remaining OPEN = `#185`.
