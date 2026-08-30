@@ -33,6 +33,8 @@ pub enum FlowError {
     Csu(String),
     #[error("artifact: {0}")]
     Artifact(String),
+    #[error("research artifact rejected as operational input: {0}")]
+    ResearchNonOperational(String),
     #[error("flow: {0}")]
     Other(String),
 }
@@ -217,7 +219,9 @@ impl OperationalPlane {
     }
 
     /// Inject an external event and drain (demos / failure injection).
+    /// Research / promotion-candidate input is rejected before append (#179).
     pub fn inject_and_drain(&mut self, event: EventDescriptor) -> Result<(), FlowError> {
+        self.reject_research_as_operational(&event)?;
         let start = self.events.all().len();
         self.events
             .append(event)
@@ -322,6 +326,7 @@ impl OperationalPlane {
             ) {
                 continue;
             }
+            self.reject_research_as_operational(&ev)?;
             let before = self.events.all().len();
             self.runtime
                 .dispatch_with_artifacts(&ev, &mut self.events, &mut self.artifacts)
@@ -393,6 +398,29 @@ impl OperationalPlane {
         Ok(SubmitOutcome::NeedsHumanCollapse {
             field_artifact_id: art_id,
         })
+    }
+
+    /// Fail-closed: research types and promotion-candidate events are not operational input.
+    fn reject_research_as_operational(&self, event: &EventDescriptor) -> Result<(), FlowError> {
+        if event.event_type.is_research_until_promoted() {
+            return Err(FlowError::ResearchNonOperational(format!(
+                "{:?}",
+                event.event_type
+            )));
+        }
+        for id in &event.artifact_refs {
+            if let Ok((desc, _)) = self.artifacts.resolve(id) {
+                // Unresolved refs stay operational (missing-artifact failure paths).
+                if desc.artifact_type.is_research_until_promoted() {
+                    return Err(FlowError::ResearchNonOperational(format!(
+                        "{}:{:?}",
+                        id.as_str(),
+                        desc.artifact_type
+                    )));
+                }
+            }
+        }
+        Ok(())
     }
 }
 

@@ -28,7 +28,7 @@ OperationalPlane = локальна референсна демонстраці�
 - Safety bound on drain iterations (demo fail-closed), not a job scheduler.
 - C1 profile (`config.node.profile = "C1"`) for local MVP / alpha acceptance.
 
-Peer/federation/DHT live in `aira-peer` / protocol crates and are **out of this plane**. HTTP (`aira-node`) is a local JSON surface over `LocalSession`, which still uses this same reference plane.
+Peer/federation/DHT live in `aira-peer` / protocol crates and are **out of this plane**. HTTP (`aira-node`) is a local JSON surface over `LocalSession`, which still uses this same reference plane. Research / promotion-candidate artifacts are **rejected** as plane input (`#179`, RFC-0082).
 
 ## Pointers
 
@@ -40,5 +40,5 @@ Peer/federation/DHT live in `aira-peer` / protocol crates and are **out of this 
 | C0 causality | `crates/aira-conformance/src/c0.rs` |
 | Demos | [demo.md](demo.md) |
 | Local node | [local-node.md](local-node.md) |
-| Phase plans | [phase-h-plan.md](phase-h-plan.md) (OPEN `#179`); RFC-P [rfc-p-promotion.md](rfc-p-promotion.md) |
+| Phase plans | [phase-h-plan.md](phase-h-plan.md) (OPEN `#180`); RFC-P [rfc-p-promotion.md](rfc-p-promotion.md) |
 | Status map | [implementation-status.md](implementation-status.md) |

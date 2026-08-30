@@ -35,6 +35,16 @@ pub enum EventType {
     CustomEvent,
 }
 
+impl EventType {
+    /// Book V research lifecycle events that MUST NOT enter OperationalPlane until RFC-P (#179).
+    pub fn is_research_until_promoted(self) -> bool {
+        matches!(
+            self,
+            Self::ResearchArtifactCreated | Self::ArtifactPromotionCandidate
+        )
+    }
+}
+
 /// Append-only event descriptor.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EventDescriptor {
