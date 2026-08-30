@@ -134,3 +134,31 @@ fn c3_optional_ci_job_is_not_merge_gate() {
         "C3 must be its own job"
     );
 }
+
+#[test]
+fn cargo_deny_optional_ci_job_is_not_merge_gate() {
+    let doc = std::fs::read_to_string(repo_root().join("docs/ci-governance.md")).unwrap();
+    let ci = std::fs::read_to_string(repo_root().join(".github/workflows/ci.yml")).unwrap();
+    let deny = std::fs::read_to_string(repo_root().join("deny.toml")).unwrap();
+
+    assert!(ci.contains("cargo-deny:"));
+    assert!(ci.contains("name: cargo-deny"));
+    assert!(ci.contains("EmbarkStudios/cargo-deny-action@"));
+    assert!(!REQUIRED_MERGE_CHECKS.contains(&"cargo-deny"));
+    assert!(deny.contains("[licenses]"));
+    assert!(deny.contains("[advisories]"));
+    for needle in [
+        "cargo-deny",
+        "not a merge gate",
+        "deny.toml",
+        "#197",
+        "informational",
+        "rust-version",
+        "SHA",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "ci-governance missing supply-chain note: {needle}"
+        );
+    }
+}

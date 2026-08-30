@@ -209,9 +209,7 @@ struct ThreadCrypto {
 }
 
 thread_local! {
-    // MSRV 1.75: `const { RefCell::new(None) }` needs 1.79+ (`#197`).
-    #[allow(clippy::missing_const_for_thread_local)]
-    static THREAD: RefCell<Option<ThreadCrypto>> = RefCell::new(None);
+    static THREAD: RefCell<Option<ThreadCrypto>> = const { RefCell::new(None) };
 }
 
 /// Restores the previous thread-local crypto bind on drop (QUEUE `#196`).

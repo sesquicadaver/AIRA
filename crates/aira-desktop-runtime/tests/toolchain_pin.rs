@@ -38,3 +38,58 @@ fn ci_toolchain_matches_pin() {
         "ci.yml must reference pinned toolchain {pin}"
     );
 }
+
+#[test]
+fn workspace_rust_version_matches_ci_pin() {
+    let cargo = std::fs::read_to_string(repo_root().join("Cargo.toml")).expect("Cargo.toml");
+    assert!(
+        cargo.contains("rust-version = \"1.94\""),
+        "workspace rust-version must match CI 1.94.0 (QUEUE #197)"
+    );
+    assert!(
+        !cargo.contains("rust-version = \"1.75\""),
+        "stale MSRV 1.75 must not remain after #197"
+    );
+}
+
+#[test]
+fn ci_actions_are_sha_pinned() {
+    let ci = std::fs::read_to_string(repo_root().join(".github/workflows/ci.yml")).expect("ci.yml");
+    let mut found = 0usize;
+    for (i, line) in ci.lines().enumerate() {
+        let trimmed = line.trim();
+        if let Some(rest) = trimmed.strip_prefix("- uses:") {
+            found += 1;
+            let spec = rest.split('#').next().unwrap().trim();
+            let hash = spec.rsplit('@').next().unwrap_or("");
+            assert_eq!(
+                hash.len(),
+                40,
+                "ci.yml line {} action must be SHA-pinned (40 hex): {spec}",
+                i + 1
+            );
+            assert!(
+                hash.chars().all(|c| c.is_ascii_hexdigit()),
+                "ci.yml line {} action SHA must be hex: {spec}",
+                i + 1
+            );
+        }
+        if let Some(rest) = trimmed.strip_prefix("uses:") {
+            found += 1;
+            let spec = rest.split('#').next().unwrap().trim();
+            let hash = spec.rsplit('@').next().unwrap_or("");
+            assert_eq!(
+                hash.len(),
+                40,
+                "ci.yml line {} action must be SHA-pinned (40 hex): {spec}",
+                i + 1
+            );
+            assert!(
+                hash.chars().all(|c| c.is_ascii_hexdigit()),
+                "ci.yml line {} action SHA must be hex: {spec}",
+                i + 1
+            );
+        }
+    }
+    assert!(found >= 8, "expected SHA-pinned uses: lines, found {found}");
+}
