@@ -160,8 +160,8 @@ fn phase_h_queue_wiring_152_done() {
         "QUEUE #183 must be DONE after RFC-0077 closure"
     );
     assert!(
-        !text.contains("| **OPEN** |"),
-        "QUEUE H closed: no OPEN rows"
+        !text.contains("| 183 | **OPEN**"),
+        "QUEUE #183 must stay DONE after H close"
     );
     for needle in ["H0 govern", "H1 durable stores", "H3 CRP local", "RFC-0077"] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");

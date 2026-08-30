@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.3** (Analyze-218 / QUEUE `#183`; Phase H `#152`–`#183` **DONE** @ RFC-0077). Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.3** (Analyze-218 / QUEUE `#183`; Phase H `#152`–`#183` **DONE** @ RFC-0077). Phase I **IN PROGRESS** (`#184` wiring **DONE**; first OPEN `#185`). Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (no OPEN) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I (post-H):** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#185`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -310,6 +310,30 @@ Plan: [`phase-g-plan.md`](phase-g-plan.md) **DONE**. RFC: [`AIRA-RFC-0069`](../s
 
 Plan: [`phase-h-plan.md`](phase-h-plan.md). Consolidating RFC: [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md).
 
+---
+
+## Phase I gates (OPEN)
+
+| QUEUE | Gate | Evidence (target) |
+|-------|------|-------------------|
+| #184 | Phase I wiring + contract | `phase_i_doc.rs`; `docs/phase-i-plan.md`; QUEUE `#184`–`#198` | **DONE** @ this PR |
+| #185 | Status honesty rollup | Opaque Handle / Reduction / Verification notes vs audit | **OPEN** |
+| #186 | Handle integrity | `Handle::new` / token not public; open bind; adversarial tests | **OPEN** |
+| #187 | Semantic verify math.eval.safe | wrong finite ≠ VERIFIED | **OPEN** |
+| #188 | CSU PolicyGate in invoke | bound gate; fail-closed without gate | **OPEN** |
+| #189 | Durable reuse index | LocalSession repeat problem → reuse; persistent | **OPEN** |
+| #190 | Fail-closed signing | no silent local-test fallback | **OPEN** |
+| #191 | Atomic session persist | temp+rename; corrupt ≠ silent wipe | **OPEN** |
+| #192 | Artifact metadata recovery | second descriptor same hash | **OPEN** |
+| #193 | Runtime Clock | Clock trait; not all `2026-07-10T12:00:00Z` | **OPEN** |
+| #194 | Envelope freshness/replay | expires_at / skew / message-id window | **OPEN** |
+| #195 | Run nonce concurrency | UUIDv7 or transactional seq | **OPEN** |
+| #196 | Instance-scoped crypto | not required process-global OnceLock | **OPEN** |
+| #197 | MSRV + supply-chain CI | rust-version↔CI; pin SHA or accept; deny/audit non-blocking OK | **OPEN** |
+| #198 | Phase I docs + RFC-0078 | v0.3-stable; consolidating RFC; QUEUE I closed | **OPEN** |
+
+Plan: [`phase-i-plan.md`](phase-i-plan.md). Consolidating RFC id **RFC-0078** confirmed free at `#184` (file at `#198`).
+
 ## Explicitly not this reference (anti-mission + out-of-scope)
 
 README §«What AIRA is not» — **ніколи** в QUEUE / phase plans як «later phase»:
@@ -330,6 +354,8 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 **Phase G `#120`–`#151` DONE** (не змінює anti-mission): deeper local C2, mechanical splits, desktop peer CI, SEC hardening, federation leave, local C3 scaffold, CSU SDK doc, `epistemic-basic`, production packaging scripts. Plan: [`phase-g-plan.md`](phase-g-plan.md); closure: [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md).
 
 **Phase H `#152`–`#183` labelled Reference v0.3** (не змінює anti-mission): protocol-depth docs in README / this file / [conformance.md](conformance.md); consolidating [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md). Plan: [`phase-h-plan.md`](phase-h-plan.md).
+
+**Phase I `#184`–`#198` IN PROGRESS** (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); `#184` wiring **DONE**; first OPEN `#185`.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 

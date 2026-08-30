@@ -131,7 +131,7 @@ Docs: Reference v0.3; RFC-0077; QUEUE #152–#183 DONE.
 
 Після DONE `#183` напрям нижче — **єдиний** наступний етап (без вилок / паралельних черг із хвостом H):
 
-[`phase-i-plan.md`](phase-i-plan.md) → QUEUE `#184`–`#198` (**активується лише після `#183`**).
+[`phase-i-plan.md`](phase-i-plan.md) → QUEUE `#184`–`#198` (**активна черга**; `#184` wiring **DONE**; first OPEN `#185`).
 
 Порядок (semantic contracts перед новим protocol plan):
 
@@ -149,4 +149,4 @@ status honesty
 
 Джерело пріоритетів: аудит `main` @ `b66bcf1` (P0–P2). Анти-місія README **ніколи** в QUEUE.
 
-До `#183` DONE: Phase I план зафіксований. Цей атом **не** активує `#184` як OPEN.
+`#183` DONE: Phase I активована. Wiring `#184` **DONE**; first OPEN `#185`.
