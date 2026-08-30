@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.3** (Analyze-218 / QUEUE `#183`; Phase H `#152`–`#183` **DONE** @ RFC-0077). Phase I **IN PROGRESS** (`#184`–`#186` **DONE**; first OPEN `#187`). Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.3** (Analyze-218 / QUEUE `#183`; Phase H `#152`–`#183` **DONE** @ RFC-0077). Phase I **IN PROGRESS** (`#184`–`#187` **DONE**; first OPEN `#188`). Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#187`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (OPEN `#188`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -91,7 +91,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Context CSU (no final Result) | CTX-001 | `csu/context-basic` | `problem_submitted_creates_context_not_result` | **DONE** | |
 | Reduction / reuse before execute | RED-001; OP-002 | `csu/reduction-basic` | `ready_solution_reuse_skips_execution`; `creates_negative_lookup_and_capsule_when_no_reuse` | **PARTIAL** | `#185` honesty (audit `b66bcf1`): in-memory catalog + pre-seeded `enable_ready_solution` skips execution. `LocalSession::submit_problem` rebuilds plane with `vec![]` — no durable reuse index. Persistence → `#189` |
 | Execution CSU authorized capsules | EXE-001 | `csu/execution-basic` | `math_eval_safe_completes`; `rejects_shell_action` | **DONE** | Safe math/text only |
-| Verification CSU | VER-001 | `csu/verification-basic` | `verifies_math_output_as_verified_result` | **PARTIAL** | `#185` honesty (audit `b66bcf1`): `math.eval.safe` accepts any finite `result` (`is_finite()`); does not recompute capsule expression. Wrong finite number can still be **VERIFIED**. Semantic check → `#187` |
+| Verification CSU | VER-001 | `csu/verification-basic` | `verifies_math_output_as_verified_result`; `wrong_finite_math_result_is_not_verified`; `math_expression_from_capsule_artifact` | **PARTIAL** | `#185` honesty (audit `b66bcf1`): previously `is_finite()` only. `#187` / RFC-0085: independent `math_eval_safe` vs claimed result; wrong finite (e.g. 2+2→5) is not **VERIFIED**. text.echo/uppercase still presence-only |
 | Evidence CSU | EVD-001 | `csu/evidence-basic` | crate + C1 failure path | **DONE** | Does not assign Epistemic Status |
 | Artifact CSU publish/resolve/supersede | ART-001 | `csu/artifact-basic` | `publish_resolve_supersede_events` | **DONE** | |
 | Model acquisition policy gate | D4; QUEUE #60/#115 | `csu/model-acquisition` | `deny_without_policy_*`; `fail_closed_audit_*`; `c0.acquisition.fail_closed` | **DONE** | Default DENY download/publish; see `docs/model-acquisition-policy.md` |
@@ -319,7 +319,7 @@ Plan: [`phase-h-plan.md`](phase-h-plan.md). Consolidating RFC: [`AIRA-RFC-0077`]
 | #184 | Phase I wiring + contract | `phase_i_doc.rs`; `docs/phase-i-plan.md`; QUEUE `#184`–`#198` | **DONE** @ this PR |
 | #185 | Status honesty rollup | Opaque Handle / Reduction / Verification **PARTIAL** vs audit `b66bcf1`; `Handle::new`; `is_finite()`; `LocalSession` `vec![]` | **DONE** @ this PR |
 | #186 | Handle integrity | `Handle::new` crate-private; `object_store_access`; `HandleBindMismatch`; RFC-0084; `handle_cross_object_token_bind_rejects` | **DONE** @ this PR |
-| #187 | Semantic verify math.eval.safe | wrong finite ≠ VERIFIED | **OPEN** |
+| #187 | Semantic verify math.eval.safe | independent eval; `wrong_finite_math_result_is_not_verified`; RFC-0085 | **DONE** @ this PR |
 | #188 | CSU PolicyGate in invoke | bound gate; fail-closed without gate | **OPEN** |
 | #189 | Durable reuse index | LocalSession repeat problem → reuse; persistent | **OPEN** |
 | #190 | Fail-closed signing | no silent local-test fallback | **OPEN** |
@@ -355,7 +355,7 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 **Phase H `#152`–`#183` labelled Reference v0.3** (не змінює anti-mission): protocol-depth docs in README / this file / [conformance.md](conformance.md); consolidating [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md). Plan: [`phase-h-plan.md`](phase-h-plan.md).
 
-**Phase I `#184`–`#198` IN PROGRESS** (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); `#184`–`#186` **DONE**; first OPEN `#187`.
+**Phase I `#184`–`#198` IN PROGRESS** (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); `#184`–`#187` **DONE**; first OPEN `#188`.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
