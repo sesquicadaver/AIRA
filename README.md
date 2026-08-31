@@ -42,7 +42,7 @@ Problem Statement
 **Documentation index:** [`docs/README.md`](docs/README.md).
 **Черга задач:** [`QUEUE.md`](QUEUE.md) — Phase C–E **DONE**. Phase F stabilization **DONE** (`#107`–`#119`, [`docs/phase-f-plan.md`](docs/phase-f-plan.md)). Phase G Reference v0.2 **`#120`–`#151` DONE** — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); consolidating RFC [`AIRA-RFC-0069`](specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md). Phase H Protocol depth v0.3 — [`docs/phase-h-plan.md`](docs/phase-h-plan.md) (`#152`–`#183` **DONE** @ RFC-0077). Phase I semantic contracts — [`docs/phase-i-plan.md`](docs/phase-i-plan.md) (`#184` `#185` `#186` `#187` `#188` `#189` `#190` `#191` `#192` `#193` `#194` `#195` `#196` `#197` `#198` **DONE** @ RFC-0078). Анти-місія §«What AIRA is not» **ніколи** в QUEUE.
 
-Немає OPEN. Status: [`docs/implementation-status.md`](docs/implementation-status.md) (**v0.3-stable**). RFC-P process: [`docs/rfc-p-promotion.md`](docs/rfc-p-promotion.md).
+Немає OPEN. Phase J [`docs/phase-j-plan.md`](docs/phase-j-plan.md) **PLANNED** (не в QUEUE). Status: [`docs/implementation-status.md`](docs/implementation-status.md) (**v0.3-stable**). RFC-P process: [`docs/rfc-p-promotion.md`](docs/rfc-p-promotion.md).
 
 
 See `docs/RELEASE_NOTES-v0.1.0-alpha.1.md`, `scripts/prepare-alpha.sh`, `scripts/package-desktop-linux.sh`, `scripts/package-desktop-macos.sh`, `scripts/package-desktop-windows.sh`, plus production-path helpers `scripts/macos-codesign-notarize.sh`, `scripts/package-desktop-windows-msi.sh`, `scripts/package-desktop-linux-deb.sh`.
