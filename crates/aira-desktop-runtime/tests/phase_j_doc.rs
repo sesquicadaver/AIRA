@@ -21,7 +21,7 @@ fn phase_j_plan_present() {
         "AIRA-RFC-0096",
         "confirmed free",
         "**IN PROGRESS**",
-        "first OPEN `#201`",
+        "first OPEN `#202`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-j-plan missing: {needle}");
@@ -48,8 +48,12 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #200 must be DONE after Book II ceiling honesty"
     );
     assert!(
-        text.contains("| 201 | **OPEN**"),
-        "QUEUE first OPEN must be #201"
+        text.contains("| 201 | **DONE**"),
+        "QUEUE #201 must be DONE after sealing object_store_access"
+    );
+    assert!(
+        text.contains("| 202 | **OPEN**"),
+        "QUEUE first OPEN must be #202"
     );
     assert!(
         !text.contains("| 199 | **OPEN**"),
@@ -59,7 +63,11 @@ fn phase_j_queue_wiring_199_done() {
         !text.contains("| 200 | **OPEN**"),
         "QUEUE #200 must not stay OPEN after ceiling honesty"
     );
-    for n in 202..=208 {
+    assert!(
+        !text.contains("| 201 | **OPEN**"),
+        "QUEUE #201 must not stay OPEN after Handle seal"
+    );
+    for n in 203..=208 {
         let open = format!("| {n} | **OPEN**");
         assert!(text.contains(&open), "QUEUE missing {open}");
         let done = format!("| {n} | **DONE**");
@@ -72,7 +80,7 @@ fn phase_j_queue_wiring_199_done() {
         "J0 govern + Book II ceiling honesty",
         "J1 Book I remainder",
         "RFC-0096",
-        "first OPEN `#201`",
+        "first OPEN `#202`",
         "Analyze-234",
         "Analyze-235",
         "Analyze-236",
@@ -105,7 +113,7 @@ fn phase_j_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-j-plan.md"));
     assert!(docs.contains("#199"));
-    assert!(docs.contains("first OPEN `#201`"));
+    assert!(docs.contains("first OPEN `#202`"));
     assert!(docs.contains("#208"));
     assert!(docs.contains("**IN PROGRESS**"));
 }
@@ -115,7 +123,7 @@ fn phase_i_points_to_active_phase_j() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-i-plan.md")).unwrap();
     assert!(text.contains("phase-j-plan.md"));
     assert!(text.contains("#199"));
-    assert!(text.contains("first OPEN `#201`"));
+    assert!(text.contains("first OPEN `#202`"));
 }
 
 #[test]
@@ -169,5 +177,39 @@ fn phase_j_book_ii_ceiling_200() {
     );
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 200 | **DONE**"));
-    assert!(!queue.contains("| 201 | **DONE**"));
+    assert!(queue.contains("| 201 | **DONE**"));
+}
+
+#[test]
+fn phase_j_seal_object_store_access_201() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0097",
+        "store-backend",
+        "object_store_access_is_not_in_the_default_prelude",
+        "store_backend_feature_is_only_enabled_by_aira_core",
+        "csu_sources_do_not_import_object_store_access",
+        "| #201 | Seal `object_store_access`",
+        "**DONE** @ this PR",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #201 missing: {needle}"
+        );
+    }
+    let rfc = std::fs::read_to_string(
+        repo_root().join("specs/rfc/AIRA-RFC-0097-seal-object-store-access.md"),
+    )
+    .expect("RFC-0097");
+    for needle in ["#201", "store-backend", "object_store_access", "not a CSU"] {
+        assert!(rfc.contains(needle), "RFC-0097 missing: {needle}");
+    }
+    let cargo = std::fs::read_to_string(repo_root().join("crates/aira-object/Cargo.toml")).unwrap();
+    assert!(cargo.contains("store-backend"));
+    let core = std::fs::read_to_string(repo_root().join("crates/aira-core/Cargo.toml")).unwrap();
+    assert!(core.contains("features = [\"store-backend\"]"));
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 201 | **DONE**"));
+    assert!(!queue.contains("| 202 | **DONE**"));
 }

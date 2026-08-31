@@ -8,7 +8,7 @@ rust-version.workspace = true
 description = "AIRA core runtime: object store, invariants"
 
 [dependencies]
-aira-object = { path = "../aira-object" }
+aira-object = { path = "../aira-object", features = ["store-backend"] }
 aira-artifact = { path = "../aira-artifact" }
 aira-event = { path = "../aira-event" }
 aira-policy = { path = "../aira-policy" }

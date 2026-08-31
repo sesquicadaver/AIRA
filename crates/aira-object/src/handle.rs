@@ -9,7 +9,7 @@ use crate::types::AiraRef;
 ///
 /// Construction and storage-token access are **not** on this type's public
 /// API (`Handle::new` / `Handle::storage_token` are `pub(crate)`). Store
-/// implementations in `aira-core` use [`object_store_access`].
+/// implementations in `aira-core` use `object_store_access` (feature `store-backend`).
 #[derive(Clone, PartialEq, Eq)]
 pub struct Handle {
     object_ref: AiraRef,
@@ -48,9 +48,11 @@ impl std::fmt::Debug for Handle {
 
 /// Mint and token access for `aira-core` ObjectStore implementations.
 ///
+/// Gated by Cargo feature `store-backend` (enabled only on `aira-core`).
 /// This is **not** a CSU API. CSUs receive [`Handle`] only from `ObjectStore::create`
 /// and may read [`Handle::object_ref`]. Forged mint + `open` is still bind-checked
 /// (`object_id == handle.object_ref`) in Core.
+#[cfg(feature = "store-backend")]
 pub mod object_store_access {
     use super::{AiraRef, Handle};
 
