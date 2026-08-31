@@ -16,7 +16,7 @@
   capability/advertisements.json  # Book II CAP ads persist (#160)
   http/              # optional self-signed TLS PEM (`--tls-self-signed`)
   events/event-log.json           # legacy JSON event log (recovery helpers)
-  events/file-chain-log.json      # durable FileChainEventLog (#157)
+  events/file-chain-log.json      # durable FileChainEventLog (#157); `event_tail` authority (#203)
   problems/index.json            # persist: temp+rename; corrupt ≠ empty wipe (#191)
   conformance/reports/
 ```

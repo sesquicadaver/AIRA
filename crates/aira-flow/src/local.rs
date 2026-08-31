@@ -605,26 +605,22 @@ impl LocalSession {
         serde_json::from_slice(&bytes).map_err(|e| FlowError::Other(e.to_string()))
     }
 
+    /// Tail of the durable file-chain log (`events/file-chain-log.json`).
+    ///
+    /// Authority after persist/reopen (#203): this path, not `OperationalPlane`
+    /// memory (`drain_from`) and not legacy `events/event-log.json`.
     pub fn event_tail(&self, limit: usize) -> Result<Vec<EventDescriptor>, FlowError> {
-        let chain_path = self.paths.file_chain_event_log();
-        if chain_path.exists() {
-            let durable = FileChainEventLog::open(&chain_path)
-                .map_err(|e| FlowError::Other(e.to_string()))?;
-            let events: Vec<EventDescriptor> = durable
-                .chain()
-                .records()
-                .iter()
-                .map(|r| r.event.clone())
-                .collect();
-            let n = events.len();
-            let start = n.saturating_sub(limit);
-            return Ok(events[start..].to_vec());
-        }
-        let read = read_event_log_resilient(&self.paths.event_log())?;
-        let log = read.log;
-        let n = log.events.len();
+        let durable = FileChainEventLog::open(self.paths.file_chain_event_log())
+            .map_err(|e| FlowError::Other(e.to_string()))?;
+        let events: Vec<EventDescriptor> = durable
+            .chain()
+            .records()
+            .iter()
+            .map(|r| r.event.clone())
+            .collect();
+        let n = events.len();
         let start = n.saturating_sub(limit);
-        Ok(log.events[start..].to_vec())
+        Ok(events[start..].to_vec())
     }
 }
 

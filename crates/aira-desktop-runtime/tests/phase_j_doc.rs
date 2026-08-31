@@ -21,7 +21,7 @@ fn phase_j_plan_present() {
         "AIRA-RFC-0096",
         "confirmed free",
         "**IN PROGRESS**",
-        "first OPEN `#203`",
+        "first OPEN `#204`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-j-plan missing: {needle}");
@@ -56,8 +56,12 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #202 must be DONE after VRA runtime B1-010"
     );
     assert!(
-        text.contains("| 203 | **OPEN**"),
-        "QUEUE first OPEN must be #203"
+        text.contains("| 203 | **DONE**"),
+        "QUEUE #203 must be DONE after event-log authority"
+    );
+    assert!(
+        text.contains("| 204 | **OPEN**"),
+        "QUEUE first OPEN must be #204"
     );
     assert!(
         !text.contains("| 199 | **OPEN**"),
@@ -76,10 +80,14 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #202 must not stay OPEN after VRA runtime B1-010"
     );
     assert!(
-        !text.contains("| 203 | **DONE**"),
-        "QUEUE #203 must not be DONE at #202"
+        !text.contains("| 203 | **OPEN**"),
+        "QUEUE #203 must not stay OPEN after event-log authority"
     );
-    for n in 204..=208 {
+    assert!(
+        !text.contains("| 204 | **DONE**"),
+        "QUEUE #204 must not be DONE at #203"
+    );
+    for n in 205..=208 {
         let open = format!("| {n} | **OPEN**");
         assert!(text.contains(&open), "QUEUE missing {open}");
         let done = format!("| {n} | **DONE**");
@@ -92,7 +100,7 @@ fn phase_j_queue_wiring_199_done() {
         "J0 govern + Book II ceiling honesty",
         "J1 Book I remainder",
         "RFC-0096",
-        "first OPEN `#203`",
+        "first OPEN `#204`",
         "Analyze-234",
         "Analyze-235",
         "Analyze-236",
@@ -125,7 +133,7 @@ fn phase_j_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-j-plan.md"));
     assert!(docs.contains("#199"));
-    assert!(docs.contains("first OPEN `#203`"));
+    assert!(docs.contains("first OPEN `#204`"));
     assert!(docs.contains("#208"));
     assert!(docs.contains("**IN PROGRESS**"));
 }
@@ -135,7 +143,7 @@ fn phase_i_points_to_active_phase_j() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-i-plan.md")).unwrap();
     assert!(text.contains("phase-j-plan.md"));
     assert!(text.contains("#199"));
-    assert!(text.contains("first OPEN `#203`"));
+    assert!(text.contains("first OPEN `#204`"));
 }
 
 #[test]
@@ -274,8 +282,7 @@ fn phase_j_vra_runtime_202() {
     }
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 202 | **DONE**"));
-    assert!(queue.contains("| 203 | **OPEN**"));
-    assert!(!queue.contains("| 203 | **DONE**"));
+    assert!(queue.contains("| 203 | **DONE**"));
     let src =
         std::fs::read_to_string(repo_root().join("csu/verification-basic/src/lib.rs")).unwrap();
     for needle in [
@@ -290,4 +297,35 @@ fn phase_j_vra_runtime_202() {
     ] {
         assert!(src.contains(needle), "verification-basic missing {needle}");
     }
+}
+
+#[test]
+fn phase_j_event_log_authority_203() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0099",
+        "event_tail_after_reopen_reads_file_chain_not_memory_or_legacy",
+        "| #203 | Event-log authority",
+        "**DONE** @ this PR",
+        "file-chain-log.json",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #203 missing: {needle}"
+        );
+    }
+    let rfc =
+        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0099-event-log-authority.md"))
+            .expect("RFC-0099");
+    for needle in ["#203", "file-chain-log.json", "event_tail", "drain_from"] {
+        assert!(rfc.contains(needle), "RFC-0099 missing: {needle}");
+    }
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 203 | **DONE**"));
+    assert!(queue.contains("| 204 | **OPEN**"));
+    assert!(!queue.contains("| 204 | **DONE**"));
+    let src = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/local.rs")).unwrap();
+    assert!(src.contains("FileChainEventLog::open(self.paths.file_chain_event_log())"));
+    assert!(src.contains("not `OperationalPlane`"));
 }
