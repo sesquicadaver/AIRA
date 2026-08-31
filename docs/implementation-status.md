@@ -2,7 +2,7 @@
 
 **Status:** **Reference v0.3-stable** (Analyze-233 / QUEUE `#198`; Phase I `#184`–`#198` **DONE** @ RFC-0078). Phase H **Reference v0.3** (`#152`–`#183` **DONE** @ RFC-0077) is the prior protocol-depth posture. Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (QUEUE I closed; Phase J first OPEN `#202`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase J:** [`phase-j-plan.md`](phase-j-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (I); [`AIRA-RFC-0097`](../specs/rfc/AIRA-RFC-0097-seal-object-store-access.md) (`#201`); RFC-0096 reserved (`#208`)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (QUEUE I closed; Phase J first OPEN `#203`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase J:** [`phase-j-plan.md`](phase-j-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (I); [`AIRA-RFC-0097`](../specs/rfc/AIRA-RFC-0097-seal-object-store-access.md) (`#201`); [`AIRA-RFC-0098`](../specs/rfc/AIRA-RFC-0098-vra-runtime-b1-010.md) (`#202`); RFC-0096 reserved (`#208`)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -56,7 +56,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Invariant Checker can block | Book I §11; B1-008 | `aira-core` `InvariantChecker` | C0 immutability cases | **DONE** | |
 | Security boundary (no Core memory / foreign CSU / secrets) | Book I §12; B1-009; B3-004 | `aira-csu` isolation + event secret scan | `isolation_baseline_denies_direct_mutation_and_peer_call`; `run_security_baseline` | **DONE** | MVP sandbox: in-process, no FS/net |
 | Artifact runtime + immutability | Book I §16; B1-002 | `aira-artifact` CAS | `c0.artifact.immutability`; `c0.artifact.verify_on_read`; `mutation_fails_supersession_keeps_old`; `unsigned_artifact_rejected_and_private_denied`; `resolve_rejects_tampered_index_descriptor` | **DONE** | Verify-on-read re-checks signature + CAS hash (QUEUE #113) |
-| Verified Result completeness | Book I §17; B1-010 | `schemas/result/verified-result-artifact.schema.json`; verification-basic + plane | `c1.result.verified_completeness`; `c1.result.extended_fields` (#126) | **PARTIAL** | Schema + C1 cover B1-010 required + extended optional fields; runtime payload still minimal |
+| Verified Result completeness | Book I §17; B1-010 | `schemas/result/verified-result-artifact.schema.json`; verification-basic + plane | `c1.pipeline.calculate_2_plus_2`; `c1.result.verified_completeness`; `c1.result.extended_fields` (#126); `verified_result_body_has_b1_010_required_keys`; `missing_vra_required` | **DONE** | `#202` / RFC-0098: C1 2+2 runtime body has every schema `required[]`; demo extras `result` / `artifact_kind` remain (C1 reads `result == 4.0`); optional epistemic `#207` |
 | CSU runtime + lifecycle | Book I §13–14 | `aira-csu` `CsuRuntime` / registry | `lifecycle_transitions_and_events`; `dispatch_active_only_and_failure_event`; `dispatch_fail_closed_without_policy_gate_and_on_deny`; `invoke_binds_policy_gate_check_policy_allows`; `check_policy_fail_closed_without_bound_gate`; `c0.csu.dispatch_policy` | **DONE** | Policy gate required for dispatch (QUEUE #114); invoke binds gate for `check_policy` (`#188` / RFC-0086) |
 | Canonical descriptor signatures | Book I security; EVO-2 | `aira_object::canonical` + Event/Artifact/Object/CSU | mutation tests in those crates | **DONE** | QUEUE #39–#44; no runtime `LOCAL_TEST_DOMAIN_MSG` fallback |
 | Federated Core (C2+/C3) | Book I §22 L2 | `aira-protocol`, `aira-peer`, federation join | C2 local; `federation::join_*` | **POST-MVP** | Not C0/C1 CI |
@@ -178,7 +178,7 @@ Conformance spec §19 lists extra fixture *names* (event chain, policy deny, res
 | Security baseline | Conformance §14 subset | `run_security_baseline` | unsigned CSU/artifact; private deny; secret in events | crate tests | **DONE** |
 | Alpha acceptance | MVP | `run_alpha_acceptance` | init layout, 2+2, failure evidence, C0/C1 | crate tests | **DONE** |
 
-C0/C1 are a **minimal** encoding of B0/B1/OP/CSU MUST tests, not a 1:1 clone of every Conformance `B*-*` id. Remaining gaps (runtime full VRA payload vs schema, B0-005 runtime enforcement, B2 network wire) stay documented here.
+C0/C1 are a **minimal** encoding of B0/B1/OP/CSU MUST tests, not a 1:1 clone of every Conformance `B*-*` id. Remaining gaps (B0-005 runtime enforcement, B2 network wire; VRA `additionalProperties` extras on the C1 demo body) stay documented here.
 
 RFC: [`AIRA-RFC-0068`](../specs/rfc/AIRA-RFC-0068-phase-f-stabilization.md) (Phase F closure `#119`).
 
@@ -345,7 +345,7 @@ Plan: [`phase-i-plan.md`](phase-i-plan.md). Consolidating RFC: [`AIRA-RFC-0078`]
 | #199 | Phase J wiring + contract | `phase_j_doc.rs`; `docs/phase-j-plan.md`; QUEUE `#199`–`#208` | **DONE** @ this PR |
 | #200 | Book II ceiling honesty | envelope/EP/AP/identity/discovery/CAP/CRP/settlement **PARTIAL**; local adapter = v0.3 ceiling | **DONE** @ this PR |
 | #201 | Seal `object_store_access` | `mint` not a public CSU prelude API; RFC-0097; `store-backend` | **DONE** @ this PR |
-| #202 | VRA runtime B1-010 | C1 2+2 body matches `verified-result-artifact.schema.json` `required[]` | OPEN |
+| #202 | VRA runtime B1-010 | C1 2+2 body matches `verified-result-artifact.schema.json` `required[]`; RFC-0098 | **DONE** @ this PR |
 | #203 | Event-log authority | reopen `event_tail` from `events/file-chain-log.json` | OPEN |
 | #204 | Reduction catalog bind | durable reuse without manual `enable_ready_solution` | OPEN |
 | #205 | Semantic verify text.* | `text.echo` / `text.uppercase` wrong string not VERIFIED | OPEN |
@@ -378,7 +378,7 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 **Phase I `#184`–`#198` DONE** @ RFC-0078 (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); **Reference v0.3-stable**; QUEUE I closed; no OPEN.
 
-**Phase J `#199` `#200` `#201` DONE** (не змінює anti-mission): Book-gap local remainder **IN PROGRESS**; [`phase-j-plan.md`](phase-j-plan.md); Book II local adapter = v0.3 ceiling; Opaque Handle sealed (`#201` / RFC-0097); first OPEN `#202`; RFC-0096 id free until `#208`.
+**Phase J `#199` `#200` `#201` `#202` DONE** (не змінює anti-mission): Book-gap local remainder **IN PROGRESS**; [`phase-j-plan.md`](phase-j-plan.md); Book II local adapter = v0.3 ceiling; Opaque Handle sealed (`#201` / RFC-0097); VRA runtime B1-010 (`#202` / RFC-0098); first OPEN `#203`; RFC-0096 id free until `#208`.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
