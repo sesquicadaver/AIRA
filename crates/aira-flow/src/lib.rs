@@ -861,6 +861,49 @@ mod tests {
     }
 
     #[test]
+    fn event_tail_after_reopen_reads_file_chain_not_memory_or_legacy() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        {
+            let mut session = LocalSession::open(&root).unwrap();
+            session.submit_problem("Calculate 2 + 2").unwrap();
+        }
+
+        // Legacy JSON is not the event_tail source (#203).
+        let legacy = root.join("events/event-log.json");
+        std::fs::write(
+            &legacy,
+            serde_json::to_string_pretty(&EventLogFile::default()).unwrap(),
+        )
+        .unwrap();
+
+        let session = LocalSession::open(&root).unwrap();
+        assert!(
+            !session
+                .plane()
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::ProblemSubmitted),
+            "reopened plane memory must not hold the persisted ProblemSubmitted"
+        );
+        let tail = session.event_tail(50).unwrap();
+        assert!(
+            tail.iter()
+                .any(|e| e.event_type == EventType::ProblemSubmitted),
+            "event_tail must read file-chain-log.json after reopen even if event-log.json is empty"
+        );
+        let durable =
+            aira_event::FileChainEventLog::open(root.join("events/file-chain-log.json")).unwrap();
+        assert!(durable
+            .chain()
+            .records()
+            .iter()
+            .any(|r| r.event.event_type == EventType::ProblemSubmitted));
+    }
+
+    #[test]
     fn research_artifact_rejected_as_operational_input() {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
