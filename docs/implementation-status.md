@@ -2,7 +2,7 @@
 
 **Status:** **Reference v0.3-stable** (Analyze-233 / QUEUE `#198`; Phase I `#184`–`#198` **DONE** @ RFC-0078). Phase H **Reference v0.3** (`#152`–`#183` **DONE** @ RFC-0077) is the prior protocol-depth posture. Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (QUEUE I closed; Phase J first OPEN `#201`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase J:** [`phase-j-plan.md`](phase-j-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (I); RFC-0096 reserved (`#208`)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (QUEUE I closed; Phase J first OPEN `#202`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase J:** [`phase-j-plan.md`](phase-j-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (I); [`AIRA-RFC-0097`](../specs/rfc/AIRA-RFC-0097-seal-object-store-access.md) (`#201`); RFC-0096 reserved (`#208`)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -49,7 +49,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | Requirement | Source | Implemented in | Tested by | Status | Notes |
 |-------------|--------|----------------|-----------|--------|-------|
 | Immutable Object Store | Book I §4–5; B1-001 | `aira-core` `MemoryObjectStore` / `SqliteObjectStore` | `c0.object.immutability`; `c0.object.verify_on_read`; `sqlite_migrate_idempotent_reopen_preserves_rows`; `sqlite_corrupt_descriptor_json_integrity`; `init_node_sqlite_object_path_migrate_and_persist`; `plane_memory_beside_node_sqlite_object_path` (#158) | **DONE** | Verify-on-read (#112); SQLite migrate (#143); node path beside plane memory (#158) |
-| Opaque Handle | Book I §6; B1-003 | `aira_object::Handle` | `c0.object.handle_opacity`; `handle_is_opaque`; `handle_forged_unknown_token_open_fails`; `handle_cross_object_token_bind_rejects`; `handle_cross_store_open_fails` | **PARTIAL** | `#185` honesty (audit `b66bcf1`): Debug omits token/paths (C0 B1-003). `#186` / RFC-0084: `Handle::new` / `storage_token()` are `pub(crate)`; mint via `object_store_access`; `open` bind `object_id == handle.object_ref`. Remaining: store-access module is still callable from a depending crate |
+| Opaque Handle | Book I §6; B1-003 | `aira_object::Handle` | `c0.object.handle_opacity`; `handle_is_opaque`; `object_store_access_is_not_in_the_default_prelude`; `store_backend_feature_is_only_enabled_by_aira_core`; `csu_sources_do_not_import_object_store_access`; `handle_forged_unknown_token_open_fails`; `handle_cross_object_token_bind_rejects`; `handle_cross_store_open_fails` | **DONE** | `#186` / RFC-0084: `Handle::new` / `storage_token()` are `pub(crate)`; `open` bind `object_id == handle.object_ref`. `#201` / RFC-0097: `object_store_access` is feature `store-backend` (`aira-core` only); not on the default `aira-object` prelude; C0 opacity uses `ObjectStore::create` |
 | Event runtime, local causal order, no global total order | Book I §8–9; B1-004/005 | `aira-event` `MemoryEventLog` + `EventHashChain` (#154) | `c0.event.causality`; `event_log_hash_chain_tip_append_verify_and_mid_tamper_detect`; `aira-event` unit tests | **DONE** | Plane drain in-process (`drain_from` 256); tip/mid-tamper fail-closed (#154) |
 | Durable event log | Book I / Book IV §6.3 | `LocalSession` → `file-chain-log.json` (#157) + legacy `event-log.json`; `FileChainEventLog` (#156); prefix recovery (#155) | `session_durable_file_chain_roundtrip`; `corrupt_event_log_recovered_and_writable`; `corrupt_trailing_event_log_recovers_valid_prefix`; `file_chain_event_log_persists_across_reopen` | **PARTIAL** | H1: hash-chain tip (#154), prefix recover (#155), file backend (#156), session wire (#157); dual-write + plane memory remain |
 | Policy Gate ALLOW/DENY/REQUIRE | Book I §10; B1-006/007 | `aira-policy` | `c0.policy.gate`; `invariant_checker_emits_event_on_policy_deny` | **DONE** | |
@@ -344,7 +344,7 @@ Plan: [`phase-i-plan.md`](phase-i-plan.md). Consolidating RFC: [`AIRA-RFC-0078`]
 |-------|------|-------------------|
 | #199 | Phase J wiring + contract | `phase_j_doc.rs`; `docs/phase-j-plan.md`; QUEUE `#199`–`#208` | **DONE** @ this PR |
 | #200 | Book II ceiling honesty | envelope/EP/AP/identity/discovery/CAP/CRP/settlement **PARTIAL**; local adapter = v0.3 ceiling | **DONE** @ this PR |
-| #201 | Seal `object_store_access` | `mint` not a public CSU prelude API | OPEN |
+| #201 | Seal `object_store_access` | `mint` not a public CSU prelude API; RFC-0097; `store-backend` | **DONE** @ this PR |
 | #202 | VRA runtime B1-010 | C1 2+2 body matches `verified-result-artifact.schema.json` `required[]` | OPEN |
 | #203 | Event-log authority | reopen `event_tail` from `events/file-chain-log.json` | OPEN |
 | #204 | Reduction catalog bind | durable reuse without manual `enable_ready_solution` | OPEN |
@@ -378,7 +378,7 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 **Phase I `#184`–`#198` DONE** @ RFC-0078 (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); **Reference v0.3-stable**; QUEUE I closed; no OPEN.
 
-**Phase J `#199` `#200` DONE** (не змінює anti-mission): Book-gap local remainder **IN PROGRESS**; [`phase-j-plan.md`](phase-j-plan.md); Book II local adapter = v0.3 ceiling; first OPEN `#201`; RFC-0096 id free until `#208`.
+**Phase J `#199` `#200` `#201` DONE** (не змінює anti-mission): Book-gap local remainder **IN PROGRESS**; [`phase-j-plan.md`](phase-j-plan.md); Book II local adapter = v0.3 ceiling; Opaque Handle sealed (`#201` / RFC-0097); first OPEN `#202`; RFC-0096 id free until `#208`.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 

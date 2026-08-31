@@ -17,7 +17,13 @@ hex = { workspace = true }
 regex = "1"
 time = { workspace = true }
 
+[features]
+default = []
+# ObjectStore backends in `aira-core` only. Not a CSU prelude API (#201 / RFC-0097).
+store-backend = []
+
 [dev-dependencies]
 aira-schema = { path = "../aira-schema" }
 tempfile = { workspace = true }
 serde_json = { workspace = true }
+

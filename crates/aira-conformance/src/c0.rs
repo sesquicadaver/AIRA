@@ -109,16 +109,14 @@ fn test_object_immutability() -> CaseResult {
 /// B1-003 — CSU cannot infer storage path / internal token from Handle debug output.
 fn test_handle_opacity() -> CaseResult {
     let id = "c0.object.handle_opacity";
-    let object_ref = match AiraRef::parse("aira:problem:01OPACITY") {
-        Ok(r) => r,
+    let mut store = MemoryObjectStore::new();
+    let desc = ObjectDescriptor::example_problem();
+    let object_ref = desc.object_id.clone();
+    let handle = match store.create(desc) {
+        Ok(h) => h,
         Err(e) => return fail(id, e.to_string()),
     };
-    let token = 0xDEADBEEF_u64;
-    let handle = aira_object::object_store_access::mint(object_ref.clone(), token);
     let dbg = format!("{handle:?}");
-    if dbg.contains(&token.to_string()) {
-        return fail(id, "Debug output leaks storage_token numeric value");
-    }
     for needle in ["/", "\\", ".aira", "sqlite", "db/", "path"] {
         if dbg.contains(needle) {
             return fail(

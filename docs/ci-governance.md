@@ -72,7 +72,7 @@ pull_request: main, develop
 
 ## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony (`run_c3`): **8** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170). Optional CI job `conformance-c3` (`#164`, non-gate). RFC-P process doc `#177` DONE; promotion-candidate fixtures `#178` DONE; non-operational gate `#179` DONE (RFC-0082); `run_c5` `#180` DONE (RFC-0083, not a CI job); promotion status `#181` DONE (Research remains RESEARCH); Reference v0.3 docs `#182` DONE; RFC-0077 `#183` DONE. Phase H closed; no OPEN. Phase I **DONE** (`#184`–`#198` @ RFC-0078). QUEUE I closed. Phase J **IN PROGRESS** (`#199` `#200` DONE; first OPEN `#201`). Settlement **PARTIAL** (`#176`); `run_c4` local (`#175`, not a CI job).
+Local federation ceremony (`run_c3`): **8** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170). Optional CI job `conformance-c3` (`#164`, non-gate). RFC-P process doc `#177` DONE; promotion-candidate fixtures `#178` DONE; non-operational gate `#179` DONE (RFC-0082); `run_c5` `#180` DONE (RFC-0083, not a CI job); promotion status `#181` DONE (Research remains RESEARCH); Reference v0.3 docs `#182` DONE; RFC-0077 `#183` DONE. Phase H closed; no OPEN. Phase I **DONE** (`#184`–`#198` @ RFC-0078). QUEUE I closed. Phase J **IN PROGRESS** (`#199` `#200` `#201` DONE; first OPEN `#202`). Settlement **PARTIAL** (`#176`); `run_c4` local (`#175`, not a CI job).
 
 ### Current posture (QUEUE #153 + `#164`)
 

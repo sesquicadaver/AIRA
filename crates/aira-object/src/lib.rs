@@ -36,6 +36,7 @@ pub use crypto::{
     LOCAL_TEST_KEY_REF, NODE_SECRET_BACKUP_FILE, NODE_SECRET_BACKUP_META_FILE,
 };
 pub use descriptor::{ObjectDescriptor, ObjectType};
+#[cfg(feature = "store-backend")]
 pub use handle::object_store_access;
 pub use handle::Handle;
 pub use tenant::{
@@ -58,6 +59,7 @@ pub fn crate_version() -> &'static str {
 mod tests {
     use super::*;
     use serde_json::json;
+    use std::path::{Path, PathBuf};
 
     #[test]
     fn version_is_semver_like() {
@@ -198,6 +200,102 @@ mod tests {
         let mut id = d;
         id.object_id = AiraRef::parse("aira:problem:MUTATED").unwrap();
         assert!(id.verify_canonical().is_err());
+    }
+
+    #[test]
+    fn object_store_access_is_not_in_the_default_prelude() {
+        let lib = include_str!("lib.rs");
+        let mut gated = false;
+        let mut prev = "";
+        for line in lib.lines() {
+            let trimmed = line.trim();
+            if trimmed == "pub use handle::object_store_access;" {
+                assert_eq!(
+                    prev, "#[cfg(feature = \"store-backend\")]",
+                    "object_store_access must not be a default prelude re-export"
+                );
+                gated = true;
+            }
+            prev = trimmed;
+        }
+        assert!(
+            gated,
+            "expected cfg-gated prelude re-export of object_store_access"
+        );
+        let cargo = include_str!("../Cargo.toml");
+        assert!(
+            cargo.contains("store-backend"),
+            "aira-object must define the store-backend feature"
+        );
+    }
+
+    #[test]
+    fn store_backend_feature_is_only_enabled_by_aira_core() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mut core_enables = false;
+        fn walk(dir: &Path, core_enables: &mut bool) {
+            let Ok(entries) = std::fs::read_dir(dir) else {
+                return;
+            };
+            for entry in entries {
+                let path = entry.unwrap().path();
+                let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+                if path.is_dir() {
+                    if matches!(name, "target" | ".git" | "node_modules") {
+                        continue;
+                    }
+                    walk(&path, core_enables);
+                    continue;
+                }
+                if name != "Cargo.toml" {
+                    continue;
+                }
+                let text = std::fs::read_to_string(&path).unwrap();
+                let rel = path.to_string_lossy();
+                if rel.ends_with("crates/aira-object/Cargo.toml") {
+                    continue;
+                }
+                if rel.ends_with("crates/aira-core/Cargo.toml") {
+                    assert!(
+                        text.contains("features = [\"store-backend\"]"),
+                        "aira-core must enable store-backend"
+                    );
+                    *core_enables = true;
+                    continue;
+                }
+                assert!(
+                    !text.contains("store-backend"),
+                    "{} must not enable store-backend",
+                    rel
+                );
+            }
+        }
+        walk(&root, &mut core_enables);
+        assert!(core_enables, "aira-core Cargo.toml not scanned");
+    }
+
+    #[test]
+    fn csu_sources_do_not_import_object_store_access() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../csu");
+        fn walk_rs(dir: &Path) {
+            for entry in std::fs::read_dir(dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    walk_rs(&path);
+                    continue;
+                }
+                if path.extension().and_then(|s| s.to_str()) != Some("rs") {
+                    continue;
+                }
+                let text = std::fs::read_to_string(&path).unwrap();
+                assert!(
+                    !text.contains("object_store_access"),
+                    "{} must not import object_store_access",
+                    path.display()
+                );
+            }
+        }
+        walk_rs(&root);
     }
 
     #[test]
