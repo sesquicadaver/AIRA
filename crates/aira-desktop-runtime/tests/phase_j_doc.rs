@@ -21,7 +21,7 @@ fn phase_j_plan_present() {
         "AIRA-RFC-0096",
         "confirmed free",
         "**IN PROGRESS**",
-        "first OPEN `#200`",
+        "first OPEN `#201`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-j-plan missing: {needle}");
@@ -44,14 +44,22 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #199 must be DONE after wiring"
     );
     assert!(
-        text.contains("| 200 | **OPEN**"),
-        "QUEUE first OPEN must be #200"
+        text.contains("| 200 | **DONE**"),
+        "QUEUE #200 must be DONE after Book II ceiling honesty"
+    );
+    assert!(
+        text.contains("| 201 | **OPEN**"),
+        "QUEUE first OPEN must be #201"
     );
     assert!(
         !text.contains("| 199 | **OPEN**"),
         "QUEUE #199 must not stay OPEN after wiring"
     );
-    for n in 201..=208 {
+    assert!(
+        !text.contains("| 200 | **OPEN**"),
+        "QUEUE #200 must not stay OPEN after ceiling honesty"
+    );
+    for n in 202..=208 {
         let open = format!("| {n} | **OPEN**");
         assert!(text.contains(&open), "QUEUE missing {open}");
         let done = format!("| {n} | **DONE**");
@@ -64,7 +72,7 @@ fn phase_j_queue_wiring_199_done() {
         "J0 govern + Book II ceiling honesty",
         "J1 Book I remainder",
         "RFC-0096",
-        "first OPEN `#200`",
+        "first OPEN `#201`",
         "Analyze-234",
         "Analyze-235",
         "Analyze-236",
@@ -97,7 +105,7 @@ fn phase_j_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-j-plan.md"));
     assert!(docs.contains("#199"));
-    assert!(docs.contains("first OPEN `#200`"));
+    assert!(docs.contains("first OPEN `#201`"));
     assert!(docs.contains("#208"));
     assert!(docs.contains("**IN PROGRESS**"));
 }
@@ -107,7 +115,7 @@ fn phase_i_points_to_active_phase_j() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-i-plan.md")).unwrap();
     assert!(text.contains("phase-j-plan.md"));
     assert!(text.contains("#199"));
-    assert!(text.contains("first OPEN `#200`"));
+    assert!(text.contains("first OPEN `#201`"));
 }
 
 #[test]
@@ -127,4 +135,39 @@ fn phase_j_rfc_0096_id_free() {
     assert!(status.contains("phase_j_doc.rs"));
     assert!(status.contains("#200"));
     assert!(status.contains("| #199 | Phase J wiring + contract"));
+}
+
+#[test]
+fn phase_j_book_ii_ceiling_200() {
+    let text = std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "## Book II — protocols",
+        "local adapter = v0.3 ceiling",
+        "Common envelope + signature",
+        "Unsupported version without side effects",
+        "Event Protocol publish idempotency",
+        "Artifact Protocol publish/resolve + hash",
+        "Identity descriptor",
+        "Discovery by Capability, not Node",
+        "Capability Advertisement",
+        "CRP",
+        "Settlement / Audit protocol",
+        "R2 Local Protocol Node",
+        "Object / Artifact / Event stores",
+        "| #200 | Book II ceiling honesty",
+        "**DONE** @ this PR",
+        "not Book II wire mesh",
+    ] {
+        assert!(
+            text.contains(needle),
+            "implementation-status #200 ceiling missing: {needle}"
+        );
+    }
+    assert!(
+        text.contains("| Federation protocol (full) |"),
+        "federation row must remain in Book II"
+    );
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 200 | **DONE**"));
+    assert!(!queue.contains("| 201 | **DONE**"));
 }

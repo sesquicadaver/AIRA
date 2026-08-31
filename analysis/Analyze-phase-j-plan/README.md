@@ -8,4 +8,4 @@ User asked to recreate the work plan from current data after the PLANNED-only sn
 - QUEUE, README, `docs/README`, `implementation-status`, `phase_j_doc`
 
 ## Activation
-Done: Analyze-234 / `#199`. Next: `#200` Book II ceiling honesty.
+Done: Analyze-234 / `#199`; Analyze-235 / `#200`. Next: `#201` Seal `object_store_access`.

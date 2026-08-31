@@ -2,7 +2,7 @@
 
 **Status:** **Reference v0.3-stable** (Analyze-233 / QUEUE `#198`; Phase I `#184`–`#198` **DONE** @ RFC-0078). Phase H **Reference v0.3** (`#152`–`#183` **DONE** @ RFC-0077) is the prior protocol-depth posture. Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (QUEUE I closed; Phase J first OPEN `#200`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase J:** [`phase-j-plan.md`](phase-j-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (I); RFC-0096 reserved (`#208`)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (QUEUE I closed; Phase J first OPEN `#201`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase J:** [`phase-j-plan.md`](phase-j-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (I); RFC-0096 reserved (`#208`)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -65,18 +65,20 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 
 ## Book II — protocols
 
+`#200` ceiling honesty: envelope / EP / AP / identity / discovery / CAP / CRP / settlement stay **PARTIAL**. In-process or file-local implementation is the v0.3 ceiling, not Book II wire mesh. Federation stays **POST-MVP**. C2 CI job stays **DONE**.
+
 | Requirement | Source | Implemented in | Tested by | Status | Notes |
 |-------------|--------|----------------|-----------|--------|-------|
-| Common envelope + signature | Book II §6; B2-001/002 | `aira-protocol` + schemas | `c2.protocol.envelope_schema`; `c2.protocol.envelope_unsigned`; `c2.protocol.envelope_canonical_mutations`; `c2.protocol.response_canonical_mutations`; `envelope_rejects_local_test_domain_fallback`; `recv_envelope_rejects_expired`; `recv_envelope_rejects_replayed_message_id` | **PARTIAL** | SEC-2 canonical descriptor (#135); `#194` / RFC-0092 receive freshness + replay window |
-| Unsupported version without side effects | B2-003 | `EventProtocolAdapter` | `c2.ep.unsupported_version_no_side_effects` | **PARTIAL** | Local adapter |
-| Event Protocol publish idempotency | Book II §12; B2-008 | `aira-protocol` event adapter | `c2.event.publish_idempotent`; `event_protocol_publish_idempotent_and_unsupported_version` | **PARTIAL** | In-process; C2 case #122 |
-| Artifact Protocol publish/resolve + hash | Book II §11; B2-007 | `aira-protocol` artifact adapter | `c2.artifact.hash_mismatch`; `artifact_protocol_publish_resolve_and_hash_check` | **PARTIAL** | In-process; C2 case #123 |
-| Identity descriptor | Book II §13 | schema + `aira-object` keyring | `c2.identity.descriptor_schema`; `aira-object` crypto/keyring tests; `thread_crypto_scopes_do_not_leak` | **PARTIAL** | Local identity; rotation is node/tenant CLI; `#196` / RFC-0094 thread-local `bind_thread_crypto` |
-| Discovery by Capability, not Node | Book II §8; B2-004 | `DiscoveryRegistry` | `c2.discovery.capability_not_node`; `discovery_returns_capability_not_node` | **PARTIAL** | Local registry file |
-| Capability Advertisement | Book II §9; B2-005 | `CapabilityAdvertisementStore` (`capability/advertisements.json`, #160) + capability schema + HTTP discovery list | `capability_ad_persist_roundtrip`; schema fixtures; HTTP tests | **PARTIAL** | Local CAP persist (#160); discovery list ≠ CAP ads; no network ad protocol |
-| CRP | Book II §10; B2-006 | schemas + `LocalCrpAdapter` + C3 `#165`–`#170` | `c3.crp.route_candidate`; `crp_multi_candidate_and_policy_gate_bind`; RFC-0079 | **PARTIAL** | Local in-process only; no multi-node mesh / marketplace |
-| Federation protocol (full) | Book II §14; B2-010 | join prototype only | `aira-protocol` `federation::join_*` | **POST-MVP** | Local pin + trust; no leave/Join Request/CRP |
-| Settlement / Audit protocol | Book II §15; B2-011 | receipt schema + `SettlementReceiptStore` JSONL (`aira:settlement:receipts-jsonl:v1`) + privacy + `run_c4` (`#172`–`#175`); RFC-0080/0081 | `settlement_receipt_schema_loads`; `settlement_receipt_store_append_roundtrip_and_verify_on_read`; `b2_011_settlement_privacy_smoke`; `validate_settlement_privacy`; `SETTLEMENT_PRIVACY_FORBIDDEN_KEYS`; `c4.settlement.receipt_emit_verify` | **PARTIAL** | Local audit receipts only; no blockchain ledger / federation settlement |
+| Common envelope + signature | Book II §6; B2-001/002 | `aira-protocol` + schemas | `c2.protocol.envelope_schema`; `c2.protocol.envelope_unsigned`; `c2.protocol.envelope_canonical_mutations`; `c2.protocol.response_canonical_mutations`; `envelope_rejects_local_test_domain_fallback`; `recv_envelope_rejects_expired`; `recv_envelope_rejects_replayed_message_id` | **PARTIAL** | SEC-2 canonical descriptor (#135); `#194` / RFC-0092 receive freshness + replay window; `#200`: local adapter = v0.3 ceiling |
+| Unsupported version without side effects | B2-003 | `EventProtocolAdapter` | `c2.ep.unsupported_version_no_side_effects` | **PARTIAL** | Local adapter; `#200`: local adapter = v0.3 ceiling |
+| Event Protocol publish idempotency | Book II §12; B2-008 | `aira-protocol` event adapter | `c2.event.publish_idempotent`; `event_protocol_publish_idempotent_and_unsupported_version` | **PARTIAL** | In-process; C2 case #122; `#200`: local adapter = v0.3 ceiling |
+| Artifact Protocol publish/resolve + hash | Book II §11; B2-007 | `aira-protocol` artifact adapter | `c2.artifact.hash_mismatch`; `artifact_protocol_publish_resolve_and_hash_check` | **PARTIAL** | In-process; C2 case #123; `#200`: local adapter = v0.3 ceiling |
+| Identity descriptor | Book II §13 | schema + `aira-object` keyring | `c2.identity.descriptor_schema`; `aira-object` crypto/keyring tests; `thread_crypto_scopes_do_not_leak` | **PARTIAL** | Local identity; rotation is node/tenant CLI; `#196` / RFC-0094 thread-local `bind_thread_crypto`; `#200`: local adapter = v0.3 ceiling |
+| Discovery by Capability, not Node | Book II §8; B2-004 | `DiscoveryRegistry` | `c2.discovery.capability_not_node`; `discovery_returns_capability_not_node` | **PARTIAL** | Local registry file; `#200`: local adapter = v0.3 ceiling |
+| Capability Advertisement | Book II §9; B2-005 | `CapabilityAdvertisementStore` (`capability/advertisements.json`, #160) + capability schema + HTTP discovery list | `capability_ad_persist_roundtrip`; schema fixtures; HTTP tests | **PARTIAL** | Local CAP persist (#160); discovery list ≠ CAP ads; no network ad protocol; `#200`: local adapter = v0.3 ceiling |
+| CRP | Book II §10; B2-006 | schemas + `LocalCrpAdapter` + C3 `#165`–`#170` | `c3.crp.route_candidate`; `crp_multi_candidate_and_policy_gate_bind`; RFC-0079 | **PARTIAL** | Local in-process only; no multi-node mesh / marketplace; `#200`: local adapter = v0.3 ceiling |
+| Federation protocol (full) | Book II §14; B2-010 | join prototype only | `aira-protocol` `federation::join_*` | **POST-MVP** | Local pin + trust; no leave/Join Request/CRP; not a v0.3 protocol **DONE** |
+| Settlement / Audit protocol | Book II §15; B2-011 | receipt schema + `SettlementReceiptStore` JSONL (`aira:settlement:receipts-jsonl:v1`) + privacy + `run_c4` (`#172`–`#175`); RFC-0080/0081 | `settlement_receipt_schema_loads`; `settlement_receipt_store_append_roundtrip_and_verify_on_read`; `b2_011_settlement_privacy_smoke`; `validate_settlement_privacy`; `SETTLEMENT_PRIVACY_FORBIDDEN_KEYS`; `c4.settlement.receipt_emit_verify` | **PARTIAL** | Local audit receipts only; no blockchain ledger / federation settlement; `#200`: local adapter = v0.3 ceiling |
 | C2 profile in CI | Conformance C2 | `run_c2` | GitHub Actions job `conformance-c2` (#117); local `aira-conformance` | **DONE** | C0/C1 remain primary gate; C2 is additional regression |
 
 ---
@@ -107,10 +109,10 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 |-------------|--------|----------------|-----------|--------|-------|
 | R0 Minimal Local Core | Book IV §23 R0 | `aira-core`, `aira-event`, `aira-artifact`, `aira-policy`, `aira-schema` | C0 + crate tests | **DONE** | |
 | R1 Minimal Operational Node | Book IV §23 R1 | `aira-flow`, `aira-cli`, basic CSUs, `.aira` layout | C1; `local_init_submit_status_and_artifact`; `run_alpha_acceptance`; `two_submits_allocate_distinct_problem_ids` | **DONE** | `config.node.profile = "C1"`; `#195` UUIDv7 nonce; leftover `run-counter` ignored |
-| R2 Local Protocol Node | Book IV §23 R2 | `aira-protocol` | `run_c2` + CI `conformance-c2` (#117) | **PARTIAL** | Partial C2 local; CI regression gate |
+| R2 Local Protocol Node | Book IV §23 R2 | `aira-protocol` | `run_c2` + CI `conformance-c2` (#117) | **PARTIAL** | Partial C2 local; CI regression gate; `#200`: local adapter = v0.3 ceiling |
 | R3 Federation-Capable Node | Book IV §23 R3 | join/leave + IO policy deny (#162) | federation tests; `federation_export_import_deny_by_default_audits` | **POST-MVP** | Local ceremony + deny-by-default export/import; not a federation runtime |
 | R4 Research-Capable Node | Book IV §23 R4 | RFC-P + `OperationalPlane` reject + `run_c5` | `c5.research.separation`; `c5.promotion.gate_reject`; RFC-0082/0083 | **RESEARCH** | Book V; local C5 scaffold + non-operational gate; not a research runtime; no RFC-P instance promoted |
-| Object / Artifact / Event stores | Book IV §6 | plane memory objects + node `SqliteObjectStore` (#158); CAS artifacts; file-chain events (#157) | `plane_memory_beside_node_sqlite_object_path`; `session_durable_file_chain_roundtrip`; core/artifact tests | **PARTIAL** | **H1 DONE** (`#154`–`#159`): durable events + SQLite path documented; plane drain still memory objects/events |
+| Object / Artifact / Event stores | Book IV §6 | plane memory objects + node `SqliteObjectStore` (#158); CAS artifacts; file-chain events (#157) | `plane_memory_beside_node_sqlite_object_path`; `session_durable_file_chain_roundtrip`; core/artifact tests | **PARTIAL** | **H1 DONE** (`#154`–`#159`): durable events + SQLite path documented; plane drain still memory objects/events; `#200`: local adapter = v0.3 ceiling; event-log authority `#203` |
 | Policy + Invariant + CSU runtime | Book IV §9–12 | matching crates | C0/C1 | **DONE** | |
 | Minimal operational flow submit→verify | Book IV §15 | `OperationalPlane` | C1 + demos | **DONE** | Reference-local only ([operational-plane.md](operational-plane.md)) |
 | Local HTTP API surface | Book IV §16 | `aira-node` `http/` | `http` module tests | **POST-MVP** | Roadmap M11; same reference plane |
@@ -341,7 +343,7 @@ Plan: [`phase-i-plan.md`](phase-i-plan.md). Consolidating RFC: [`AIRA-RFC-0078`]
 | QUEUE | Gate | Evidence (target) |
 |-------|------|-------------------|
 | #199 | Phase J wiring + contract | `phase_j_doc.rs`; `docs/phase-j-plan.md`; QUEUE `#199`–`#208` | **DONE** @ this PR |
-| #200 | Book II ceiling honesty | envelope/EP/AP/identity/discovery/CAP/CRP/settlement **PARTIAL**; local adapter = v0.3 ceiling | OPEN |
+| #200 | Book II ceiling honesty | envelope/EP/AP/identity/discovery/CAP/CRP/settlement **PARTIAL**; local adapter = v0.3 ceiling | **DONE** @ this PR |
 | #201 | Seal `object_store_access` | `mint` not a public CSU prelude API | OPEN |
 | #202 | VRA runtime B1-010 | C1 2+2 body matches `verified-result-artifact.schema.json` `required[]` | OPEN |
 | #203 | Event-log authority | reopen `event_tail` from `events/file-chain-log.json` | OPEN |
@@ -376,7 +378,7 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 **Phase I `#184`–`#198` DONE** @ RFC-0078 (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); **Reference v0.3-stable**; QUEUE I closed; no OPEN.
 
-**Phase J `#199` DONE** (не змінює anti-mission): Book-gap local remainder **IN PROGRESS**; [`phase-j-plan.md`](phase-j-plan.md); first OPEN `#200`; RFC-0096 id free until `#208`.
+**Phase J `#199` `#200` DONE** (не змінює anti-mission): Book-gap local remainder **IN PROGRESS**; [`phase-j-plan.md`](phase-j-plan.md); Book II local adapter = v0.3 ceiling; first OPEN `#201`; RFC-0096 id free until `#208`.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 

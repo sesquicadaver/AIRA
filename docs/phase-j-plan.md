@@ -1,6 +1,6 @@
 # Phase J — Book-gap local remainder (post-I)
 
-**Статус:** складено 2026-08-30; **IN PROGRESS** 2026-08-31 → QUEUE `#199` **DONE**; first OPEN `#200`.  
+**Статус:** складено 2026-08-30; **IN PROGRESS** 2026-08-31 → QUEUE `#199` `#200` **DONE**; first OPEN `#201`.  
 **Джерела:** матриця [`implementation-status.md`](implementation-status.md) Book 0–IV після RFC-0078; [`phase-i-plan.md`](phase-i-plan.md) §0.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase J `#199`–`#208`.  
 **Резерв RFC:** consolidating RFC-0096 (файл **не** створювати до `#208`).  
@@ -40,7 +40,7 @@ Phase I DONE (#198 / RFC-0078 / v0.3-stable)
 
 ## 2. Інваріанти
 
-1. Лінійність: `#N` після `#N-1`; перший OPEN зараз `#200`.
+1. Лінійність: `#N` після `#N-1`; перший OPEN зараз `#201`.
 2. Один атом = один PR.
 3. C0/C1 не послаблюються; C2 required; C3/C4/C5 не merge gates у J.
 4. Core ↛ node/peer/CSU; CSU ↛ CSU.
@@ -141,6 +141,6 @@ C1 path emits epistemic assessment.
 
 ```text
 #198 DONE (RFC-0078) → цей план активовано атомом `#199`.
-#199 wiring DONE; first OPEN `#200` (Book II ceiling honesty).
+#199 wiring DONE; `#200` Book II ceiling honesty DONE; first OPEN `#201` (Seal `object_store_access`).
 RFC-0096 файл лише в `#208`.
 ```
