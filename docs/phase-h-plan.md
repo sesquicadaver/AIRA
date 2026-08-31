@@ -149,4 +149,4 @@ status honesty
 
 Джерело пріоритетів: аудит `main` @ `b66bcf1` (P0–P2). Анти-місія README **ніколи** в QUEUE.
 
-`#183` DONE: Phase I активована. `#184`–`#198` **DONE** @ RFC-0078. QUEUE I closed. Phase J [`phase-j-plan.md`](phase-j-plan.md) **PLANNED** (не в QUEUE).
+`#183` DONE: Phase I активована. `#184`–`#198` **DONE** @ RFC-0078. QUEUE I closed. Phase J [`phase-j-plan.md`](phase-j-plan.md) **IN PROGRESS** (`#199` DONE; first OPEN `#200`).

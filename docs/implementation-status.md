@@ -2,7 +2,7 @@
 
 **Status:** **Reference v0.3-stable** (Analyze-233 / QUEUE `#198`; Phase I `#184`–`#198` **DONE** @ RFC-0078). Phase H **Reference v0.3** (`#152`–`#183` **DONE** @ RFC-0077) is the prior protocol-depth posture. Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (no OPEN; QUEUE I closed) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (I)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (QUEUE I closed; Phase J first OPEN `#200`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase J:** [`phase-j-plan.md`](phase-j-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (I); RFC-0096 reserved (`#208`)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -334,6 +334,25 @@ Plan: [`phase-h-plan.md`](phase-h-plan.md). Consolidating RFC: [`AIRA-RFC-0077`]
 
 Plan: [`phase-i-plan.md`](phase-i-plan.md). Consolidating RFC: [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (id **confirmed free** at `#184`).
 
+---
+
+## Phase J gates (IN PROGRESS)
+
+| QUEUE | Gate | Evidence (target) |
+|-------|------|-------------------|
+| #199 | Phase J wiring + contract | `phase_j_doc.rs`; `docs/phase-j-plan.md`; QUEUE `#199`–`#208` | **DONE** @ this PR |
+| #200 | Book II ceiling honesty | envelope/EP/AP/identity/discovery/CAP/CRP/settlement **PARTIAL**; local adapter = v0.3 ceiling | OPEN |
+| #201 | Seal `object_store_access` | `mint` not a public CSU prelude API | OPEN |
+| #202 | VRA runtime B1-010 | C1 2+2 body matches `verified-result-artifact.schema.json` `required[]` | OPEN |
+| #203 | Event-log authority | reopen `event_tail` from `events/file-chain-log.json` | OPEN |
+| #204 | Reduction catalog bind | durable reuse without manual `enable_ready_solution` | OPEN |
+| #205 | Semantic verify text.* | `text.echo` / `text.uppercase` wrong string not VERIFIED | OPEN |
+| #206 | Evidence primacy runtime | Claim vs Assumption reject in runtime | OPEN |
+| #207 | Epistemic emit on C1 | C1 2+2 writes epistemic-assessment artifact | OPEN |
+| #208 | Phase J docs + RFC-0096 | v0.3-strict; consolidating RFC-0096; QUEUE J closed | OPEN |
+
+Plan: [`phase-j-plan.md`](phase-j-plan.md). Consolidating RFC-0096 reserved (id **confirmed free**; file at `#208`).
+
 ## Explicitly not this reference (anti-mission + out-of-scope)
 
 README §«What AIRA is not» — **ніколи** в QUEUE / phase plans як «later phase»:
@@ -357,7 +376,7 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 **Phase I `#184`–`#198` DONE** @ RFC-0078 (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); **Reference v0.3-stable**; QUEUE I closed; no OPEN.
 
-**Phase J PLANNED** (не в QUEUE, не OPEN): Book-gap local remainder; [`phase-j-plan.md`](phase-j-plan.md); reserved `#199`–`#208`; RFC-0096 id free.
+**Phase J `#199` DONE** (не змінює anti-mission): Book-gap local remainder **IN PROGRESS**; [`phase-j-plan.md`](phase-j-plan.md); first OPEN `#200`; RFC-0096 id free until `#208`.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 

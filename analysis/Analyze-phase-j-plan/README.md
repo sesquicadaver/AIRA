@@ -1,11 +1,11 @@
-# Phase J plan fixation (post-I Book gaps)
+# Phase J plan (activated via #199)
 
 ## Decision
-User chose **plan_only**: `docs/phase-j-plan.md` as **PLANNED**. No QUEUE OPEN. No wiring atom.
+User asked to recreate the work plan from current data after the PLANNED-only snapshot. Wiring atom `#199` (Analyze-234) puts `#199`–`#208` on QUEUE; first OPEN `#200`.
 
 ## Deliverable
-- [`docs/phase-j-plan.md`](../../docs/phase-j-plan.md) — reserved atoms `#199`–`#208`
-- Cross-links: phase-i §0/§9, docs index, QUEUE mapping, implementation-status
+- [`docs/phase-j-plan.md`](../../docs/phase-j-plan.md) — **IN PROGRESS**; atoms `#199`–`#208`
+- QUEUE, README, `docs/README`, `implementation-status`, `phase_j_doc`
 
 ## Activation
-Not now. Future: `#199` wiring (same pattern as Analyze-219 / `#184`).
+Done: Analyze-234 / `#199`. Next: `#200` Book II ceiling honesty.
