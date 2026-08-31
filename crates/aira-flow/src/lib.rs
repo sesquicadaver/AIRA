@@ -9,6 +9,7 @@
 
 mod local;
 mod plane;
+mod reuse;
 
 pub use local::{
     init_node, load_config, node_config_present, open_node_sqlite_object_store,
@@ -143,7 +144,8 @@ mod tests {
     fn ready_solution_reuse_skips_execution() {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
-        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let arts = dir.path().join("arts");
+        let mut plane = OperationalPlane::open(&arts).unwrap();
         let ready_payload = json_bytes(&json!({
             "result": 4.0,
             "verification_status": "VERIFIED",
@@ -163,8 +165,16 @@ mod tests {
             .artifacts_mut()
             .publish(ready, &ready_payload)
             .unwrap();
-        plane.enable_ready_solution(ready_id).unwrap();
+        drop(plane);
 
+        let idx_path = dir.path().join("reuse-index.json");
+        let key = aira_object::ContentHash::sha256_bytes("Calculate 2 + 2".as_bytes());
+        let idx = serde_json::json!({
+            "by_content_hash": { key.as_str(): ready_id.as_str() }
+        });
+        std::fs::write(&idx_path, serde_json::to_string_pretty(&idx).unwrap()).unwrap();
+
+        let mut plane = OperationalPlane::open_with_reuse_index(&arts, &idx_path).unwrap();
         let out = plane.submit_problem("Calculate 2 + 2").unwrap();
         assert!(matches!(out, SubmitOutcome::Completed { .. }));
         assert!(!plane
@@ -175,6 +185,61 @@ mod tests {
             .events()
             .iter()
             .any(|e| e.event_type == EventType::ResultPublished));
+        assert!(plane
+            .events()
+            .iter()
+            .any(|e| e.payload_ref.as_deref() == Some("reuse:ready_solution")));
+    }
+
+    #[test]
+    fn plane_reduction_binds_reuse_index_without_enable_ready_solution() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let arts = dir.path().join("arts");
+        let mut plane = OperationalPlane::open(&arts).unwrap();
+        let ready_payload = json_bytes(&json!({
+            "result": 4.0,
+            "verification_status": "VERIFIED",
+            "confidence": 1.0,
+            "scope": { "scope_type": "local", "description": "catalog" },
+            "evidence_refs": [],
+            "provenance_refs": []
+        }));
+        let ready = make_artifact(
+            "aira:artifact:catalogready",
+            ArtifactType::ReadySolutionArtifact,
+            &ready_payload,
+            vec![],
+        );
+        let ready_id = ready.artifact_id.clone();
+        plane
+            .artifacts_mut()
+            .publish(ready, &ready_payload)
+            .unwrap();
+        drop(plane);
+
+        let idx_path = dir.path().join("problems").join("reuse-index.json");
+        std::fs::create_dir_all(idx_path.parent().unwrap()).unwrap();
+        let key = aira_object::ContentHash::sha256_bytes("Calculate 2 + 2".as_bytes());
+        std::fs::write(
+            &idx_path,
+            serde_json::to_string_pretty(&serde_json::json!({
+                "by_content_hash": { key.as_str(): ready_id.as_str() }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let mut plane = OperationalPlane::open_with_reuse_index(&arts, &idx_path).unwrap();
+        let out = plane.submit_problem("Calculate 2 + 2").unwrap();
+        assert!(matches!(out, SubmitOutcome::Completed { .. }));
+        assert!(
+            !plane
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleCreated),
+            "catalog bind must not escalate to execution"
+        );
         assert!(plane
             .events()
             .iter()

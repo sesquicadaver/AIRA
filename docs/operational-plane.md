@@ -25,10 +25,11 @@ OperationalPlane = локальна референсна демонстраці�
 - **Memory** object store + memory event log for the plane drain path; artifact CAS on disk under the node/CAS root.
 - Node layout also initializes **SQLite** at `.aira/db/aira.sqlite` (`SqliteObjectStore`) beside that memory store — see [local-node.md](local-node.md) §Object stores (#158). The plane does not auto-load SQLite objects.
 - Durable events for `LocalSession` `event_tail` use `events/file-chain-log.json` (`#157` / `#203`); plane drain still uses in-memory `MemoryEventLog`.
+- Reduction binds durable `problems/reuse-index.json` on `submit_problem` (`#204` / RFC-0100); no manual `enable_ready_solution`.
 - Safety bound on drain iterations (demo fail-closed), not a job scheduler.
 - C1 profile (`config.node.profile = "C1"`) for local MVP / alpha acceptance.
 
-Peer/federation/DHT live in `aira-peer` / protocol crates and are **out of this plane**. HTTP (`aira-node`) is a local JSON surface over `LocalSession`, which still uses this same reference plane. Research / promotion-candidate artifacts are **rejected** as plane input (`#179`, RFC-0082). Local C5 scaffold is `run_c5` (`#180`, RFC-0083). Phase I ([`phase-i-plan.md`](phase-i-plan.md), `#184`–`#198` **DONE** @ RFC-0078) does not change this reference-local role. Phase J ([`phase-j-plan.md`](phase-j-plan.md), first OPEN `#204`) does not promote this plane to production. Operational `created_at` uses the process Clock (`#193` / RFC-0091), not a fixed MVP timestamp.
+Peer/federation/DHT live in `aira-peer` / protocol crates and are **out of this plane**. HTTP (`aira-node`) is a local JSON surface over `LocalSession`, which still uses this same reference plane. Research / promotion-candidate artifacts are **rejected** as plane input (`#179`, RFC-0082). Local C5 scaffold is `run_c5` (`#180`, RFC-0083). Phase I ([`phase-i-plan.md`](phase-i-plan.md), `#184`–`#198` **DONE** @ RFC-0078) does not change this reference-local role. Phase J ([`phase-j-plan.md`](phase-j-plan.md), first OPEN `#205`) does not promote this plane to production. Operational `created_at` uses the process Clock (`#193` / RFC-0091), not a fixed MVP timestamp.
 
 ## Pointers
 

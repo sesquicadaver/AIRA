@@ -21,7 +21,7 @@ fn phase_j_plan_present() {
         "AIRA-RFC-0096",
         "confirmed free",
         "**IN PROGRESS**",
-        "first OPEN `#204`",
+        "first OPEN `#205`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-j-plan missing: {needle}");
@@ -60,8 +60,12 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #203 must be DONE after event-log authority"
     );
     assert!(
-        text.contains("| 204 | **OPEN**"),
-        "QUEUE first OPEN must be #204"
+        text.contains("| 204 | **DONE**"),
+        "QUEUE #204 must be DONE after Reduction catalog bind"
+    );
+    assert!(
+        text.contains("| 205 | **OPEN**"),
+        "QUEUE first OPEN must be #205"
     );
     assert!(
         !text.contains("| 199 | **OPEN**"),
@@ -84,10 +88,14 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #203 must not stay OPEN after event-log authority"
     );
     assert!(
-        !text.contains("| 204 | **DONE**"),
-        "QUEUE #204 must not be DONE at #203"
+        !text.contains("| 204 | **OPEN**"),
+        "QUEUE #204 must not stay OPEN after Reduction catalog bind"
     );
-    for n in 205..=208 {
+    assert!(
+        !text.contains("| 205 | **DONE**"),
+        "QUEUE #205 must not be DONE at #204"
+    );
+    for n in 206..=208 {
         let open = format!("| {n} | **OPEN**");
         assert!(text.contains(&open), "QUEUE missing {open}");
         let done = format!("| {n} | **DONE**");
@@ -100,7 +108,7 @@ fn phase_j_queue_wiring_199_done() {
         "J0 govern + Book II ceiling honesty",
         "J1 Book I remainder",
         "RFC-0096",
-        "first OPEN `#204`",
+        "first OPEN `#205`",
         "Analyze-234",
         "Analyze-235",
         "Analyze-236",
@@ -133,7 +141,7 @@ fn phase_j_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-j-plan.md"));
     assert!(docs.contains("#199"));
-    assert!(docs.contains("first OPEN `#204`"));
+    assert!(docs.contains("first OPEN `#205`"));
     assert!(docs.contains("#208"));
     assert!(docs.contains("**IN PROGRESS**"));
 }
@@ -143,7 +151,7 @@ fn phase_i_points_to_active_phase_j() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-i-plan.md")).unwrap();
     assert!(text.contains("phase-j-plan.md"));
     assert!(text.contains("#199"));
-    assert!(text.contains("first OPEN `#204`"));
+    assert!(text.contains("first OPEN `#205`"));
 }
 
 #[test]
@@ -323,9 +331,58 @@ fn phase_j_event_log_authority_203() {
     }
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 203 | **DONE**"));
-    assert!(queue.contains("| 204 | **OPEN**"));
-    assert!(!queue.contains("| 204 | **DONE**"));
+    assert!(queue.contains("| 204 | **DONE**"));
     let src = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/local.rs")).unwrap();
     assert!(src.contains("FileChainEventLog::open(self.paths.file_chain_event_log())"));
     assert!(src.contains("not `OperationalPlane`"));
+}
+
+#[test]
+fn phase_j_reduction_catalog_204() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0100",
+        "plane_reduction_binds_reuse_index_without_enable_ready_solution",
+        "open_with_reuse_index",
+        "| #204 | Reduction catalog bind",
+        "**DONE** @ this PR",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #204 missing: {needle}"
+        );
+    }
+    let rfc = std::fs::read_to_string(
+        repo_root().join("specs/rfc/AIRA-RFC-0100-reduction-catalog-bind.md"),
+    )
+    .expect("RFC-0100");
+    for needle in [
+        "#204",
+        "reuse-index",
+        "enable_ready_solution",
+        "submit_problem",
+    ] {
+        assert!(rfc.contains(needle), "RFC-0100 missing: {needle}");
+    }
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 204 | **DONE**"));
+    assert!(queue.contains("| 205 | **OPEN**"));
+    assert!(!queue.contains("| 205 | **DONE**"));
+    let plane = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/plane.rs")).unwrap();
+    assert!(plane.contains("open_with_reuse_index"));
+    assert!(plane.contains("bind_catalog_for_text"));
+    let test_src =
+        std::fs::read_to_string(repo_root().join("crates/aira-flow/src/lib.rs")).unwrap();
+    let ready_fn = test_src
+        .split("fn ready_solution_reuse_skips_execution")
+        .nth(1)
+        .unwrap()
+        .split("fn plane_reduction_binds")
+        .next()
+        .unwrap();
+    assert!(
+        !ready_fn.contains("enable_ready_solution"),
+        "ready_solution_reuse_skips_execution must not call enable_ready_solution"
+    );
 }
