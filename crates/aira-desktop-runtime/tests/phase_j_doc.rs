@@ -21,7 +21,7 @@ fn phase_j_plan_present() {
         "AIRA-RFC-0096",
         "confirmed free",
         "**IN PROGRESS**",
-        "first OPEN `#202`",
+        "first OPEN `#203`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-j-plan missing: {needle}");
@@ -52,8 +52,12 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #201 must be DONE after sealing object_store_access"
     );
     assert!(
-        text.contains("| 202 | **OPEN**"),
-        "QUEUE first OPEN must be #202"
+        text.contains("| 202 | **DONE**"),
+        "QUEUE #202 must be DONE after VRA runtime B1-010"
+    );
+    assert!(
+        text.contains("| 203 | **OPEN**"),
+        "QUEUE first OPEN must be #203"
     );
     assert!(
         !text.contains("| 199 | **OPEN**"),
@@ -67,7 +71,15 @@ fn phase_j_queue_wiring_199_done() {
         !text.contains("| 201 | **OPEN**"),
         "QUEUE #201 must not stay OPEN after Handle seal"
     );
-    for n in 203..=208 {
+    assert!(
+        !text.contains("| 202 | **OPEN**"),
+        "QUEUE #202 must not stay OPEN after VRA runtime B1-010"
+    );
+    assert!(
+        !text.contains("| 203 | **DONE**"),
+        "QUEUE #203 must not be DONE at #202"
+    );
+    for n in 204..=208 {
         let open = format!("| {n} | **OPEN**");
         assert!(text.contains(&open), "QUEUE missing {open}");
         let done = format!("| {n} | **DONE**");
@@ -80,7 +92,7 @@ fn phase_j_queue_wiring_199_done() {
         "J0 govern + Book II ceiling honesty",
         "J1 Book I remainder",
         "RFC-0096",
-        "first OPEN `#202`",
+        "first OPEN `#203`",
         "Analyze-234",
         "Analyze-235",
         "Analyze-236",
@@ -113,7 +125,7 @@ fn phase_j_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-j-plan.md"));
     assert!(docs.contains("#199"));
-    assert!(docs.contains("first OPEN `#202`"));
+    assert!(docs.contains("first OPEN `#203`"));
     assert!(docs.contains("#208"));
     assert!(docs.contains("**IN PROGRESS**"));
 }
@@ -123,7 +135,7 @@ fn phase_i_points_to_active_phase_j() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-i-plan.md")).unwrap();
     assert!(text.contains("phase-j-plan.md"));
     assert!(text.contains("#199"));
-    assert!(text.contains("first OPEN `#202`"));
+    assert!(text.contains("first OPEN `#203`"));
 }
 
 #[test]
@@ -211,5 +223,71 @@ fn phase_j_seal_object_store_access_201() {
     assert!(core.contains("features = [\"store-backend\"]"));
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 201 | **DONE**"));
-    assert!(!queue.contains("| 202 | **DONE**"));
+    assert!(queue.contains("| 202 | **DONE**"));
+}
+
+#[test]
+fn phase_j_vra_runtime_202() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0098",
+        "verified_result_body_has_b1_010_required_keys",
+        "missing_vra_required",
+        "| #202 | VRA runtime B1-010",
+        "**DONE** @ this PR",
+        "c1.pipeline.calculate_2_plus_2",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #202 missing: {needle}"
+        );
+    }
+    let rfc =
+        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0098-vra-runtime-b1-010.md"))
+            .expect("RFC-0098");
+    for needle in ["#202", "required[]", "calculate_2_plus_2", "B1-010"] {
+        assert!(rfc.contains(needle), "RFC-0098 missing: {needle}");
+    }
+    let schema = std::fs::read_to_string(
+        repo_root().join("schemas/result/verified-result-artifact.schema.json"),
+    )
+    .unwrap();
+    for key in [
+        "result_id",
+        "problem_statement_ref",
+        "context_ref",
+        "solution_refs",
+        "evidence_refs",
+        "verification_status",
+        "confidence",
+        "scope",
+        "provenance_refs",
+        "artifact_hash",
+        "signature",
+        "created_at",
+    ] {
+        assert!(
+            schema.contains(&format!("\"{key}\"")),
+            "schema missing {key}"
+        );
+    }
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 202 | **DONE**"));
+    assert!(queue.contains("| 203 | **OPEN**"));
+    assert!(!queue.contains("| 203 | **DONE**"));
+    let src =
+        std::fs::read_to_string(repo_root().join("csu/verification-basic/src/lib.rs")).unwrap();
+    for needle in [
+        "seal_vra_body",
+        "vra_binding_refs",
+        "result_id",
+        "problem_statement_ref",
+        "context_ref",
+        "solution_refs",
+        "artifact_hash",
+        "created_at",
+    ] {
+        assert!(src.contains(needle), "verification-basic missing {needle}");
+    }
 }

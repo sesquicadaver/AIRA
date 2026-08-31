@@ -95,6 +95,25 @@ mod tests {
         let (_d, bytes) = plane.artifacts().resolve(&verified_artifact_id).unwrap();
         let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(body["result"], json!(4.0));
+        for key in [
+            "result_id",
+            "problem_statement_ref",
+            "context_ref",
+            "solution_refs",
+            "evidence_refs",
+            "verification_status",
+            "confidence",
+            "scope",
+            "provenance_refs",
+            "artifact_hash",
+            "signature",
+            "created_at",
+        ] {
+            assert!(
+                body.get(key).is_some(),
+                "runtime VRA missing required {key}"
+            );
+        }
 
         for required in [
             EventType::ProblemSubmitted,

@@ -4,10 +4,12 @@
 //! `#187`: `math.eval.safe` is independently evaluated; a wrong finite result is not VERIFIED.
 
 use aira_artifact::ArtifactType;
-use aira_csu::support::{basic_manifest, json_bytes, make_artifact_as, make_event_as};
+use aira_csu::support::{
+    basic_manifest, json_bytes, make_artifact_as, make_event_as, mvp_timestamp,
+};
 use aira_csu::{Csu, CsuExecutionContext, CsuHandlerError, CsuManifest, CsuOutput, CsuType};
 use aira_event::{EventDescriptor, EventType};
-use aira_object::AiraRef;
+use aira_object::{canonical_json_bytes, signature_for_tenant, AiraRef, ContentHash};
 use serde_json::{json, Value};
 
 /// Deterministic verification CSU.
@@ -172,6 +174,72 @@ fn math_expression(
         .map(str::to_string)
 }
 
+/// Problem / context refs for a VRA: capsule body when CapsuleCompleted carries it, else event object_refs.
+fn vra_binding_refs(
+    event: &EventDescriptor,
+    ctx: &CsuExecutionContext<'_, '_>,
+) -> (String, String) {
+    let problem_fallback = event
+        .object_refs
+        .first()
+        .map(|r| r.as_str().to_string())
+        .unwrap_or_else(|| "aira:problem:unknown".into());
+    let context_fallback = String::from("aira:context:unresolved");
+    let Some(cap_id) = event.artifact_refs.get(1) else {
+        return (problem_fallback, context_fallback);
+    };
+    let Ok((_, bytes)) = ctx.resolve_artifact(cap_id) else {
+        return (problem_fallback, context_fallback);
+    };
+    let Ok(cap) = serde_json::from_slice::<Value>(&bytes) else {
+        return (problem_fallback, context_fallback);
+    };
+    let problem = cap
+        .get("problem_statement_ref")
+        .and_then(|v| v.as_str())
+        .unwrap_or(problem_fallback.as_str())
+        .to_string();
+    let context = cap
+        .get("context_ref")
+        .and_then(|v| v.as_str())
+        .unwrap_or(context_fallback.as_str())
+        .to_string();
+    (problem, context)
+}
+
+/// `artifact_hash` = SHA-256 of canonical JSON without hash/signature; `signature` over that hash string.
+fn seal_vra_body(
+    mut body: Value,
+    tenant_csu: &AiraRef,
+    publisher: &AiraRef,
+) -> Result<Value, CsuHandlerError> {
+    if let Some(obj) = body.as_object_mut() {
+        obj.remove("artifact_hash");
+        obj.remove("signature");
+    }
+    let bytes = canonical_json_bytes(&body).map_err(|e| CsuHandlerError {
+        message: e.to_string(),
+    })?;
+    let hash = ContentHash::sha256_bytes(&bytes);
+    let sig =
+        signature_for_tenant(tenant_csu, publisher, hash.as_str().as_bytes()).map_err(|e| {
+            CsuHandlerError {
+                message: e.to_string(),
+            }
+        })?;
+    let obj = body.as_object_mut().ok_or_else(|| CsuHandlerError {
+        message: "VRA body must be a JSON object".into(),
+    })?;
+    obj.insert("artifact_hash".into(), json!(hash.as_str()));
+    obj.insert(
+        "signature".into(),
+        serde_json::to_value(&sig).map_err(|e| CsuHandlerError {
+            message: e.to_string(),
+        })?,
+    );
+    Ok(body)
+}
+
 fn math_eval_matches_claimed(
     body: &Value,
     event: &EventDescriptor,
@@ -237,18 +305,29 @@ impl Csu for VerificationBasicCsu {
             return self.fail(ctx, event, "verification rejected output");
         }
 
-        let verified = json!({
-            "result": body.get("result").cloned().unwrap_or(Value::Null),
+        let (problem_ref, context_ref) = vra_binding_refs(event, ctx);
+        let vid = self.next_id("artifact");
+        let unsigned = json!({
+            "result_id": vid,
+            "problem_statement_ref": problem_ref,
+            "context_ref": context_ref,
+            "solution_refs": [output_id.as_str()],
+            "evidence_refs": [],
             "verification_status": "VERIFIED",
             "confidence": 1.0,
             "scope": { "scope_type": "local", "description": "verification-basic" },
+            "provenance_refs": [event.event_id.as_str(), output_id.as_str()],
+            "created_at": mvp_timestamp().as_str(),
             "source_output_ref": output_id.as_str(),
+            "result": body.get("result").cloned().unwrap_or(Value::Null),
             "artifact_kind": "VerifiedResultArtifact",
-            "evidence_refs": [],
-            "provenance_refs": [event.event_id.as_str(), output_id.as_str()]
         });
+        let verified = seal_vra_body(
+            unsigned,
+            &self.manifest.csu_id,
+            &self.manifest.publisher_identity,
+        )?;
         let payload = json_bytes(&verified);
-        let vid = self.next_id("artifact");
         let vdesc = make_artifact_as(
             self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
@@ -487,5 +566,96 @@ mod tests {
         );
         assert!(!is_verified(&outs));
         assert!(is_failed(&outs));
+    }
+
+    fn verified_payload(outs: &[CsuOutput]) -> Value {
+        for o in outs {
+            if let CsuOutput::Artifact {
+                descriptor,
+                payload,
+            } = o
+            {
+                if descriptor.artifact_type == ArtifactType::VerifiedResultArtifact {
+                    return serde_json::from_slice(payload).expect("vra json");
+                }
+            }
+        }
+        panic!("no VerifiedResultArtifact payload");
+    }
+
+    const B1_010_REQUIRED: &[&str] = &[
+        "result_id",
+        "problem_statement_ref",
+        "context_ref",
+        "solution_refs",
+        "evidence_refs",
+        "verification_status",
+        "confidence",
+        "scope",
+        "provenance_refs",
+        "artifact_hash",
+        "signature",
+        "created_at",
+    ];
+
+    #[test]
+    fn verified_result_body_has_b1_010_required_keys() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"math.eval.safe","expression":"2+2","result":4.0}),
+            vec![],
+        );
+        assert!(is_verified(&outs));
+        let vra = verified_payload(&outs);
+        for key in B1_010_REQUIRED {
+            assert!(vra.get(*key).is_some(), "missing required {key}");
+        }
+        assert_eq!(vra["result"], json!(4.0));
+        assert_eq!(
+            vra["problem_statement_ref"],
+            json!("aira:problem:01TESTPROBLEM")
+        );
+        assert_eq!(vra["context_ref"], json!("aira:context:unresolved"));
+        assert!(vra["artifact_hash"]
+            .as_str()
+            .unwrap()
+            .starts_with("sha256:"));
+        assert!(vra["signature"].get("signature_value").is_some());
+        assert_eq!(vra["signature"]["algorithm"], json!("ed25519"));
+    }
+
+    #[test]
+    fn verified_result_binds_refs_from_capsule() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap_body = json!({
+            "action": "math.eval.safe",
+            "expression": "2+2",
+            "problem_statement_ref": "aira:problem:fromcapsule",
+            "context_ref": "aira:artifact:ctxfromcapsule"
+        });
+        let cap_payload = json_bytes(&cap_body);
+        let cap = make_artifact(
+            "aira:artifact:capbind",
+            ArtifactType::ExecutionArtifact,
+            &cap_payload,
+            vec![],
+        );
+        let cap_id = cap.artifact_id.clone();
+        store.publish(cap, &cap_payload).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"math.eval.safe","result":4.0}),
+            vec![cap_id],
+        );
+        assert!(is_verified(&outs));
+        let vra = verified_payload(&outs);
+        assert_eq!(
+            vra["problem_statement_ref"],
+            json!("aira:problem:fromcapsule")
+        );
+        assert_eq!(vra["context_ref"], json!("aira:artifact:ctxfromcapsule"));
     }
 }

@@ -44,6 +44,29 @@ fn load_registry() -> Result<SchemaRegistry, ConformanceError> {
     SchemaRegistry::load(root.join("schemas")).map_err(|e| ConformanceError::Schema(e.to_string()))
 }
 
+/// B1-010: every `required[]` key from the VRA schema must be present on a runtime body.
+fn missing_vra_required(result: &Value) -> Result<(), String> {
+    let root =
+        aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")).map_err(|e| e.to_string())?;
+    let schema_text =
+        fs::read_to_string(root.join("schemas/result/verified-result-artifact.schema.json"))
+            .map_err(|e| e.to_string())?;
+    let schema: Value = serde_json::from_str(&schema_text).map_err(|e| e.to_string())?;
+    let required = schema
+        .get("required")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| "VRA schema missing required[]".to_string())?;
+    for key in required {
+        let Some(name) = key.as_str() else {
+            continue;
+        };
+        if result.get(name).is_none() {
+            return Err(format!("runtime VRA missing required {name}"));
+        }
+    }
+    Ok(())
+}
+
 /// Minimal operational pipeline: Calculate 2+2 → Verified Result.
 fn test_operational_pipeline(artifact_root: &Path) -> CaseResult {
     let id = "c1.pipeline.calculate_2_plus_2";
@@ -59,6 +82,9 @@ fn test_operational_pipeline(artifact_root: &Path) -> CaseResult {
             }
             if result.get("verification_status") != Some(&json!("VERIFIED")) {
                 return fail(id, "verification_status != VERIFIED");
+            }
+            if let Err(e) = missing_vra_required(&result) {
+                return fail(id, e);
             }
         }
         Ok(other) => return fail(id, format!("expected Completed, got {other:?}")),
@@ -193,6 +219,9 @@ fn test_verified_result_completeness(artifact_root: &Path) -> CaseResult {
         if result.get(key).is_none() {
             return fail(id, format!("missing field {key}"));
         }
+    }
+    if let Err(e) = missing_vra_required(&result) {
+        return fail(id, e);
     }
     match plane.artifacts().resolve(&verified_artifact_id) {
         Ok((desc, _)) => {
