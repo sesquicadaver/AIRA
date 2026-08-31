@@ -7,7 +7,7 @@
 //! `docs/operational-plane.md`.
 
 use std::collections::VecDeque;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use aira_artifact::{ArtifactStore, ArtifactType, CasArtifactStore};
 use aira_core::{MemoryObjectStore, ObjectStore};
@@ -64,6 +64,8 @@ pub struct OperationalPlane {
     seq: u64,
     run_nonce: String,
     ready_solutions: Vec<AiraRef>,
+    /// Durable reuse catalog (`reuse-index.json`). Bound at open; consulted on submit (#204).
+    reuse_index: Option<PathBuf>,
 }
 
 impl OperationalPlane {
@@ -129,7 +131,29 @@ impl OperationalPlane {
             seq: 1,
             run_nonce,
             ready_solutions,
+            reuse_index: None,
         })
+    }
+
+    /// Open with a durable reuse-index catalog. Reduction consults it on submit (#204).
+    ///
+    /// Does not require [`Self::enable_ready_solution`].
+    pub fn open_with_reuse_index(
+        root: impl AsRef<Path>,
+        reuse_index: impl AsRef<Path>,
+    ) -> Result<Self, FlowError> {
+        Self::open_with_reuse_index_nonce(root, reuse_index, "0")
+    }
+
+    /// [`Self::open_with_reuse_index`] plus a run nonce.
+    pub fn open_with_reuse_index_nonce(
+        root: impl AsRef<Path>,
+        reuse_index: impl AsRef<Path>,
+        run_nonce: impl Into<String>,
+    ) -> Result<Self, FlowError> {
+        let mut plane = Self::open_with_ready_nonce(root, vec![], run_nonce)?;
+        plane.reuse_index = Some(reuse_index.as_ref().to_path_buf());
+        Ok(plane)
     }
 
     pub fn objects(&self) -> &MemoryObjectStore {
@@ -153,6 +177,8 @@ impl OperationalPlane {
     }
 
     /// Seed a ready solution and rebuild Reduction handler (Issue #54).
+    ///
+    /// In-memory pre-seed. Durable catalog bind is [`Self::open_with_reuse_index`] (#204).
     pub fn enable_ready_solution(&mut self, ready_id: AiraRef) -> Result<(), FlowError> {
         self.ready_solutions.push(ready_id.clone());
         let mut reduction = ReductionBasicCsu::new().with_run_nonce(self.run_nonce.clone());
@@ -168,11 +194,29 @@ impl OperationalPlane {
         Ok(())
     }
 
+    /// Bind Reduction from the durable reuse-index for this problem text (#204).
+    fn bind_catalog_for_text(&mut self, text: &str) -> Result<(), FlowError> {
+        let Some(path) = &self.reuse_index else {
+            return Ok(());
+        };
+        let Some(id_str) =
+            crate::reuse::lookup_artifact_id(path, text).map_err(FlowError::Other)?
+        else {
+            return Ok(());
+        };
+        let id = AiraRef::parse(&id_str).map_err(map_obj)?;
+        if self.artifacts.resolve(&id).is_ok() {
+            self.enable_ready_solution(id)?;
+        }
+        Ok(())
+    }
+
     /// Submit a Problem Statement and drain the operational pipeline (#47–#52).
     pub fn submit_problem(&mut self, text: &str) -> Result<SubmitOutcome, FlowError> {
         if is_normative_split(text) {
             return self.emit_differentiated_field(text);
         }
+        self.bind_catalog_for_text(text)?;
 
         self.seq += 1;
         let problem_id =

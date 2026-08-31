@@ -33,7 +33,7 @@ When a Ready Solution Artifact is registered with Reduction-basic, the plane pre
 
 `LocalSession` also persists `problems/reuse-index.json` (QUEUE `#189` / RFC-0087): a second submit of the same problem text reuses the stored verified artifact without Execution.
 
-Evidence in tests: `ready_solution_reuse_skips_execution` (pre-seed) and `local_session_repeat_problem_reuses_without_execution` (durable index) in `aira-flow` — `CapsuleCompleted` is absent; payload may carry `reuse:ready_solution`.
+Evidence in tests: `ready_solution_reuse_skips_execution` and `plane_reduction_binds_reuse_index_without_enable_ready_solution` (durable `reuse-index.json`, no `enable_ready_solution`) and `local_session_repeat_problem_reuses_without_execution` in `aira-flow` — `CapsuleCompleted` is absent; payload may carry `reuse:ready_solution`.
 
 ## Failure-to-evidence
 

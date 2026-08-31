@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use aira_artifact::{ArtifactStore, CasArtifactStore};
 use aira_core::SqliteObjectStore;
 use aira_event::{EventDescriptor, FileChainEventLog};
-use aira_object::{AiraRef, ContentHash};
+use aira_object::AiraRef;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -187,12 +187,6 @@ pub struct ProblemRecord {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct ProblemsIndex {
     problems: BTreeMap<String, ProblemRecord>,
-}
-
-/// Persistent map: problem-text `sha256:` hash → reusable artifact id.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-struct ReuseIndex {
-    by_content_hash: BTreeMap<String, String>,
 }
 
 /// JSON event log file shape (`events/event-log.json`).
@@ -392,7 +386,7 @@ pub fn init_node(root: impl AsRef<Path>) -> Result<NodePaths, FlowError> {
         write_json(&paths.problems_index(), &ProblemsIndex::default())?;
     }
     if !paths.reuse_index().exists() {
-        write_json(&paths.reuse_index(), &ReuseIndex::default())?;
+        write_json(&paths.reuse_index(), &crate::reuse::ReuseIndex::default())?;
     }
     if !paths.csu_registry().exists() {
         fs::write(paths.csu_registry(), "[]\n").map_err(|e| FlowError::Other(e.to_string()))?;
@@ -474,10 +468,13 @@ impl LocalSession {
     pub fn submit_problem(&mut self, text: &str) -> Result<SubmitOutcome, FlowError> {
         bind_node_crypto(&self.paths.root)?;
         // Allocate a fresh nonce and rebuild plane so ids never collide with prior runs.
-        // Seed Reduction from the durable reuse index for this problem text (#189).
+        // Reduction binds durable reuse-index on submit (#189 / #204); no manual enable_ready_solution.
         let nonce = alloc_run_nonce();
-        let ready = load_ready_solutions_for_text(&self.paths, text)?;
-        self.plane = OperationalPlane::open_with_ready_nonce(self.paths.artifacts(), ready, nonce)?;
+        self.plane = OperationalPlane::open_with_reuse_index_nonce(
+            self.paths.artifacts(),
+            self.paths.reuse_index(),
+            nonce,
+        )?;
         let outcome = self.plane.submit_problem(text)?;
         self.persist_after_submit(text, &outcome)?;
         Ok(outcome)
@@ -647,26 +644,7 @@ fn bind_node_crypto(root: &Path) -> Result<(), FlowError> {
 }
 
 fn problem_text_hash(text: &str) -> String {
-    ContentHash::sha256_bytes(text.as_bytes())
-        .as_str()
-        .to_string()
-}
-
-fn load_ready_solutions_for_text(paths: &NodePaths, text: &str) -> Result<Vec<AiraRef>, FlowError> {
-    if !paths.reuse_index().exists() {
-        return Ok(vec![]);
-    }
-    let idx = read_json::<ReuseIndex>(&paths.reuse_index())?;
-    let Some(id) = idx.by_content_hash.get(&problem_text_hash(text)) else {
-        return Ok(vec![]);
-    };
-    let parsed = AiraRef::parse(id).map_err(|e| FlowError::Other(e.to_string()))?;
-    let store = CasArtifactStore::open(paths.artifacts())
-        .map_err(|e| FlowError::Artifact(e.to_string()))?;
-    match store.resolve(&parsed) {
-        Ok(_) => Ok(vec![parsed]),
-        Err(_) => Ok(vec![]),
-    }
+    crate::reuse::problem_text_hash(text)
 }
 
 fn record_reuse_index(
@@ -674,11 +652,7 @@ fn record_reuse_index(
     text: &str,
     verified_artifact_id: &AiraRef,
 ) -> Result<(), FlowError> {
-    let mut idx = if paths.reuse_index().exists() {
-        read_json::<ReuseIndex>(&paths.reuse_index())?
-    } else {
-        ReuseIndex::default()
-    };
+    let mut idx = crate::reuse::load_reuse_index(&paths.reuse_index()).map_err(FlowError::Other)?;
     idx.by_content_hash
         .entry(problem_text_hash(text))
         .or_insert_with(|| verified_artifact_id.as_str().to_string());

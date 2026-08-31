@@ -2,7 +2,7 @@
 
 **Status:** **Reference v0.3-stable** (Analyze-233 / QUEUE `#198`; Phase I `#184`–`#198` **DONE** @ RFC-0078). Phase H **Reference v0.3** (`#152`–`#183` **DONE** @ RFC-0077) is the prior protocol-depth posture. Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (QUEUE I closed; Phase J first OPEN `#204`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase J:** [`phase-j-plan.md`](phase-j-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (I); [`AIRA-RFC-0097`](../specs/rfc/AIRA-RFC-0097-seal-object-store-access.md) (`#201`); [`AIRA-RFC-0098`](../specs/rfc/AIRA-RFC-0098-vra-runtime-b1-010.md) (`#202`); [`AIRA-RFC-0099`](../specs/rfc/AIRA-RFC-0099-event-log-authority.md) (`#203`); RFC-0096 reserved (`#208`)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (QUEUE I closed; Phase J first OPEN `#205`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase J:** [`phase-j-plan.md`](phase-j-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (I); [`AIRA-RFC-0097`](../specs/rfc/AIRA-RFC-0097-seal-object-store-access.md) (`#201`); [`AIRA-RFC-0098`](../specs/rfc/AIRA-RFC-0098-vra-runtime-b1-010.md) (`#202`); [`AIRA-RFC-0099`](../specs/rfc/AIRA-RFC-0099-event-log-authority.md) (`#203`); [`AIRA-RFC-0100`](../specs/rfc/AIRA-RFC-0100-reduction-catalog-bind.md) (`#204`); RFC-0096 reserved (`#208`)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -91,7 +91,7 @@ Operator entry: [README](../README.md) → [specs/](../specs/) → this file →
 | No direct CSU→CSU call | B3-004; firewall | `csu/*` crates; `scripts/dep_firewall.py` | firewall CI; `isolation_baseline_*` | **DONE** | |
 | Failure Event + Evidence | B3-007/008; FAIL-* | evidence-basic + plane inject | `c1.failure.to_evidence`; `failure_creates_failure_evidence` | **DONE** | C1 SHOULD evidence: implemented |
 | Context CSU (no final Result) | CTX-001 | `csu/context-basic` | `problem_submitted_creates_context_not_result` | **DONE** | |
-| Reduction / reuse before execute | RED-001; OP-002 | `csu/reduction-basic` | `ready_solution_reuse_skips_execution`; `creates_negative_lookup_and_capsule_when_no_reuse`; `local_session_repeat_problem_reuses_without_execution` | **PARTIAL** | `#185` honesty (audit `b66bcf1`): in-memory catalog + pre-seeded `enable_ready_solution`; `LocalSession::submit_problem` rebuilt plane with `vec![]`. `#189` / RFC-0087: `problems/reuse-index.json` keyed by text hash; repeat LocalSession submit reuses without execution. Knowledge catalog still unused |
+| Reduction / reuse before execute | RED-001; OP-002 | `csu/reduction-basic` | `ready_solution_reuse_skips_execution`; `plane_reduction_binds_reuse_index_without_enable_ready_solution`; `open_with_reuse_index`; `creates_negative_lookup_and_capsule_when_no_reuse`; `local_session_repeat_problem_reuses_without_execution` | **DONE** | `#204` / RFC-0100: `LocalSession::submit_problem` binds `reuse-index.json`; no manual `enable_ready_solution`. Knowledge-vec still unused |
 | Execution CSU authorized capsules | EXE-001 | `csu/execution-basic` | `math_eval_safe_completes`; `rejects_shell_action` | **DONE** | Safe math/text only |
 | Verification CSU | VER-001 | `csu/verification-basic` | `verifies_math_output_as_verified_result`; `wrong_finite_math_result_is_not_verified`; `math_expression_from_capsule_artifact` | **PARTIAL** | `#185` honesty (audit `b66bcf1`): previously `is_finite()` only. `#187` / RFC-0085: independent `math_eval_safe` vs claimed result; wrong finite (e.g. 2+2→5) is not **VERIFIED**. text.echo/uppercase still presence-only |
 | Evidence CSU | EVD-001 | `csu/evidence-basic` | crate + C1 failure path | **DONE** | Does not assign Epistemic Status |
@@ -347,7 +347,7 @@ Plan: [`phase-i-plan.md`](phase-i-plan.md). Consolidating RFC: [`AIRA-RFC-0078`]
 | #201 | Seal `object_store_access` | `mint` not a public CSU prelude API; RFC-0097; `store-backend` | **DONE** @ this PR |
 | #202 | VRA runtime B1-010 | C1 2+2 body matches `verified-result-artifact.schema.json` `required[]`; RFC-0098 | **DONE** @ this PR |
 | #203 | Event-log authority | reopen `event_tail` from `events/file-chain-log.json`; RFC-0099 | **DONE** @ this PR |
-| #204 | Reduction catalog bind | durable reuse without manual `enable_ready_solution` | OPEN |
+| #204 | Reduction catalog bind | durable reuse without manual `enable_ready_solution`; RFC-0100 | **DONE** @ this PR |
 | #205 | Semantic verify text.* | `text.echo` / `text.uppercase` wrong string not VERIFIED | OPEN |
 | #206 | Evidence primacy runtime | Claim vs Assumption reject in runtime | OPEN |
 | #207 | Epistemic emit on C1 | C1 2+2 writes epistemic-assessment artifact | OPEN |
@@ -378,7 +378,7 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 **Phase I `#184`–`#198` DONE** @ RFC-0078 (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); **Reference v0.3-stable**; QUEUE I closed; no OPEN.
 
-**Phase J `#199` `#200` `#201` `#202` `#203` DONE** (не змінює anti-mission): Book-gap local remainder **IN PROGRESS**; [`phase-j-plan.md`](phase-j-plan.md); Book II local adapter = v0.3 ceiling; Opaque Handle sealed (`#201` / RFC-0097); VRA runtime B1-010 (`#202` / RFC-0098); event-log authority (`#203` / RFC-0099); first OPEN `#204`; RFC-0096 id free until `#208`.
+**Phase J `#199` `#200` `#201` `#202` `#203` `#204` DONE** (не змінює anti-mission): Book-gap local remainder **IN PROGRESS**; [`phase-j-plan.md`](phase-j-plan.md); Book II local adapter = v0.3 ceiling; Opaque Handle sealed (`#201` / RFC-0097); VRA runtime B1-010 (`#202` / RFC-0098); event-log authority (`#203` / RFC-0099); Reduction catalog bind (`#204` / RFC-0100); first OPEN `#205`; RFC-0096 id free until `#208`.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
