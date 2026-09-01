@@ -76,6 +76,7 @@ impl AiraDesktopApp {
             }
             let has_ids = view.problem_id.is_some()
                 || view.verified_artifact_id.is_some()
+                || view.execution_artifact_id.is_some()
                 || view.field_artifact_id.is_some();
             if has_ids {
                 egui::CollapsingHeader::new(l.work_ids)
@@ -91,6 +92,12 @@ impl AiraDesktopApp {
                         if let Some(id) = &view.verified_artifact_id {
                             ui.horizontal(|ui| {
                                 ui.strong(l.work_artifact_id);
+                                ui.monospace(id);
+                            });
+                        }
+                        if let Some(id) = &view.execution_artifact_id {
+                            ui.horizontal(|ui| {
+                                ui.strong(l.work_execution_id);
                                 ui.monospace(id);
                             });
                         }

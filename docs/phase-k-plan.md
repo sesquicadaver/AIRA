@@ -1,9 +1,9 @@
 # Phase K — Local LLM Execution CSU (post-J, post-D)
 
-**Статус:** складено 2026-09-01; **IN PROGRESS** → QUEUE `#209`–`#216`.  
+**Статус:** складено 2026-09-01; **DONE** 2026-09-01 → QUEUE `#209`–`#216` (RFC-0104). QUEUE K closed.  
 **Джерела:** рішення розробника 2026-09-01 (Desktop Work лишається C1 `execution-basic`; inventory Phase D **DONE**; Book I §2 LLM Backend = зовнішній CSU); [`EVO-3.md`](../EVO-3.md) §8–§10; [`phase-d-plan.md`](phase-d-plan.md) (D7 DONE; execution bind не входив у D); [`phase-j-plan.md`](phase-j-plan.md) QUEUE J closed.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase K `#209`–`#216`.  
-**Closure RFC:** [`AIRA-RFC-0104`](../specs/rfc/) — id **confirmed free** at `#209` (файл у `#216`).  
+**Closure RFC:** [`AIRA-RFC-0104`](../specs/rfc/AIRA-RFC-0104-phase-k-local-llm-csu.md) — id **confirmed free** at `#209`.  
 **Не змінює:** анти-місію README (ядро **не** хост інференсу; **не** GPU marketplace); C0/C1 `Calculate 2 + 2`; `aira-core`; canonical `llm_model_id`.
 
 ## 0. Навіщо (після J і D, не замість них)
@@ -80,7 +80,7 @@ K0 govern (wiring)
 | `#213` | K4 | Plane register | `OperationalPlane`/`LocalSession` диспатчить generate на `execution-llm`; mock completes in tests **DONE** (RFC-0108) | activate gate (#214) |
 | `#214` | K5 | Activate gate | generate без Phase D activate → CapsuleFailed + Evidence, не VERIFIED **DONE** (RFC-0109) | process backend (#215) |
 | `#215` | K6 | Process backend | argv/local CLI adapter; missing binary fail-closed; тести лишають mock **DONE** (RFC-0110) | Desktop RFC (#216) |
-| `#216` | K7 | Desktop + RFC-0104 | Work tab generate path; consolidating RFC-0104; QUEUE K closed | — |
+| `#216` | K7 | Desktop + RFC-0104 | Work tab generate path; consolidating RFC-0104; QUEUE K closed **DONE** | — |
 
 ```text
 #209 K0
@@ -105,12 +105,13 @@ aira-core has no inference.
 
 ## 7. RFC
 
-- Consolidating (`#216`): `AIRA-RFC-0104` — id **confirmed free** at `#209`.
+- Consolidating (`#216`): [`AIRA-RFC-0104`](../specs/rfc/AIRA-RFC-0104-phase-k-local-llm-csu.md) — id **confirmed free** at `#209`.
 - Per-atom RFC-S/RFC-D/RFC-E у `#210`–`#215` (окремі файли; не RFC-A).
 
 ## 8. Activation rule
 
 ```text
 #208 DONE (RFC-0096) + рішення розробника 2026-09-01 → цей план активовано атомом `#209`.
-#209 wiring DONE; `#210` generate-local schema DONE (RFC-0105); `#211` execution-llm mock DONE (RFC-0106); `#212` Reduction bind DONE (RFC-0107); `#213` Plane register DONE (RFC-0108); `#214` Activate gate DONE (RFC-0109); `#215` Process backend DONE (RFC-0110); first OPEN `#216`.
+#209 wiring DONE; `#210` generate-local schema DONE (RFC-0105); `#211` execution-llm mock DONE (RFC-0106); `#212` Reduction bind DONE (RFC-0107); `#213` Plane register DONE (RFC-0108); `#214` Activate gate DONE (RFC-0109); `#215` Process backend DONE (RFC-0110); `#216` Desktop + RFC-0104 DONE.
+QUEUE K closed.
 ```

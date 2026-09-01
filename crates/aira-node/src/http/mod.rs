@@ -145,6 +145,80 @@ mod tests {
         assert!(v.get("result").is_some());
     }
 
+    fn write_activated_pointer(root: &std::path::Path) {
+        let models = root.join("models");
+        std::fs::create_dir_all(&models).unwrap();
+        std::fs::write(
+            models.join("activated.latest.json"),
+            json!({
+                "updated_at": "2026-09-01T00:00:00Z",
+                "model_ref": "aira:model:test-activated",
+                "cache_path": "models/cache/slot/weights.gguf",
+                "verified_path": "models/verified/slot/weights.gguf",
+                "content_hash": "sha256:00",
+                "evidence_artifact_id": "aira:artifact:acq-activate:00"
+            })
+            .to_string(),
+        )
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn http_post_problem_generate_without_activate_is_not_verified() {
+        let (_dir, state) = setup();
+        let (st, v) = json_req(
+            router(state),
+            "POST",
+            "/v1/problems",
+            Some(
+                json!({"text": "Summarize the local Problem Statement without leaving the host."}),
+            ),
+        )
+        .await;
+        assert_eq!(st, StatusCode::INTERNAL_SERVER_ERROR, "{v}");
+        assert_ne!(v.get("status").and_then(|s| s.as_str()), Some("completed"));
+        assert_ne!(
+            v.get("result")
+                .and_then(|r| r.get("verification_status"))
+                .and_then(|s| s.as_str()),
+            Some("VERIFIED")
+        );
+        assert!(v.get("error").is_some(), "{v}");
+    }
+
+    #[tokio::test]
+    async fn http_post_problem_generate_with_activate_is_executed_not_verified() {
+        let (_dir, state) = setup();
+        write_activated_pointer(&state.root);
+        let (st, v) = json_req(
+            router(state),
+            "POST",
+            "/v1/problems",
+            Some(
+                json!({"text": "Summarize the local Problem Statement without leaving the host."}),
+            ),
+        )
+        .await;
+        assert_eq!(st, StatusCode::OK, "{v}");
+        assert_eq!(v["status"], "executed");
+        assert_eq!(v["result"]["action"], "text.generate.local");
+        assert!(v["result"]["result"]
+            .as_str()
+            .unwrap()
+            .starts_with("mock-generate:"));
+        assert!(v.get("verified_artifact_id").is_none());
+        assert!(v["execution_artifact_id"]
+            .as_str()
+            .unwrap()
+            .starts_with("aira:"));
+        assert_ne!(
+            v.get("result")
+                .and_then(|r| r.get("verification_status"))
+                .and_then(|s| s.as_str()),
+            Some("VERIFIED")
+        );
+    }
+
     #[tokio::test]
     async fn http_problem_status_roundtrip() {
         let (_dir, state) = setup();

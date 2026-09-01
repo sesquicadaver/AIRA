@@ -16,6 +16,7 @@ pub struct WorkResultView {
     pub verification_status: Option<String>,
     pub problem_id: Option<String>,
     pub verified_artifact_id: Option<String>,
+    pub execution_artifact_id: Option<String>,
     pub field_artifact_id: Option<String>,
     /// Full original JSON (collapsed Details in the GUI).
     pub details_json: String,
@@ -44,6 +45,7 @@ pub fn format_work_result(v: &Value) -> WorkResultView {
     let status = opt_str(v, "status").unwrap_or_else(|| "unknown".into());
     let problem_id = opt_str(v, "problem_id");
     let verified_artifact_id = opt_str(v, "verified_artifact_id");
+    let execution_artifact_id = opt_str(v, "execution_artifact_id");
     let field_artifact_id = opt_str(v, "field_artifact_id");
     let verification_status = verification_status_of(v);
     let answer = extract_answer(v).map(summarize_value).unwrap_or_default();
@@ -54,6 +56,7 @@ pub fn format_work_result(v: &Value) -> WorkResultView {
         verification_status,
         problem_id,
         verified_artifact_id,
+        execution_artifact_id,
         field_artifact_id,
         details_json,
     }
@@ -230,6 +233,59 @@ mod tests {
             Some("aira:artifact:field")
         );
         assert!(!view.human_lead().contains("sha256"));
+    }
+
+    /// `/v1/problems` generate-local envelope (`SubmitOutcome::Executed`, not a VRA).
+    fn executed_generate_local_like_http() -> Value {
+        json!({
+            "status": "executed",
+            "problem_id": "aira:problem:01GENERATELOCALDEADBEEF",
+            "execution_artifact_id": "aira:artifact:sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "result": {
+                "result": "mock-generate:Summarize the local Problem Statement without leaving the host.",
+                "action": "text.generate.local",
+                "backend": "mock"
+            }
+        })
+    }
+
+    #[test]
+    fn executed_generate_local_leads_with_result_not_verified() {
+        let v = executed_generate_local_like_http();
+        let view = format_work_result(&v);
+        let lead = view.human_lead();
+
+        assert!(
+            view.answer.contains("mock-generate:"),
+            "generate answer must surface result.result, got {:?}",
+            view.answer
+        );
+        assert_eq!(view.status, "executed");
+        assert!(
+            view.verification_status.is_none(),
+            "generate-local must not fake VERIFIED, got {:?}",
+            view.verification_status
+        );
+        assert!(
+            lead.contains("executed"),
+            "lead must show executed: {lead:?}"
+        );
+        assert!(
+            !lead.contains("VERIFIED"),
+            "human lead must not claim VERIFIED for generate-local: {lead:?}"
+        );
+        for needle in ["sha256:", "DEADBEEF", "execution_artifact_id"] {
+            assert!(
+                !lead.contains(needle),
+                "human lead must not require reading {needle}: {lead:?}"
+            );
+        }
+        assert!(view.details_json.contains("text.generate.local"));
+        assert_eq!(
+            view.execution_artifact_id.as_deref(),
+            Some("aira:artifact:sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+        );
+        assert!(view.verified_artifact_id.is_none());
     }
 
     #[test]

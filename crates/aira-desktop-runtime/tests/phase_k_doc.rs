@@ -1,6 +1,6 @@
 //! Phase K wiring contract (#209), generate-local schema (#210), execution-llm mock (#211),
 //! Reduction generate-local bind (#212), plane register execution-llm (#213),
-//! activate gate (#214), process backend (#215).
+//! activate gate (#214), process backend (#215), Desktop generate + RFC-0104 (#216).
 
 use std::path::PathBuf;
 
@@ -31,7 +31,8 @@ fn phase_k_plan_present() {
         "execution-llm",
         "AIRA-RFC-0104",
         "confirmed free",
-        "IN PROGRESS",
+        "**DONE**",
+        "QUEUE K closed",
         "GPU marketplace",
         "LLM runtime (Core як inference host)",
         "Calculate 2 + 2",
@@ -80,6 +81,14 @@ fn phase_k_queue_wiring_209_done() {
         "QUEUE #215 must be DONE after process backend"
     );
     assert!(
+        text.contains("| 216 | **DONE**"),
+        "QUEUE #216 must be DONE after Desktop RFC-0104"
+    );
+    assert!(
+        text.contains("QUEUE K closed"),
+        "QUEUE K must be closed after #216"
+    );
+    assert!(
         !text.contains("| 210 | **OPEN**"),
         "QUEUE #210 must not stay OPEN after generate-local schema"
     );
@@ -103,12 +112,10 @@ fn phase_k_queue_wiring_209_done() {
         !text.contains("| 215 | **OPEN**"),
         "QUEUE #215 must not stay OPEN after process backend"
     );
-    for n in 216..=216 {
-        let open = format!("| {n} | **OPEN**");
-        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #215");
-        let done = format!("| {n} | **DONE**");
-        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #215");
-    }
+    assert!(
+        !text.contains("| 216 | **OPEN**"),
+        "QUEUE #216 must not stay OPEN after RFC-0104"
+    );
     assert!(
         !text.contains("| 209 | **OPEN**"),
         "QUEUE #209 must not stay OPEN after wiring"
@@ -134,10 +141,14 @@ fn phase_k_readme_and_docs_index() {
     assert!(readme.contains("#213"));
     assert!(readme.contains("#214"));
     assert!(readme.contains("#215"));
+    assert!(readme.contains("#216"));
+    assert!(readme.contains("RFC-0104") || readme.contains("AIRA-RFC-0104"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-k-plan.md"));
     assert!(docs.contains("#209"));
     assert!(docs.contains("#216"));
+    assert!(docs.contains("QUEUE K closed"));
+    assert!(docs.contains("RFC-0104") || docs.contains("AIRA-RFC-0104"));
 }
 
 #[test]
@@ -148,11 +159,35 @@ fn phase_j_points_to_active_phase_k() {
 }
 
 #[test]
-fn phase_k_rfc_0104_id_free() {
+fn phase_k_rfc_0104_present() {
     let hits = rfc_0104_hits();
+    assert_eq!(hits.len(), 1, "exactly one RFC-0104 file, found {hits:?}");
+    let path = repo_root().join("specs/rfc").join(&hits[0]);
+    let text = std::fs::read_to_string(&path).expect("RFC-0104 file");
+    for needle in [
+        "AIRA-RFC-0104",
+        "0104",
+        "Phase K",
+        "#209",
+        "#210",
+        "#211",
+        "#212",
+        "#213",
+        "#214",
+        "#215",
+        "#216",
+        "QUEUE K closed",
+        "GPU marketplace",
+        "LLM-in-Core",
+        "blockchain",
+        "POST /v1/problems",
+        "confirmed free",
+    ] {
+        assert!(text.contains(needle), "RFC-0104 missing: {needle}");
+    }
     assert!(
-        hits.is_empty(),
-        "RFC-0104 must stay free until #216, found {hits:?}"
+        text.contains("## 5. Non-Goals"),
+        "RFC-0104 must list anti-mission as Non-Goals, not as deliverables"
     );
 }
 
@@ -184,11 +219,6 @@ fn phase_k_generate_local_210() {
     let rfc_text = std::fs::read_to_string(&rfc).unwrap();
     assert!(rfc_text.contains("aira:schema:execution:generate-local:0.1"));
     assert!(rfc_text.contains("text.generate.local"));
-    let hits = rfc_0104_hits();
-    assert!(
-        hits.is_empty(),
-        "RFC-0104 must stay free until #216, found {hits:?}"
-    );
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 210 | **DONE**"));
     assert!(!queue.contains("| 210 | **OPEN**"));
@@ -249,11 +279,6 @@ fn phase_k_execution_llm_211() {
     );
     let rfc = repo_root().join("specs/rfc/AIRA-RFC-0106-execution-llm-mock.md");
     assert!(rfc.is_file(), "RFC-0106 must exist for #211");
-    let hits = rfc_0104_hits();
-    assert!(
-        hits.is_empty(),
-        "RFC-0104 must stay free until #216, found {hits:?}"
-    );
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 211 | **DONE**"));
     assert!(!queue.contains("| 211 | **OPEN**"));
@@ -304,11 +329,6 @@ fn phase_k_reduction_bind_212() {
     let rfc_text = std::fs::read_to_string(&rfc).unwrap();
     assert!(rfc_text.contains("text.generate.local"));
     assert!(rfc_text.contains("math.eval.safe"));
-    let hits = rfc_0104_hits();
-    assert!(
-        hits.is_empty(),
-        "RFC-0104 must stay free until #216, found {hits:?}"
-    );
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 212 | **DONE**"));
     assert!(queue.contains("| 213 | **DONE**"));
@@ -359,11 +379,6 @@ fn phase_k_plane_register_213() {
     assert!(rfc_text.contains("execution-llm"));
     assert!(rfc_text.contains("MockBackend"));
     assert!(rfc_text.contains("math.eval.safe"));
-    let hits = rfc_0104_hits();
-    assert!(
-        hits.is_empty(),
-        "RFC-0104 must stay free until #216, found {hits:?}"
-    );
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 213 | **DONE**"));
     assert!(queue.contains("| 214 | **DONE**"));
@@ -447,11 +462,6 @@ fn phase_k_activate_gate_214() {
     assert!(rfc_text.contains("ModelActivateGate"));
     assert!(rfc_text.contains("CapsuleFailed"));
     assert!(rfc_text.contains("Phase D"));
-    let hits = rfc_0104_hits();
-    assert!(
-        hits.is_empty(),
-        "RFC-0104 must stay free until #216, found {hits:?}"
-    );
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 214 | **DONE**"));
     assert!(queue.contains("| 215 | **DONE**"));
@@ -560,15 +570,11 @@ fn phase_k_process_backend_215() {
     assert!(rfc_text.contains("CapsuleFailed"));
     assert!(rfc_text.contains("MockBackend"));
     assert!(rfc_text.contains("loopback"));
-    let hits = rfc_0104_hits();
-    assert!(
-        hits.is_empty(),
-        "RFC-0104 must stay free until #216, found {hits:?}"
-    );
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 215 | **DONE**"));
-    assert!(queue.contains("| 216 | **OPEN**"));
+    assert!(queue.contains("| 216 | **DONE**"));
     assert!(!queue.contains("| 215 | **OPEN**"));
+    assert!(!queue.contains("| 216 | **OPEN**"));
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
     assert!(status.contains("| #215 | Process backend"));
@@ -578,4 +584,54 @@ fn phase_k_process_backend_215() {
         !local.contains("execution-llm") && !local.contains("ExecutionLlmCsu"),
         "LocalSession must not independently construct execution-llm (plane.rs is the register site)"
     );
+}
+
+#[test]
+fn phase_k_desktop_generate_216() {
+    let work =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/work_view.rs")).unwrap();
+    for needle in [
+        "fn format_work_result",
+        "fn executed_generate_local_leads_with_result_not_verified",
+        "execution_artifact_id",
+        "text.generate.local",
+        "executed",
+        "must not fake VERIFIED",
+    ] {
+        assert!(work.contains(needle), "work_view.rs missing: {needle}");
+    }
+    let i18n =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/i18n.rs")).unwrap();
+    assert!(i18n.contains("text.generate.local"));
+    assert!(i18n.contains("never fakes VERIFIED") || i18n.contains("не підробляє VERIFIED"));
+    assert!(i18n.contains("execution-basic"));
+    let http =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop-runtime/src/node_http.rs"))
+            .unwrap();
+    assert!(http.contains("POST /v1/problems"));
+    assert!(http.contains("posts_generate_local_and_parses_executed_not_verified"));
+    let node_http =
+        std::fs::read_to_string(repo_root().join("crates/aira-node/src/http/mod.rs")).unwrap();
+    assert!(node_http.contains("http_post_problem_generate_without_activate_is_not_verified"));
+    assert!(node_http.contains("http_post_problem_generate_with_activate_is_executed_not_verified"));
+    let rfc = repo_root().join("specs/rfc/AIRA-RFC-0104-phase-k-local-llm-csu.md");
+    assert!(rfc.is_file(), "RFC-0104 must exist for #216");
+    let rfc_text = std::fs::read_to_string(&rfc).unwrap();
+    assert!(rfc_text.contains("AIRA-RFC-0104"));
+    assert!(rfc_text.contains("#209"));
+    assert!(rfc_text.contains("#216"));
+    assert!(rfc_text.contains("QUEUE K closed"));
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 216 | **DONE**"));
+    assert!(!queue.contains("| 216 | **OPEN**"));
+    assert!(queue.contains("QUEUE K closed"));
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #216 | Desktop + RFC-0104"));
+    assert!(status.contains("RFC-0104"));
+    assert!(status.contains("Phase K `#209`–`#216` **DONE**"));
+    let gui = std::fs::read_to_string(repo_root().join("docs/desktop-gui.md")).unwrap();
+    assert!(gui.contains("generate-local") || gui.contains("text.generate.local"));
+    let analyze = repo_root().join("analysis/Analyze-251/LIVING_SPEC_MATRIX.md");
+    assert!(analyze.is_file(), "Analyze-251 living spec missing");
 }
