@@ -21,7 +21,7 @@ fn phase_j_plan_present() {
         "AIRA-RFC-0096",
         "confirmed free",
         "**IN PROGRESS**",
-        "first OPEN `#207`",
+        "first OPEN `#208`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-j-plan missing: {needle}");
@@ -72,8 +72,12 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #206 must be DONE after evidence primacy runtime"
     );
     assert!(
-        text.contains("| 207 | **OPEN**"),
-        "QUEUE first OPEN must be #207"
+        text.contains("| 207 | **DONE**"),
+        "QUEUE #207 must be DONE after epistemic emit on C1"
+    );
+    assert!(
+        text.contains("| 208 | **OPEN**"),
+        "QUEUE first OPEN must be #208"
     );
     assert!(
         !text.contains("| 199 | **OPEN**"),
@@ -108,8 +112,12 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #206 must not stay OPEN after evidence primacy runtime"
     );
     assert!(
-        !text.contains("| 207 | **DONE**"),
-        "QUEUE #207 must not be DONE at #206"
+        !text.contains("| 207 | **OPEN**"),
+        "QUEUE #207 must not stay OPEN after epistemic emit on C1"
+    );
+    assert!(
+        !text.contains("| 208 | **DONE**"),
+        "QUEUE #208 must not be DONE at #207"
     );
     for n in 208..=208 {
         let open = format!("| {n} | **OPEN**");
@@ -124,7 +132,7 @@ fn phase_j_queue_wiring_199_done() {
         "J0 govern + Book II ceiling honesty",
         "J1 Book I remainder",
         "RFC-0096",
-        "first OPEN `#207`",
+        "first OPEN `#208`",
         "Analyze-234",
         "Analyze-235",
         "Analyze-236",
@@ -157,7 +165,7 @@ fn phase_j_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-j-plan.md"));
     assert!(docs.contains("#199"));
-    assert!(docs.contains("first OPEN `#207`"));
+    assert!(docs.contains("first OPEN `#208`"));
     assert!(docs.contains("#208"));
     assert!(docs.contains("**IN PROGRESS**"));
 }
@@ -167,7 +175,7 @@ fn phase_i_points_to_active_phase_j() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-i-plan.md")).unwrap();
     assert!(text.contains("phase-j-plan.md"));
     assert!(text.contains("#199"));
-    assert!(text.contains("first OPEN `#207`"));
+    assert!(text.contains("first OPEN `#208`"));
 }
 
 #[test]
@@ -435,7 +443,7 @@ fn phase_j_semantic_verify_text_205() {
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 205 | **DONE**"));
     assert!(queue.contains("| 206 | **DONE**"));
-    assert!(!queue.contains("| 207 | **DONE**"));
+    assert!(queue.contains("| 207 | **DONE**"));
     let src =
         std::fs::read_to_string(repo_root().join("csu/verification-basic/src/lib.rs")).unwrap();
     assert!(src.contains("text_matches_claimed"));
@@ -477,11 +485,50 @@ fn phase_j_evidence_primacy_206() {
     }
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 206 | **DONE**"));
-    assert!(queue.contains("| 207 | **OPEN**"));
-    assert!(!queue.contains("| 207 | **DONE**"));
+    assert!(queue.contains("| 207 | **DONE**"));
+    assert!(!queue.contains("| 207 | **OPEN**"));
     let src = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/plane.rs")).unwrap();
     assert!(src.contains("reject_claim_without_evidence"));
     assert!(src.contains("EvidencePrimacy"));
     let evi = std::fs::read_to_string(repo_root().join("csu/evidence-basic/src/lib.rs")).unwrap();
     assert!(evi.contains("claim_lacks_required_evidence"));
+}
+
+#[test]
+fn phase_j_epistemic_emit_207() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0103",
+        "calculate_two_plus_two_emits_epistemic_assessment",
+        "| #207 | Epistemic emit on C1",
+        "**DONE** @ this PR",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #207 missing: {needle}"
+        );
+    }
+    let rfc =
+        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0103-epistemic-emit-c1.md"))
+            .expect("RFC-0103");
+    for needle in [
+        "#207",
+        "epistemic-assessment",
+        "submit_problem",
+        "full Epistemic plane",
+    ] {
+        assert!(rfc.contains(needle), "RFC-0103 missing: {needle}");
+    }
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 207 | **DONE**"));
+    assert!(queue.contains("| 208 | **OPEN**"));
+    assert!(!queue.contains("| 208 | **DONE**"));
+    let plane = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/plane.rs")).unwrap();
+    assert!(plane.contains("pipeline produced no epistemic assessment"));
+    let c1 =
+        std::fs::read_to_string(repo_root().join("crates/aira-conformance/src/c1.rs")).unwrap();
+    assert!(c1.contains("latest_epistemic_assessment"));
+    assert!(c1.contains("aira:schema:epistemic:assessment:0.1"));
+    assert!(c1.contains("EpistemicBasicCsu"));
 }

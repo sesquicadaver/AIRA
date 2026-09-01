@@ -27,10 +27,11 @@ OperationalPlane = локальна референсна демонстраці�
 - Durable events for `LocalSession` `event_tail` use `events/file-chain-log.json` (`#157` / `#203`); plane drain still uses in-memory `MemoryEventLog`.
 - Reduction binds durable `problems/reuse-index.json` on `submit_problem` (`#204` / RFC-0100); no manual `enable_ready_solution`.
 - `text.echo` / `text.uppercase` claimed strings must match capsule/output `expression` (`#205` / RFC-0101).
+- Completed `submit_problem` emits epistemic-assessment (`#207` / RFC-0103); not a full Epistemic plane.
 - Safety bound on drain iterations (demo fail-closed), not a job scheduler.
 - C1 profile (`config.node.profile = "C1"`) for local MVP / alpha acceptance.
 
-Peer/federation/DHT live in `aira-peer` / protocol crates and are **out of this plane**. HTTP (`aira-node`) is a local JSON surface over `LocalSession`, which still uses this same reference plane. Research / promotion-candidate artifacts are **rejected** as plane input (`#179`, RFC-0082). `claim_kind: Claim` without evidence_refs is **rejected** (`#206`, RFC-0102). Local C5 scaffold is `run_c5` (`#180`, RFC-0083). Phase I ([`phase-i-plan.md`](phase-i-plan.md), `#184`–`#198` **DONE** @ RFC-0078) does not change this reference-local role. Phase J ([`phase-j-plan.md`](phase-j-plan.md), first OPEN `#207`) does not promote this plane to production. Operational `created_at` uses the process Clock (`#193` / RFC-0091), not a fixed MVP timestamp.
+Peer/federation/DHT live in `aira-peer` / protocol crates and are **out of this plane**. HTTP (`aira-node`) is a local JSON surface over `LocalSession`, which still uses this same reference plane. Research / promotion-candidate artifacts are **rejected** as plane input (`#179`, RFC-0082). `claim_kind: Claim` without evidence_refs is **rejected** (`#206`, RFC-0102). Local C5 scaffold is `run_c5` (`#180`, RFC-0083). Phase I ([`phase-i-plan.md`](phase-i-plan.md), `#184`–`#198` **DONE** @ RFC-0078) does not change this reference-local role. Phase J ([`phase-j-plan.md`](phase-j-plan.md), first OPEN `#208`) does not promote this plane to production. Operational `created_at` uses the process Clock (`#193` / RFC-0091), not a fixed MVP timestamp.
 
 ## Pointers
 
