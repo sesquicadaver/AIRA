@@ -1,4 +1,5 @@
-//! Phase K wiring contract (#209), generate-local schema (#210), execution-llm mock (#211).
+//! Phase K wiring contract (#209), generate-local schema (#210), execution-llm mock (#211),
+//! Reduction generate-local bind (#212).
 
 use std::path::PathBuf;
 
@@ -62,6 +63,10 @@ fn phase_k_queue_wiring_209_done() {
         "QUEUE #211 must be DONE after execution-llm mock"
     );
     assert!(
+        text.contains("| 212 | **DONE**"),
+        "QUEUE #212 must be DONE after Reduction generate-local bind"
+    );
+    assert!(
         !text.contains("| 210 | **OPEN**"),
         "QUEUE #210 must not stay OPEN after generate-local schema"
     );
@@ -69,11 +74,15 @@ fn phase_k_queue_wiring_209_done() {
         !text.contains("| 211 | **OPEN**"),
         "QUEUE #211 must not stay OPEN after execution-llm mock"
     );
-    for n in 212..=216 {
+    assert!(
+        !text.contains("| 212 | **OPEN**"),
+        "QUEUE #212 must not stay OPEN after Reduction generate-local bind"
+    );
+    for n in 213..=216 {
         let open = format!("| {n} | **OPEN**");
-        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #211");
+        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #212");
         let done = format!("| {n} | **DONE**");
-        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #211");
+        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #212");
     }
     assert!(
         !text.contains("| 209 | **OPEN**"),
@@ -96,6 +105,7 @@ fn phase_k_readme_and_docs_index() {
     assert!(readme.contains("#209"));
     assert!(readme.contains("#210"));
     assert!(readme.contains("#211"));
+    assert!(readme.contains("#212"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-k-plan.md"));
     assert!(docs.contains("#209"));
@@ -218,12 +228,67 @@ fn phase_k_execution_llm_211() {
     );
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 211 | **DONE**"));
-    assert!(queue.contains("| 212 | **OPEN**"));
     assert!(!queue.contains("| 211 | **OPEN**"));
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
     assert!(status.contains("| #211 | `execution-llm` CSU + mock"));
     assert!(status.contains("**DONE** @ this PR"));
+    let flow = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/local.rs")).unwrap();
+    assert!(
+        !flow.contains("execution-llm") && !flow.contains("ExecutionLlmCsu"),
+        "must not register execution-llm on OperationalPlane (#213)"
+    );
+}
+
+#[test]
+fn phase_k_reduction_bind_212() {
+    let cargo = repo_root().join("csu/reduction-basic/Cargo.toml");
+    let lib = repo_root().join("csu/reduction-basic/src/lib.rs");
+    assert!(cargo.is_file(), "reduction-basic Cargo.toml missing");
+    assert!(lib.is_file(), "reduction-basic src/lib.rs missing");
+    let cargo_text = std::fs::read_to_string(&cargo).unwrap();
+    assert!(
+        cargo_text.contains("name = \"aira-csu-reduction-basic\""),
+        "workspace crate name must be aira-csu-reduction-basic"
+    );
+    assert!(
+        !cargo_text.contains("execution-llm"),
+        "reduction-basic must not Cargo-dep execution-llm (CSU ↛ CSU)"
+    );
+    let lib_text = std::fs::read_to_string(&lib).unwrap();
+    for needle in [
+        "fn catalog_action",
+        "text.generate.local",
+        "aira:schema:execution:generate-local:0.1",
+        "fn calculate_2_plus_2_binds_math_eval_safe",
+        "fn non_math_prompt_binds_generate_local",
+        "math.eval.safe",
+        "text.echo",
+        "text.uppercase",
+    ] {
+        assert!(
+            lib_text.contains(needle),
+            "reduction-basic lib missing: {needle}"
+        );
+    }
+    let rfc = repo_root().join("specs/rfc/AIRA-RFC-0107-reduction-generate-local.md");
+    assert!(rfc.is_file(), "RFC-0107 must exist for #212");
+    let rfc_text = std::fs::read_to_string(&rfc).unwrap();
+    assert!(rfc_text.contains("text.generate.local"));
+    assert!(rfc_text.contains("math.eval.safe"));
+    let hits = rfc_0104_hits();
+    assert!(
+        hits.is_empty(),
+        "RFC-0104 must stay free until #216, found {hits:?}"
+    );
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 212 | **DONE**"));
+    assert!(queue.contains("| 213 | **OPEN**"));
+    assert!(!queue.contains("| 212 | **OPEN**"));
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #212 | Reduction bind"));
+    assert!(status.contains("RFC-0107"));
     let flow = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/local.rs")).unwrap();
     assert!(
         !flow.contains("execution-llm") && !flow.contains("ExecutionLlmCsu"),

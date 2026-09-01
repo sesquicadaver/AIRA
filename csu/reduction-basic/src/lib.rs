@@ -1,13 +1,86 @@
 //! Reduction-basic CSU (Issue #42).
 //!
 //! Prefers Ready Solution / Knowledge reuse; otherwise Negative Lookup + Execution Capsule.
+//!
+//! QUEUE `#212`: catalog bind is by action/capability **string**. Echo and uppercase keep
+//! their existing binds. `Calculate 2 + 2` stays [`ACTION_MATH_EVAL_SAFE`]. Any other
+//! non-math statement binds [`ACTION_GENERATE_LOCAL`] (RFC-0105 payload). This crate does
+//! **not** import execution CSUs (CSU ↛ CSU). Plane dispatch of generate is `#213`.
 
 use aira_artifact::ArtifactType;
-use aira_csu::support::{basic_manifest, json_bytes, make_artifact_as, make_event_as};
+use aira_csu::support::{
+    basic_manifest, json_bytes, local_signature_over, make_artifact_as, make_event_as,
+};
 use aira_csu::{Csu, CsuExecutionContext, CsuHandlerError, CsuManifest, CsuOutput, CsuType};
 use aira_event::{EventDescriptor, EventType};
 use aira_object::AiraRef;
-use serde_json::json;
+use serde_json::{json, Map, Value};
+
+/// Safe arithmetic action (C1 `Calculate 2 + 2` / `c1.pipeline.calculate_2_plus_2`).
+pub const ACTION_MATH_EVAL_SAFE: &str = "math.eval.safe";
+/// Existing echo catalog entry.
+pub const ACTION_TEXT_ECHO: &str = "text.echo";
+/// Existing uppercase catalog entry.
+pub const ACTION_TEXT_UPPERCASE: &str = "text.uppercase";
+/// Host-local generate action (RFC-0105). Selected here; executed by execution-llm in `#213`.
+pub const ACTION_GENERATE_LOCAL: &str = "text.generate.local";
+/// Payload `$id` for generate-local CustomArtifact content.
+pub const PAYLOAD_SCHEMA_GENERATE_LOCAL: &str = "aira:schema:execution:generate-local:0.1";
+
+/// Bind a Problem Statement to a catalog action without importing execution CSUs.
+pub fn catalog_action(statement: &str) -> &'static str {
+    let lower = statement.to_lowercase();
+    if lower.contains("echo") {
+        ACTION_TEXT_ECHO
+    } else if lower.contains("upper") {
+        ACTION_TEXT_UPPERCASE
+    } else if is_math_eval_safe(statement) {
+        ACTION_MATH_EVAL_SAFE
+    } else {
+        ACTION_GENERATE_LOCAL
+    }
+}
+
+/// True for C1-style `Calculate …` with a digit, or a bare arithmetic expression.
+fn is_math_eval_safe(statement: &str) -> bool {
+    let lower = statement.to_lowercase();
+    let has_digit = statement.chars().any(|c| c.is_ascii_digit());
+    if lower.contains("calculate") && has_digit {
+        return true;
+    }
+    let cleaned: String = statement.chars().filter(|c| !c.is_whitespace()).collect();
+    !cleaned.is_empty()
+        && has_digit
+        && cleaned
+            .chars()
+            .all(|c| c.is_ascii_digit() || matches!(c, '+' | '-' | '*' | '/' | '(' | ')' | '.'))
+}
+
+/// RFC-0105 generate-local payload (CustomArtifact content). Extra capsule fields would
+/// fail `additionalProperties: false` / execution-llm `deny_unknown_fields` in `#213`.
+fn generate_local_payload(problem_ref: &AiraRef, prompt: &str, provenance: &AiraRef) -> Value {
+    let mut body = Map::new();
+    body.insert(
+        "payload_schema".into(),
+        json!(PAYLOAD_SCHEMA_GENERATE_LOCAL),
+    );
+    body.insert("action".into(), json!(ACTION_GENERATE_LOCAL));
+    body.insert("prompt".into(), json!(prompt));
+    body.insert("problem_statement_ref".into(), json!(problem_ref.as_str()));
+    body.insert(
+        "constraints".into(),
+        json!({ "network": "none", "shell": false }),
+    );
+    body.insert("provenance_refs".into(), json!([provenance.as_str()]));
+    let for_sign = Value::Object(body.clone());
+    let bytes = serde_json::to_vec(&for_sign).expect("generate-local sign body");
+    let sig = local_signature_over(&bytes);
+    body.insert(
+        "signature".into(),
+        serde_json::to_value(&sig).expect("signature json"),
+    );
+    Value::Object(body)
+}
 
 /// Local reduction / reuse CSU.
 pub struct ReductionBasicCsu {
@@ -187,50 +260,58 @@ impl Csu for ReductionBasicCsu {
 
         // Execution capsule (needed)
         let statement = event.payload_ref.clone().unwrap_or_default();
-        let action = if statement.to_lowercase().contains("echo") {
-            "text.echo"
-        } else if statement.to_lowercase().contains("upper") {
-            "text.uppercase"
-        } else {
-            "math.eval.safe"
-        };
-        let expr = if action == "math.eval.safe" {
-            // naive extract: use payload or default 2+2
-            if statement.contains('+') || statement.contains('*') {
-                statement
-                    .split_whitespace()
-                    .filter(|t| {
-                        t.chars()
-                            .any(|c| c.is_ascii_digit() || "+-*/()".contains(c))
-                    })
-                    .collect::<Vec<_>>()
-                    .join("")
+        let action = catalog_action(&statement);
+        let (capsule, artifact_type) = if action == ACTION_GENERATE_LOCAL {
+            let prompt = if statement.is_empty() {
+                problem_ref.as_str().to_string()
             } else {
-                "2+2".into()
-            }
+                statement.clone()
+            };
+            (
+                generate_local_payload(&problem_ref, &prompt, &event.event_id),
+                ArtifactType::CustomArtifact,
+            )
         } else {
-            statement.clone()
+            let expr = if action == ACTION_MATH_EVAL_SAFE {
+                // naive extract: use payload or default 2+2
+                if statement.contains('+') || statement.contains('*') {
+                    statement
+                        .split_whitespace()
+                        .filter(|t| {
+                            t.chars()
+                                .any(|c| c.is_ascii_digit() || "+-*/()".contains(c))
+                        })
+                        .collect::<Vec<_>>()
+                        .join("")
+                } else {
+                    "2+2".into()
+                }
+            } else {
+                statement.clone()
+            };
+            (
+                json!({
+                    "capsule_id": format!("aira:capsule:red{}", self.seq),
+                    "problem_statement_ref": problem_ref.as_str(),
+                    "context_ref": context_ref.as_str(),
+                    "action": action,
+                    "expression": expr,
+                    "required_capabilities": [action],
+                    "input_artifact_refs": [context_ref.as_str()],
+                    "constraints": { "network": "none", "shell": false },
+                    "policy_refs": ["aira:policy:default"],
+                    "provenance_refs": [event.event_id.as_str()]
+                }),
+                ArtifactType::ExecutionArtifact,
+            )
         };
-
-        let capsule = json!({
-            "capsule_id": format!("aira:capsule:red{}", self.seq),
-            "problem_statement_ref": problem_ref.as_str(),
-            "context_ref": context_ref.as_str(),
-            "action": action,
-            "expression": expr,
-            "required_capabilities": [action],
-            "input_artifact_refs": [context_ref.as_str()],
-            "constraints": { "network": "none", "shell": false },
-            "policy_refs": ["aira:policy:default"],
-            "provenance_refs": [event.event_id.as_str()]
-        });
         let cap_payload = json_bytes(&capsule);
         let cap_id = self.next_id("artifact");
         let cap_desc = make_artifact_as(
             self.manifest.csu_id.clone(),
             self.manifest.publisher_identity.clone(),
             &cap_id,
-            ArtifactType::ExecutionArtifact,
+            artifact_type,
             &cap_payload,
             vec![event.event_id.clone(), neg_desc.artifact_id.clone()],
         )
@@ -299,13 +380,7 @@ mod tests {
     use aira_csu::support::make_event as mk;
     use aira_event::MemoryEventLog;
 
-    #[test]
-    fn version_is_semver_like() {
-        assert!(!crate_version().is_empty());
-    }
-
-    #[test]
-    fn creates_negative_lookup_and_capsule_when_no_reuse() {
+    fn reduce(statement: &str) -> Vec<CsuOutput> {
         let mut csu = ReductionBasicCsu::new();
         let mut log = MemoryEventLog::new();
         let dir = tempfile::tempdir().unwrap();
@@ -322,9 +397,61 @@ mod tests {
             vec![AiraRef::parse("aira:problem:01TESTPROBLEM").unwrap()],
             vec![AiraRef::parse("aira:artifact:ctx1").unwrap()],
             vec![],
-            Some("Calculate 2 + 2".into()),
+            Some(statement.into()),
         );
-        let outs = csu.on_event(&ev, &mut ctx).unwrap();
+        csu.on_event(&ev, &mut ctx).unwrap()
+    }
+
+    fn capsule_action(outs: &[CsuOutput]) -> String {
+        outs.iter()
+            .find_map(|o| match o {
+                CsuOutput::Event(e) if e.event_type == EventType::CapsuleCreated => {
+                    e.payload_ref.clone()
+                }
+                _ => None,
+            })
+            .expect("CapsuleCreated")
+    }
+
+    fn capsule_json(outs: &[CsuOutput]) -> (ArtifactType, Value) {
+        outs.iter()
+            .find_map(|o| match o {
+                CsuOutput::Artifact {
+                    descriptor,
+                    payload,
+                } if descriptor.artifact_type == ArtifactType::ExecutionArtifact
+                    || descriptor.artifact_type == ArtifactType::CustomArtifact =>
+                {
+                    Some((
+                        descriptor.artifact_type,
+                        serde_json::from_slice(payload).unwrap(),
+                    ))
+                }
+                _ => None,
+            })
+            .expect("capsule artifact")
+    }
+
+    #[test]
+    fn version_is_semver_like() {
+        assert!(!crate_version().is_empty());
+    }
+
+    #[test]
+    fn catalog_action_splits_math_echo_upper_and_generate() {
+        assert_eq!(catalog_action("Calculate 2 + 2"), ACTION_MATH_EVAL_SAFE);
+        assert_eq!(catalog_action("2+2"), ACTION_MATH_EVAL_SAFE);
+        assert_eq!(catalog_action("echo hello"), ACTION_TEXT_ECHO);
+        assert_eq!(catalog_action("uppercase foo"), ACTION_TEXT_UPPERCASE);
+        assert_eq!(
+            catalog_action("Summarize the local Problem Statement without leaving the host."),
+            ACTION_GENERATE_LOCAL
+        );
+    }
+
+    #[test]
+    fn creates_negative_lookup_and_capsule_when_no_reuse() {
+        let outs = reduce("Calculate 2 + 2");
         assert!(outs.iter().any(|o| matches!(
             o,
             CsuOutput::Artifact { descriptor, .. }
@@ -338,5 +465,54 @@ mod tests {
             o,
             CsuOutput::Event(e) if e.event_type == EventType::ReductionCompleted
         )));
+        assert_eq!(capsule_action(&outs), ACTION_MATH_EVAL_SAFE);
+    }
+
+    #[test]
+    fn calculate_2_plus_2_binds_math_eval_safe() {
+        let outs = reduce("Calculate 2 + 2");
+        assert_eq!(capsule_action(&outs), ACTION_MATH_EVAL_SAFE);
+        let (ty, body) = capsule_json(&outs);
+        assert_eq!(ty, ArtifactType::ExecutionArtifact);
+        assert_eq!(body["action"], json!(ACTION_MATH_EVAL_SAFE));
+        assert_eq!(body["expression"], json!("2+2"));
+        assert_eq!(body["constraints"]["network"], json!("none"));
+        assert_eq!(body["constraints"]["shell"], json!(false));
+        assert_ne!(body["action"], json!(ACTION_GENERATE_LOCAL));
+    }
+
+    #[test]
+    fn non_math_prompt_binds_generate_local() {
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let outs = reduce(prompt);
+        assert_eq!(capsule_action(&outs), ACTION_GENERATE_LOCAL);
+        let (ty, body) = capsule_json(&outs);
+        assert_eq!(ty, ArtifactType::CustomArtifact);
+        assert_eq!(body["payload_schema"], json!(PAYLOAD_SCHEMA_GENERATE_LOCAL));
+        assert_eq!(body["action"], json!(ACTION_GENERATE_LOCAL));
+        assert_eq!(body["prompt"], json!(prompt));
+        assert_eq!(body["constraints"]["network"], json!("none"));
+        assert_eq!(body["constraints"]["shell"], json!(false));
+        assert!(body.get("signature").is_some());
+        assert!(body.get("gpu_id").is_none());
+        assert!(body.get("expression").is_none());
+        let root = aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let reg = aira_schema::SchemaRegistry::load(root.join("schemas")).unwrap();
+        reg.validate(PAYLOAD_SCHEMA_GENERATE_LOCAL, &body).unwrap();
+    }
+
+    #[test]
+    fn echo_and_uppercase_keep_existing_binds() {
+        let echo = reduce("echo hello");
+        assert_eq!(capsule_action(&echo), ACTION_TEXT_ECHO);
+        let (ty, body) = capsule_json(&echo);
+        assert_eq!(ty, ArtifactType::ExecutionArtifact);
+        assert_eq!(body["action"], json!(ACTION_TEXT_ECHO));
+
+        let upper = reduce("uppercase foo");
+        assert_eq!(capsule_action(&upper), ACTION_TEXT_UPPERCASE);
+        let (ty, body) = capsule_json(&upper);
+        assert_eq!(ty, ArtifactType::ExecutionArtifact);
+        assert_eq!(body["action"], json!(ACTION_TEXT_UPPERCASE));
     }
 }

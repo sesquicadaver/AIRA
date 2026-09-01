@@ -25,7 +25,7 @@
 | Quit | stop node + close window |
 | Autostart | Linux: XDG `~/.config/autostart/aira-desktop.desktop` (`Exec=aira-desktop --from-autostart`); macOS: LaunchAgent + `--from-autostart`; Windows: Startup `AIRA Desktop.bat` + `--from-autostart` |
 
-**Model layer (not in this GUI yet):** Core does not host inference. Local models are Artifacts + Capabilities (`aira models scan|list|activate` — Phase D). Binding a local backend as an **Execution CSU** is Phase K [`phase-k-plan.md`](phase-k-plan.md) (`#209`–`#211` DONE; first OPEN `#212`). This Desktop slice still uses C1 `execution-basic` until `#213`+.
+**Model layer (not in this GUI yet):** Core does not host inference. Local models are Artifacts + Capabilities (`aira models scan|list|activate` — Phase D). Binding a local backend as an **Execution CSU** is Phase K [`phase-k-plan.md`](phase-k-plan.md) (`#209`–`#212` DONE; first OPEN `#213`). This Desktop slice still uses C1 `execution-basic` until `#213`+.
 
 After profile/`peer_listen`/relay TTL change: **Stop → Start** to apply peer supervise.
 
