@@ -21,7 +21,7 @@ fn phase_j_plan_present() {
         "AIRA-RFC-0096",
         "confirmed free",
         "**IN PROGRESS**",
-        "first OPEN `#206`",
+        "first OPEN `#207`",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-j-plan missing: {needle}");
@@ -68,8 +68,12 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #205 must be DONE after semantic verify text.*"
     );
     assert!(
-        text.contains("| 206 | **OPEN**"),
-        "QUEUE first OPEN must be #206"
+        text.contains("| 206 | **DONE**"),
+        "QUEUE #206 must be DONE after evidence primacy runtime"
+    );
+    assert!(
+        text.contains("| 207 | **OPEN**"),
+        "QUEUE first OPEN must be #207"
     );
     assert!(
         !text.contains("| 199 | **OPEN**"),
@@ -100,10 +104,14 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #205 must not stay OPEN after semantic verify text.*"
     );
     assert!(
-        !text.contains("| 206 | **DONE**"),
-        "QUEUE #206 must not be DONE at #205"
+        !text.contains("| 206 | **OPEN**"),
+        "QUEUE #206 must not stay OPEN after evidence primacy runtime"
     );
-    for n in 207..=208 {
+    assert!(
+        !text.contains("| 207 | **DONE**"),
+        "QUEUE #207 must not be DONE at #206"
+    );
+    for n in 208..=208 {
         let open = format!("| {n} | **OPEN**");
         assert!(text.contains(&open), "QUEUE missing {open}");
         let done = format!("| {n} | **DONE**");
@@ -116,7 +124,7 @@ fn phase_j_queue_wiring_199_done() {
         "J0 govern + Book II ceiling honesty",
         "J1 Book I remainder",
         "RFC-0096",
-        "first OPEN `#206`",
+        "first OPEN `#207`",
         "Analyze-234",
         "Analyze-235",
         "Analyze-236",
@@ -149,7 +157,7 @@ fn phase_j_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-j-plan.md"));
     assert!(docs.contains("#199"));
-    assert!(docs.contains("first OPEN `#206`"));
+    assert!(docs.contains("first OPEN `#207`"));
     assert!(docs.contains("#208"));
     assert!(docs.contains("**IN PROGRESS**"));
 }
@@ -159,7 +167,7 @@ fn phase_i_points_to_active_phase_j() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-i-plan.md")).unwrap();
     assert!(text.contains("phase-j-plan.md"));
     assert!(text.contains("#199"));
-    assert!(text.contains("first OPEN `#206`"));
+    assert!(text.contains("first OPEN `#207`"));
 }
 
 #[test]
@@ -376,7 +384,7 @@ fn phase_j_reduction_catalog_204() {
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 204 | **DONE**"));
     assert!(queue.contains("| 205 | **DONE**"));
-    assert!(!queue.contains("| 206 | **DONE**"));
+    assert!(queue.contains("| 206 | **DONE**"));
     let plane = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/plane.rs")).unwrap();
     assert!(plane.contains("open_with_reuse_index"));
     assert!(plane.contains("bind_catalog_for_text"));
@@ -426,8 +434,8 @@ fn phase_j_semantic_verify_text_205() {
     }
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 205 | **DONE**"));
-    assert!(queue.contains("| 206 | **OPEN**"));
-    assert!(!queue.contains("| 206 | **DONE**"));
+    assert!(queue.contains("| 206 | **DONE**"));
+    assert!(!queue.contains("| 207 | **DONE**"));
     let src =
         std::fs::read_to_string(repo_root().join("csu/verification-basic/src/lib.rs")).unwrap();
     assert!(src.contains("text_matches_claimed"));
@@ -436,4 +444,44 @@ fn phase_j_semantic_verify_text_205() {
         !src.contains("body.get(\"result\").and_then(|v| v.as_str()).is_some()"),
         "text.* must not stay presence-only"
     );
+}
+
+#[test]
+fn phase_j_evidence_primacy_206() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0102",
+        "claim_without_evidence_rejected_as_operational_input",
+        "assumption_without_evidence_is_operational_input",
+        "| #206 | Evidence primacy runtime",
+        "**DONE** @ this PR",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #206 missing: {needle}"
+        );
+    }
+    let rfc = std::fs::read_to_string(
+        repo_root().join("specs/rfc/AIRA-RFC-0102-evidence-primacy-runtime.md"),
+    )
+    .expect("RFC-0102");
+    for needle in [
+        "#206",
+        "claim_kind",
+        "EvidencePrimacy",
+        "Assumption",
+        "Hypothesis",
+    ] {
+        assert!(rfc.contains(needle), "RFC-0102 missing: {needle}");
+    }
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 206 | **DONE**"));
+    assert!(queue.contains("| 207 | **OPEN**"));
+    assert!(!queue.contains("| 207 | **DONE**"));
+    let src = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/plane.rs")).unwrap();
+    assert!(src.contains("reject_claim_without_evidence"));
+    assert!(src.contains("EvidencePrimacy"));
+    let evi = std::fs::read_to_string(repo_root().join("csu/evidence-basic/src/lib.rs")).unwrap();
+    assert!(evi.contains("claim_lacks_required_evidence"));
 }

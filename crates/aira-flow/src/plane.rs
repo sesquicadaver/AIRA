@@ -37,6 +37,8 @@ pub enum FlowError {
     Artifact(String),
     #[error("research artifact rejected as operational input: {0}")]
     ResearchNonOperational(String),
+    #[error("claim without evidence rejected as operational input: {0}")]
+    EvidencePrimacy(String),
     #[error("flow: {0}")]
     Other(String),
 }
@@ -267,8 +269,10 @@ impl OperationalPlane {
 
     /// Inject an external event and drain (demos / failure injection).
     /// Research / promotion-candidate input is rejected before append (#179).
+    /// `claim_kind: Claim` without evidence_refs is rejected before append (#206).
     pub fn inject_and_drain(&mut self, event: EventDescriptor) -> Result<(), FlowError> {
         self.reject_research_as_operational(&event)?;
+        self.reject_claim_without_evidence(&event)?;
         let start = self.events.all().len();
         self.events
             .append(event)
@@ -374,6 +378,7 @@ impl OperationalPlane {
                 continue;
             }
             self.reject_research_as_operational(&ev)?;
+            self.reject_claim_without_evidence(&ev)?;
             let before = self.events.all().len();
             self.runtime
                 .dispatch_with_artifacts(&ev, &mut self.events, &mut self.artifacts)
@@ -464,6 +469,23 @@ impl OperationalPlane {
                         id.as_str(),
                         desc.artifact_type
                     )));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Fail-closed B0-005: `claim_kind: Claim` without evidence_refs is not operational input (#206).
+    ///
+    /// `Assumption` / `Hypothesis` may omit evidence. CAS publish remains allowed (same as research).
+    fn reject_claim_without_evidence(&self, event: &EventDescriptor) -> Result<(), FlowError> {
+        for id in &event.artifact_refs {
+            if let Ok((_, bytes)) = self.artifacts.resolve(id) {
+                let Ok(body) = serde_json::from_slice::<Value>(&bytes) else {
+                    continue;
+                };
+                if aira_csu_evidence_basic::claim_lacks_required_evidence(&body) {
+                    return Err(FlowError::EvidencePrimacy(id.as_str().into()));
                 }
             }
         }

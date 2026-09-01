@@ -1026,4 +1026,105 @@ mod tests {
         assert!(matches!(err, FlowError::ResearchNonOperational(_)));
         assert_eq!(plane.events().len(), before);
     }
+
+    #[test]
+    fn claim_without_evidence_rejected_as_operational_input() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let before = plane.events().len();
+
+        let payload = json_bytes(&json!({
+            "claim_kind": "Claim",
+            "statement": "runtime claim without evidence",
+            "evidence_refs": []
+        }));
+        let claim = make_artifact(
+            "aira:artifact:claim-no-ev",
+            ArtifactType::EvidenceArtifact,
+            &payload,
+            vec![],
+        );
+        let art_id = claim.artifact_id.clone();
+        plane.artifacts_mut().publish(claim, &payload).unwrap();
+        let published = make_event(
+            "aira:event:artpub-claim-bare",
+            EventType::ArtifactPublished,
+            vec![],
+            vec![art_id],
+            vec![],
+            None,
+        );
+        let err = plane.inject_and_drain(published).unwrap_err();
+        assert!(matches!(err, FlowError::EvidencePrimacy(_)), "{err:?}");
+        assert_eq!(plane.events().len(), before);
+    }
+
+    #[test]
+    fn assumption_without_evidence_is_operational_input() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+
+        let payload = json_bytes(&json!({
+            "claim_kind": "Assumption",
+            "statement": "runtime assumption",
+            "evidence_refs": []
+        }));
+        let assumption = make_artifact(
+            "aira:artifact:assume-ok",
+            ArtifactType::EvidenceArtifact,
+            &payload,
+            vec![],
+        );
+        let art_id = assumption.artifact_id.clone();
+        plane.artifacts_mut().publish(assumption, &payload).unwrap();
+        let published = make_event(
+            "aira:event:artpub-assume",
+            EventType::ArtifactPublished,
+            vec![],
+            vec![art_id],
+            vec![],
+            None,
+        );
+        plane.inject_and_drain(published).unwrap();
+        assert!(plane
+            .events()
+            .iter()
+            .any(|e| e.event_type == EventType::ArtifactPublished));
+    }
+
+    #[test]
+    fn claim_with_evidence_is_operational_input() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+
+        let payload = json_bytes(&json!({
+            "claim_kind": "Claim",
+            "statement": "runtime claim with evidence",
+            "evidence_refs": ["aira:evidence:01EV1"]
+        }));
+        let claim = make_artifact(
+            "aira:artifact:claim-ev",
+            ArtifactType::EvidenceArtifact,
+            &payload,
+            vec![],
+        );
+        let art_id = claim.artifact_id.clone();
+        plane.artifacts_mut().publish(claim, &payload).unwrap();
+        let published = make_event(
+            "aira:event:artpub-claim-ev",
+            EventType::ArtifactPublished,
+            vec![],
+            vec![art_id],
+            vec![],
+            None,
+        );
+        plane.inject_and_drain(published).unwrap();
+        assert!(plane
+            .events()
+            .iter()
+            .any(|e| e.event_type == EventType::ArtifactPublished));
+    }
 }

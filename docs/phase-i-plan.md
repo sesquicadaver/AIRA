@@ -3,7 +3,7 @@
 **Статус:** складено 2026-08-28; **DONE** 2026-08-30 → QUEUE `#184`–`#198` (RFC-0078).  
 **Джерела:** незалежний аудит `main` @ `b66bcf1` (Handle / Verification / Policy / Reuse / identity / persistence); [`implementation-status.md`](implementation-status.md); [`phase-h-plan.md`](phase-h-plan.md) §7.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase I `#184`–`#198` (після `#183` DONE).  
-**Closure:** [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md). QUEUE I closed. Далі: [`phase-j-plan.md`](phase-j-plan.md) **IN PROGRESS** (`#199` `#200` `#201` `#202` `#203` `#204` `#205` DONE; first OPEN `#206`).  
+**Closure:** [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md). QUEUE I closed. Далі: [`phase-j-plan.md`](phase-j-plan.md) **IN PROGRESS** (`#199` `#200` `#201` `#202` `#203` `#204` `#205` `#206` DONE; first OPEN `#207`).  
 **Не змінює:** анти-місію README; Book semantics без per-atom RFC; production distributed OperationalPlane.
 
 ## 0. Навіщо Phase I (після H, не замість H)
@@ -26,7 +26,7 @@ CRP/settlement на некоректних базових контрактах �
 ```text
 Phase H DONE (#183 / RFC-0077 / Reference v0.3)
   → Phase I semantic contracts
-    → Phase J Book-gap local remainder [`phase-j-plan.md`](phase-j-plan.md) **IN PROGRESS** (first OPEN `#206`)
+    → Phase J Book-gap local remainder [`phase-j-plan.md`](phase-j-plan.md) **IN PROGRESS** (first OPEN `#207`)
 ```
 
 ## 1. Мета
@@ -160,5 +160,5 @@ Docs/RFC: Phase I closed; no OPEN I atoms.
 #183 DONE (RFC-0077) → цей план став активною чергою.
 #184 wiring DONE; #185 status honesty DONE; #186 Handle integrity DONE (RFC-0084); #187 semantic verify DONE (RFC-0085); #188 PolicyGate invoke DONE (RFC-0086); #189 durable reuse DONE (RFC-0087); #190 fail-closed signing DONE (RFC-0088); #191 atomic persist DONE (RFC-0089); #192 artifact recovery DONE (RFC-0090); #193 runtime Clock DONE (RFC-0091); #194 envelope freshness/replay DONE (RFC-0092); #195 run nonce UUIDv7 DONE (RFC-0093); #196 instance-scoped crypto DONE (RFC-0094); #197 MSRV + supply-chain CI DONE (RFC-0095); #198 docs + RFC-0078 DONE.
 QUEUE I closed; no OPEN.
-Phase J [`phase-j-plan.md`](phase-j-plan.md) **IN PROGRESS** (`#199` wiring DONE; `#200` Book II ceiling honesty DONE; `#201` Seal `object_store_access` DONE; `#202` VRA runtime B1-010 DONE; `#203` Event-log authority DONE; `#204` Reduction catalog bind DONE; `#205` Semantic verify text.* DONE; first OPEN `#206`).
+Phase J [`phase-j-plan.md`](phase-j-plan.md) **IN PROGRESS** (`#199` wiring DONE; `#200` Book II ceiling honesty DONE; `#201` Seal `object_store_access` DONE; `#202` VRA runtime B1-010 DONE; `#203` Event-log authority DONE; `#204` Reduction catalog bind DONE; `#205` Semantic verify text.* DONE; `#206` Evidence primacy runtime DONE; first OPEN `#207`).
 ```

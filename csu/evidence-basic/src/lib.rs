@@ -1,13 +1,15 @@
 //! Evidence-basic CSU (Issue #45).
 //!
 //! Observes ResultPublished / CapsuleFailed / VerificationFailed → Evidence artifacts.
+//! `#206`: B0-005 Claim vs Assumption — a `claim_kind` of `Claim` without evidence_refs
+//! is rejected at OperationalPlane inject/drain (not schema-fixtures-only).
 
 use aira_artifact::ArtifactType;
 use aira_csu::support::{basic_manifest, json_bytes, make_artifact_as, make_event_as};
 use aira_csu::{Csu, CsuExecutionContext, CsuHandlerError, CsuManifest, CsuOutput, CsuType};
 use aira_event::{EventDescriptor, EventType};
 use aira_object::AiraRef;
-use serde_json::json;
+use serde_json::{json, Value};
 
 /// Evidence capture CSU.
 pub struct EvidenceBasicCsu {
@@ -55,6 +57,22 @@ impl EvidenceBasicCsu {
         let id = format!("aira:{kind}:evi{}_{}", self.run_nonce, self.seq);
         self.seq += 1;
         id
+    }
+}
+
+/// Book 0 A5 / B0-005: a Claim coordinate body must carry at least one evidence ref.
+///
+/// `Assumption` and `Hypothesis` may omit evidence. Bodies without `claim_kind` are not claims.
+pub fn claim_lacks_required_evidence(body: &Value) -> bool {
+    match body.get("claim_kind").and_then(|v| v.as_str()) {
+        Some("Claim") => {
+            let Some(arr) = body.get("evidence_refs").and_then(|v| v.as_array()) else {
+                return true;
+            };
+            !arr.iter()
+                .any(|r| r.as_str().is_some_and(|s| !s.is_empty()))
+        }
+        _ => false,
     }
 }
 
@@ -200,5 +218,36 @@ mod tests {
             o,
             CsuOutput::Event(e) if e.event_type == EventType::FailureEvidenceCreated
         )));
+    }
+
+    #[test]
+    fn claim_without_evidence_lacks_required_evidence() {
+        let claim = json!({
+            "claim_kind": "Claim",
+            "statement": "bare claim",
+            "evidence_refs": []
+        });
+        assert!(claim_lacks_required_evidence(&claim));
+        let missing_field = json!({"claim_kind": "Claim", "statement": "no refs field"});
+        assert!(claim_lacks_required_evidence(&missing_field));
+    }
+
+    #[test]
+    fn assumption_and_hypothesis_may_omit_evidence() {
+        assert!(!claim_lacks_required_evidence(&json!({
+            "claim_kind": "Assumption",
+            "evidence_refs": []
+        })));
+        assert!(!claim_lacks_required_evidence(&json!({
+            "claim_kind": "Hypothesis",
+            "evidence_refs": []
+        })));
+        assert!(!claim_lacks_required_evidence(&json!({
+            "claim_kind": "Claim",
+            "evidence_refs": ["aira:evidence:01EV1"]
+        })));
+        assert!(!claim_lacks_required_evidence(
+            &json!({"result": 4.0, "evidence_refs": []})
+        ));
     }
 }

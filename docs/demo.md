@@ -37,6 +37,8 @@ Evidence in tests: `ready_solution_reuse_skips_execution` and `plane_reduction_b
 
 `verification-basic` (`#205` / RFC-0101) does not VERIFIED a `text.echo` / `text.uppercase` output whose claimed `result` string disagrees with `expression` (output body or capsule).
 
+`OperationalPlane` (`#206` / RFC-0102) rejects `claim_kind: Claim` without `evidence_refs`; `Assumption` / `Hypothesis` may omit evidence.
+
 ## Failure-to-evidence
 
 A missing capsule artifact on `CapsuleCreated` must not invent a Verified Result.
