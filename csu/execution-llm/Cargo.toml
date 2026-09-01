@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "AIRA execution-llm CSU (text.generate.local via bound backend + injected activate gate; mock in tests)"
+description = "AIRA execution-llm CSU (text.generate.local via bound backend + injected activate gate; mock default, optional process CLI)"
 
 [dependencies]
 aira-csu = { path = "../../crates/aira-csu" }

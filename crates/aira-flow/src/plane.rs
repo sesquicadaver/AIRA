@@ -20,7 +20,8 @@ use aira_csu_epistemic_basic::EpistemicBasicCsu;
 use aira_csu_evidence_basic::EvidenceBasicCsu;
 use aira_csu_execution_basic::ExecutionBasicCsu;
 use aira_csu_execution_llm::{
-    AlwaysActivated, ExecutionLlmCsu, ModelActivateGate, ACTION_GENERATE_LOCAL, ACTIVATE_DENIED,
+    AlwaysActivated, ExecutionLlmCsu, ModelActivateGate, ProcessBackend, ACTION_GENERATE_LOCAL,
+    ACTIVATE_DENIED,
 };
 use aira_csu_reduction_basic::ReductionBasicCsu;
 use aira_csu_verification_basic::VerificationBasicCsu;
@@ -248,6 +249,22 @@ impl OperationalPlane {
         aira_root: impl AsRef<Path>,
     ) -> Result<(), FlowError> {
         self.bind_activate_gate(ActivatedPointerGate::from_aira_root(aira_root))
+    }
+
+    /// Opt-in process CLI backend. Default [`Self::open`] keeps [`aira_csu_execution_llm::MockBackend`].
+    pub fn bind_process_backend(
+        &mut self,
+        backend: ProcessBackend,
+        gate: impl ModelActivateGate + 'static,
+    ) -> Result<(), FlowError> {
+        let csu = ExecutionLlmCsu::new()
+            .with_run_nonce(self.run_nonce.clone())
+            .with_process_backend(backend)
+            .with_activate_gate(gate);
+        self.runtime
+            .replace_handler(Box::new(csu))
+            .map_err(|e| FlowError::Csu(e.to_string()))?;
+        Ok(())
     }
 
     pub fn objects(&self) -> &MemoryObjectStore {

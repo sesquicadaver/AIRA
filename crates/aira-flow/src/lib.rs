@@ -306,6 +306,62 @@ mod tests {
     }
 
     #[test]
+    fn default_plane_keeps_mock_backend() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        plane.enable_activated_mock_llm().unwrap();
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let out = plane.submit_problem(prompt).unwrap();
+        let SubmitOutcome::Executed { result, .. } = out else {
+            panic!("expected Executed generate-local, got {out:?}");
+        };
+        assert_eq!(
+            result["backend"],
+            json!(aira_csu_execution_llm::MOCK_BACKEND_ID)
+        );
+        assert_ne!(
+            result["backend"],
+            json!(aira_csu_execution_llm::PROCESS_BACKEND_ID)
+        );
+    }
+
+    #[test]
+    fn missing_process_binary_on_plane_is_capsule_failed() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        plane
+            .bind_process_backend(
+                aira_csu_execution_llm::ProcessBackend::new(
+                    "aira-llm-process-missing-bin-215-do-not-install",
+                ),
+                aira_csu_execution_llm::AlwaysActivated,
+            )
+            .unwrap();
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let err = plane.submit_problem(prompt).unwrap_err();
+        assert!(
+            plane
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleFailed),
+            "missing binary must CapsuleFailed, got {err}"
+        );
+        assert!(
+            !plane.has_verified_result_artifact(),
+            "missing binary must not mint a fake VERIFIED result"
+        );
+        assert!(plane.latest_generate_local_output().is_none());
+        assert!(plane.events().iter().any(|e| {
+            e.event_type == EventType::CapsuleFailed
+                && e.payload_ref
+                    .as_deref()
+                    .is_some_and(|p| p.contains(aira_csu_execution_llm::MISSING_BINARY))
+        }));
+    }
+
+    #[test]
     fn calculate_two_plus_two_emits_epistemic_assessment() {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
