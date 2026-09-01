@@ -35,6 +35,8 @@ When a Ready Solution Artifact is registered with Reduction-basic, the plane pre
 
 Evidence in tests: `ready_solution_reuse_skips_execution` and `plane_reduction_binds_reuse_index_without_enable_ready_solution` (durable `reuse-index.json`, no `enable_ready_solution`) and `local_session_repeat_problem_reuses_without_execution` in `aira-flow` — `CapsuleCompleted` is absent; payload may carry `reuse:ready_solution`.
 
+`verification-basic` (`#205` / RFC-0101) does not VERIFIED a `text.echo` / `text.uppercase` output whose claimed `result` string disagrees with `expression` (output body or capsule).
+
 ## Failure-to-evidence
 
 A missing capsule artifact on `CapsuleCreated` must not invent a Verified Result.
