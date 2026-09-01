@@ -378,7 +378,24 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 **Phase I `#184`–`#198` DONE** @ RFC-0078 (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); **Reference v0.3-stable**; QUEUE I closed; no OPEN.
 
-**Phase J `#199`–`#208` DONE** @ RFC-0096 (не змінює anti-mission): Book-gap local remainder closed; [`phase-j-plan.md`](phase-j-plan.md); **Reference v0.3-strict**; Book II local adapter = v0.3 ceiling; Opaque Handle sealed (`#201` / RFC-0097); VRA runtime B1-010 (`#202` / RFC-0098); event-log authority (`#203` / RFC-0099); Reduction catalog bind (`#204` / RFC-0100); semantic verify text.* (`#205` / RFC-0101); evidence primacy runtime (`#206` / RFC-0102); epistemic emit on C1 (`#207` / RFC-0103); QUEUE J closed; no OPEN.
+**Phase J `#199`–`#208` DONE** @ RFC-0096 (не змінює anti-mission): Book-gap local remainder closed; [`phase-j-plan.md`](phase-j-plan.md); **Reference v0.3-strict**; Book II local adapter = v0.3 ceiling; Opaque Handle sealed (`#201` / RFC-0097); VRA runtime B1-010 (`#202` / RFC-0098); event-log authority (`#203` / RFC-0099); Reduction catalog bind (`#204` / RFC-0100); semantic verify text.* (`#205` / RFC-0101); evidence primacy runtime (`#206` / RFC-0102); epistemic emit on C1 (`#207` / RFC-0103); QUEUE J closed.
+
+**Phase K `#209`–`#216` IN PROGRESS** (не змінює anti-mission): Local LLM Execution CSU; [`phase-k-plan.md`](phase-k-plan.md); `#209` wiring **DONE**; first OPEN `#210`; consolidating RFC-0104 at `#216`.
+
+## Phase K gates (IN PROGRESS)
+
+| QUEUE | Gate | Evidence (target) |
+|-------|------|-------------------|
+| #209 | Phase K wiring + contract | `phase_k_doc.rs`; `docs/phase-k-plan.md`; QUEUE `#209`–`#216` | **DONE** @ this PR |
+| #210 | Capsule `text.generate.local` | `aira:schema:execution:generate-local:0.1` + fixtures | OPEN |
+| #211 | `execution-llm` CSU + mock | CapsuleCompleted via MockBackend; fail-closed without backend | OPEN |
+| #212 | Reduction bind | non-math → generate; C1 2+2 unchanged | OPEN |
+| #213 | Plane register | OperationalPlane dispatches generate to execution-llm | OPEN |
+| #214 | Activate gate | no Phase D activate → CapsuleFailed | OPEN |
+| #215 | Process backend | missing binary fail-closed; CI mock | OPEN |
+| #216 | Desktop + RFC-0104 | Work generate path; QUEUE K closed | OPEN |
+
+Plan: [`phase-k-plan.md`](phase-k-plan.md). Consolidating RFC: `AIRA-RFC-0104` (id **confirmed free** at `#209`).
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
