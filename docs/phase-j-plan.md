@@ -1,6 +1,6 @@
 # Phase J — Book-gap local remainder (post-I)
 
-**Статус:** складено 2026-08-30; **IN PROGRESS** 2026-09-01 → QUEUE `#199` `#200` `#201` `#202` `#203` `#204` `#205` `#206` **DONE**; first OPEN `#207`.  
+**Статус:** складено 2026-08-30; **IN PROGRESS** 2026-09-01 → QUEUE `#199` `#200` `#201` `#202` `#203` `#204` `#205` `#206` `#207` **DONE**; first OPEN `#208`.  
 **Джерела:** матриця [`implementation-status.md`](implementation-status.md) Book 0–IV після RFC-0078; [`phase-i-plan.md`](phase-i-plan.md) §0.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase J `#199`–`#208`.  
 **Резерв RFC:** consolidating RFC-0096 (файл **не** створювати до `#208`).  
@@ -40,7 +40,7 @@ Phase I DONE (#198 / RFC-0078 / v0.3-stable)
 
 ## 2. Інваріанти
 
-1. Лінійність: `#N` після `#N-1`; перший OPEN зараз `#207`.
+1. Лінійність: `#N` після `#N-1`; перший OPEN зараз `#208`.
 2. Один атом = один PR.
 3. C0/C1 не послаблюються; C2 required; C3/C4/C5 не merge gates у J.
 4. Core ↛ node/peer/CSU; CSU ↛ CSU.
@@ -127,7 +127,7 @@ C1 path emits epistemic assessment.
 | III Reduction PARTIAL | `enable_ready_solution`; catalog unused | `#204` |
 | III Verification PARTIAL | `verification-basic` `text.echo` presence-only | `#205` |
 | 0 Evidence PARTIAL | fixtures `#125`; не runtime | `#206` |
-| 0/III Epistemic PARTIAL | `epistemic_assessment_roundtrip_*`; C1 2+2 optional | `#207` |
+| 0/III Epistemic PARTIAL | `epistemic_assessment_roundtrip_*`; C1 2+2 **required** (`#207`) | `#207` |
 | II ×9 PARTIAL | local adapters H/G | `#200` |
 | IV R2 / stores PARTIAL | C2 local; plane memory drain | `#200` `#203` |
 | — | wiring / closure | `#199` `#208` |
@@ -135,12 +135,12 @@ C1 path emits epistemic assessment.
 ## 8. RFC
 
 - Consolidating (`#208`): `specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md` — id **confirmed free** (немає `AIRA-RFC-0096*` у `specs/rfc/`).
-- Per-atom RFC при ABI Handle (`#201` / [`AIRA-RFC-0097`](../specs/rfc/AIRA-RFC-0097-seal-object-store-access.md)), VRA body (`#202` / [`AIRA-RFC-0098`](../specs/rfc/AIRA-RFC-0098-vra-runtime-b1-010.md)), Event-log authority (`#203` / [`AIRA-RFC-0099`](../specs/rfc/AIRA-RFC-0099-event-log-authority.md)), Reduction catalog (`#204` / [`AIRA-RFC-0100`](../specs/rfc/AIRA-RFC-0100-reduction-catalog-bind.md)), Verification text (`#205` / [`AIRA-RFC-0101`](../specs/rfc/AIRA-RFC-0101-semantic-verify-text.md)), Evidence primacy (`#206` / [`AIRA-RFC-0102`](../specs/rfc/AIRA-RFC-0102-evidence-primacy-runtime.md)).
+- Per-atom RFC при ABI Handle (`#201` / [`AIRA-RFC-0097`](../specs/rfc/AIRA-RFC-0097-seal-object-store-access.md)), VRA body (`#202` / [`AIRA-RFC-0098`](../specs/rfc/AIRA-RFC-0098-vra-runtime-b1-010.md)), Event-log authority (`#203` / [`AIRA-RFC-0099`](../specs/rfc/AIRA-RFC-0099-event-log-authority.md)), Reduction catalog (`#204` / [`AIRA-RFC-0100`](../specs/rfc/AIRA-RFC-0100-reduction-catalog-bind.md)), Verification text (`#205` / [`AIRA-RFC-0101`](../specs/rfc/AIRA-RFC-0101-semantic-verify-text.md)), Evidence primacy (`#206` / [`AIRA-RFC-0102`](../specs/rfc/AIRA-RFC-0102-evidence-primacy-runtime.md)), Epistemic emit C1 (`#207` / [`AIRA-RFC-0103`](../specs/rfc/AIRA-RFC-0103-epistemic-emit-c1.md)).
 
 ## 9. Activation rule
 
 ```text
 #198 DONE (RFC-0078) → цей план активовано атомом `#199`.
-#199 wiring DONE; `#200` Book II ceiling honesty DONE; `#201` Seal `object_store_access` DONE (RFC-0097); `#202` VRA runtime B1-010 DONE (RFC-0098); `#203` Event-log authority DONE (RFC-0099); `#204` Reduction catalog bind DONE (RFC-0100); `#205` Semantic verify text.* DONE (RFC-0101); `#206` Evidence primacy runtime DONE (RFC-0102); first OPEN `#207` (Epistemic emit on C1).
+#199 wiring DONE; `#200` Book II ceiling honesty DONE; `#201` Seal `object_store_access` DONE (RFC-0097); `#202` VRA runtime B1-010 DONE (RFC-0098); `#203` Event-log authority DONE (RFC-0099); `#204` Reduction catalog bind DONE (RFC-0100); `#205` Semantic verify text.* DONE (RFC-0101); `#206` Evidence primacy runtime DONE (RFC-0102); `#207` Epistemic emit on C1 DONE (RFC-0103); first OPEN `#208` (Phase J docs + RFC-0096).
 RFC-0096 файл лише в `#208`.
 ```

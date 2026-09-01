@@ -39,6 +39,8 @@ Evidence in tests: `ready_solution_reuse_skips_execution` and `plane_reduction_b
 
 `OperationalPlane` (`#206` / RFC-0102) rejects `claim_kind: Claim` without `evidence_refs`; `Assumption` / `Hypothesis` may omit evidence.
 
+Completed Calculate 2 + 2 (`#207` / RFC-0103) also writes an epistemic-assessment artifact (`latest_epistemic_assessment`); not a full Epistemic plane.
+
 ## Failure-to-evidence
 
 A missing capsule artifact on `CapsuleCreated` must not invent a Verified Result.

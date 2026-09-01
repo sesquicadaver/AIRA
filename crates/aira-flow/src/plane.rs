@@ -260,6 +260,11 @@ impl OperationalPlane {
         let verified = self
             .latest_verified_result()
             .ok_or_else(|| FlowError::Other("pipeline produced no verified result".into()))?;
+        // C1 2+2 (and any Completed submit) must emit epistemic-assessment (#207).
+        // Not a full Epistemic plane.
+        let _ = self
+            .latest_epistemic_assessment()
+            .ok_or_else(|| FlowError::Other("pipeline produced no epistemic assessment".into()))?;
         Ok(SubmitOutcome::Completed {
             problem_id,
             verified_artifact_id: verified.0,

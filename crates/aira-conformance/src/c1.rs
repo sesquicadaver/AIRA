@@ -12,6 +12,7 @@ use aira_csu::support::make_event;
 use aira_csu::{Csu, CsuManifest, CsuRegistry};
 use aira_csu_artifact_basic::ArtifactBasicCsu;
 use aira_csu_context_basic::ContextBasicCsu;
+use aira_csu_epistemic_basic::EpistemicBasicCsu;
 use aira_csu_evidence_basic::EvidenceBasicCsu;
 use aira_csu_execution_basic::ExecutionBasicCsu;
 use aira_csu_reduction_basic::ReductionBasicCsu;
@@ -90,6 +91,16 @@ fn test_operational_pipeline(artifact_root: &Path) -> CaseResult {
         Ok(other) => return fail(id, format!("expected Completed, got {other:?}")),
         Err(e) => return fail(id, e.to_string()),
     }
+    let Some((_, epi)) = plane.latest_epistemic_assessment() else {
+        return fail(id, "C1 2+2 path produced no epistemic-assessment artifact");
+    };
+    let reg = match load_registry() {
+        Ok(r) => r,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    if let Err(e) = reg.validate("aira:schema:epistemic:assessment:0.1", &epi) {
+        return fail(id, format!("epistemic assessment schema: {e}"));
+    }
     pass(id)
 }
 
@@ -106,6 +117,7 @@ fn test_csu_manifests() -> CaseResult {
         ExecutionBasicCsu::new().manifest().clone(),
         VerificationBasicCsu::new().manifest().clone(),
         EvidenceBasicCsu::new().manifest().clone(),
+        EpistemicBasicCsu::new().manifest().clone(),
         ArtifactBasicCsu::new().manifest().clone(),
     ];
     for m in manifests {

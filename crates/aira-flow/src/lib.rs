@@ -138,6 +138,44 @@ mod tests {
                 || plane.artifacts().resolve(&verified_artifact_id).is_ok()));
         // Evidence artifact exists for ResultPublished
         assert!(plane.has_evidence_for_results());
+        let (_, epi) = plane
+            .latest_epistemic_assessment()
+            .expect("C1 2+2 path must emit epistemic-assessment");
+        assert!(epi.get("assessment_id").is_some());
+        assert!(epi.get("epistemic_status").is_some());
+        assert!(epi.get("confidence").is_some());
+        assert!(epi.get("scope").is_some());
+        let root = aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let reg = aira_schema::SchemaRegistry::load(root.join("schemas")).unwrap();
+        reg.validate("aira:schema:epistemic:assessment:0.1", &epi)
+            .unwrap();
+    }
+
+    #[test]
+    fn calculate_two_plus_two_emits_epistemic_assessment() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let out = plane.submit_problem("Calculate 2 + 2").unwrap();
+        assert!(matches!(out, SubmitOutcome::Completed { .. }));
+        let (aid, body) = plane
+            .latest_epistemic_assessment()
+            .expect("C1 2+2 must write epistemic-assessment artifact");
+        assert!(body.get("assessment_id").is_some());
+        assert!(body.get("claim_ref").is_some());
+        assert!(body.get("evidence_refs").is_some());
+        assert!(body.get("counter_evidence_refs").is_some());
+        assert!(body.get("epistemic_status").is_some());
+        assert!(body.get("confidence").is_some());
+        assert!(body.get("scope").is_some());
+        assert!(body.get("revision_refs").is_some());
+        assert!(body.get("signature").is_some());
+        let root = aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let reg = aira_schema::SchemaRegistry::load(root.join("schemas")).unwrap();
+        reg.validate("aira:schema:epistemic:assessment:0.1", &body)
+            .unwrap();
+        let (desc, _) = plane.artifacts().resolve(&aid).unwrap();
+        assert_eq!(desc.artifact_type, ArtifactType::KnowledgeArtifact);
     }
 
     #[test]

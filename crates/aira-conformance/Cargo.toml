@@ -22,6 +22,7 @@ aira-csu-reduction-basic = { path = "../../csu/reduction-basic" }
 aira-csu-execution-basic = { path = "../../csu/execution-basic" }
 aira-csu-verification-basic = { path = "../../csu/verification-basic" }
 aira-csu-evidence-basic = { path = "../../csu/evidence-basic" }
+aira-csu-epistemic-basic = { path = "../../csu/epistemic-basic" }
 aira-csu-artifact-basic = { path = "../../csu/artifact-basic" }
 aira-csu-model-acquisition = { path = "../../csu/model-acquisition" }
 ed25519-dalek = { workspace = true }
