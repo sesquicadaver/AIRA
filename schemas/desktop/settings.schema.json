@@ -23,7 +23,7 @@
     },
     "open_ui_on_start": {
       "type": "boolean",
-      "description": "Open native status/settings UI after successful start."
+      "description": "When login autostart launches `aira-desktop --from-autostart`, open the native window. Interactive launches (menu icon / CLI without that flag) always show the window."
     },
     "autostart_on_login": {
       "type": "boolean",

@@ -382,4 +382,4 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
-Desktop one-click / GUI: `#75`–`#79` **DONE**. E1.1 `#80`–`#85` **DONE**. E2 macOS `#86`–`#89` **DONE**. E3 Windows `#90`–`#93` **DONE**. E4 P2–P6 `#94`–`#106` **DONE** (network profiles; see [`desktop-network-profiles.md`](desktop-network-profiles.md)).
+Desktop one-click / GUI: `#75`–`#79` **DONE**. E1.1 `#80`–`#85` **DONE**. E2 macOS `#86`–`#89` **DONE**. E3 Windows `#90`–`#93` **DONE**. E4 P2–P6 `#94`–`#106` **DONE** (network profiles; see [`desktop-network-profiles.md`](desktop-network-profiles.md)). GUI Work tab submits `POST /v1/problems` and leads with `result.result` + `status` + `verification_status` (full VRA JSON is Details); uk/en chrome; `open_ui_on_start` applies only to `--from-autostart` (no Settings lock-out). Model layer (Phase D) is CLI/CSU inventory+policy, not Core inference; Work still binds `execution-basic` only.

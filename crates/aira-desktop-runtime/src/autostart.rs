@@ -21,7 +21,25 @@ pub const AIRA_LAUNCH_AGENT_FILENAME: &str = "ai.aira.desktop.plist";
 /// Startup folder batch hook basename (Windows).
 pub const AIRA_WINDOWS_STARTUP_FILENAME: &str = "AIRA Desktop.bat";
 
-/// Body of the XDG autostart entry (`Exec=aira-desktop`).
+/// Flag that marks a login-autostart launch (vs interactive icon / CLI).
+pub const FROM_AUTOSTART_FLAG: &str = "--from-autostart";
+
+/// Whether the native window should open for this process.
+///
+/// Interactive launches (menu icon, `aira-desktop` without `--from-autostart`)
+/// always show the window so Settings stay reachable. Login autostart honors
+/// `open_ui_on_start`. `--force-ui` always shows.
+pub fn should_show_window(force_ui: bool, from_autostart: bool, open_ui_on_start: bool) -> bool {
+    if force_ui {
+        return true;
+    }
+    if from_autostart {
+        return open_ui_on_start;
+    }
+    true
+}
+
+/// Body of the XDG autostart entry (`Exec=aira-desktop --from-autostart`).
 pub fn autostart_desktop_entry() -> String {
     [
         "[Desktop Entry]",
@@ -29,7 +47,7 @@ pub fn autostart_desktop_entry() -> String {
         "Version=1.0",
         "Name=AIRA Desktop",
         "Comment=AIRA Desktop (Developer Preview) — autostart local P0 node + UI",
-        "Exec=aira-desktop",
+        "Exec=aira-desktop --from-autostart",
         "TryExec=aira-desktop",
         "Terminal=false",
         "X-GNOME-Autostart-enabled=true",
@@ -52,6 +70,7 @@ pub fn launch_agent_plist(program: &str) -> String {
 	<key>ProgramArguments</key>
 	<array>
 		<string>{program}</string>
+		<string>{flag}</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>
@@ -62,6 +81,7 @@ pub fn launch_agent_plist(program: &str) -> String {
 "#,
         label = AIRA_LAUNCH_AGENT_LABEL,
         program = program,
+        flag = FROM_AUTOSTART_FLAG,
     )
 }
 
@@ -75,7 +95,7 @@ fn xml_escape(s: &str) -> String {
 /// Startup `.bat` body for Windows login autostart (`start "" "<program>"`).
 pub fn windows_startup_bat(program: &str) -> String {
     let program = program.trim().replace('"', "");
-    format!("@echo off\r\nstart \"\" \"{program}\"\r\n")
+    format!("@echo off\r\nstart \"\" \"{program}\" {FROM_AUTOSTART_FLAG}\r\n")
 }
 
 /// `$XDG_CONFIG_HOME/autostart` or `~/.config/autostart`.
@@ -295,6 +315,7 @@ mod tests {
         let body = launch_agent_plist("/Users/dev/bin/aira-desktop");
         assert!(body.contains(AIRA_LAUNCH_AGENT_LABEL));
         assert!(body.contains("<string>/Users/dev/bin/aira-desktop</string>"));
+        assert!(body.contains(&format!("<string>{FROM_AUTOSTART_FLAG}</string>")));
         assert!(body.contains("<key>RunAtLoad</key>"));
         assert!(body.contains("<?xml"));
     }
@@ -323,7 +344,9 @@ mod tests {
     fn windows_startup_bat_contains_program() {
         let body = windows_startup_bat(r"C:\Program Files\AIRA\aira-desktop.exe");
         assert!(body.contains("@echo off"));
-        assert!(body.contains(r#"start "" "C:\Program Files\AIRA\aira-desktop.exe""#));
+        assert!(
+            body.contains(r#"start "" "C:\Program Files\AIRA\aira-desktop.exe" --from-autostart"#)
+        );
     }
 
     #[test]
@@ -339,5 +362,23 @@ mod tests {
         assert_eq!(text, windows_startup_bat(prog));
         set_windows_startup_in(&dir, false, prog).unwrap();
         assert!(!is_windows_startup_enabled_in(&dir));
+    }
+
+    #[test]
+    fn interactive_launch_always_shows_window() {
+        assert!(should_show_window(false, false, false));
+        assert!(should_show_window(false, false, true));
+    }
+
+    #[test]
+    fn autostart_honors_open_ui_on_start() {
+        assert!(!should_show_window(false, true, false));
+        assert!(should_show_window(false, true, true));
+    }
+
+    #[test]
+    fn force_ui_overrides_autostart_headless() {
+        assert!(should_show_window(true, true, false));
+        assert!(should_show_window(true, false, false));
     }
 }

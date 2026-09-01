@@ -151,6 +151,11 @@ impl DesktopPaths {
         self.runtime_dir.join("http-token")
     }
 
+    /// Sidecar UI language prefs (not `desktop-settings.json` schema).
+    pub fn ui_prefs_file(&self) -> PathBuf {
+        self.settings_file.with_file_name("ui-prefs.json")
+    }
+
     pub fn ensure_dirs(&self) -> std::io::Result<()> {
         std::fs::create_dir_all(&self.data_root)?;
         if let Some(p) = self.settings_file.parent() {

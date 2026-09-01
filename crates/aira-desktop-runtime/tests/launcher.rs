@@ -55,8 +55,15 @@ fn install_uninstall_both_menu_entries() {
 fn autostart_exec_matches_packaged_gui_binary_name() {
     let body = aira_desktop_runtime::autostart_desktop_entry();
     assert!(
-        body.contains("Exec=aira-desktop"),
-        "packaging must keep aira-desktop on PATH for #78 autostart"
+        body.contains("Exec=aira-desktop --from-autostart"),
+        "login autostart must pass --from-autostart so open_ui_on_start cannot trap the icon"
     );
-    assert!(AIRA_GUI_DESKTOP_ENTRY.contains("Exec=aira-desktop"));
+    assert!(
+        AIRA_GUI_DESKTOP_ENTRY.contains("Exec=aira-desktop"),
+        "menu icon stays interactive (no --from-autostart)"
+    );
+    assert!(
+        !AIRA_GUI_DESKTOP_ENTRY.contains("--from-autostart"),
+        "menu launcher must always open the window"
+    );
 }

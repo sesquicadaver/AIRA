@@ -30,7 +30,7 @@ pub fn port_in_use(listen: &str, timeout: Duration) -> bool {
         .is_some()
 }
 
-fn resolve_listen(listen: &str) -> Result<SocketAddr> {
+pub(crate) fn resolve_listen(listen: &str) -> Result<SocketAddr> {
     let mut iter = listen
         .to_socket_addrs()
         .with_context(|| format!("parse listen {listen}"))?;

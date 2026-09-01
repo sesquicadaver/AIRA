@@ -11,7 +11,7 @@ use aira_desktop_runtime::{
 #[test]
 fn autostart_entry_execs_aira_desktop() {
     let body = autostart_desktop_entry();
-    assert!(body.contains("Exec=aira-desktop"));
+    assert!(body.contains("Exec=aira-desktop --from-autostart"));
     assert!(body.contains("Type=Application"));
 }
 

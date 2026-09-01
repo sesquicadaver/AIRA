@@ -1,15 +1,18 @@
 use aira_desktop_runtime::{
-    LifecycleStatus, NetworkProfile, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    LifecycleStatus, NetworkProfile, UiLang, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
-pub(super) fn status_label(st: LifecycleStatus) -> &'static str {
+use super::i18n::Labels;
+
+pub(super) fn status_label(st: LifecycleStatus, lang: UiLang) -> &'static str {
+    let l = Labels::get(lang);
     match st {
-        LifecycleStatus::Stopped => "stopped",
-        LifecycleStatus::Starting => "starting",
-        LifecycleStatus::Running => "running",
-        LifecycleStatus::Unhealthy => "unhealthy",
-        LifecycleStatus::Stopping => "stopping",
-        LifecycleStatus::Failed => "failed",
+        LifecycleStatus::Stopped => l.st_stopped,
+        LifecycleStatus::Starting => l.st_starting,
+        LifecycleStatus::Running => l.st_running,
+        LifecycleStatus::Unhealthy => l.st_unhealthy,
+        LifecycleStatus::Stopping => l.st_stopping,
+        LifecycleStatus::Failed => l.st_failed,
     }
 }
 

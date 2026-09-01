@@ -1,10 +1,11 @@
-//! AIRA Desktop GUI — native Status / Settings / Quit / P1 invite (QUEUE #78 / #85).
+//! AIRA Desktop GUI — Work / Node / Network / Settings (QUEUE #78 / #85).
 //!
-//! Uses `aira-desktop-runtime` for lifecycle and XDG autostart; no CLI shell-out.
+//! Uses `aira-desktop-runtime` for lifecycle and OS autostart; no CLI shell-out.
 
 mod actions;
 mod app;
 mod camera;
+mod work_view;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -13,7 +14,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use aira_desktop_runtime::{
-    load_or_create_settings, start, sync_autostart_from_settings, DesktopPaths,
+    load_or_create_settings, should_show_window, start, sync_autostart_from_settings, DesktopPaths,
 };
 
 use crate::app::AiraDesktopApp;
@@ -34,9 +35,12 @@ struct Args {
     /// Do not auto-start the node on launch.
     #[arg(long, default_value_t = false)]
     no_auto_start: bool,
-    /// Force show the UI even when `open_ui_on_start=false`.
+    /// Force show the UI even when login autostart would be headless.
     #[arg(long, default_value_t = false)]
     force_ui: bool,
+    /// Login autostart launch: honor `open_ui_on_start`. Interactive launches ignore that flag.
+    #[arg(long, default_value_t = false)]
+    from_autostart: bool,
 }
 
 fn main() -> ExitCode {
@@ -59,7 +63,11 @@ fn run() -> Result<()> {
     let _ = sync_autostart_from_settings(settings.autostart_on_login);
 
     let auto_start = !args.no_auto_start;
-    let show_ui = args.force_ui || settings.open_ui_on_start;
+    let show_ui = should_show_window(
+        args.force_ui,
+        args.from_autostart,
+        settings.open_ui_on_start,
+    );
 
     if !show_ui {
         if auto_start {
@@ -92,7 +100,7 @@ fn run() -> Result<()> {
 
     let native = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([480.0, 640.0])
+            .with_inner_size([560.0, 720.0])
             .with_title("AIRA Desktop"),
         ..Default::default()
     };

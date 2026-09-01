@@ -13,19 +13,22 @@ mod health;
 mod invite;
 mod invite_qr;
 mod launcher;
+mod node_http;
 mod paths;
 mod peer;
 mod process;
 mod settings;
+mod ui_prefs;
 
 pub use autostart::{
     autostart_desktop_entry, is_autostart_enabled, is_autostart_enabled_in,
     is_launch_agent_enabled_in, is_windows_startup_enabled_in, launch_agent_path_in,
     launch_agent_plist, launch_agents_dir_for_home, resolve_desktop_program, set_autostart,
-    set_autostart_in, set_launch_agent_in, set_windows_startup_in, sync_autostart_from_settings,
-    user_launch_agents_dir, user_windows_startup_dir, windows_startup_bat,
-    windows_startup_dir_for_app_data, windows_startup_path_in, AIRA_AUTOSTART_FILENAME,
-    AIRA_LAUNCH_AGENT_FILENAME, AIRA_LAUNCH_AGENT_LABEL, AIRA_WINDOWS_STARTUP_FILENAME,
+    set_autostart_in, set_launch_agent_in, set_windows_startup_in, should_show_window,
+    sync_autostart_from_settings, user_launch_agents_dir, user_windows_startup_dir,
+    windows_startup_bat, windows_startup_dir_for_app_data, windows_startup_path_in,
+    AIRA_AUTOSTART_FILENAME, AIRA_LAUNCH_AGENT_FILENAME, AIRA_LAUNCH_AGENT_LABEL,
+    AIRA_WINDOWS_STARTUP_FILENAME, FROM_AUTOSTART_FLAG,
 };
 pub use bootstrap::ensure_bootstrap;
 pub use discovery::{run_discv_announce, run_discv_find, run_stun_query, DiscoveryStunOutcome};
@@ -49,6 +52,7 @@ pub use launcher::{
     validate_gui_desktop_file, AIRA_DESKTOP_ENTRY, AIRA_DESKTOP_FILENAME, AIRA_GUI_DESKTOP_ENTRY,
     AIRA_GUI_DESKTOP_FILENAME,
 };
+pub use node_http::{submit_desktop_problem, submit_problem_http};
 pub use paths::DesktopPaths;
 pub use peer::PeerPidRecordView;
 pub use process::{start, status, stop, LifecycleStatus, PidRecordView, StartOutcome};
@@ -57,6 +61,7 @@ pub use settings::{
     validate_listen_addr, write_settings, DesktopSettings, HttpAuthMode, NetworkProfile,
     DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS, SETTINGS_SCHEMA_ID,
 };
+pub use ui_prefs::{detect_ui_lang, load_or_create_ui_prefs, write_ui_prefs, UiLang, UiPrefs};
 
 /// Crate version for smoke tests.
 pub fn crate_version() -> &'static str {

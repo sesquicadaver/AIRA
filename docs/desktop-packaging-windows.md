@@ -80,7 +80,7 @@ When `autostart_on_login=true` in Settings, the runtime writes:
 
 `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\AIRA Desktop.bat`
 
-- **Content:** `start "" "<absolute path to aira-desktop.exe>"`
+- **Content:** `start "" "<absolute path to aira-desktop.exe>" --from-autostart`
 - **Program resolution:** prefers sibling `aira-desktop.exe`, `where aira-desktop.exe`, or `%LOCALAPPDATA%\Programs\AIRA\aira-desktop.exe` after package install
 
 Disable in Settings removes the batch file. No Registry Run keys in E3.

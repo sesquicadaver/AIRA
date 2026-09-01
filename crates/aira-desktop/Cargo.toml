@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "AIRA Desktop GUI (Developer Preview) — Status / Settings / P1 invite / Quit"
+description = "AIRA Desktop GUI (Developer Preview) — Work / Node / Network / Settings"
 
 [[bin]]
 name = "aira-desktop"
@@ -20,6 +20,7 @@ rfd = "0.14"
 aira-desktop-runtime = { path = "../aira-desktop-runtime" }
 aira-protocol = { path = "../aira-protocol" }
 aira-peer = { path = "../aira-peer" }
+serde_json = { workspace = true }
 nokhwa = { version = "0.10.11", default-features = false, features = ["input-native"] }
 image = { version = "0.25.6", default-features = false }
 

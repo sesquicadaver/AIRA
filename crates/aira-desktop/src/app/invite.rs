@@ -100,7 +100,7 @@ impl AiraDesktopApp {
         match camera::InviteQrCamera::open_default() {
             Ok(cam) => {
                 self.qr_camera = Some(cam);
-                self.qr_camera_status = Some("Scanning — point camera at PeerInvite QR…".into());
+                self.qr_camera_status = Some(self.labels().scan_camera.to_string());
                 self.last_error = None;
             }
             Err(e) => {

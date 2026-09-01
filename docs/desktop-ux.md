@@ -18,8 +18,12 @@
 
 - Запуск node для end-user — **лише через GUI** (іконка / tray).
 - CLI канон: **`aira desktop start|stop|status`** (shared lifecycle з GUI).
-- Після старту відкривати UI — **налаштування** (`open_ui_on_start`, default **on** для Desktop).
-- «Open UI» = **нативне** status/settings вікно (не голий JSON у браузері як єдиний UX).
+- Інтерактивний запуск (іконка меню, `aira-desktop`, `aira desktop gui`) **завжди відкриває вікно**.
+- `open_ui_on_start` (default **on**) — лише для **login autostart** (`aira-desktop --from-autostart`). Знятий чекбокс не блокує повторний вхід у Параметри з іконки.
+- «Open UI» = **нативне** вікно з вкладками Work / Node / Network / Settings (не голий JSON у браузері як єдиний UX).
+- Мова UI: Українська / English (`ui-prefs.json` поруч із settings; не частина `desktop-settings` schema).
+- Вкладка Work: людська відповідь (`result.result`) + `status` + `verification_status` на передньому плані; `problem_id` / `verified_artifact_id` і повний VRA JSON — згорнуті Details. Не сирий JSON як «відповідь AIRA».
+- Локальні моделі — **не Core і не маркетплейс**. Канон: Artifact + Capability + Policy CSU (`aira models`); LLM Backend — зовнішній CSU (Book I §2). GUI Work сьогодні досягає лише `execution-basic`. Прив’язка локального backend як Execution CSU — продуктовий gap, не заборона.
 - Автостарт після логіну — **налаштування** (`autostart_on_login`, default **off**); OS hooks: Linux `#78` (XDG), macOS `#87` (LaunchAgent), Windows `#91` (Startup/Registry).
 - Local HTTP loopback (`aira-node --http`) у Desktop **завжди** увімкнений; mutating routes — лише з Desktop auth-контрактом ([phase-e §2.4](phase-e-plan.md)).
 - GUI tech: **Rust-only** (egui/native tray). Без Node.js/web build dependency.
@@ -67,7 +71,7 @@ E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS (`#86`–`#89`) → E3
 | Key | Default | Примітка |
 |-----|---------|----------|
 | `network_profile` | `P0` | `P1` E1.1 (`#81`); `P2`–`P6` E4 (`#94`+); вищі за DONE-рівень — fail-closed |
-| `open_ui_on_start` | `true` | native UI |
+| `open_ui_on_start` | `true` | вікно при **login autostart**; іконка завжди відкриває UI |
 | `autostart_on_login` | `false` | Linux XDG `#78`; macOS LaunchAgent `#87`; Windows `#91` |
 | `http_listen` | `127.0.0.1:8787` | fixed; conflict → fail або attach ([phase-e §2.3](phase-e-plan.md)) |
 | `instance_id` | generated once | для attach-семантики |

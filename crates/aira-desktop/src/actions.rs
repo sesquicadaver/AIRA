@@ -8,12 +8,14 @@ use aira_desktop_runtime::{
     build_local_invite, encode_invite_rgba, ensure_bootstrap, export_invite_file,
     export_invite_qr_png, import_invite_file, import_invite_qr_file, import_invite_qr_luma,
     join_federation_descriptor_file, normalize_settings, read_federation_membership,
-    run_discv_announce, run_discv_find, run_stun_query, write_settings, DesktopPaths,
-    DesktopSettings, DiscoveryStunOutcome, ImportInviteOutcome, NetworkProfile, PeerInvite,
-    DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    run_discv_announce, run_discv_find, run_stun_query, submit_desktop_problem, write_settings,
+    DesktopPaths, DesktopSettings, DiscoveryStunOutcome, ImportInviteOutcome, NetworkProfile,
+    PeerInvite, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 use aira_peer::DiscvFindReport;
 use aira_protocol::{FederationMembership, JoinOutcome};
+
+use crate::work_view::{format_work_result, WorkResultView};
 
 /// Apply supported profile; fill defaults for `peer_listen` / `relay_ttl_days` on P1–P4.
 pub fn apply_network_profile(
@@ -126,6 +128,19 @@ pub fn import_qr(paths: &DesktopPaths, file: &Path) -> Result<ImportInviteOutcom
 /// Import invite from a camera / in-memory luma QR frame.
 pub fn import_qr_luma(paths: &DesktopPaths, img: image::GrayImage) -> Result<ImportInviteOutcome> {
     import_invite_qr_luma(paths, img)
+}
+
+/// Submit problem text to the supervised node (`POST /v1/problems`).
+///
+/// Returns a human-first Work view (`result.result` + status + verification),
+/// not a raw VRA dump.
+pub fn submit_problem(
+    paths: &DesktopPaths,
+    settings: &DesktopSettings,
+    text: &str,
+) -> Result<WorkResultView> {
+    let v = submit_desktop_problem(paths, settings, text)?;
+    Ok(format_work_result(&v))
 }
 
 #[cfg(test)]
@@ -310,5 +325,16 @@ mod tests {
         let paths = DesktopPaths::for_data_root(tmp.path());
         let err = discovery_stun_query(&paths, "").unwrap_err().to_string();
         assert!(err.contains("STUN server required"), "{err}");
+    }
+
+    #[test]
+    fn submit_problem_empty_fails_closed() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = DesktopPaths::for_data_root(tmp.path());
+        let settings = load_or_create_settings(&paths).unwrap();
+        let err = submit_problem(&paths, &settings, "  \n")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("non-empty"), "{err}");
     }
 }

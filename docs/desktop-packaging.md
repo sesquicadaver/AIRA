@@ -84,8 +84,8 @@ Packaging does **not** change Core / C0–C1. Peer is not started (P0 only).
 
 ## Autostart path contract (#78)
 
-`autostart_on_login` writes `~/.config/autostart/aira-desktop.desktop` with `Exec=aira-desktop`.  
-Install must place `aira-desktop` on PATH (this package → `~/.local/bin`). Absolute AppImage paths were avoided so hooks do not diverge from the shared runtime.
+`autostart_on_login` writes `~/.config/autostart/aira-desktop.desktop` with `Exec=aira-desktop --from-autostart`.  
+The **menu** launcher stays `Exec=aira-desktop` (always opens the window). Install must place `aira-desktop` on PATH (this package → `~/.local/bin`). Absolute AppImage paths were avoided so hooks do not diverge from the shared runtime.
 
 ## Related
 

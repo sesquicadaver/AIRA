@@ -27,6 +27,8 @@ Expected:
 
 Library equivalent: `OperationalPlane::submit_problem("Calculate 2 + 2")` (C1 reference plane; [operational-plane.md](operational-plane.md)).
 
+Desktop GUI: tab **Work** / **Робота** in `aira-desktop` posts the same `POST /v1/problems` to the supervised local node and shows **4.0** + **VERIFIED** first; hashes and signatures stay under Details ([`desktop-gui.md`](desktop-gui.md)).
+
 ## Ready Solution reuse
 
 When a Ready Solution Artifact is registered with Reduction-basic, the plane prefers reuse and skips execution capsules.

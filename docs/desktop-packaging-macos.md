@@ -83,7 +83,7 @@ When `autostart_on_login=true` in Settings, the runtime writes:
 `~/Library/LaunchAgents/ai.aira.desktop.plist`
 
 - **Label:** `ai.aira.desktop` (matches `CFBundleIdentifier` in `Info.plist`)
-- **Program:** absolute path to `aira-desktop` (resolved from bundle `Contents/MacOS` when installed via this package)
+- **Program:** absolute path to `aira-desktop` plus `--from-autostart` (resolved from bundle `Contents/MacOS` when installed via this package)
 - **RunAtLoad:** `true`; **KeepAlive:** `false`
 
 Disable in Settings removes the plist. The runtime does **not** call `launchctl bootstrap` — login session loads LaunchAgents automatically.
