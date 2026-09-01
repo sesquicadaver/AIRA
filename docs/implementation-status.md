@@ -1,8 +1,8 @@
 # Implementation status
 
-**Status:** **Reference v0.3-stable** (Analyze-233 / QUEUE `#198`; Phase I `#184`–`#198` **DONE** @ RFC-0078). Phase H **Reference v0.3** (`#152`–`#183` **DONE** @ RFC-0077) is the prior protocol-depth posture. Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
+**Status:** **Reference v0.3-strict** (Analyze-243 / QUEUE `#208`; Phase J `#199`–`#208` **DONE** @ RFC-0096). Phase I **Reference v0.3-stable** (`#184`–`#198` **DONE** @ RFC-0078) is the prior semantic-contract posture. Phase H **Reference v0.3** (`#152`–`#183` **DONE** @ RFC-0077) is the prior protocol-depth posture. Phase G **Reference v0.2** (`#120`–`#151` **DONE** @ RFC-0069) is the prior posture. Map of what this repository implements versus Book 0–IV, Schema Pack, Conformance, and the basic CSU set. This is **not** a new architecture and **does not** add code to fill gaps beyond the active QUEUE atom.
 
-**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (QUEUE I closed; Phase J first OPEN `#208`) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase J:** [`phase-j-plan.md`](phase-j-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (I); [`AIRA-RFC-0097`](../specs/rfc/AIRA-RFC-0097-seal-object-store-access.md) (`#201`); [`AIRA-RFC-0098`](../specs/rfc/AIRA-RFC-0098-vra-runtime-b1-010.md) (`#202`); [`AIRA-RFC-0099`](../specs/rfc/AIRA-RFC-0099-event-log-authority.md) (`#203`); [`AIRA-RFC-0100`](../specs/rfc/AIRA-RFC-0100-reduction-catalog-bind.md) (`#204`); [`AIRA-RFC-0101`](../specs/rfc/AIRA-RFC-0101-semantic-verify-text.md) (`#205`); [`AIRA-RFC-0102`](../specs/rfc/AIRA-RFC-0102-evidence-primacy-runtime.md) (`#206`); [`AIRA-RFC-0103`](../specs/rfc/AIRA-RFC-0103-epistemic-emit-c1.md) (`#207`); RFC-0096 reserved (`#208`)
+**Navigation:** [`docs/README.md`](README.md) · **Queue:** [`QUEUE.md`](../QUEUE.md) (QUEUE J closed; no OPEN) · **Phase H plan:** [`phase-h-plan.md`](phase-h-plan.md) · **RFC-P:** [`rfc-p-promotion.md`](rfc-p-promotion.md) · **Phase I:** [`phase-i-plan.md`](phase-i-plan.md) · **Phase J:** [`phase-j-plan.md`](phase-j-plan.md) · **Phase G:** [`phase-g-plan.md`](phase-g-plan.md) · **RFC:** [`AIRA-RFC-0069`](../specs/rfc/AIRA-RFC-0069-phase-g-reference-v0.2.md) (G); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md) (H); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md) (I); [`AIRA-RFC-0096`](../specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md) (J); [`AIRA-RFC-0097`](../specs/rfc/AIRA-RFC-0097-seal-object-store-access.md) (`#201`); [`AIRA-RFC-0098`](../specs/rfc/AIRA-RFC-0098-vra-runtime-b1-010.md) (`#202`); [`AIRA-RFC-0099`](../specs/rfc/AIRA-RFC-0099-event-log-authority.md) (`#203`); [`AIRA-RFC-0100`](../specs/rfc/AIRA-RFC-0100-reduction-catalog-bind.md) (`#204`); [`AIRA-RFC-0101`](../specs/rfc/AIRA-RFC-0101-semantic-verify-text.md) (`#205`); [`AIRA-RFC-0102`](../specs/rfc/AIRA-RFC-0102-evidence-primacy-runtime.md) (`#206`); [`AIRA-RFC-0103`](../specs/rfc/AIRA-RFC-0103-epistemic-emit-c1.md) (`#207`)
 
 ```text
 Requirement → Source spec → Implemented in → Tested by → Status → Notes
@@ -338,7 +338,7 @@ Plan: [`phase-i-plan.md`](phase-i-plan.md). Consolidating RFC: [`AIRA-RFC-0078`]
 
 ---
 
-## Phase J gates (IN PROGRESS)
+## Phase J gates (DONE)
 
 | QUEUE | Gate | Evidence (target) |
 |-------|------|-------------------|
@@ -351,9 +351,9 @@ Plan: [`phase-i-plan.md`](phase-i-plan.md). Consolidating RFC: [`AIRA-RFC-0078`]
 | #205 | Semantic verify text.* | `text.echo` / `text.uppercase` wrong string not VERIFIED; RFC-0101 | **DONE** @ this PR |
 | #206 | Evidence primacy runtime | Claim vs Assumption reject in runtime; RFC-0102 | **DONE** @ this PR |
 | #207 | Epistemic emit on C1 | C1 2+2 writes epistemic-assessment artifact; RFC-0103; `calculate_two_plus_two_emits_epistemic_assessment` | **DONE** @ this PR |
-| #208 | Phase J docs + RFC-0096 | v0.3-strict; consolidating RFC-0096; QUEUE J closed | OPEN |
+| #208 | Phase J docs + RFC-0096 | v0.3-strict; consolidating RFC-0096; QUEUE J closed | **DONE** @ this PR |
 
-Plan: [`phase-j-plan.md`](phase-j-plan.md). Consolidating RFC-0096 reserved (id **confirmed free**; file at `#208`).
+Plan: [`phase-j-plan.md`](phase-j-plan.md). Consolidating RFC: [`AIRA-RFC-0096`](../specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md) (id **confirmed free** at `#199`).
 
 ## Explicitly not this reference (anti-mission + out-of-scope)
 
@@ -378,7 +378,7 @@ KnowledgeOps · Goal Compiler · DSM · full Book II wire mesh
 
 **Phase I `#184`–`#198` DONE** @ RFC-0078 (не змінює anti-mission): semantic contract stabilization; [`phase-i-plan.md`](phase-i-plan.md); **Reference v0.3-stable**; QUEUE I closed; no OPEN.
 
-**Phase J `#199` `#200` `#201` `#202` `#203` `#204` `#205` `#206` `#207` DONE** (не змінює anti-mission): Book-gap local remainder **IN PROGRESS**; [`phase-j-plan.md`](phase-j-plan.md); Book II local adapter = v0.3 ceiling; Opaque Handle sealed (`#201` / RFC-0097); VRA runtime B1-010 (`#202` / RFC-0098); event-log authority (`#203` / RFC-0099); Reduction catalog bind (`#204` / RFC-0100); semantic verify text.* (`#205` / RFC-0101); evidence primacy runtime (`#206` / RFC-0102); epistemic emit on C1 (`#207` / RFC-0103); first OPEN `#208`; RFC-0096 id free until `#208`.
+**Phase J `#199`–`#208` DONE** @ RFC-0096 (не змінює anti-mission): Book-gap local remainder closed; [`phase-j-plan.md`](phase-j-plan.md); **Reference v0.3-strict**; Book II local adapter = v0.3 ceiling; Opaque Handle sealed (`#201` / RFC-0097); VRA runtime B1-010 (`#202` / RFC-0098); event-log authority (`#203` / RFC-0099); Reduction catalog bind (`#204` / RFC-0100); semantic verify text.* (`#205` / RFC-0101); evidence primacy runtime (`#206` / RFC-0102); epistemic emit on C1 (`#207` / RFC-0103); QUEUE J closed; no OPEN.
 
 Model layer (EVO-3): D0–D7 `#53`–`#74` **DONE** @ d270b62. Not Core. Plan: [phase-d-plan.md](phase-d-plan.md).
 
