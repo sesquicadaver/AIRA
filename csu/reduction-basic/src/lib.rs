@@ -5,7 +5,7 @@
 //! QUEUE `#212`: catalog bind is by action/capability **string**. Echo and uppercase keep
 //! their existing binds. `Calculate 2 + 2` stays [`ACTION_MATH_EVAL_SAFE`]. Any other
 //! non-math statement binds [`ACTION_GENERATE_LOCAL`] (RFC-0105 payload). This crate does
-//! **not** import execution CSUs (CSU ↛ CSU). Plane dispatch of generate is `#213`.
+//! **not** import execution CSUs (CSU ↛ CSU). Plane dispatch of generate is `#213` (RFC-0108).
 
 use aira_artifact::ArtifactType;
 use aira_csu::support::{

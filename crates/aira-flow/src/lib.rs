@@ -152,6 +152,82 @@ mod tests {
     }
 
     #[test]
+    fn calculate_two_plus_two_stays_execution_basic() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let out = plane.submit_problem("Calculate 2 + 2").unwrap();
+        let SubmitOutcome::Completed { result, .. } = out else {
+            panic!("expected Completed math path, got {out:?}");
+        };
+        assert_eq!(result["result"], json!(4.0));
+        assert_eq!(result["verification_status"], json!("VERIFIED"));
+        let created = plane
+            .events()
+            .iter()
+            .find(|e| e.event_type == EventType::CapsuleCreated)
+            .expect("CapsuleCreated");
+        assert_eq!(created.payload_ref.as_deref(), Some("math.eval.safe"));
+        assert!(
+            plane.latest_generate_local_output().is_none(),
+            "C1 2+2 must not dispatch generate-local"
+        );
+    }
+
+    #[test]
+    fn non_math_prompt_completes_via_execution_llm_mock() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let out = plane.submit_problem(prompt).unwrap();
+        let SubmitOutcome::Executed {
+            execution_artifact_id,
+            result,
+            ..
+        } = out
+        else {
+            panic!("expected Executed generate-local, got {out:?}");
+        };
+        assert_eq!(
+            result["result"],
+            json!(aira_csu_execution_llm::MockBackend::mock_text(prompt))
+        );
+        assert_eq!(
+            result["backend"],
+            json!(aira_csu_execution_llm::MOCK_BACKEND_ID)
+        );
+        assert_eq!(
+            result["action"],
+            json!(aira_csu_execution_llm::ACTION_GENERATE_LOCAL)
+        );
+        assert!(plane
+            .events()
+            .iter()
+            .any(|e| e.event_type == EventType::CapsuleCompleted));
+        assert!(
+            !plane.has_verified_result_artifact(),
+            "generate-local must not mint a fake VERIFIED result"
+        );
+        assert!(!plane
+            .events()
+            .iter()
+            .any(|e| e.event_type == EventType::VerificationCompleted));
+        let created = plane
+            .events()
+            .iter()
+            .find(|e| e.event_type == EventType::CapsuleCreated)
+            .expect("CapsuleCreated");
+        assert_eq!(
+            created.payload_ref.as_deref(),
+            Some(aira_csu_execution_llm::ACTION_GENERATE_LOCAL)
+        );
+        let (_d, bytes) = plane.artifacts().resolve(&execution_artifact_id).unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["result"], result["result"]);
+    }
+
+    #[test]
     fn calculate_two_plus_two_emits_epistemic_assessment() {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();

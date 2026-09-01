@@ -317,6 +317,11 @@ impl Csu for VerificationBasicCsu {
 
         let body: Value = serde_json::from_slice(&bytes).unwrap_or(json!({}));
         let action = body.get("action").and_then(|v| v.as_str()).unwrap_or("");
+        // Generate-local is executed by execution-llm; do not mint a fake VERIFIED result.
+        // Activate/semantic LLM verify remain later atoms.
+        if action == "text.generate.local" {
+            return Ok(vec![]);
+        }
         let ok = match action {
             "math.eval.safe" => math_eval_matches_claimed(&body, event, ctx),
             "text.echo" | "text.uppercase" => text_matches_claimed(action, &body, event, ctx),
@@ -660,6 +665,24 @@ mod tests {
             vec![cap_id],
         );
         assert!(is_verified(&outs));
+    }
+
+    #[test]
+    fn generate_local_output_is_not_verified() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({
+                "action": "text.generate.local",
+                "result": "mock-generate:prose",
+                "backend": "mock"
+            }),
+            vec![],
+        );
+        assert!(!is_verified(&outs));
+        assert!(!is_failed(&outs));
+        assert!(outs.is_empty());
     }
 
     #[test]

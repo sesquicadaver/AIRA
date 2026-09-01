@@ -1,11 +1,13 @@
-//! Execution-llm CSU (QUEUE #211 / Analyze-246).
+//! Execution-llm CSU (QUEUE #211 / Analyze-246; plane register `#213`).
 //!
 //! Host-local `text.generate.local` capsules complete only through a bound
 //! [`GenerateBackend`]. [`MockBackend`] is deterministic and never shells out
 //! or uses the network. Missing backend or invalid payload → [`EventType::CapsuleFailed`],
 //! never a fake VERIFIED result.
 //!
-//! Not registered on OperationalPlane (`#213`). Activate policy is `#214`.
+//! OperationalPlane registers this CSU with [`MockBackend`] (`#213`). Capsules
+//! whose action is not generate-local are skipped so fan-out with
+//! execution-basic does not fail C1 `math.eval.safe`. Activate policy is `#214`.
 //! Process/ollama backend is `#215`. No Cargo dep on inventory/acquisition CSUs.
 
 use aira_artifact::ArtifactType;
@@ -149,7 +151,7 @@ impl ExecutionLlmCsu {
         self
     }
 
-    /// Bind [`MockBackend`] (tests / CI). Does not register on OperationalPlane.
+    /// Bind [`MockBackend`] (tests / CI / reference plane until `#215`).
     pub fn with_mock_backend(self) -> Self {
         self.with_backend(MockBackend)
     }
@@ -242,6 +244,25 @@ impl Csu for ExecutionLlmCsu {
                 return self.fail(ctx, event, &format!("missing capsule artifact: {e}"));
             }
         };
+
+        // Fan-out with execution-basic: skip math/echo/uppercase capsules.
+        // A generate-local schema body with the wrong action still fails closed.
+        let preview: Value = match serde_json::from_slice(&bytes) {
+            Ok(v) => v,
+            Err(e) => return self.fail(ctx, event, &format!("capsule json: {e}")),
+        };
+        let action = preview.get("action").and_then(|v| v.as_str()).unwrap_or("");
+        if action != ACTION_GENERATE_LOCAL {
+            let schema = preview.get("payload_schema").and_then(|v| v.as_str());
+            if schema == Some(PAYLOAD_SCHEMA_ID) {
+                return self.fail(
+                    ctx,
+                    event,
+                    &format!("unsupported action: {action} (want {ACTION_GENERATE_LOCAL})"),
+                );
+            }
+            return Ok(vec![]);
+        }
 
         let payload = match Self::parse_payload(&bytes) {
             Ok(p) => p,
@@ -539,5 +560,27 @@ mod tests {
         assert!(failed(&outs));
         assert!(!completed(&outs));
         assert!(!has_verified_result(&outs));
+    }
+
+    #[test]
+    fn math_eval_capsule_is_skipped_for_plane_fan_out() {
+        let mut csu = ExecutionLlmCsu::new().with_mock_backend();
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let body = json!({
+            "action": "math.eval.safe",
+            "expression": "2+2",
+            "constraints": { "network": "none", "shell": false }
+        });
+        let cap = bind_capsule(&mut store, &body);
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(outs.is_empty(), "must not fail C1 capsules: {outs:?}");
     }
 }

@@ -19,6 +19,7 @@ use aira_csu_context_basic::ContextBasicCsu;
 use aira_csu_epistemic_basic::EpistemicBasicCsu;
 use aira_csu_evidence_basic::EvidenceBasicCsu;
 use aira_csu_execution_basic::ExecutionBasicCsu;
+use aira_csu_execution_llm::{ExecutionLlmCsu, ACTION_GENERATE_LOCAL};
 use aira_csu_reduction_basic::ReductionBasicCsu;
 use aira_csu_verification_basic::VerificationBasicCsu;
 use aira_event::{EventDescriptor, EventSink, EventType, MemoryEventLog};
@@ -50,6 +51,12 @@ pub enum SubmitOutcome {
     Completed {
         problem_id: AiraRef,
         verified_artifact_id: AiraRef,
+        result: Value,
+    },
+    /// Generate-local completed via execution-llm. Not a Verified Result Artifact.
+    Executed {
+        problem_id: AiraRef,
+        execution_artifact_id: AiraRef,
         result: Value,
     },
     /// Normative alternatives require human collapse (Issue #56).
@@ -110,6 +117,11 @@ impl OperationalPlane {
             Box::new(ContextBasicCsu::new().with_run_nonce(run_nonce.clone())),
             Box::new(reduction),
             Box::new(ExecutionBasicCsu::new().with_run_nonce(run_nonce.clone())),
+            Box::new(
+                ExecutionLlmCsu::new()
+                    .with_run_nonce(run_nonce.clone())
+                    .with_mock_backend(),
+            ),
             Box::new(VerificationBasicCsu::new().with_run_nonce(run_nonce.clone())),
             Box::new(EvidenceBasicCsu::new().with_run_nonce(run_nonce.clone())),
             Box::new(EpistemicBasicCsu::new().with_run_nonce(run_nonce.clone())),
@@ -257,19 +269,28 @@ impl OperationalPlane {
             .map_err(|e| FlowError::Other(e.to_string()))?;
         self.drain_from(0)?;
 
-        let verified = self
-            .latest_verified_result()
-            .ok_or_else(|| FlowError::Other("pipeline produced no verified result".into()))?;
-        // C1 2+2 (and any Completed submit) must emit epistemic-assessment (#207).
-        // Not a full Epistemic plane.
-        let _ = self
-            .latest_epistemic_assessment()
-            .ok_or_else(|| FlowError::Other("pipeline produced no epistemic assessment".into()))?;
-        Ok(SubmitOutcome::Completed {
-            problem_id,
-            verified_artifact_id: verified.0,
-            result: verified.1,
-        })
+        if let Some(verified) = self.latest_verified_result() {
+            // C1 2+2 (and any Completed submit) must emit epistemic-assessment (#207).
+            // Not a full Epistemic plane.
+            let _ = self.latest_epistemic_assessment().ok_or_else(|| {
+                FlowError::Other("pipeline produced no epistemic assessment".into())
+            })?;
+            return Ok(SubmitOutcome::Completed {
+                problem_id,
+                verified_artifact_id: verified.0,
+                result: verified.1,
+            });
+        }
+        if let Some((execution_artifact_id, result)) = self.latest_generate_local_output() {
+            return Ok(SubmitOutcome::Executed {
+                problem_id,
+                execution_artifact_id,
+                result,
+            });
+        }
+        Err(FlowError::Other(
+            "pipeline produced no verified result".into(),
+        ))
     }
 
     /// Inject an external event and drain (demos / failure injection).
@@ -337,6 +358,28 @@ impl OperationalPlane {
                     .unwrap_or(false)
             })
         })
+    }
+
+    /// Latest generate-local ExecutionArtifact from execution-llm (not a VRA).
+    pub fn latest_generate_local_output(&self) -> Option<(AiraRef, Value)> {
+        for e in self.events().iter().rev() {
+            if e.event_type != EventType::CapsuleCompleted {
+                continue;
+            }
+            for id in &e.artifact_refs {
+                if let Ok((desc, bytes)) = self.artifacts.resolve(id) {
+                    if desc.artifact_type != ArtifactType::ExecutionArtifact {
+                        continue;
+                    }
+                    if let Ok(v) = serde_json::from_slice::<Value>(&bytes) {
+                        if v.get("action").and_then(|a| a.as_str()) == Some(ACTION_GENERATE_LOCAL) {
+                            return Some((id.clone(), v));
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 
     fn latest_verified_result(&self) -> Option<(AiraRef, Value)> {

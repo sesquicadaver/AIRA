@@ -176,6 +176,16 @@ fn run() -> Result<ExitCode> {
                 println!("result_ref={verified_artifact_id}");
                 println!("{}", serde_json::to_string_pretty(&result)?);
             }
+            SubmitOutcome::Executed {
+                problem_id,
+                execution_artifact_id,
+                result,
+            } => {
+                println!("processed problem_ref={problem_id}");
+                println!("result_ref={execution_artifact_id}");
+                println!("status executed");
+                println!("{}", serde_json::to_string_pretty(&result)?);
+            }
             SubmitOutcome::NeedsHumanCollapse { field_artifact_id } => {
                 println!("needs_human_collapse field_ref={field_artifact_id}");
             }

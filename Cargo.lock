@@ -504,6 +504,7 @@ dependencies = [
  "aira-csu-epistemic-basic",
  "aira-csu-evidence-basic",
  "aira-csu-execution-basic",
+ "aira-csu-execution-llm",
  "aira-csu-reduction-basic",
  "aira-csu-verification-basic",
  "aira-event",
