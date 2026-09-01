@@ -1,6 +1,6 @@
 # Phase J — Book-gap local remainder (post-I)
 
-**Статус:** складено 2026-08-30; **IN PROGRESS** 2026-08-31 → QUEUE `#199` `#200` `#201` `#202` `#203` `#204` **DONE**; first OPEN `#205`.  
+**Статус:** складено 2026-08-30; **IN PROGRESS** 2026-09-01 → QUEUE `#199` `#200` `#201` `#202` `#203` `#204` `#205` **DONE**; first OPEN `#206`.  
 **Джерела:** матриця [`implementation-status.md`](implementation-status.md) Book 0–IV після RFC-0078; [`phase-i-plan.md`](phase-i-plan.md) §0.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase J `#199`–`#208`.  
 **Резерв RFC:** consolidating RFC-0096 (файл **не** створювати до `#208`).  
@@ -40,7 +40,7 @@ Phase I DONE (#198 / RFC-0078 / v0.3-stable)
 
 ## 2. Інваріанти
 
-1. Лінійність: `#N` після `#N-1`; перший OPEN зараз `#205`.
+1. Лінійність: `#N` після `#N-1`; перший OPEN зараз `#206`.
 2. Один атом = один PR.
 3. C0/C1 не послаблюються; C2 required; C3/C4/C5 не merge gates у J.
 4. Core ↛ node/peer/CSU; CSU ↛ CSU.
@@ -135,12 +135,12 @@ C1 path emits epistemic assessment.
 ## 8. RFC
 
 - Consolidating (`#208`): `specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md` — id **confirmed free** (немає `AIRA-RFC-0096*` у `specs/rfc/`).
-- Per-atom RFC при ABI Handle (`#201` / [`AIRA-RFC-0097`](../specs/rfc/AIRA-RFC-0097-seal-object-store-access.md)), VRA body (`#202` / [`AIRA-RFC-0098`](../specs/rfc/AIRA-RFC-0098-vra-runtime-b1-010.md)), Event-log authority (`#203` / [`AIRA-RFC-0099`](../specs/rfc/AIRA-RFC-0099-event-log-authority.md)), Reduction catalog (`#204` / [`AIRA-RFC-0100`](../specs/rfc/AIRA-RFC-0100-reduction-catalog-bind.md)), Verification text (`#205`).
+- Per-atom RFC при ABI Handle (`#201` / [`AIRA-RFC-0097`](../specs/rfc/AIRA-RFC-0097-seal-object-store-access.md)), VRA body (`#202` / [`AIRA-RFC-0098`](../specs/rfc/AIRA-RFC-0098-vra-runtime-b1-010.md)), Event-log authority (`#203` / [`AIRA-RFC-0099`](../specs/rfc/AIRA-RFC-0099-event-log-authority.md)), Reduction catalog (`#204` / [`AIRA-RFC-0100`](../specs/rfc/AIRA-RFC-0100-reduction-catalog-bind.md)), Verification text (`#205` / [`AIRA-RFC-0101`](../specs/rfc/AIRA-RFC-0101-semantic-verify-text.md)).
 
 ## 9. Activation rule
 
 ```text
 #198 DONE (RFC-0078) → цей план активовано атомом `#199`.
-#199 wiring DONE; `#200` Book II ceiling honesty DONE; `#201` Seal `object_store_access` DONE (RFC-0097); `#202` VRA runtime B1-010 DONE (RFC-0098); `#203` Event-log authority DONE (RFC-0099); `#204` Reduction catalog bind DONE (RFC-0100); first OPEN `#205` (Semantic verify text.*).
+#199 wiring DONE; `#200` Book II ceiling honesty DONE; `#201` Seal `object_store_access` DONE (RFC-0097); `#202` VRA runtime B1-010 DONE (RFC-0098); `#203` Event-log authority DONE (RFC-0099); `#204` Reduction catalog bind DONE (RFC-0100); `#205` Semantic verify text.* DONE (RFC-0101); first OPEN `#206` (Evidence primacy runtime).
 RFC-0096 файл лише в `#208`.
 ```

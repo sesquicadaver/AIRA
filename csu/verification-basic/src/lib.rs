@@ -2,6 +2,7 @@
 //!
 //! Distinguishes Output Artifact from Verified Result Artifact.
 //! `#187`: `math.eval.safe` is independently evaluated; a wrong finite result is not VERIFIED.
+//! `#205`: `text.echo` / `text.uppercase` compare claimed `result` to capsule/output `expression`.
 
 use aira_artifact::ArtifactType;
 use aira_csu::support::{
@@ -153,7 +154,8 @@ fn claimed_matches_computed(claimed: f64, computed: f64) -> bool {
     claimed.is_finite() && computed.is_finite() && (claimed - computed).abs() <= 1e-9
 }
 
-fn math_expression(
+/// Source text for math/text actions: output `expression` or capsule (`artifact_refs[1]`).
+fn action_expression(
     body: &Value,
     event: &EventDescriptor,
     ctx: &mut CsuExecutionContext<'_, '_>,
@@ -251,12 +253,32 @@ fn math_eval_matches_claimed(
     if !claimed.is_finite() {
         return false;
     }
-    let Some(expr) = math_expression(body, event, ctx) else {
+    let Some(expr) = action_expression(body, event, ctx) else {
         return false;
     };
     match math_eval_safe(&expr) {
         Ok(computed) => claimed_matches_computed(claimed, computed),
         Err(_) => false,
+    }
+}
+
+/// Independent of execution-basic (CSU ↛ CSU). Same `to_uppercase` as execution-basic.
+fn text_matches_claimed(
+    action: &str,
+    body: &Value,
+    event: &EventDescriptor,
+    ctx: &mut CsuExecutionContext<'_, '_>,
+) -> bool {
+    let Some(claimed) = body.get("result").and_then(|v| v.as_str()) else {
+        return false;
+    };
+    let Some(src) = action_expression(body, event, ctx) else {
+        return false;
+    };
+    match action {
+        "text.echo" => claimed == src,
+        "text.uppercase" => claimed == src.to_uppercase(),
+        _ => false,
     }
 }
 
@@ -297,7 +319,7 @@ impl Csu for VerificationBasicCsu {
         let action = body.get("action").and_then(|v| v.as_str()).unwrap_or("");
         let ok = match action {
             "math.eval.safe" => math_eval_matches_claimed(&body, event, ctx),
-            "text.echo" | "text.uppercase" => body.get("result").and_then(|v| v.as_str()).is_some(),
+            "text.echo" | "text.uppercase" => text_matches_claimed(action, &body, event, ctx),
             _ => false,
         };
 
@@ -562,6 +584,91 @@ mod tests {
         let outs = run_on_output(
             &mut store,
             json!({"action":"math.eval.safe","result":4.0}),
+            vec![],
+        );
+        assert!(!is_verified(&outs));
+        assert!(is_failed(&outs));
+    }
+
+    #[test]
+    fn verifies_text_echo_output_as_verified_result() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"text.echo","expression":"hello","result":"hello"}),
+            vec![],
+        );
+        assert!(is_verified(&outs));
+    }
+
+    #[test]
+    fn verifies_text_uppercase_output_as_verified_result() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"text.uppercase","expression":"hello","result":"HELLO"}),
+            vec![],
+        );
+        assert!(is_verified(&outs));
+    }
+
+    #[test]
+    fn wrong_text_echo_result_is_not_verified() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"text.echo","expression":"hello","result":"world"}),
+            vec![],
+        );
+        assert!(!is_verified(&outs));
+        assert!(is_failed(&outs));
+    }
+
+    #[test]
+    fn wrong_text_uppercase_result_is_not_verified() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"text.uppercase","expression":"hello","result":"hello"}),
+            vec![],
+        );
+        assert!(!is_verified(&outs));
+        assert!(is_failed(&outs));
+    }
+
+    #[test]
+    fn text_echo_expression_from_capsule_artifact() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap_body = json!({"action":"text.echo","expression":"hello"});
+        let cap_payload = json_bytes(&cap_body);
+        let cap = make_artifact(
+            "aira:artifact:captext",
+            ArtifactType::ExecutionArtifact,
+            &cap_payload,
+            vec![],
+        );
+        let cap_id = cap.artifact_id.clone();
+        store.publish(cap, &cap_payload).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"text.echo","result":"hello"}),
+            vec![cap_id],
+        );
+        assert!(is_verified(&outs));
+    }
+
+    #[test]
+    fn text_echo_without_expression_is_not_verified() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"text.echo","result":"hello"}),
             vec![],
         );
         assert!(!is_verified(&outs));
