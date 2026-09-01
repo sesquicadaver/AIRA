@@ -166,6 +166,64 @@ mod tests {
     }
 
     #[test]
+    fn posts_generate_local_and_parses_executed_not_verified() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let handle = thread::spawn(move || {
+            let (mut s, _) = listener.accept().unwrap();
+            let mut buf = Vec::new();
+            loop {
+                let mut chunk = [0u8; 1024];
+                let n = s.read(&mut chunk).unwrap();
+                if n == 0 {
+                    break;
+                }
+                buf.extend_from_slice(&chunk[..n]);
+                if buf.windows(4).any(|w| w == b"\r\n\r\n") {
+                    let req = String::from_utf8_lossy(&buf);
+                    if let Some((_, rest)) = req.split_once("\r\n\r\n") {
+                        if let Some(cl) = req
+                            .lines()
+                            .find(|l| l.to_ascii_lowercase().starts_with("content-length:"))
+                            .and_then(|l| l.split(':').nth(1))
+                            .and_then(|v| v.trim().parse::<usize>().ok())
+                        {
+                            if rest.len() >= cl {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            let req = String::from_utf8_lossy(&buf);
+            assert!(req.contains("POST /v1/problems"));
+            assert!(req.contains(
+                r#""text":"Summarize the local Problem Statement without leaving the host.""#
+            ));
+            let body = r#"{"status":"executed","problem_id":"aira:problem:g","execution_artifact_id":"aira:artifact:e","result":{"result":"mock-generate:Summarize the local Problem Statement without leaving the host.","action":"text.generate.local","backend":"mock"}}"#;
+            let resp = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            s.write_all(resp.as_bytes()).unwrap();
+        });
+        let listen = format!("{}:{}", addr.ip(), addr.port());
+        let v = submit_problem_http(
+            &listen,
+            None,
+            "Summarize the local Problem Statement without leaving the host.",
+            Duration::from_secs(2),
+        )
+        .unwrap();
+        assert_eq!(v["status"], "executed");
+        assert_eq!(v["result"]["action"], "text.generate.local");
+        assert_ne!(v["status"], "completed");
+        assert!(v.get("verification_status").is_none());
+        assert!(v["result"].get("verification_status").is_none());
+        handle.join().unwrap();
+    }
+
+    #[test]
     fn http_error_surface_json_error() {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();

@@ -58,6 +58,7 @@ pub struct Labels {
     pub work_ids: &'static str,
     pub work_problem_id: &'static str,
     pub work_artifact_id: &'static str,
+    pub work_execution_id: &'static str,
     pub work_field_id: &'static str,
     pub work_details: &'static str,
     pub work_no_answer: &'static str,
@@ -138,14 +139,15 @@ static EN: Labels = Labels {
     quit: "Quit",
     restart_hint: "Profile/listen changed — Stop then Start to apply peer.",
     work_heading: "Problem",
-    work_hint: "Submit text to the local node (same path as `aira problem submit`). Example: Calculate 2 + 2",
+    work_hint: "Submit text to the local node (`POST /v1/problems`, same path as `aira problem submit`). C1 example: Calculate 2 + 2. Other text uses generate-local.",
     work_submit: "Submit",
-    work_not_llm: "This tab uses C1 `execution-basic` (safe math / text.echo) until an LLM Execution CSU exists. Core does not host inference. Local models are Artifact + Capability (`aira models` Phase D inventory).",
+    work_not_llm: "C1 `Calculate 2 + 2` uses `execution-basic` / `math.eval.safe` (VERIFIED). Other prompts run `text.generate.local` on the local Execution CSU (MockBackend in CI; status executed, not a Verified Result). Generate fail-closes without Phase D activate — this tab never fakes VERIFIED. Core does not host inference.",
     work_answer: "Answer",
     work_verification: "Verification:",
     work_ids: "Identifiers",
     work_problem_id: "Problem ID:",
     work_artifact_id: "Verified artifact:",
+    work_execution_id: "Execution artifact:",
     work_field_id: "Field artifact:",
     work_details: "Details",
     work_no_answer: "(no result payload)",
@@ -217,14 +219,15 @@ static UK: Labels = Labels {
     quit: "Вийти",
     restart_hint: "Профіль/listen змінено — Стоп, потім Старт, щоб застосувати peer.",
     work_heading: "Задача",
-    work_hint: "Надіслати текст на локальний вузол (той самий шлях, що `aira problem submit`). Приклад: Calculate 2 + 2",
+    work_hint: "Надіслати текст на локальний вузол (`POST /v1/problems`, той самий шлях, що `aira problem submit`). C1 приклад: Calculate 2 + 2. Інший текст — generate-local.",
     work_submit: "Надіслати",
-    work_not_llm: "Ця вкладка використовує C1 `execution-basic` (безпечна арифметика / text.echo), поки немає LLM Execution CSU. Ядро не хостить inference. Локальні моделі — Artifact + Capability (`aira models`, Phase D inventory).",
+    work_not_llm: "C1 `Calculate 2 + 2` іде через `execution-basic` / `math.eval.safe` (VERIFIED). Інші промпти — `text.generate.local` на локальному Execution CSU (MockBackend у CI; статус executed, не Verified Result). Без Phase D activate generate fail-closed — вкладка не підробляє VERIFIED. Ядро не хостить inference.",
     work_answer: "Відповідь",
     work_verification: "Верифікація:",
     work_ids: "Ідентифікатори",
     work_problem_id: "ID задачі:",
     work_artifact_id: "Верифікований артефакт:",
+    work_execution_id: "Артефакт виконання:",
     work_field_id: "Артефакт поля:",
     work_details: "Деталі",
     work_no_answer: "(немає payload результату)",
@@ -294,9 +297,22 @@ mod tests {
         assert!(Labels::get(UiLang::En)
             .work_not_llm
             .contains("execution-basic"));
+        assert!(Labels::get(UiLang::En)
+            .work_not_llm
+            .contains("text.generate.local"));
+        assert!(Labels::get(UiLang::En)
+            .work_not_llm
+            .contains("never fakes VERIFIED"));
+        assert!(Labels::get(UiLang::Uk)
+            .work_not_llm
+            .contains("text.generate.local"));
         assert!(Labels::get(UiLang::Uk).not_llm.contains("не заборона"));
         assert_eq!(Labels::get(UiLang::Uk).work_answer, "Відповідь");
         assert_eq!(Labels::get(UiLang::En).work_details, "Details");
+        assert_eq!(
+            Labels::get(UiLang::En).work_execution_id,
+            "Execution artifact:"
+        );
         assert!(!Labels::get(UiLang::En)
             .work_not_llm
             .to_ascii_lowercase()
