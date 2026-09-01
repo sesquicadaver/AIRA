@@ -1,9 +1,19 @@
-//! Phase K wiring contract (#209) and generate-local schema (#210).
+//! Phase K wiring contract (#209), generate-local schema (#210), execution-llm mock (#211).
 
 use std::path::PathBuf;
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn rfc_0104_hits() -> Vec<String> {
+    let rfc_dir = repo_root().join("specs/rfc");
+    std::fs::read_dir(&rfc_dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n.contains("RFC-0104") || n.contains("rfc-0104"))
+        .collect()
 }
 
 #[test]
@@ -48,14 +58,22 @@ fn phase_k_queue_wiring_209_done() {
         "QUEUE #210 must be DONE after generate-local schema"
     );
     assert!(
+        text.contains("| 211 | **DONE**"),
+        "QUEUE #211 must be DONE after execution-llm mock"
+    );
+    assert!(
         !text.contains("| 210 | **OPEN**"),
         "QUEUE #210 must not stay OPEN after generate-local schema"
     );
-    for n in 211..=216 {
+    assert!(
+        !text.contains("| 211 | **OPEN**"),
+        "QUEUE #211 must not stay OPEN after execution-llm mock"
+    );
+    for n in 212..=216 {
         let open = format!("| {n} | **OPEN**");
-        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #210");
+        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #211");
         let done = format!("| {n} | **DONE**");
-        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #210");
+        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #211");
     }
     assert!(
         !text.contains("| 209 | **OPEN**"),
@@ -77,6 +95,7 @@ fn phase_k_readme_and_docs_index() {
     assert!(readme.contains("phase-k-plan.md"));
     assert!(readme.contains("#209"));
     assert!(readme.contains("#210"));
+    assert!(readme.contains("#211"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-k-plan.md"));
     assert!(docs.contains("#209"));
@@ -92,13 +111,7 @@ fn phase_j_points_to_active_phase_k() {
 
 #[test]
 fn phase_k_rfc_0104_id_free() {
-    let rfc_dir = repo_root().join("specs/rfc");
-    let hits: Vec<_> = std::fs::read_dir(&rfc_dir)
-        .unwrap()
-        .filter_map(|e| e.ok())
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.contains("RFC-0104") || n.contains("rfc-0104"))
-        .collect();
+    let hits = rfc_0104_hits();
     assert!(
         hits.is_empty(),
         "RFC-0104 must stay free until #216, found {hits:?}"
@@ -133,23 +146,87 @@ fn phase_k_generate_local_210() {
     let rfc_text = std::fs::read_to_string(&rfc).unwrap();
     assert!(rfc_text.contains("aira:schema:execution:generate-local:0.1"));
     assert!(rfc_text.contains("text.generate.local"));
-    let rfc_dir = repo_root().join("specs/rfc");
-    let hits: Vec<_> = std::fs::read_dir(&rfc_dir)
-        .unwrap()
-        .filter_map(|e| e.ok())
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.contains("RFC-0104") || n.contains("rfc-0104"))
-        .collect();
+    let hits = rfc_0104_hits();
     assert!(
         hits.is_empty(),
         "RFC-0104 must stay free until #216, found {hits:?}"
     );
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 210 | **DONE**"));
-    assert!(queue.contains("| 211 | **OPEN**"));
     assert!(!queue.contains("| 210 | **OPEN**"));
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
     assert!(status.contains("aira:schema:execution:generate-local:0.1"));
     assert!(status.contains("| #210 | Capsule `text.generate.local`"));
+}
+
+#[test]
+fn phase_k_execution_llm_211() {
+    let cargo = repo_root().join("csu/execution-llm/Cargo.toml");
+    let lib = repo_root().join("csu/execution-llm/src/lib.rs");
+    assert!(cargo.is_file(), "csu/execution-llm Cargo.toml missing");
+    assert!(lib.is_file(), "csu/execution-llm src/lib.rs missing");
+    let cargo_text = std::fs::read_to_string(&cargo).unwrap();
+    assert!(
+        cargo_text.contains("name = \"aira-csu-execution-llm\""),
+        "workspace crate name must be aira-csu-execution-llm"
+    );
+    assert!(
+        !cargo_text.contains("model-inventory"),
+        "execution-llm must not depend on inventory CSU"
+    );
+    assert!(
+        !cargo_text.contains("model-acquisition"),
+        "execution-llm must not depend on acquisition CSU"
+    );
+    let lib_text = std::fs::read_to_string(&lib).unwrap();
+    for needle in [
+        "struct MockBackend",
+        "trait GenerateBackend",
+        "struct ExecutionLlmCsu",
+        "text.generate.local",
+        "aira:schema:execution:generate-local:0.1",
+        "fn mock_backend_completes_valid_generate_local",
+        "fn missing_backend_is_capsule_failed",
+        "TODO(#214)",
+        "deny_unknown_fields",
+    ] {
+        assert!(
+            lib_text.contains(needle),
+            "execution-llm lib missing: {needle}"
+        );
+    }
+    assert!(
+        !lib_text.contains("std::process"),
+        "MockBackend path must not shell out"
+    );
+    assert!(
+        !lib_text.contains("Command::"),
+        "MockBackend path must not spawn Command"
+    );
+    let ws = std::fs::read_to_string(repo_root().join("Cargo.toml")).unwrap();
+    assert!(
+        ws.contains("csu/execution-llm"),
+        "workspace must list csu/execution-llm"
+    );
+    let rfc = repo_root().join("specs/rfc/AIRA-RFC-0106-execution-llm-mock.md");
+    assert!(rfc.is_file(), "RFC-0106 must exist for #211");
+    let hits = rfc_0104_hits();
+    assert!(
+        hits.is_empty(),
+        "RFC-0104 must stay free until #216, found {hits:?}"
+    );
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 211 | **DONE**"));
+    assert!(queue.contains("| 212 | **OPEN**"));
+    assert!(!queue.contains("| 211 | **OPEN**"));
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #211 | `execution-llm` CSU + mock"));
+    assert!(status.contains("**DONE** @ this PR"));
+    let flow = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/local.rs")).unwrap();
+    assert!(
+        !flow.contains("execution-llm") && !flow.contains("ExecutionLlmCsu"),
+        "must not register execution-llm on OperationalPlane (#213)"
+    );
 }
