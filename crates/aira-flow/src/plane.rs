@@ -19,7 +19,9 @@ use aira_csu_context_basic::ContextBasicCsu;
 use aira_csu_epistemic_basic::EpistemicBasicCsu;
 use aira_csu_evidence_basic::EvidenceBasicCsu;
 use aira_csu_execution_basic::ExecutionBasicCsu;
-use aira_csu_execution_llm::{ExecutionLlmCsu, ACTION_GENERATE_LOCAL};
+use aira_csu_execution_llm::{
+    AlwaysActivated, ExecutionLlmCsu, ModelActivateGate, ACTION_GENERATE_LOCAL, ACTIVATE_DENIED,
+};
 use aira_csu_reduction_basic::ReductionBasicCsu;
 use aira_csu_verification_basic::VerificationBasicCsu;
 use aira_event::{EventDescriptor, EventSink, EventType, MemoryEventLog};
@@ -61,6 +63,53 @@ pub enum SubmitOutcome {
     },
     /// Normative alternatives require human collapse (Issue #56).
     NeedsHumanCollapse { field_artifact_id: AiraRef },
+}
+
+/// Phase D activate handle: presence of `models/activated.latest.json`.
+///
+/// Lives on the plane (not in execution-llm) so CSU ↛ CSU holds. Does not
+/// mutate inventory or download weights.
+#[derive(Debug, Clone)]
+pub struct ActivatedPointerGate {
+    pointer_path: PathBuf,
+}
+
+impl ActivatedPointerGate {
+    /// Pointer path relative to an `.aira` (or equivalent) root.
+    pub fn from_aira_root(root: impl AsRef<Path>) -> Self {
+        Self {
+            pointer_path: root.as_ref().join("models/activated.latest.json"),
+        }
+    }
+}
+
+impl ModelActivateGate for ActivatedPointerGate {
+    fn check_activated(
+        &self,
+        payload: &aira_csu_execution_llm::GenerateLocalPayload,
+    ) -> Result<(), String> {
+        if !self.pointer_path.is_file() {
+            return Err(ACTIVATE_DENIED.into());
+        }
+        let raw =
+            std::fs::read_to_string(&self.pointer_path).map_err(|_| ACTIVATE_DENIED.to_string())?;
+        let v: Value = serde_json::from_str(&raw).map_err(|_| {
+            "activated pointer is not valid JSON (fail-closed; not VERIFIED)".to_string()
+        })?;
+        let model_ref = v.get("model_ref").and_then(|x| x.as_str()).unwrap_or("");
+        if model_ref.is_empty() {
+            return Err(ACTIVATE_DENIED.into());
+        }
+        if let Some(want) = &payload.model_artifact_ref {
+            if want.as_str() != model_ref {
+                return Err(format!(
+                    "model {} is not Phase D activated (activated {model_ref}; fail-closed; not VERIFIED)",
+                    want.as_str()
+                ));
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Local in-process C1 reference plane (demo / conformance), not production runtime.
@@ -168,6 +217,37 @@ impl OperationalPlane {
         let mut plane = Self::open_with_ready_nonce(root, vec![], run_nonce)?;
         plane.reuse_index = Some(reuse_index.as_ref().to_path_buf());
         Ok(plane)
+    }
+
+    /// Bind a Phase D activate handle on the registered execution-llm CSU.
+    ///
+    /// Default construction is fail-closed (no gate). Tests inject
+    /// [`AlwaysActivated`]; LocalSession injects [`ActivatedPointerGate`].
+    pub fn bind_activate_gate(
+        &mut self,
+        gate: impl ModelActivateGate + 'static,
+    ) -> Result<(), FlowError> {
+        let csu = ExecutionLlmCsu::new()
+            .with_run_nonce(self.run_nonce.clone())
+            .with_mock_backend()
+            .with_activate_gate(gate);
+        self.runtime
+            .replace_handler(Box::new(csu))
+            .map_err(|e| FlowError::Csu(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Test/CI double: MockBackend + Phase D activated.
+    pub fn enable_activated_mock_llm(&mut self) -> Result<(), FlowError> {
+        self.bind_activate_gate(AlwaysActivated)
+    }
+
+    /// Bind [`ActivatedPointerGate`] for `models/activated.latest.json` under `aira_root`.
+    pub fn bind_phase_d_activate_from_root(
+        &mut self,
+        aira_root: impl AsRef<Path>,
+    ) -> Result<(), FlowError> {
+        self.bind_activate_gate(ActivatedPointerGate::from_aira_root(aira_root))
     }
 
     pub fn objects(&self) -> &MemoryObjectStore {

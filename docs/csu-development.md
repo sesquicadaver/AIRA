@@ -46,7 +46,7 @@ Use `aira_csu::support::{basic_manifest, make_event, make_artifact}` for MVP hel
 | context-basic | ProblemSubmitted → Context |
 | reduction-basic | reuse or CapsuleCreated; non-math/echo/upper → `text.generate.local` (`#212`; plane dispatch `#213` DONE) |
 | execution-basic | safe math/text actions |
-| execution-llm | `text.generate.local` via bound backend; MockBackend on OperationalPlane (`#213`) |
+| execution-llm | `text.generate.local` via bound backend + injected activate gate; MockBackend on OperationalPlane (`#213`/`#214`) |
 | verification-basic | Verified Result |
 | evidence-basic | failure/result evidence |
 | epistemic-basic | EPI-001 assessment (Evidence/Confidence/Scope/Status; `#146`) |

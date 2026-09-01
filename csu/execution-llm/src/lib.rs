@@ -1,13 +1,14 @@
-//! Execution-llm CSU (QUEUE #211 / Analyze-246; plane register `#213`).
+//! Execution-llm CSU (QUEUE #211 / Analyze-246; plane `#213`; activate gate `#214`).
 //!
 //! Host-local `text.generate.local` capsules complete only through a bound
-//! [`GenerateBackend`]. [`MockBackend`] is deterministic and never shells out
-//! or uses the network. Missing backend or invalid payload → [`EventType::CapsuleFailed`],
-//! never a fake VERIFIED result.
+//! [`GenerateBackend`] **and** a bound [`ModelActivateGate`]. [`MockBackend`] is
+//! deterministic and never shells out or uses the network. Missing backend,
+//! missing/inactive Phase D activate, or invalid payload →
+//! [`EventType::CapsuleFailed`], never a fake VERIFIED result.
 //!
-//! OperationalPlane registers this CSU with [`MockBackend`] (`#213`). Capsules
-//! whose action is not generate-local are skipped so fan-out with
-//! execution-basic does not fail C1 `math.eval.safe`. Activate policy is `#214`.
+//! OperationalPlane registers this CSU with [`MockBackend`] (`#213`) and injects
+//! the activate handle (`#214`). Capsules whose action is not generate-local are
+//! skipped so fan-out with execution-basic does not fail C1 `math.eval.safe`.
 //! Process/ollama backend is `#215`. No Cargo dep on inventory/acquisition CSUs.
 
 use aira_artifact::ArtifactType;
@@ -26,6 +27,9 @@ pub const ACTION_GENERATE_LOCAL: &str = "text.generate.local";
 
 /// Mock backend identifier stamped on successful output.
 pub const MOCK_BACKEND_ID: &str = "mock";
+
+/// Fail-closed activate-gate message. Not a VERIFIED result.
+pub const ACTIVATE_DENIED: &str = "model is not Phase D activated (fail-closed; not VERIFIED)";
 
 /// Constraints frozen by the generate-local schema (`network=none`, `shell=false`).
 #[derive(Debug, Clone, Deserialize)]
@@ -106,12 +110,43 @@ impl GenerateBackend for MockBackend {
     }
 }
 
-/// Local LLM execution CSU. Default construction has **no** backend (fail-closed).
+/// Phase D activation check. Injected by the plane or tests (CSU ↛ CSU).
+///
+/// The gate is **activation state**, not a required `model_artifact_ref` on the
+/// RFC-0105 payload. Absence of a bound gate is fail-closed.
+pub trait ModelActivateGate: Send {
+    /// `Ok` if generate may proceed. `Err` becomes [`EventType::CapsuleFailed`].
+    fn check_activated(&self, payload: &GenerateLocalPayload) -> Result<(), String>;
+}
+
+/// Test double: treat a model as Phase D activated.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct AlwaysActivated;
+
+impl ModelActivateGate for AlwaysActivated {
+    fn check_activated(&self, _payload: &GenerateLocalPayload) -> Result<(), String> {
+        Ok(())
+    }
+}
+
+/// Test double: treat the model as not activated.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct NeverActivated;
+
+impl ModelActivateGate for NeverActivated {
+    fn check_activated(&self, _payload: &GenerateLocalPayload) -> Result<(), String> {
+        Err(ACTIVATE_DENIED.into())
+    }
+}
+
+/// Local LLM execution CSU. Default construction has **no** backend and **no**
+/// activate gate (fail-closed).
 pub struct ExecutionLlmCsu {
     manifest: CsuManifest,
     seq: u64,
     run_nonce: String,
     backend: Option<Box<dyn GenerateBackend>>,
+    activate_gate: Option<Box<dyn ModelActivateGate>>,
 }
 
 impl Default for ExecutionLlmCsu {
@@ -134,6 +169,7 @@ impl ExecutionLlmCsu {
             seq: 1,
             run_nonce: String::from("0"),
             backend: None,
+            activate_gate: None,
         }
     }
 
@@ -162,6 +198,12 @@ impl ExecutionLlmCsu {
         self
     }
 
+    /// Bind a Phase D activate handle. The plane or tests supply this (CSU ↛ CSU).
+    pub fn with_activate_gate(mut self, gate: impl ModelActivateGate + 'static) -> Self {
+        self.activate_gate = Some(Box::new(gate));
+        self
+    }
+
     fn next_id(&mut self, kind: &str) -> String {
         let id = format!("aira:{kind}:execllm{}_{}", self.run_nonce, self.seq);
         self.seq += 1;
@@ -178,13 +220,15 @@ impl ExecutionLlmCsu {
         Ok(payload)
     }
 
-    /// `#214` activate gate lives here as a fail-closed hook only.
+    /// Fail closed unless a [`ModelActivateGate`] reports Phase D activation.
     ///
-    /// This atom does **not** implement Phase D activate policy. Optional
-    /// `model_artifact_ref` is accepted by the schema and ignored for gating.
-    fn activate_gate_placeholder(_payload: &GenerateLocalPayload) -> Result<(), String> {
-        // TODO(#214): generate without Phase D activate → CapsuleFailed + Evidence, not VERIFIED.
-        Ok(())
+    /// Optional `model_artifact_ref` is accepted by RFC-0105 and forwarded to
+    /// the gate; it is **not** required on every payload.
+    fn check_activate(&self, payload: &GenerateLocalPayload) -> Result<(), String> {
+        match self.activate_gate.as_ref() {
+            Some(gate) => gate.check_activated(payload),
+            None => Err(ACTIVATE_DENIED.into()),
+        }
     }
 
     fn fail(
@@ -269,7 +313,7 @@ impl Csu for ExecutionLlmCsu {
             Err(msg) => return self.fail(ctx, event, &msg),
         };
 
-        if let Err(msg) = Self::activate_gate_placeholder(&payload) {
+        if let Err(msg) = self.check_activate(&payload) {
             return self.fail(ctx, event, &msg);
         }
 
@@ -430,7 +474,9 @@ mod tests {
 
     #[test]
     fn mock_backend_completes_valid_generate_local() {
-        let mut csu = ExecutionLlmCsu::new().with_mock_backend();
+        let mut csu = ExecutionLlmCsu::new()
+            .with_mock_backend()
+            .with_activate_gate(AlwaysActivated);
         let mut log = MemoryEventLog::new();
         let dir = tempfile::tempdir().unwrap();
         let mut store = CasArtifactStore::open(dir.path()).unwrap();
@@ -474,7 +520,7 @@ mod tests {
 
     #[test]
     fn missing_backend_is_capsule_failed() {
-        let mut csu = ExecutionLlmCsu::new();
+        let mut csu = ExecutionLlmCsu::new().with_activate_gate(AlwaysActivated);
         let mut log = MemoryEventLog::new();
         let dir = tempfile::tempdir().unwrap();
         let mut store = CasArtifactStore::open(dir.path()).unwrap();
@@ -493,6 +539,77 @@ mod tests {
             o,
             CsuOutput::Failure { message } if message.contains("no generate backend bound")
         )));
+    }
+
+    #[test]
+    fn inactive_model_is_capsule_failed() {
+        let mut csu = ExecutionLlmCsu::new().with_mock_backend();
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap = bind_capsule(&mut store, &valid_generate_body());
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(failed(&outs), "expected CapsuleFailed: {outs:?}");
+        assert!(!completed(&outs));
+        assert!(!has_verified_result(&outs));
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Failure { message } if message.contains(ACTIVATE_DENIED)
+        )));
+    }
+
+    #[test]
+    fn never_activated_gate_is_capsule_failed() {
+        let mut csu = ExecutionLlmCsu::new()
+            .with_mock_backend()
+            .with_activate_gate(NeverActivated);
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap = bind_capsule(&mut store, &valid_generate_body());
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(failed(&outs), "expected CapsuleFailed: {outs:?}");
+        assert!(!completed(&outs));
+        assert!(!has_verified_result(&outs));
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Failure { message } if message.contains(ACTIVATE_DENIED)
+        )));
+    }
+
+    #[test]
+    fn activated_mock_completes_without_model_artifact_ref() {
+        let mut csu = ExecutionLlmCsu::new()
+            .with_mock_backend()
+            .with_activate_gate(AlwaysActivated);
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let mut body = valid_generate_body();
+        body.as_object_mut().unwrap().remove("model_artifact_ref");
+        let cap = bind_capsule(&mut store, &body);
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(completed(&outs), "expected CapsuleCompleted: {outs:?}");
+        assert!(!failed(&outs));
+        assert!(!has_verified_result(&outs));
     }
 
     #[test]
