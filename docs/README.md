@@ -1,6 +1,6 @@
 # AIRA documentation index
 
-**Оновлено:** 2026-09-01. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase K `#209`–`#216` **IN PROGRESS**; `#209` `#210` `#211` DONE; first OPEN `#212`; Phase J `#199`–`#208` **DONE** @ RFC-0096; QUEUE J closed; Phase I `#184`–`#198` **DONE** @ RFC-0078; QUEUE I closed; Phase H `#152`–`#183` **DONE** @ RFC-0077; Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.3-strict**; [`AIRA-RFC-0096`](../specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md)).
+**Оновлено:** 2026-09-01. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase K `#209`–`#216` **IN PROGRESS**; `#209` `#210` `#211` `#212` DONE; first OPEN `#213`; Phase J `#199`–`#208` **DONE** @ RFC-0096; QUEUE J closed; Phase I `#184`–`#198` **DONE** @ RFC-0078; QUEUE I closed; Phase H `#152`–`#183` **DONE** @ RFC-0077; Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.3-strict**; [`AIRA-RFC-0096`](../specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md)).
 
 ## Anti-mission (ніколи в product / QUEUE)
 
@@ -25,7 +25,7 @@ Core що «вирішує задачі» замість CSU contracts
 | H | [`phase-h-plan.md`](phase-h-plan.md) | `#152`–`#183` | **DONE** (RFC-0077) |
 | I | [`phase-i-plan.md`](phase-i-plan.md) | `#184`–`#198` | **DONE** (`#184` `#185` `#186` `#187` `#188` `#189` `#190` `#191` `#192` `#193` `#194` `#195` `#196` `#197` `#198` @ RFC-0078) |
 | J | [`phase-j-plan.md`](phase-j-plan.md) | `#199`–`#208` | **DONE** (RFC-0096) |
-| K | [`phase-k-plan.md`](phase-k-plan.md) | `#209`–`#216` | **IN PROGRESS** (`#209` `#210` `#211` DONE; first OPEN `#212`) |
+| K | [`phase-k-plan.md`](phase-k-plan.md) | `#209`–`#216` | **IN PROGRESS** (`#209` `#210` `#211` `#212` DONE; first OPEN `#213`) |
 
 ## Core reference
 

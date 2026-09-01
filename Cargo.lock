@@ -417,6 +417,7 @@ dependencies = [
  "aira-csu",
  "aira-event",
  "aira-object",
+ "aira-schema",
  "serde_json",
  "tempfile",
 ]
