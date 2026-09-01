@@ -448,7 +448,8 @@ impl LocalSession {
         let config = load_config(&paths.root)?;
         bind_node_crypto(&paths.root)?;
         let nonce = alloc_run_nonce();
-        let plane = OperationalPlane::open_with_ready_nonce(paths.artifacts(), vec![], nonce)?;
+        let mut plane = OperationalPlane::open_with_ready_nonce(paths.artifacts(), vec![], nonce)?;
+        plane.bind_phase_d_activate_from_root(&paths.root)?;
         Ok(Self {
             paths,
             config,
@@ -475,6 +476,8 @@ impl LocalSession {
             self.paths.reuse_index(),
             nonce,
         )?;
+        self.plane
+            .bind_phase_d_activate_from_root(&self.paths.root)?;
         let outcome = self.plane.submit_problem(text)?;
         self.persist_after_submit(text, &outcome)?;
         Ok(outcome)

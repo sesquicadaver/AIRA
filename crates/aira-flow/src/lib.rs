@@ -16,7 +16,7 @@ pub use local::{
     read_event_log_resilient, EventLogFile, EventLogReadOutcome, LocalSession, NodeConfig,
     NodePaths, ProblemRecord, DEFAULT_AIRA_ROOT, EVENT_LOG_CORRUPT_BACKUP,
 };
-pub use plane::{FlowError, OperationalPlane, SubmitOutcome};
+pub use plane::{ActivatedPointerGate, FlowError, OperationalPlane, SubmitOutcome};
 
 /// Crate version string.
 pub fn crate_version() -> &'static str {
@@ -179,6 +179,7 @@ mod tests {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
         let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        plane.enable_activated_mock_llm().unwrap();
         let prompt = "Summarize the local Problem Statement without leaving the host.";
         let out = plane.submit_problem(prompt).unwrap();
         let SubmitOutcome::Executed {
@@ -225,6 +226,83 @@ mod tests {
         let (_d, bytes) = plane.artifacts().resolve(&execution_artifact_id).unwrap();
         let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(body["result"], result["result"]);
+    }
+
+    #[test]
+    fn generate_without_activate_is_capsule_failed() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let err = plane.submit_problem(prompt).unwrap_err();
+        assert!(
+            plane
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleFailed),
+            "inactive generate must CapsuleFailed, got {err}"
+        );
+        assert!(
+            plane
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::FailureEvidenceCreated),
+            "inactive generate must emit FailureEvidence"
+        );
+        assert!(
+            !plane.has_verified_result_artifact(),
+            "inactive generate must not mint a fake VERIFIED result"
+        );
+        assert!(plane.latest_generate_local_output().is_none());
+        assert!(!plane
+            .events()
+            .iter()
+            .any(|e| e.event_type == EventType::VerificationCompleted));
+        let created = plane
+            .events()
+            .iter()
+            .find(|e| e.event_type == EventType::CapsuleCreated)
+            .expect("CapsuleCreated");
+        assert_eq!(
+            created.payload_ref.as_deref(),
+            Some(aira_csu_execution_llm::ACTION_GENERATE_LOCAL)
+        );
+        assert!(plane.events().iter().any(|e| {
+            e.event_type == EventType::CapsuleFailed
+                && e.payload_ref
+                    .as_deref()
+                    .is_some_and(|p| p.contains(aira_csu_execution_llm::ACTIVATE_DENIED))
+        }));
+    }
+
+    #[test]
+    fn phase_d_activated_pointer_allows_mock_generate() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let aira_root = dir.path().join("node");
+        std::fs::create_dir_all(aira_root.join("models")).unwrap();
+        std::fs::write(
+            aira_root.join("models/activated.latest.json"),
+            serde_json::json!({
+                "updated_at": "2026-09-01T00:00:00Z",
+                "model_ref": "aira:model:test-activated",
+                "cache_path": "models/cache/slot/weights.gguf",
+                "verified_path": "models/verified/slot/weights.gguf",
+                "content_hash": "sha256:00",
+                "evidence_artifact_id": "aira:artifact:acq-activate:00"
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let mut plane = OperationalPlane::open(dir.path().join("arts")).unwrap();
+        plane.bind_phase_d_activate_from_root(&aira_root).unwrap();
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let out = plane.submit_problem(prompt).unwrap();
+        assert!(
+            matches!(out, SubmitOutcome::Executed { .. }),
+            "activated pointer + MockBackend must complete, got {out:?}"
+        );
+        assert!(!plane.has_verified_result_artifact());
     }
 
     #[test]

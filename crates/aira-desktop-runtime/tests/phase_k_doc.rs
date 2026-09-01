@@ -1,5 +1,6 @@
 //! Phase K wiring contract (#209), generate-local schema (#210), execution-llm mock (#211),
-//! Reduction generate-local bind (#212), plane register execution-llm (#213).
+//! Reduction generate-local bind (#212), plane register execution-llm (#213),
+//! activate gate (#214).
 
 use std::path::PathBuf;
 
@@ -71,6 +72,10 @@ fn phase_k_queue_wiring_209_done() {
         "QUEUE #213 must be DONE after plane register"
     );
     assert!(
+        text.contains("| 214 | **DONE**"),
+        "QUEUE #214 must be DONE after activate gate"
+    );
+    assert!(
         !text.contains("| 210 | **OPEN**"),
         "QUEUE #210 must not stay OPEN after generate-local schema"
     );
@@ -86,11 +91,15 @@ fn phase_k_queue_wiring_209_done() {
         !text.contains("| 213 | **OPEN**"),
         "QUEUE #213 must not stay OPEN after plane register"
     );
-    for n in 214..=216 {
+    assert!(
+        !text.contains("| 214 | **OPEN**"),
+        "QUEUE #214 must not stay OPEN after activate gate"
+    );
+    for n in 215..=216 {
         let open = format!("| {n} | **OPEN**");
-        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #213");
+        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #214");
         let done = format!("| {n} | **DONE**");
-        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #213");
+        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #214");
     }
     assert!(
         !text.contains("| 209 | **OPEN**"),
@@ -115,6 +124,7 @@ fn phase_k_readme_and_docs_index() {
     assert!(readme.contains("#211"));
     assert!(readme.contains("#212"));
     assert!(readme.contains("#213"));
+    assert!(readme.contains("#214"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-k-plan.md"));
     assert!(docs.contains("#209"));
@@ -207,7 +217,7 @@ fn phase_k_execution_llm_211() {
         "aira:schema:execution:generate-local:0.1",
         "fn mock_backend_completes_valid_generate_local",
         "fn missing_backend_is_capsule_failed",
-        "TODO(#214)",
+        "trait ModelActivateGate",
         "deny_unknown_fields",
     ] {
         assert!(
@@ -347,7 +357,7 @@ fn phase_k_plane_register_213() {
     );
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 213 | **DONE**"));
-    assert!(queue.contains("| 214 | **OPEN**"));
+    assert!(queue.contains("| 214 | **DONE**"));
     assert!(!queue.contains("| 213 | **OPEN**"));
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
@@ -362,5 +372,88 @@ fn phase_k_plane_register_213() {
     assert!(
         !llm_cargo.contains("model-acquisition"),
         "execution-llm must not depend on acquisition CSU"
+    );
+}
+
+#[test]
+fn phase_k_activate_gate_214() {
+    let lib = repo_root().join("csu/execution-llm/src/lib.rs");
+    let lib_text = std::fs::read_to_string(&lib).unwrap();
+    for needle in [
+        "trait ModelActivateGate",
+        "struct AlwaysActivated",
+        "struct NeverActivated",
+        "fn with_activate_gate",
+        "fn check_activate",
+        "fn inactive_model_is_capsule_failed",
+        "fn never_activated_gate_is_capsule_failed",
+        "fn mock_backend_completes_valid_generate_local",
+        "ACTIVATE_DENIED",
+    ] {
+        assert!(
+            lib_text.contains(needle),
+            "execution-llm lib missing: {needle}"
+        );
+    }
+    assert!(
+        !lib_text.contains("TODO(#214)"),
+        "activate-gate placeholder TODO must be gone after #214"
+    );
+    let llm_cargo =
+        std::fs::read_to_string(repo_root().join("csu/execution-llm/Cargo.toml")).unwrap();
+    assert!(
+        !llm_cargo.contains("model-inventory"),
+        "execution-llm must not depend on inventory CSU"
+    );
+    assert!(
+        !llm_cargo.contains("model-acquisition"),
+        "execution-llm must not depend on acquisition CSU"
+    );
+    let plane_text =
+        std::fs::read_to_string(repo_root().join("crates/aira-flow/src/plane.rs")).unwrap();
+    for needle in [
+        "struct ActivatedPointerGate",
+        "fn bind_activate_gate",
+        "fn enable_activated_mock_llm",
+        "fn bind_phase_d_activate_from_root",
+    ] {
+        assert!(plane_text.contains(needle), "plane.rs missing: {needle}");
+    }
+    let flow_tests =
+        std::fs::read_to_string(repo_root().join("crates/aira-flow/src/lib.rs")).unwrap();
+    for needle in [
+        "fn generate_without_activate_is_capsule_failed",
+        "fn non_math_prompt_completes_via_execution_llm_mock",
+        "fn phase_d_activated_pointer_allows_mock_generate",
+        "fn calculate_two_plus_two_stays_execution_basic",
+    ] {
+        assert!(
+            flow_tests.contains(needle),
+            "aira-flow tests missing: {needle}"
+        );
+    }
+    let rfc = repo_root().join("specs/rfc/AIRA-RFC-0109-activate-gate.md");
+    assert!(rfc.is_file(), "RFC-0109 must exist for #214");
+    let rfc_text = std::fs::read_to_string(&rfc).unwrap();
+    assert!(rfc_text.contains("ModelActivateGate"));
+    assert!(rfc_text.contains("CapsuleFailed"));
+    assert!(rfc_text.contains("Phase D"));
+    let hits = rfc_0104_hits();
+    assert!(
+        hits.is_empty(),
+        "RFC-0104 must stay free until #216, found {hits:?}"
+    );
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 214 | **DONE**"));
+    assert!(queue.contains("| 215 | **OPEN**"));
+    assert!(!queue.contains("| 214 | **OPEN**"));
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #214 | Activate gate"));
+    assert!(status.contains("RFC-0109"));
+    let local = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/local.rs")).unwrap();
+    assert!(
+        !local.contains("execution-llm") && !local.contains("ExecutionLlmCsu"),
+        "LocalSession must not independently construct execution-llm (plane.rs is the register site)"
     );
 }
