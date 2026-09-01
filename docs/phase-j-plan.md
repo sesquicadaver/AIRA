@@ -3,7 +3,7 @@
 **Статус:** складено 2026-08-30; **DONE** 2026-09-01 → QUEUE `#199`–`#208` (RFC-0096).  
 **Джерела:** матриця [`implementation-status.md`](implementation-status.md) Book 0–IV після RFC-0078; [`phase-i-plan.md`](phase-i-plan.md) §0.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase J `#199`–`#208`.  
-**Closure:** [`AIRA-RFC-0096`](../specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md). QUEUE J closed; no OPEN. Id **confirmed free** at `#199`.  
+**Closure:** [`AIRA-RFC-0096`](../specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md). QUEUE J closed. Id **confirmed free** at `#199`. Далі: [`phase-k-plan.md`](phase-k-plan.md) `#209`–`#216`.  
 **Не змінює:** анти-місію README; production distributed OperationalPlane; Book V operational; C0/C1/C2 merge gates.
 
 ## 0. Навіщо (після I, не замість I)
@@ -142,5 +142,7 @@ C1 path emits epistemic assessment.
 ```text
 #198 DONE (RFC-0078) → цей план активовано атомом `#199`.
 #199 wiring DONE; `#200` Book II ceiling honesty DONE; `#201` Seal `object_store_access` DONE (RFC-0097); `#202` VRA runtime B1-010 DONE (RFC-0098); `#203` Event-log authority DONE (RFC-0099); `#204` Reduction catalog bind DONE (RFC-0100); `#205` Semantic verify text.* DONE (RFC-0101); `#206` Evidence primacy runtime DONE (RFC-0102); `#207` Epistemic emit on C1 DONE (RFC-0103); `#208` docs + RFC-0096 DONE.
-QUEUE J closed; no OPEN.
+QUEUE J closed.
+
+Далі: [`phase-k-plan.md`](phase-k-plan.md) `#209` wiring **DONE**; first OPEN `#210`.
 ```
