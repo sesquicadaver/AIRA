@@ -1,6 +1,6 @@
 # AIRA documentation index
 
-**Оновлено:** 2026-09-01. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase I `#184`–`#198` **DONE** @ RFC-0078; QUEUE I closed; Phase J first OPEN `#208`; `#199` `#200` `#201` `#202` `#203` `#204` `#205` `#206` `#207` **DONE**; Phase H `#152`–`#183` **DONE** @ RFC-0077; Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.3-stable**; [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md)).
+**Оновлено:** 2026-09-01. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase J `#199`–`#208` **DONE** @ RFC-0096; QUEUE J closed; no OPEN; Phase I `#184`–`#198` **DONE** @ RFC-0078; QUEUE I closed; Phase H `#152`–`#183` **DONE** @ RFC-0077; Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.3-strict**; [`AIRA-RFC-0096`](../specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md)).
 
 ## Anti-mission (ніколи в product / QUEUE)
 
@@ -24,13 +24,13 @@ Core що «вирішує задачі» замість CSU contracts
 | G | [`phase-g-plan.md`](phase-g-plan.md) | `#120`–`#151` | **DONE** (RFC-0069) |
 | H | [`phase-h-plan.md`](phase-h-plan.md) | `#152`–`#183` | **DONE** (RFC-0077) |
 | I | [`phase-i-plan.md`](phase-i-plan.md) | `#184`–`#198` | **DONE** (`#184` `#185` `#186` `#187` `#188` `#189` `#190` `#191` `#192` `#193` `#194` `#195` `#196` `#197` `#198` @ RFC-0078) |
-| J | [`phase-j-plan.md`](phase-j-plan.md) | `#199` `#200` `#201` `#202` `#203` `#204` `#205` `#206` `#207` **DONE**; `#208` | **IN PROGRESS** (first OPEN `#208`) |
+| J | [`phase-j-plan.md`](phase-j-plan.md) | `#199`–`#208` | **DONE** (RFC-0096) |
 
 ## Core reference
 
 | Doc | Topic |
 |-----|-------|
-| [`implementation-status.md`](implementation-status.md) | Book 0–IV matrix; C0–C5; Phase gates; **Reference v0.3-stable**; QUEUE I closed |
+| [`implementation-status.md`](implementation-status.md) | Book 0–IV matrix; C0–C5; Phase gates; **Reference v0.3-strict**; QUEUE J closed |
 | [`rfc-p-promotion.md`](rfc-p-promotion.md) | RFC-P: Book V → operational лише через promotion (`#177`) |
 | [`operational-plane.md`](operational-plane.md) | C1 reference/demo plane (не production runtime) |
 | [`conformance.md`](conformance.md) | C0–C5 runners; v0.3 index; security baseline |

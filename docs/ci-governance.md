@@ -72,7 +72,7 @@ pull_request: main, develop
 
 ## Profile C3 (QUEUE #141 scaffold; #153 governance)
 
-Local federation ceremony (`run_c3`): **8** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170). Optional CI job `conformance-c3` (`#164`, non-gate). RFC-P process doc `#177` DONE; promotion-candidate fixtures `#178` DONE; non-operational gate `#179` DONE (RFC-0082); `run_c5` `#180` DONE (RFC-0083, not a CI job); promotion status `#181` DONE (Research remains RESEARCH); Reference v0.3 docs `#182` DONE; RFC-0077 `#183` DONE. Phase H closed; no OPEN. Phase I **DONE** (`#184`–`#198` @ RFC-0078). QUEUE I closed. Phase J **IN PROGRESS** (`#199` `#200` `#201` `#202` `#203` `#204` `#205` `#206` `#207` DONE; first OPEN `#208`). Settlement **PARTIAL** (`#176`); `run_c4` local (`#175`, not a CI job).
+Local federation ceremony (`run_c3`): **8** named cases — federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170). Optional CI job `conformance-c3` (`#164`, non-gate). RFC-P process doc `#177` DONE; promotion-candidate fixtures `#178` DONE; non-operational gate `#179` DONE (RFC-0082); `run_c5` `#180` DONE (RFC-0083, not a CI job); promotion status `#181` DONE (Research remains RESEARCH); Reference v0.3 docs `#182` DONE; RFC-0077 `#183` DONE. Phase H closed; no OPEN. Phase I **DONE** (`#184`–`#198` @ RFC-0078). QUEUE I closed. Phase J **DONE** (`#199`–`#208` @ RFC-0096). QUEUE J closed. Settlement **PARTIAL** (`#176`); `run_c4` local (`#175`, not a CI job).
 
 ### Current posture (QUEUE #153 + `#164`)
 
@@ -136,6 +136,7 @@ GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0
 - Phase G plan (DONE): [`phase-g-plan.md`](phase-g-plan.md)
 - Phase I plan (DONE `#198`): [`phase-i-plan.md`](phase-i-plan.md) — Handle/Verify/Policy/Reuse stabilization; RFC-0078; QUEUE I closed
+- Phase J plan (DONE `#208`): [`phase-j-plan.md`](phase-j-plan.md) — Book-gap local remainder; RFC-0096; QUEUE J closed
 - Phase H plan (DONE `#183`): [`phase-h-plan.md`](phase-h-plan.md) — RFC-0077; QUEUE H closed
 - Phase C CI gate: [`phase-c-plan.md`](phase-c-plan.md) `#38`
 - RFC: [`AIRA-RFC-0058`](../specs/rfc/AIRA-RFC-0058-ci-governance-doc.md); branch protection sync [`AIRA-RFC-0070`](../specs/rfc/AIRA-RFC-0070-ci-branch-protection-sync.md) (`#120`); MSRV + supply-chain [`AIRA-RFC-0095`](../specs/rfc/AIRA-RFC-0095-msrv-supply-chain-ci.md) (`#197`)

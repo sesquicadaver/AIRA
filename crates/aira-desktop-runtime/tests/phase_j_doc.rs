@@ -20,8 +20,8 @@ fn phase_j_plan_present() {
         "Book II",
         "AIRA-RFC-0096",
         "confirmed free",
-        "**IN PROGRESS**",
-        "first OPEN `#208`",
+        "**DONE**",
+        "QUEUE J closed",
         "GPU marketplace",
     ] {
         assert!(text.contains(needle), "phase-j-plan missing: {needle}");
@@ -76,8 +76,16 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #207 must be DONE after epistemic emit on C1"
     );
     assert!(
-        text.contains("| 208 | **OPEN**"),
-        "QUEUE first OPEN must be #208"
+        text.contains("| 208 | **DONE**"),
+        "QUEUE #208 must be DONE after Phase J docs RFC"
+    );
+    assert!(
+        text.contains("QUEUE J closed"),
+        "QUEUE J must be closed after #208"
+    );
+    assert!(
+        text.contains("no OPEN"),
+        "QUEUE must have no OPEN after J close"
     );
     assert!(
         !text.contains("| 199 | **OPEN**"),
@@ -116,23 +124,14 @@ fn phase_j_queue_wiring_199_done() {
         "QUEUE #207 must not stay OPEN after epistemic emit on C1"
     );
     assert!(
-        !text.contains("| 208 | **DONE**"),
-        "QUEUE #208 must not be DONE at #207"
+        !text.contains("| 208 | **OPEN**"),
+        "QUEUE #208 must not stay OPEN after Phase J close"
     );
-    for n in 208..=208 {
-        let open = format!("| {n} | **OPEN**");
-        assert!(text.contains(&open), "QUEUE missing {open}");
-        let done = format!("| {n} | **DONE**");
-        assert!(
-            !text.contains(&done),
-            "QUEUE {n} must not be DONE at wiring"
-        );
-    }
     for needle in [
         "J0 govern + Book II ceiling honesty",
         "J1 Book I remainder",
         "RFC-0096",
-        "first OPEN `#208`",
+        "QUEUE J closed",
         "Analyze-234",
         "Analyze-235",
         "Analyze-236",
@@ -165,9 +164,10 @@ fn phase_j_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-j-plan.md"));
     assert!(docs.contains("#199"));
-    assert!(docs.contains("first OPEN `#208`"));
+    assert!(docs.contains("QUEUE J closed"));
     assert!(docs.contains("#208"));
-    assert!(docs.contains("**IN PROGRESS**"));
+    assert!(docs.contains("**DONE**"));
+    assert!(docs.contains("v0.3-strict"));
 }
 
 #[test]
@@ -175,18 +175,25 @@ fn phase_i_points_to_active_phase_j() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-i-plan.md")).unwrap();
     assert!(text.contains("phase-j-plan.md"));
     assert!(text.contains("#199"));
-    assert!(text.contains("first OPEN `#208`"));
+    assert!(text.contains("QUEUE J closed"));
 }
 
 #[test]
-fn phase_j_rfc_0096_id_free() {
-    let rfc_dir = repo_root().join("specs/rfc");
-    for entry in std::fs::read_dir(&rfc_dir).expect("specs/rfc") {
-        let name = entry.unwrap().file_name().into_string().unwrap();
-        assert!(
-            !name.starts_with("AIRA-RFC-0096"),
-            "RFC-0096 reserved for J close; unexpected file: {name}"
-        );
+fn phase_j_rfc_0096_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0096 file");
+    for needle in [
+        "Phase J",
+        "#199",
+        "#208",
+        "v0.3-strict",
+        "RFC-0097",
+        "RFC-0103",
+        "no OPEN",
+        "GPU marketplace",
+        "confirmed free",
+    ] {
+        assert!(text.contains(needle), "RFC-0096 missing: {needle}");
     }
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
@@ -195,6 +202,7 @@ fn phase_j_rfc_0096_id_free() {
     assert!(status.contains("phase_j_doc.rs"));
     assert!(status.contains("#200"));
     assert!(status.contains("| #199 | Phase J wiring + contract"));
+    assert!(status.contains("v0.3-strict"));
 }
 
 #[test]
@@ -522,8 +530,8 @@ fn phase_j_epistemic_emit_207() {
     }
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 207 | **DONE**"));
-    assert!(queue.contains("| 208 | **OPEN**"));
-    assert!(!queue.contains("| 208 | **DONE**"));
+    assert!(queue.contains("| 208 | **DONE**"));
+    assert!(!queue.contains("| 208 | **OPEN**"));
     let plane = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/plane.rs")).unwrap();
     assert!(plane.contains("pipeline produced no epistemic assessment"));
     let c1 =
@@ -531,4 +539,32 @@ fn phase_j_epistemic_emit_207() {
     assert!(c1.contains("latest_epistemic_assessment"));
     assert!(c1.contains("aira:schema:epistemic:assessment:0.1"));
     assert!(c1.contains("EpistemicBasicCsu"));
+}
+
+#[test]
+fn phase_j_docs_rfc_208() {
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    for needle in [
+        "RFC-0096",
+        "v0.3-strict",
+        "QUEUE J closed",
+        "| #208 | Phase J docs + RFC-0096",
+        "**DONE** @ this PR",
+    ] {
+        assert!(
+            status.contains(needle),
+            "implementation-status #208 missing: {needle}"
+        );
+    }
+    let rfc = std::fs::read_to_string(
+        repo_root().join("specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md"),
+    )
+    .expect("RFC-0096");
+    for needle in ["#208", "v0.3-strict", "QUEUE J closed"] {
+        assert!(rfc.contains(needle), "RFC-0096 missing: {needle}");
+    }
+    let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
+    assert!(readme.contains("v0.3-strict"));
+    assert!(readme.contains("QUEUE J closed"));
 }
