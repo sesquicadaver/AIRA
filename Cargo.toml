@@ -19,6 +19,7 @@ members = [
     "csu/context-basic",
     "csu/reduction-basic",
     "csu/execution-basic",
+    "csu/execution-llm",
     "csu/verification-basic",
     "csu/evidence-basic",
     "csu/epistemic-basic",
