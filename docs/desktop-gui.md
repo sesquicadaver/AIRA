@@ -25,7 +25,7 @@
 | Quit | stop node + close window |
 | Autostart | Linux: XDG `~/.config/autostart/aira-desktop.desktop` (`Exec=aira-desktop --from-autostart`); macOS: LaunchAgent + `--from-autostart`; Windows: Startup `AIRA Desktop.bat` + `--from-autostart` |
 
-**Model layer (not in this GUI yet):** Core does not host inference. Local models are Artifacts + Capabilities (`aira models scan|list|activate` — Phase D). Binding a local backend as an **Execution CSU** is Phase K [`phase-k-plan.md`](phase-k-plan.md) (`#209`–`#214` DONE; first OPEN `#215`). Generate-local fail-closes without Phase D activate; Desktop Work UX for generate is `#216`. C1 `Calculate 2 + 2` still uses `execution-basic`.
+**Model layer (not in this GUI yet):** Core does not host inference. Local models are Artifacts + Capabilities (`aira models scan|list|activate` — Phase D). Binding a local backend as an **Execution CSU** is Phase K [`phase-k-plan.md`](phase-k-plan.md) (`#209`–`#215` DONE; first OPEN `#216`). Generate-local has an opt-in process CLI adapter (CI keeps MockBackend) and fail-closes without Phase D activate; Desktop Work UX for generate is `#216`. C1 `Calculate 2 + 2` still uses `execution-basic`.
 
 After profile/`peer_listen`/relay TTL change: **Stop → Start** to apply peer supervise.
 

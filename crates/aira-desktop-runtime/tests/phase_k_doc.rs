@@ -1,6 +1,6 @@
 //! Phase K wiring contract (#209), generate-local schema (#210), execution-llm mock (#211),
 //! Reduction generate-local bind (#212), plane register execution-llm (#213),
-//! activate gate (#214).
+//! activate gate (#214), process backend (#215).
 
 use std::path::PathBuf;
 
@@ -76,6 +76,10 @@ fn phase_k_queue_wiring_209_done() {
         "QUEUE #214 must be DONE after activate gate"
     );
     assert!(
+        text.contains("| 215 | **DONE**"),
+        "QUEUE #215 must be DONE after process backend"
+    );
+    assert!(
         !text.contains("| 210 | **OPEN**"),
         "QUEUE #210 must not stay OPEN after generate-local schema"
     );
@@ -95,11 +99,15 @@ fn phase_k_queue_wiring_209_done() {
         !text.contains("| 214 | **OPEN**"),
         "QUEUE #214 must not stay OPEN after activate gate"
     );
-    for n in 215..=216 {
+    assert!(
+        !text.contains("| 215 | **OPEN**"),
+        "QUEUE #215 must not stay OPEN after process backend"
+    );
+    for n in 216..=216 {
         let open = format!("| {n} | **OPEN**");
-        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #214");
+        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #215");
         let done = format!("| {n} | **DONE**");
-        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #214");
+        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #215");
     }
     assert!(
         !text.contains("| 209 | **OPEN**"),
@@ -125,6 +133,7 @@ fn phase_k_readme_and_docs_index() {
     assert!(readme.contains("#212"));
     assert!(readme.contains("#213"));
     assert!(readme.contains("#214"));
+    assert!(readme.contains("#215"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-k-plan.md"));
     assert!(docs.contains("#209"));
@@ -445,12 +454,125 @@ fn phase_k_activate_gate_214() {
     );
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 214 | **DONE**"));
-    assert!(queue.contains("| 215 | **OPEN**"));
+    assert!(queue.contains("| 215 | **DONE**"));
     assert!(!queue.contains("| 214 | **OPEN**"));
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
     assert!(status.contains("| #214 | Activate gate"));
     assert!(status.contains("RFC-0109"));
+    let local = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/local.rs")).unwrap();
+    assert!(
+        !local.contains("execution-llm") && !local.contains("ExecutionLlmCsu"),
+        "LocalSession must not independently construct execution-llm (plane.rs is the register site)"
+    );
+}
+
+#[test]
+fn phase_k_process_backend_215() {
+    let lib = repo_root().join("csu/execution-llm/src/lib.rs");
+    let process = repo_root().join("csu/execution-llm/src/process.rs");
+    let lib_text = std::fs::read_to_string(&lib).unwrap();
+    let process_text = std::fs::read_to_string(&process).expect("process.rs missing");
+    for needle in [
+        "fn with_process_backend",
+        "fn with_backend_from_env",
+        "fn missing_process_binary_is_capsule_failed",
+        "fn backend_from_env_defaults_to_mock_not_process",
+        "PROCESS_BACKEND_ID",
+        "MISSING_BINARY",
+        "AIRA_LLM_BACKEND",
+        "pub use process::",
+    ] {
+        assert!(
+            lib_text.contains(needle),
+            "execution-llm lib missing: {needle}"
+        );
+    }
+    for needle in [
+        "struct ProcessBackend",
+        "Command::new",
+        "fn llama_cpp",
+        "fn ollama",
+        "MISSING_BINARY",
+        "ENV_LLM_BACKEND",
+        "network=none",
+        "loopback",
+    ] {
+        assert!(
+            process_text.contains(needle),
+            "execution-llm process.rs missing: {needle}"
+        );
+    }
+    assert!(
+        !process_text.contains("Command::new(\"sh\")")
+            && !process_text.contains("Command::new(\"bash\")")
+            && !process_text.contains(".arg(\"-c\")"),
+        "process backend must not spawn a shell"
+    );
+    assert!(
+        !lib_text.contains("std::process"),
+        "MockBackend path (lib.rs) must not shell out"
+    );
+    assert!(
+        !lib_text.contains("Command::"),
+        "MockBackend path (lib.rs) must not spawn Command"
+    );
+    let llm_cargo =
+        std::fs::read_to_string(repo_root().join("csu/execution-llm/Cargo.toml")).unwrap();
+    assert!(
+        !llm_cargo.contains("model-inventory"),
+        "execution-llm must not depend on inventory CSU"
+    );
+    assert!(
+        !llm_cargo.contains("model-acquisition"),
+        "execution-llm must not depend on acquisition CSU"
+    );
+    let plane_text =
+        std::fs::read_to_string(repo_root().join("crates/aira-flow/src/plane.rs")).unwrap();
+    for needle in [
+        "with_mock_backend",
+        "fn bind_process_backend",
+        "fn enable_activated_mock_llm",
+    ] {
+        assert!(plane_text.contains(needle), "plane.rs missing: {needle}");
+    }
+    assert!(
+        plane_text.contains(".with_mock_backend()"),
+        "default plane register must keep MockBackend"
+    );
+    let flow_tests =
+        std::fs::read_to_string(repo_root().join("crates/aira-flow/src/lib.rs")).unwrap();
+    for needle in [
+        "fn default_plane_keeps_mock_backend",
+        "fn missing_process_binary_on_plane_is_capsule_failed",
+        "fn calculate_two_plus_two_stays_execution_basic",
+        "fn non_math_prompt_completes_via_execution_llm_mock",
+    ] {
+        assert!(
+            flow_tests.contains(needle),
+            "aira-flow tests missing: {needle}"
+        );
+    }
+    let rfc = repo_root().join("specs/rfc/AIRA-RFC-0110-process-backend.md");
+    assert!(rfc.is_file(), "RFC-0110 must exist for #215");
+    let rfc_text = std::fs::read_to_string(&rfc).unwrap();
+    assert!(rfc_text.contains("ProcessBackend"));
+    assert!(rfc_text.contains("CapsuleFailed"));
+    assert!(rfc_text.contains("MockBackend"));
+    assert!(rfc_text.contains("loopback"));
+    let hits = rfc_0104_hits();
+    assert!(
+        hits.is_empty(),
+        "RFC-0104 must stay free until #216, found {hits:?}"
+    );
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 215 | **DONE**"));
+    assert!(queue.contains("| 216 | **OPEN**"));
+    assert!(!queue.contains("| 215 | **OPEN**"));
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #215 | Process backend"));
+    assert!(status.contains("RFC-0110"));
     let local = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/local.rs")).unwrap();
     assert!(
         !local.contains("execution-llm") && !local.contains("ExecutionLlmCsu"),

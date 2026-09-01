@@ -1,15 +1,26 @@
-//! Execution-llm CSU (QUEUE #211 / Analyze-246; plane `#213`; activate gate `#214`).
+//! Execution-llm CSU (QUEUE #211 / Analyze-246; plane `#213`; activate gate `#214`;
+//! process backend `#215`).
 //!
 //! Host-local `text.generate.local` capsules complete only through a bound
 //! [`GenerateBackend`] **and** a bound [`ModelActivateGate`]. [`MockBackend`] is
-//! deterministic and never shells out or uses the network. Missing backend,
-//! missing/inactive Phase D activate, or invalid payload →
-//! [`EventType::CapsuleFailed`], never a fake VERIFIED result.
+//! deterministic and never shells out or uses the network. [`ProcessBackend`]
+//! spawns a fixed argv (no shell) and fail-closes when the binary is
+//! missing. Missing backend, missing/inactive Phase D activate, or invalid
+//! payload → [`EventType::CapsuleFailed`], never a fake VERIFIED result.
 //!
 //! OperationalPlane registers this CSU with [`MockBackend`] (`#213`) and injects
 //! the activate handle (`#214`). Capsules whose action is not generate-local are
 //! skipped so fan-out with execution-basic does not fail C1 `math.eval.safe`.
-//! Process/ollama backend is `#215`. No Cargo dep on inventory/acquisition CSUs.
+//! Process backend is selectable; default plane/CI stay mock. No Cargo dep on
+//! inventory/acquisition CSUs.
+
+mod process;
+
+pub use process::{
+    backend_kind_from, backend_kind_from_env, ProcessBackend, EMPTY_STDOUT, ENV_LLM_BACKEND,
+    ENV_PROCESS_ARGS, ENV_PROCESS_BIN, ENV_PROCESS_TIMEOUT_MS, MISSING_BINARY, NONZERO_EXIT,
+    PROCESS_BACKEND_ID, SPAWN_FAILED, TIMED_OUT,
+};
 
 use aira_artifact::ArtifactType;
 use aira_csu::support::{basic_manifest, json_bytes, make_artifact_as, make_event_as};
@@ -83,7 +94,10 @@ impl GenerateLocalPayload {
     }
 }
 
-/// Local generate backend. Implementations must not shell out or use the network.
+/// Local generate backend.
+///
+/// [`MockBackend`] is in-process (no spawn, no sockets). [`ProcessBackend`]
+/// spawns a **fixed argv** (no shell; never `sh -c`).
 pub trait GenerateBackend: Send {
     fn generate(&self, payload: &GenerateLocalPayload) -> Result<Value, String>;
 }
@@ -187,12 +201,26 @@ impl ExecutionLlmCsu {
         self
     }
 
-    /// Bind [`MockBackend`] (tests / CI / reference plane until `#215`).
+    /// Bind [`MockBackend`] (tests / CI / reference plane default).
     pub fn with_mock_backend(self) -> Self {
         self.with_backend(MockBackend)
     }
 
-    /// Bind any [`GenerateBackend`]. Process/CLI adapters belong in `#215`.
+    /// Bind [`ProcessBackend`] (opt-in local CLI; not the CI default).
+    pub fn with_process_backend(self, backend: ProcessBackend) -> Self {
+        self.with_backend(backend)
+    }
+
+    /// Bind mock unless `AIRA_LLM_BACKEND=process`. Plane/CI must keep mock.
+    pub fn with_backend_from_env(self) -> Self {
+        if backend_kind_from_env() == PROCESS_BACKEND_ID {
+            self.with_process_backend(ProcessBackend::from_env())
+        } else {
+            self.with_mock_backend()
+        }
+    }
+
+    /// Bind any [`GenerateBackend`].
     pub fn with_backend(mut self, backend: impl GenerateBackend + 'static) -> Self {
         self.backend = Some(Box::new(backend));
         self
@@ -699,5 +727,159 @@ mod tests {
         );
         let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
         assert!(outs.is_empty(), "must not fail C1 capsules: {outs:?}");
+    }
+
+    #[test]
+    fn missing_process_binary_is_capsule_failed() {
+        let mut csu = ExecutionLlmCsu::new()
+            .with_process_backend(ProcessBackend::new(
+                "aira-llm-process-missing-bin-215-do-not-install",
+            ))
+            .with_activate_gate(AlwaysActivated);
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap = bind_capsule(&mut store, &valid_generate_body());
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(failed(&outs), "expected CapsuleFailed: {outs:?}");
+        assert!(!completed(&outs));
+        assert!(!has_verified_result(&outs));
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Failure { message } if message.contains(MISSING_BINARY)
+        )));
+    }
+
+    #[test]
+    fn missing_process_binary_does_not_skip_activate_gate() {
+        let mut csu = ExecutionLlmCsu::new().with_process_backend(ProcessBackend::new(
+            "aira-llm-process-missing-bin-215-do-not-install",
+        ));
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap = bind_capsule(&mut store, &valid_generate_body());
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(failed(&outs));
+        assert!(!completed(&outs));
+        assert!(!has_verified_result(&outs));
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Failure { message } if message.contains(ACTIVATE_DENIED)
+        )));
+    }
+
+    #[test]
+    fn backend_from_env_defaults_to_mock_not_process() {
+        assert_eq!(backend_kind_from(None), MOCK_BACKEND_ID);
+        assert_eq!(backend_kind_from(Some("mock")), MOCK_BACKEND_ID);
+        assert_ne!(backend_kind_from(None), PROCESS_BACKEND_ID);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn nonzero_process_is_capsule_failed() {
+        let mut csu = ExecutionLlmCsu::new()
+            .with_process_backend(ProcessBackend::new("/bin/false"))
+            .with_activate_gate(AlwaysActivated);
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap = bind_capsule(&mut store, &valid_generate_body());
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(failed(&outs), "expected CapsuleFailed: {outs:?}");
+        assert!(!completed(&outs));
+        assert!(!has_verified_result(&outs));
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Failure { message } if message.contains(NONZERO_EXIT)
+        )));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn echo_process_backend_completes_without_ollama() {
+        let mut csu = ExecutionLlmCsu::new()
+            .with_process_backend(ProcessBackend::new("/bin/echo"))
+            .with_activate_gate(AlwaysActivated);
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap = bind_capsule(&mut store, &valid_generate_body());
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(completed(&outs), "expected CapsuleCompleted: {outs:?}");
+        assert!(!failed(&outs));
+        assert!(!has_verified_result(&outs));
+        let result = outs
+            .iter()
+            .find_map(|o| match o {
+                CsuOutput::Artifact { payload, .. } => {
+                    Some(serde_json::from_slice::<Value>(payload).unwrap())
+                }
+                _ => None,
+            })
+            .expect("execution artifact");
+        assert_eq!(result["backend"], json!(PROCESS_BACKEND_ID));
+        assert_eq!(
+            result["result"],
+            json!("Summarize the local Problem Statement without leaving the host.")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn process_timeout_is_capsule_failed() {
+        let mut csu = ExecutionLlmCsu::new()
+            .with_process_backend(
+                ProcessBackend::new("/bin/sleep")
+                    .with_timeout(std::time::Duration::from_millis(80)),
+            )
+            .with_activate_gate(AlwaysActivated);
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let mut body = valid_generate_body();
+        body.as_object_mut()
+            .unwrap()
+            .insert("prompt".into(), json!("2"));
+        let cap = bind_capsule(&mut store, &body);
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(failed(&outs), "expected CapsuleFailed: {outs:?}");
+        assert!(!completed(&outs));
+        assert!(!has_verified_result(&outs));
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Failure { message } if message.contains(TIMED_OUT)
+        )));
     }
 }
