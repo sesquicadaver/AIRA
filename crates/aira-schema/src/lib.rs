@@ -520,6 +520,47 @@ mod tests {
     }
 
     #[test]
+    fn generate_local_payload_schema_loads() {
+        let reg = registry();
+        assert!(reg
+            .list_ids()
+            .iter()
+            .any(|id| id == "aira:schema:execution:generate-local:0.1"));
+        let root = find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
+        let valid = root.join("fixtures/valid/execution/generate-local.json");
+        reg.validate_file("aira:schema:execution:generate-local:0.1", &valid)
+            .unwrap();
+        let text = std::fs::read_to_string(&valid).unwrap();
+        let v: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(
+            v.get("action"),
+            Some(&Value::String("text.generate.local".into()))
+        );
+        let constraints = v.get("constraints").expect("constraints");
+        assert_eq!(
+            constraints.get("network"),
+            Some(&Value::String("none".into()))
+        );
+        assert_eq!(constraints.get("shell"), Some(&Value::Bool(false)));
+        assert!(v.get("llm_model_id").is_none());
+        assert!(v.get("gpu_id").is_none());
+        let mut extra = v.clone();
+        extra
+            .as_object_mut()
+            .expect("object")
+            .insert("gpu_id".into(), Value::String("0".into()));
+        assert!(reg
+            .validate("aira:schema:execution:generate-local:0.1", &extra)
+            .is_err());
+        assert!(reg
+            .validate_file(
+                "aira:schema:execution:generate-local:0.1",
+                root.join("fixtures/invalid/execution/generate-local-missing-prompt.json"),
+            )
+            .is_err());
+    }
+
+    #[test]
     fn crp_route_schemas_load() {
         let reg = registry();
         assert!(reg

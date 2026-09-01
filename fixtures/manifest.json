@@ -69,6 +69,10 @@
       "file": "fixtures/valid/execution/capsule.json"
     },
     {
+      "schema": "aira:schema:execution:generate-local:0.1",
+      "file": "fixtures/valid/execution/generate-local.json"
+    },
+    {
       "schema": "aira:schema:evidence:evidence-artifact:0.1",
       "file": "fixtures/valid/evidence/evidence-artifact.json"
     },
@@ -193,6 +197,10 @@
     {
       "schema": "aira:schema:csu:manifest:0.1",
       "file": "fixtures/invalid/csu/manifest-unsigned.json"
+    },
+    {
+      "schema": "aira:schema:execution:generate-local:0.1",
+      "file": "fixtures/invalid/execution/generate-local-missing-prompt.json"
     },
     {
       "schema": "aira:schema:epistemic:assessment:0.1",

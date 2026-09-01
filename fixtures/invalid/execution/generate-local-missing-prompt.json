@@ -1,0 +1,18 @@
+{
+  "payload_schema": "aira:schema:execution:generate-local:0.1",
+  "action": "text.generate.local",
+  "problem_statement_ref": "aira:problem:01TESTPROBLEM",
+  "model_artifact_ref": "aira:artifact:model:example-7b-int4",
+  "constraints": {
+    "network": "none",
+    "shell": false
+  },
+  "provenance_refs": [
+    "aira:identity:local-test"
+  ],
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:local-test",
+    "signature_value": "TESTSIG"
+  }
+}
