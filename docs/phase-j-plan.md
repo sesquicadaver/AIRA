@@ -144,5 +144,5 @@ C1 path emits epistemic assessment.
 #199 wiring DONE; `#200` Book II ceiling honesty DONE; `#201` Seal `object_store_access` DONE (RFC-0097); `#202` VRA runtime B1-010 DONE (RFC-0098); `#203` Event-log authority DONE (RFC-0099); `#204` Reduction catalog bind DONE (RFC-0100); `#205` Semantic verify text.* DONE (RFC-0101); `#206` Evidence primacy runtime DONE (RFC-0102); `#207` Epistemic emit on C1 DONE (RFC-0103); `#208` docs + RFC-0096 DONE.
 QUEUE J closed.
 
-Далі: [`phase-k-plan.md`](phase-k-plan.md) `#209` wiring **DONE**; first OPEN `#210`.
+Далі: [`phase-k-plan.md`](phase-k-plan.md) `#209` wiring **DONE**; `#210` generate-local schema **DONE**; first OPEN `#211`.
 ```

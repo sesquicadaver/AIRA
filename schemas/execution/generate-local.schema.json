@@ -1,0 +1,63 @@
+{
+  "$id": "aira:schema:execution:generate-local:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "payload_schema",
+    "action",
+    "prompt",
+    "constraints",
+    "provenance_refs",
+    "signature"
+  ],
+  "properties": {
+    "payload_schema": {
+      "type": "string",
+      "const": "aira:schema:execution:generate-local:0.1"
+    },
+    "action": {
+      "type": "string",
+      "const": "text.generate.local"
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "problem_statement_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "model_artifact_ref": {
+      "$ref": "aira:schema:common:ref:0.1",
+      "description": "Optional ref to a signed ModelArtifact. Not required in 0.1; activate gate is #214."
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "network",
+        "shell"
+      ],
+      "properties": {
+        "network": {
+          "type": "string",
+          "const": "none",
+          "description": "Host-local generate: no network."
+        },
+        "shell": {
+          "type": "boolean",
+          "const": false,
+          "description": "No shell; generate is not a command runner."
+        }
+      }
+    },
+    "provenance_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}

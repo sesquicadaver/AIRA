@@ -1,4 +1,4 @@
-//! Phase K wiring contract (#209): plan + QUEUE + cross-links.
+//! Phase K wiring contract (#209) and generate-local schema (#210).
 
 use std::path::PathBuf;
 
@@ -43,14 +43,19 @@ fn phase_k_queue_wiring_209_done() {
         text.contains("| 209 | **DONE**"),
         "QUEUE #209 must be DONE after wiring"
     );
-    for n in 210..=216 {
+    assert!(
+        text.contains("| 210 | **DONE**"),
+        "QUEUE #210 must be DONE after generate-local schema"
+    );
+    assert!(
+        !text.contains("| 210 | **OPEN**"),
+        "QUEUE #210 must not stay OPEN after generate-local schema"
+    );
+    for n in 211..=216 {
         let open = format!("| {n} | **OPEN**");
-        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after wiring");
+        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #210");
         let done = format!("| {n} | **DONE**");
-        assert!(
-            !text.contains(&done),
-            "QUEUE #{n} must not be DONE at wiring"
-        );
+        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #210");
     }
     assert!(
         !text.contains("| 209 | **OPEN**"),
@@ -108,4 +113,43 @@ fn phase_k_status_row_209() {
     assert!(status.contains("phase_k_doc.rs"));
     assert!(status.contains("| #209 | Phase K wiring + contract"));
     assert!(status.contains("phase-k-plan.md"));
+}
+
+#[test]
+fn phase_k_generate_local_210() {
+    let schema = repo_root().join("schemas/execution/generate-local.schema.json");
+    let text = std::fs::read_to_string(&schema).expect("generate-local schema");
+    assert!(text.contains("\"$id\": \"aira:schema:execution:generate-local:0.1\""));
+    assert!(text.contains("text.generate.local"));
+    assert!(text.contains("\"additionalProperties\": false"));
+    assert!(repo_root()
+        .join("fixtures/valid/execution/generate-local.json")
+        .is_file());
+    assert!(repo_root()
+        .join("fixtures/invalid/execution/generate-local-missing-prompt.json")
+        .is_file());
+    let rfc = repo_root().join("specs/rfc/AIRA-RFC-0105-generate-local-payload-schema.md");
+    assert!(rfc.is_file(), "RFC-0105 must exist for #210");
+    let rfc_text = std::fs::read_to_string(&rfc).unwrap();
+    assert!(rfc_text.contains("aira:schema:execution:generate-local:0.1"));
+    assert!(rfc_text.contains("text.generate.local"));
+    let rfc_dir = repo_root().join("specs/rfc");
+    let hits: Vec<_> = std::fs::read_dir(&rfc_dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| n.contains("RFC-0104") || n.contains("rfc-0104"))
+        .collect();
+    assert!(
+        hits.is_empty(),
+        "RFC-0104 must stay free until #216, found {hits:?}"
+    );
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 210 | **DONE**"));
+    assert!(queue.contains("| 211 | **OPEN**"));
+    assert!(!queue.contains("| 210 | **OPEN**"));
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("aira:schema:execution:generate-local:0.1"));
+    assert!(status.contains("| #210 | Capsule `text.generate.local`"));
 }

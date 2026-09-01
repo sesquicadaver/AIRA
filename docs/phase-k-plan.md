@@ -74,7 +74,7 @@ K0 govern (wiring)
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
 | `#209` | K0 | Phase K wiring | цей план **IN PROGRESS**; QUEUE `#209` DONE + `#210`–`#216` OPEN; `phase_k_doc` | capsule schema (#210) |
-| `#210` | K1 | Capsule `text.generate.local` | payload schema `aira:schema:execution:generate-local:0.1` + fixtures; RFC-S | CSU crate (#211) |
+| `#210` | K1 | Capsule `text.generate.local` | payload schema `aira:schema:execution:generate-local:0.1` + fixtures; RFC-0105 **DONE** | CSU crate (#211) |
 | `#211` | K2 | `execution-llm` CSU + mock | CapsuleCreated → CapsuleCompleted via `MockBackend`; без backend → fail-closed; не в `aira-core` | Reduction (#212); ollama (#215) |
 | `#212` | K3 | Reduction bind | non-math/echo/upper → `text.generate.local`; `Calculate 2 + 2` лишається `math.eval.safe` | plane register (#213) |
 | `#213` | K4 | Plane register | `OperationalPlane`/`LocalSession` диспатчить generate на `execution-llm`; mock completes in tests | activate gate (#214) |
@@ -112,5 +112,5 @@ aira-core has no inference.
 
 ```text
 #208 DONE (RFC-0096) + рішення розробника 2026-09-01 → цей план активовано атомом `#209`.
-#209 wiring DONE; first OPEN `#210`.
+#209 wiring DONE; `#210` generate-local schema DONE (RFC-0105); first OPEN `#211`.
 ```
