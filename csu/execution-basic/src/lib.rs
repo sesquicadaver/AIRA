@@ -188,6 +188,10 @@ impl Csu for ExecutionBasicCsu {
             .get("action")
             .and_then(|v| v.as_str())
             .unwrap_or("math.eval.safe");
+        // Fan-out with execution-llm: generate-local capsules are not this CSU.
+        if action == "text.generate.local" {
+            return Ok(vec![]);
+        }
         let expression = capsule
             .get("expression")
             .and_then(|v| v.as_str())
@@ -383,5 +387,33 @@ mod tests {
             o,
             CsuOutput::Event(e) if e.event_type == EventType::CapsuleFailed
         )));
+    }
+
+    #[test]
+    fn generate_local_action_is_skipped_for_plane_fan_out() {
+        let mut csu = ExecutionBasicCsu::new();
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap = bind_capsule(&mut store, "text.generate.local", "prose prompt");
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let ev = mk(
+            "aira:event:capgen",
+            EventType::CapsuleCreated,
+            vec![],
+            vec![cap],
+            vec![],
+            None,
+        );
+        let outs = csu.on_event(&ev, &mut ctx).unwrap();
+        assert!(
+            outs.is_empty(),
+            "must not CapsuleFailed generate-local: {outs:?}"
+        );
     }
 }

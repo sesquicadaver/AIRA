@@ -77,7 +77,7 @@ K0 govern (wiring)
 | `#210` | K1 | Capsule `text.generate.local` | payload schema `aira:schema:execution:generate-local:0.1` + fixtures; RFC-0105 **DONE** | CSU crate (#211) |
 | `#211` | K2 | `execution-llm` CSU + mock | CapsuleCreated → CapsuleCompleted via `MockBackend`; без backend → fail-closed; не в `aira-core` **DONE** | Reduction (#212); ollama (#215) |
 | `#212` | K3 | Reduction bind | non-math/echo/upper → `text.generate.local`; `Calculate 2 + 2` лишається `math.eval.safe` **DONE** (RFC-0107) | plane register (#213) |
-| `#213` | K4 | Plane register | `OperationalPlane`/`LocalSession` диспатчить generate на `execution-llm`; mock completes in tests | activate gate (#214) |
+| `#213` | K4 | Plane register | `OperationalPlane`/`LocalSession` диспатчить generate на `execution-llm`; mock completes in tests **DONE** (RFC-0108) | activate gate (#214) |
 | `#214` | K5 | Activate gate | generate без Phase D activate → CapsuleFailed + Evidence, не VERIFIED | process backend (#215) |
 | `#215` | K6 | Process backend | argv/local CLI adapter; missing binary fail-closed; тести лишають mock | Desktop RFC (#216) |
 | `#216` | K7 | Desktop + RFC-0104 | Work tab generate path; consolidating RFC-0104; QUEUE K closed | — |
@@ -112,5 +112,5 @@ aira-core has no inference.
 
 ```text
 #208 DONE (RFC-0096) + рішення розробника 2026-09-01 → цей план активовано атомом `#209`.
-#209 wiring DONE; `#210` generate-local schema DONE (RFC-0105); `#211` execution-llm mock DONE (RFC-0106); `#212` Reduction bind DONE (RFC-0107); first OPEN `#213`.
+#209 wiring DONE; `#210` generate-local schema DONE (RFC-0105); `#211` execution-llm mock DONE (RFC-0106); `#212` Reduction bind DONE (RFC-0107); `#213` Plane register DONE (RFC-0108); first OPEN `#214`.
 ```

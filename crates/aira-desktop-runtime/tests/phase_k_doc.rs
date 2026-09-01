@@ -1,5 +1,5 @@
 //! Phase K wiring contract (#209), generate-local schema (#210), execution-llm mock (#211),
-//! Reduction generate-local bind (#212).
+//! Reduction generate-local bind (#212), plane register execution-llm (#213).
 
 use std::path::PathBuf;
 
@@ -67,6 +67,10 @@ fn phase_k_queue_wiring_209_done() {
         "QUEUE #212 must be DONE after Reduction generate-local bind"
     );
     assert!(
+        text.contains("| 213 | **DONE**"),
+        "QUEUE #213 must be DONE after plane register"
+    );
+    assert!(
         !text.contains("| 210 | **OPEN**"),
         "QUEUE #210 must not stay OPEN after generate-local schema"
     );
@@ -78,11 +82,15 @@ fn phase_k_queue_wiring_209_done() {
         !text.contains("| 212 | **OPEN**"),
         "QUEUE #212 must not stay OPEN after Reduction generate-local bind"
     );
-    for n in 213..=216 {
+    assert!(
+        !text.contains("| 213 | **OPEN**"),
+        "QUEUE #213 must not stay OPEN after plane register"
+    );
+    for n in 214..=216 {
         let open = format!("| {n} | **OPEN**");
-        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #212");
+        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #213");
         let done = format!("| {n} | **DONE**");
-        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #212");
+        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #213");
     }
     assert!(
         !text.contains("| 209 | **OPEN**"),
@@ -106,6 +114,7 @@ fn phase_k_readme_and_docs_index() {
     assert!(readme.contains("#210"));
     assert!(readme.contains("#211"));
     assert!(readme.contains("#212"));
+    assert!(readme.contains("#213"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-k-plan.md"));
     assert!(docs.contains("#209"));
@@ -236,7 +245,7 @@ fn phase_k_execution_llm_211() {
     let flow = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/local.rs")).unwrap();
     assert!(
         !flow.contains("execution-llm") && !flow.contains("ExecutionLlmCsu"),
-        "must not register execution-llm on OperationalPlane (#213)"
+        "LocalSession must not independently construct execution-llm (plane.rs is the register site)"
     );
 }
 
@@ -283,7 +292,7 @@ fn phase_k_reduction_bind_212() {
     );
     let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(queue.contains("| 212 | **DONE**"));
-    assert!(queue.contains("| 213 | **OPEN**"));
+    assert!(queue.contains("| 213 | **DONE**"));
     assert!(!queue.contains("| 212 | **OPEN**"));
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
@@ -292,6 +301,66 @@ fn phase_k_reduction_bind_212() {
     let flow = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/local.rs")).unwrap();
     assert!(
         !flow.contains("execution-llm") && !flow.contains("ExecutionLlmCsu"),
-        "must not register execution-llm on OperationalPlane (#213)"
+        "LocalSession must not independently construct execution-llm (plane.rs is the register site)"
+    );
+}
+
+#[test]
+fn phase_k_plane_register_213() {
+    let plane = repo_root().join("crates/aira-flow/src/plane.rs");
+    let cargo = repo_root().join("crates/aira-flow/Cargo.toml");
+    let plane_text = std::fs::read_to_string(&plane).unwrap();
+    let cargo_text = std::fs::read_to_string(&cargo).unwrap();
+    assert!(
+        cargo_text.contains("aira-csu-execution-llm"),
+        "aira-flow must depend on aira-csu-execution-llm"
+    );
+    for needle in [
+        "ExecutionLlmCsu",
+        "with_mock_backend",
+        "SubmitOutcome::Executed",
+        "fn latest_generate_local_output",
+    ] {
+        assert!(plane_text.contains(needle), "plane.rs missing: {needle}");
+    }
+    let flow_tests =
+        std::fs::read_to_string(repo_root().join("crates/aira-flow/src/lib.rs")).unwrap();
+    for needle in [
+        "fn non_math_prompt_completes_via_execution_llm_mock",
+        "fn calculate_two_plus_two_stays_execution_basic",
+    ] {
+        assert!(
+            flow_tests.contains(needle),
+            "aira-flow tests missing: {needle}"
+        );
+    }
+    let rfc = repo_root().join("specs/rfc/AIRA-RFC-0108-plane-register-execution-llm.md");
+    assert!(rfc.is_file(), "RFC-0108 must exist for #213");
+    let rfc_text = std::fs::read_to_string(&rfc).unwrap();
+    assert!(rfc_text.contains("execution-llm"));
+    assert!(rfc_text.contains("MockBackend"));
+    assert!(rfc_text.contains("math.eval.safe"));
+    let hits = rfc_0104_hits();
+    assert!(
+        hits.is_empty(),
+        "RFC-0104 must stay free until #216, found {hits:?}"
+    );
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 213 | **DONE**"));
+    assert!(queue.contains("| 214 | **OPEN**"));
+    assert!(!queue.contains("| 213 | **OPEN**"));
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #213 | Plane register"));
+    assert!(status.contains("RFC-0108"));
+    let llm_cargo =
+        std::fs::read_to_string(repo_root().join("csu/execution-llm/Cargo.toml")).unwrap();
+    assert!(
+        !llm_cargo.contains("model-inventory"),
+        "execution-llm must not depend on inventory CSU"
+    );
+    assert!(
+        !llm_cargo.contains("model-acquisition"),
+        "execution-llm must not depend on acquisition CSU"
     );
 }

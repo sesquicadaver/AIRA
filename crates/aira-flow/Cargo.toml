@@ -16,6 +16,7 @@ aira-csu = { path = "../aira-csu" }
 aira-csu-context-basic = { path = "../../csu/context-basic" }
 aira-csu-reduction-basic = { path = "../../csu/reduction-basic" }
 aira-csu-execution-basic = { path = "../../csu/execution-basic" }
+aira-csu-execution-llm = { path = "../../csu/execution-llm" }
 aira-csu-verification-basic = { path = "../../csu/verification-basic" }
 aira-csu-evidence-basic = { path = "../../csu/evidence-basic" }
 aira-csu-epistemic-basic = { path = "../../csu/epistemic-basic" }

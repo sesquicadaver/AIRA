@@ -28,6 +28,16 @@ pub(crate) fn problem(root: &Path, command: ProblemCommands) -> Result<ExitCode>
                     println!("status completed");
                     println!("{}", serde_json::to_string_pretty(&result)?);
                 }
+                SubmitOutcome::Executed {
+                    problem_id,
+                    execution_artifact_id,
+                    result,
+                } => {
+                    println!("problem_ref {}", problem_id);
+                    println!("result_ref {}", execution_artifact_id);
+                    println!("status executed");
+                    println!("{}", serde_json::to_string_pretty(&result)?);
+                }
                 SubmitOutcome::NeedsHumanCollapse { field_artifact_id } => {
                     let pref = session
                         .plane()

@@ -536,6 +536,18 @@ impl LocalSession {
                 field_artifact_id: None,
                 result: Some(result.clone()),
             },
+            SubmitOutcome::Executed {
+                problem_id,
+                execution_artifact_id,
+                result,
+            } => ProblemRecord {
+                problem_id: problem_id.as_str().to_string(),
+                text: text.to_string(),
+                status: "executed".into(),
+                verified_artifact_id: Some(execution_artifact_id.as_str().to_string()),
+                field_artifact_id: None,
+                result: Some(result.clone()),
+            },
             SubmitOutcome::NeedsHumanCollapse { field_artifact_id } => {
                 let problem_id = self
                     .plane

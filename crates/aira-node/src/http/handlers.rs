@@ -59,6 +59,17 @@ pub(super) async fn post_problem(
             "result": result,
         }))
         .into_response(),
+        Ok(SubmitOutcome::Executed {
+            problem_id,
+            execution_artifact_id,
+            result,
+        }) => Json(json!({
+            "status": "executed",
+            "problem_id": problem_id.as_str(),
+            "execution_artifact_id": execution_artifact_id.as_str(),
+            "result": result,
+        }))
+        .into_response(),
         Ok(SubmitOutcome::NeedsHumanCollapse { field_artifact_id }) => {
             let problem_id = session
                 .plane()
