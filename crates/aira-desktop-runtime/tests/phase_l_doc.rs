@@ -68,12 +68,7 @@ fn phase_l_queue_wiring_217_done() {
             "QUEUE #{n} must not be DONE at wiring"
         );
     }
-    for needle in [
-        "L0 govern",
-        "Analyze-252",
-        "RFC-0111",
-        "Activate evidence",
-    ] {
+    for needle in ["L0 govern", "Analyze-252", "RFC-0111", "Activate evidence"] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
 }
