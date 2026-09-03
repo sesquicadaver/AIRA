@@ -115,3 +115,5 @@ aira-core has no inference.
 #209 wiring DONE; `#210` generate-local schema DONE (RFC-0105); `#211` execution-llm mock DONE (RFC-0106); `#212` Reduction bind DONE (RFC-0107); `#213` Plane register DONE (RFC-0108); `#214` Activate gate DONE (RFC-0109); `#215` Process backend DONE (RFC-0110); `#216` Desktop + RFC-0104 DONE.
 QUEUE K closed.
 ```
+
+Далі: [`phase-l-plan.md`](phase-l-plan.md) `#217`–`#223` (RFC-0111 reserved).

@@ -206,7 +206,7 @@ Hardware profile для D2 — локальний дескриптор/payload, 
 | D6 | Contextual model rating evidence (не global score) | RFC-R | після D3; не C1 | **DONE** — Addendum D6 / QUEUE `#69`–`#71` @ 7960daa |
 | D7 | Upgrade recommendation artifact (advisory) | RFC-R | після D3; не marketplace | **DONE** — Addendum D7 / QUEUE `#72`–`#74` @ d270b62 |
 
-Новий загальний план після D7: локальне виконання активованої моделі — [`phase-k-plan.md`](phase-k-plan.md) (`#209`–`#216`).
+Новий загальний план після D7: локальне виконання активованої моделі — [`phase-k-plan.md`](phase-k-plan.md) (`#209`–`#216` **DONE** @ RFC-0104). Hardening межі процесу — [`phase-l-plan.md`](phase-l-plan.md) (`#217`–`#223`).
 
 ---
 
