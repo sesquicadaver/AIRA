@@ -1,4 +1,5 @@
-//! Local CLI generate backend (QUEUE #215 / Analyze-250; env `#219`; pipes `#220`).
+//! Local CLI generate backend (QUEUE #215 / Analyze-250; env `#219`; pipes `#220`;
+//! Landlock `#225`).
 //!
 //! Spawns a **fixed argv** via [`std::process::Command::new`] (explicit program +
 //! args). Never `sh -c`, never a user-controlled shell string.
@@ -11,7 +12,8 @@
 //!
 //! Network (RFC-0105 / RFC-0110 / RFC-0116): `constraints.network = none` is
 //! **AIRA-mediated**. This adapter opens **no sockets**. It is **not** an OS
-//! network-off sandbox (no Landlock / seccomp / netns). A child such as
+//! network-off sandbox (no seccomp / netns in this atom). Opt-in Landlock FS
+//! (`#225`) restricts the child filesystem when enabled. A child such as
 //! `ollama` may talk to a loopback daemon — an explicit host-process exception,
 //! not `network=none` OS enforcement. llama.cpp-style argv is offline.
 //!
@@ -31,7 +33,12 @@ use std::{env, thread};
 
 use serde_json::{json, Value};
 
+use super::landlock::landlock_enabled_from;
+#[cfg(target_os = "linux")]
+use super::landlock::{default_allow_paths, restrict_fs_self};
 use super::{GenerateBackend, GenerateLocalPayload, ACTION_GENERATE_LOCAL, MOCK_BACKEND_ID};
+
+pub use super::landlock::{ENV_LLM_LANDLOCK, LANDLOCK_FAILED, LANDLOCK_UNSUPPORTED};
 
 /// Backend id stamped on successful process output.
 pub const PROCESS_BACKEND_ID: &str = "process";
@@ -102,6 +109,7 @@ pub struct ProcessBackend {
     program: PathBuf,
     args: Vec<String>,
     timeout: Duration,
+    landlock: bool,
 }
 
 impl ProcessBackend {
@@ -111,6 +119,7 @@ impl ProcessBackend {
             program: program.into(),
             args: Vec::new(),
             timeout: DEFAULT_TIMEOUT,
+            landlock: false,
         }
     }
 
@@ -143,6 +152,15 @@ impl ProcessBackend {
         self
     }
 
+    /// Opt-in Linux Landlock FS restrict in the child (`pre_exec`). Default off.
+    ///
+    /// Apply failure or non-Linux → fail-closed ([`LANDLOCK_FAILED`] /
+    /// [`LANDLOCK_UNSUPPORTED`]), never unsandboxed success.
+    pub fn with_landlock(mut self) -> Self {
+        self.landlock = true;
+        self
+    }
+
     /// Config from env. Missing binary is **not** resolved here; generate fails closed.
     pub fn from_env() -> Self {
         let program = env::var(ENV_PROCESS_BIN).unwrap_or_else(|_| "ollama".into());
@@ -154,6 +172,9 @@ impl ProcessBackend {
             if let Ok(n) = ms.parse::<u64>() {
                 backend = backend.with_timeout(Duration::from_millis(n));
             }
+        }
+        if landlock_enabled_from(env::var(ENV_LLM_LANDLOCK).ok().as_deref()) {
+            backend = backend.with_landlock();
         }
         backend
     }
@@ -174,9 +195,32 @@ impl GenerateBackend for ProcessBackend {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         apply_child_env(&mut cmd);
+        if self.landlock {
+            #[cfg(target_os = "linux")]
+            {
+                use std::os::unix::process::CommandExt;
+                let allow = default_allow_paths(&program);
+                // SAFETY: runs in the forked child before exec; Landlock applies to
+                // this thread only. Failure returns Err so spawn fail-closes.
+                unsafe {
+                    cmd.pre_exec(move || restrict_fs_self(&allow));
+                }
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                return Err(LANDLOCK_UNSUPPORTED.to_string());
+            }
+        }
         let mut child = cmd.spawn().map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
                 MISSING_BINARY.to_string()
+            } else if self.landlock {
+                let msg = e.to_string();
+                if msg.contains(LANDLOCK_FAILED) {
+                    msg
+                } else {
+                    format!("{LANDLOCK_FAILED}: {e}")
+                }
             } else {
                 format!("{SPAWN_FAILED}: {e}")
             }
@@ -611,5 +655,82 @@ mod tests {
             err.contains(PIPE_OVERFLOW),
             "stderr overflow must fail-closed, got {err}"
         );
+    }
+
+    #[test]
+    fn from_env_landlock_opt_in() {
+        let _g = env_lock();
+        let prev = env::var(ENV_LLM_LANDLOCK).ok();
+        env::remove_var(ENV_LLM_LANDLOCK);
+        assert!(!ProcessBackend::from_env().landlock);
+        env::set_var(ENV_LLM_LANDLOCK, "1");
+        assert!(ProcessBackend::from_env().landlock);
+        env::set_var(ENV_LLM_LANDLOCK, "true");
+        assert!(ProcessBackend::from_env().landlock);
+        env::set_var(ENV_LLM_LANDLOCK, "0");
+        assert!(!ProcessBackend::from_env().landlock);
+        match prev {
+            Some(v) => env::set_var(ENV_LLM_LANDLOCK, v),
+            None => env::remove_var(ENV_LLM_LANDLOCK),
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn landlock_denies_read_outside_allowlist() {
+        let root = tempfile::tempdir().unwrap();
+        let jail = root.path().join("jail");
+        let secret_dir = root.path().join("secret");
+        std::fs::create_dir(&jail).unwrap();
+        std::fs::create_dir(&secret_dir).unwrap();
+        let secret = secret_dir.join("secret.txt");
+        std::fs::write(&secret, "LANDLOCK_SECRET_225\n").unwrap();
+        let script = jail.join("read-secret");
+        std::fs::write(
+            &script,
+            format!("#!/bin/sh\ncat '{}' && echo LEAKED\n", secret.display()),
+        )
+        .unwrap();
+        chmod_exec(&script);
+
+        let leaked = ProcessBackend::new(&script)
+            .generate(&dummy_payload("ignored"))
+            .expect("unsandboxed script must read sibling secret");
+        let leaked_text = leaked["result"].as_str().expect("result string");
+        assert!(
+            leaked_text.contains("LANDLOCK_SECRET_225") || leaked_text.contains("LEAKED"),
+            "control path must prove the leak, got {leaked_text}"
+        );
+
+        let err = ProcessBackend::new(&script)
+            .with_landlock()
+            .generate(&dummy_payload("ignored"))
+            .unwrap_err();
+        assert!(
+            !err.contains("LANDLOCK_SECRET_225"),
+            "sandboxed child must not leak secret, got {err}"
+        );
+        assert!(
+            err.contains(NONZERO_EXIT) || err.contains(LANDLOCK_FAILED),
+            "Landlock deny or apply fail must fail-closed, got {err}"
+        );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn landlock_echo_in_jail_succeeds() {
+        let root = tempfile::tempdir().unwrap();
+        let jail = root.path().join("jail");
+        std::fs::create_dir(&jail).unwrap();
+        let script = jail.join("echo-ok");
+        std::fs::write(&script, "#!/bin/sh\necho LANDLOCK_OK\n").unwrap();
+        chmod_exec(&script);
+        let out = ProcessBackend::new(&script)
+            .with_landlock()
+            .generate(&dummy_payload("ignored"))
+            .expect("echo-only jail script must complete under Landlock");
+        let text = out["result"].as_str().expect("result string");
+        assert!(text.contains("LANDLOCK_OK"), "got {text}");
+        assert_eq!(out["backend"], json!(PROCESS_BACKEND_ID));
     }
 }

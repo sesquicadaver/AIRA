@@ -1,4 +1,4 @@
-//! Phase M wiring contract (#224). Per-atom tests land with #225–#230.
+//! Phase M wiring contract (#224) + Landlock FS (#225). Per-atom tests land with #226–#230.
 
 use std::path::PathBuf;
 
@@ -58,14 +58,19 @@ fn phase_m_queue_wiring_224_done() {
         !text.contains("| 224 | **OPEN**"),
         "QUEUE #224 must not stay OPEN after wiring"
     );
-    for n in 225..=230 {
+    assert!(
+        text.contains("| 225 | **DONE**"),
+        "QUEUE #225 must be DONE after Landlock FS"
+    );
+    assert!(
+        !text.contains("| 225 | **OPEN**"),
+        "QUEUE #225 must not stay OPEN after Landlock FS"
+    );
+    for n in 226..=230 {
         let open = format!("| {n} | **OPEN**");
         let done = format!("| {n} | **DONE**");
-        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after wiring");
-        assert!(
-            !text.contains(&done),
-            "QUEUE #{n} must not be DONE at wiring"
-        );
+        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #225");
+        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #225");
     }
     for needle in [
         "M0 govern",
@@ -124,12 +129,12 @@ fn phase_m_next_problem() {
         "NEXT_PROBLEM must stay provenance"
     );
     assert!(
-        !text.contains("перший OPEN = `#223`"),
-        "NEXT_PROBLEM must not keep Phase L first-OPEN pointer"
+        !text.contains("перший OPEN = `#225`"),
+        "NEXT_PROBLEM must not keep #225 as first-OPEN after Landlock"
     );
     assert!(
-        text.contains("перший OPEN = `#225`") || text.contains("first OPEN `#225`"),
-        "NEXT_PROBLEM must point at first OPEN #225"
+        text.contains("перший OPEN = `#226`") || text.contains("first OPEN `#226`"),
+        "NEXT_PROBLEM must point at first OPEN #226"
     );
     assert!(
         text.contains("QUEUE L closed"),
@@ -138,5 +143,49 @@ fn phase_m_next_problem() {
     assert!(
         text.contains("phase-m-plan.md") || text.contains("QUEUE.md"),
         "NEXT_PROBLEM must point at QUEUE / Phase M"
+    );
+}
+
+#[test]
+fn phase_m_landlock_225() {
+    let process =
+        std::fs::read_to_string(repo_root().join("csu/execution-llm/src/process.rs")).unwrap();
+    let landlock =
+        std::fs::read_to_string(repo_root().join("csu/execution-llm/src/landlock.rs")).unwrap();
+    let rfc = std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0118-landlock-fs.md"))
+        .unwrap();
+    for needle in [
+        "LANDLOCK_FAILED",
+        "with_landlock",
+        "ENV_LLM_LANDLOCK",
+        "fn landlock_denies_read_outside_allowlist",
+        "pre_exec",
+    ] {
+        assert!(
+            process.contains(needle),
+            "process.rs missing Landlock needle: {needle}"
+        );
+    }
+    assert!(
+        landlock.contains("PR_SET_NO_NEW_PRIVS"),
+        "landlock.rs must set no-new-privs before restrict"
+    );
+    assert!(
+        landlock.contains("LANDLOCK_FAILED"),
+        "landlock.rs must fail-closed with LANDLOCK_FAILED"
+    );
+    for needle in [
+        "AIRA-RFC-0118",
+        "Landlock",
+        "fail-closed",
+        "seccomp",
+        "GPU marketplace",
+        "RFC-0117",
+    ] {
+        assert!(rfc.contains(needle), "RFC-0118 missing: {needle}");
+    }
+    assert!(
+        !rfc.contains("AIRA-RFC-0117 —"),
+        "RFC-0118 must not be filed as RFC-0117"
     );
 }

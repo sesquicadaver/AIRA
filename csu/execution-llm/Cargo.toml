@@ -15,6 +15,9 @@ aira-object = { path = "../../crates/aira-object" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 tempfile = "3"
 aira-schema = { path = "../../crates/aira-schema" }
