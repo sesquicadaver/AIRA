@@ -59,7 +59,7 @@ fn phase_l_queue_wiring_217_done() {
         !text.contains("| 217 | **OPEN**"),
         "QUEUE #217 must not stay OPEN after wiring"
     );
-    for n in 219..=223 {
+    for n in 220..=223 {
         let open = format!("| {n} | **OPEN**");
         let done = format!("| {n} | **DONE**");
         assert!(text.contains(&open), "QUEUE #{n} must be OPEN after wiring");
@@ -75,6 +75,14 @@ fn phase_l_queue_wiring_217_done() {
     assert!(
         !text.contains("| 218 | **OPEN**"),
         "QUEUE #218 must not stay OPEN after activate evidence"
+    );
+    assert!(
+        text.contains("| 219 | **DONE**"),
+        "QUEUE #219 must be DONE after child env whitelist"
+    );
+    assert!(
+        !text.contains("| 219 | **OPEN**"),
+        "QUEUE #219 must not stay OPEN after child env whitelist"
     );
     for needle in ["L0 govern", "Analyze-252", "RFC-0111", "Activate evidence"] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -171,6 +179,41 @@ fn phase_l_activate_evidence_218() {
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
     assert!(status.contains("| #218 | Activate evidence"));
     assert!(status.contains("RFC-0112"));
+    let hits = rfc_0111_hits();
+    assert!(
+        hits.is_empty(),
+        "RFC-0111 must stay file-free, found {hits:?}"
+    );
+}
+
+#[test]
+fn phase_l_child_env_219() {
+    let process = repo_root().join("csu/execution-llm/src/process.rs");
+    let text = std::fs::read_to_string(&process).expect("process.rs");
+    for needle in [
+        "env_clear",
+        "CHILD_ENV_ALLOWLIST",
+        "AIRA_HTTP_TOKEN",
+        "fn child_env_pairs_never_include_http_token",
+        "fn process_child_does_not_inherit_http_token",
+        "fn apply_child_env",
+    ] {
+        assert!(text.contains(needle), "process.rs missing: {needle}");
+    }
+    assert!(text.contains("\"PATH\"") && text.contains("\"HOME\"") && text.contains("\"LANG\""));
+    let rfc = repo_root().join("specs/rfc/AIRA-RFC-0113-child-env-whitelist.md");
+    assert!(rfc.is_file(), "RFC-0113 must exist for #219");
+    let rfc_text = std::fs::read_to_string(&rfc).unwrap();
+    assert!(rfc_text.contains("AIRA-RFC-0113"));
+    assert!(rfc_text.contains("AIRA_HTTP_TOKEN"));
+    assert!(rfc_text.contains("## 5. Non-Goals"));
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 219 | **DONE**"));
+    assert!(!queue.contains("| 219 | **OPEN**"));
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #219 | Child env whitelist"));
+    assert!(status.contains("RFC-0113"));
     let hits = rfc_0111_hits();
     assert!(
         hits.is_empty(),

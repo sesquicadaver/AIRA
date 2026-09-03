@@ -1,5 +1,5 @@
 //! Execution-llm CSU (QUEUE #211 / Analyze-246; plane `#213`; activate gate `#214`;
-//! process backend `#215`).
+//! process backend `#215`; child env whitelist `#219`).
 //!
 //! Host-local `text.generate.local` capsules complete only through a bound
 //! [`GenerateBackend`] **and** a bound [`ModelActivateGate`]. [`MockBackend`] is
@@ -11,15 +11,16 @@
 //! OperationalPlane registers this CSU with [`MockBackend`] (`#213`) and injects
 //! the activate handle (`#214`). Capsules whose action is not generate-local are
 //! skipped so fan-out with execution-basic does not fail C1 `math.eval.safe`.
-//! Process backend is selectable; default plane/CI stay mock. No Cargo dep on
+//! Process backend is selectable; default plane/CI stay mock. Child spawn uses
+//! `env_clear` plus PATH/HOME/LANG (`#219`). No Cargo dep on
 //! inventory/acquisition CSUs.
 
 mod process;
 
 pub use process::{
-    backend_kind_from, backend_kind_from_env, ProcessBackend, EMPTY_STDOUT, ENV_LLM_BACKEND,
-    ENV_PROCESS_ARGS, ENV_PROCESS_BIN, ENV_PROCESS_TIMEOUT_MS, MISSING_BINARY, NONZERO_EXIT,
-    PROCESS_BACKEND_ID, SPAWN_FAILED, TIMED_OUT,
+    backend_kind_from, backend_kind_from_env, ProcessBackend, CHILD_ENV_ALLOWLIST, EMPTY_STDOUT,
+    ENV_LLM_BACKEND, ENV_PROCESS_ARGS, ENV_PROCESS_BIN, ENV_PROCESS_TIMEOUT_MS, MISSING_BINARY,
+    NONZERO_EXIT, PROCESS_BACKEND_ID, SPAWN_FAILED, TIMED_OUT,
 };
 
 use aira_artifact::ArtifactType;
