@@ -1014,40 +1014,7 @@ mod tests {
     #[test]
     fn seccomp_forbidden_syscall_is_capsule_failed() {
         let dir = tempfile::tempdir().unwrap();
-        let src = dir.path().join("socket_probe.c");
-        let bin = dir.path().join("socket_probe");
-        std::fs::write(
-            &src,
-            r#"
-#include <stdio.h>
-#include <sys/socket.h>
-int main(void) {
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) return 1;
-    puts("SOCKET_OK");
-    return 0;
-}
-"#,
-        )
-        .unwrap();
-        let status = std::process::Command::new("cc")
-            .args(["-o"])
-            .arg(&bin)
-            .arg(&src)
-            .status()
-            .or_else(|_| {
-                std::process::Command::new("gcc")
-                    .args(["-o"])
-                    .arg(&bin)
-                    .arg(&src)
-                    .status()
-            })
-            .expect("cc/gcc must be available to compile the socket probe");
-        assert!(status.success(), "socket probe compile failed: {status}");
-        use std::os::unix::fs::PermissionsExt;
-        let mut perm = std::fs::metadata(&bin).unwrap().permissions();
-        perm.set_mode(0o755);
-        std::fs::set_permissions(&bin, perm).unwrap();
+        let bin = crate::process::compile_socket_probe(dir.path());
         let mut csu = ExecutionLlmCsu::new()
             .with_process_backend(ProcessBackend::new(&bin).with_seccomp())
             .with_activate_gate(AlwaysActivated);

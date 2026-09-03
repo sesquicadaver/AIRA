@@ -371,6 +371,45 @@ fn map_spawn_err(e: std::io::Error, landlock: bool, seccomp: bool) -> String {
     format!("{SPAWN_FAILED}: {e}")
 }
 
+#[cfg(all(test, target_os = "linux"))]
+pub(crate) fn compile_socket_probe(dir: &Path) -> PathBuf {
+    let src = dir.join("socket_probe.c");
+    let bin = dir.join("socket_probe");
+    std::fs::write(
+        &src,
+        r#"
+#include <stdio.h>
+#include <sys/socket.h>
+int main(void) {
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) return 1;
+    puts("SOCKET_OK");
+    return 0;
+}
+"#,
+    )
+    .unwrap();
+    let status = Command::new("cc")
+        .args(["-o"])
+        .arg(&bin)
+        .arg(&src)
+        .status()
+        .or_else(|_| {
+            Command::new("gcc")
+                .args(["-o"])
+                .arg(&bin)
+                .arg(&src)
+                .status()
+        })
+        .expect("cc/gcc must be available to compile the socket probe");
+    assert!(status.success(), "socket probe compile failed: {status}");
+    use std::os::unix::fs::PermissionsExt;
+    let mut perm = std::fs::metadata(&bin).unwrap().permissions();
+    perm.set_mode(0o755);
+    std::fs::set_permissions(&bin, perm).unwrap();
+    bin
+}
+
 #[derive(Debug)]
 enum BoundedRead {
     Complete(Vec<u8>),
@@ -802,46 +841,10 @@ mod tests {
     }
 
     #[cfg(target_os = "linux")]
-    fn compile_socket_probe(dir: &Path) -> PathBuf {
-        let src = dir.join("socket_probe.c");
-        let bin = dir.join("socket_probe");
-        std::fs::write(
-            &src,
-            r#"
-#include <stdio.h>
-#include <sys/socket.h>
-int main(void) {
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) return 1;
-    puts("SOCKET_OK");
-    return 0;
-}
-"#,
-        )
-        .unwrap();
-        let status = std::process::Command::new("cc")
-            .args(["-o"])
-            .arg(&bin)
-            .arg(&src)
-            .status()
-            .or_else(|_| {
-                std::process::Command::new("gcc")
-                    .args(["-o"])
-                    .arg(&bin)
-                    .arg(&src)
-                    .status()
-            })
-            .expect("cc/gcc must be available to compile the socket probe");
-        assert!(status.success(), "socket probe compile failed: {status}");
-        chmod_exec(&bin);
-        bin
-    }
-
-    #[cfg(target_os = "linux")]
     #[test]
     fn seccomp_forbidden_syscall_is_fail_closed() {
         let dir = tempfile::tempdir().unwrap();
-        let probe = compile_socket_probe(dir.path());
+        let probe = super::compile_socket_probe(dir.path());
         let leaked = ProcessBackend::new(&probe)
             .generate(&dummy_payload("ignored"))
             .expect("unsandboxed socket probe must complete");
