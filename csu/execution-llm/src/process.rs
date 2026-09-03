@@ -1,7 +1,10 @@
-//! Local CLI generate backend (QUEUE #215 / Analyze-250).
+//! Local CLI generate backend (QUEUE #215 / Analyze-250; env whitelist `#219`).
 //!
 //! Spawns a **fixed argv** via [`std::process::Command::new`] (explicit program +
 //! args). Never `sh -c`, never a user-controlled shell string.
+//!
+//! Child environment (`#219`): [`Command::env_clear`] then only PATH / HOME / LANG.
+//! Host secrets such as `AIRA_HTTP_TOKEN` MUST NOT be inherited.
 //!
 //! Network (RFC-0105 / RFC-0110): the payload still requires `network=none`.
 //! This adapter opens **no sockets**. A child such as `ollama` may talk to a
@@ -11,6 +14,7 @@
 //! error string for [`EventType::CapsuleFailed`](aira_event::EventType::CapsuleFailed)
 //! — never a fake VERIFIED result.
 
+use std::ffi::OsString;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -50,6 +54,9 @@ pub const ENV_PROCESS_ARGS: &str = "AIRA_LLM_PROCESS_ARGS";
 
 /// Child wait timeout in milliseconds (default 30000).
 pub const ENV_PROCESS_TIMEOUT_MS: &str = "AIRA_LLM_PROCESS_TIMEOUT_MS";
+
+/// Keys copied into the child after [`Command::env_clear`]. Nothing else.
+pub const CHILD_ENV_ALLOWLIST: &[&str] = &["PATH", "HOME", "LANG"];
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 const STDERR_LIMIT: usize = 512;
@@ -143,6 +150,7 @@ impl GenerateBackend for ProcessBackend {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        apply_child_env(&mut cmd);
         let mut child = cmd.spawn().map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
                 MISSING_BINARY.to_string()
@@ -184,6 +192,46 @@ impl GenerateBackend for ProcessBackend {
             "action": ACTION_GENERATE_LOCAL,
             "backend": PROCESS_BACKEND_ID,
         }))
+    }
+}
+
+/// PATH / HOME / LANG only. Host secrets (Bearer token, LLM env) stay in the parent.
+fn child_env_pairs() -> Vec<(OsString, OsString)> {
+    let mut out = Vec::new();
+    match env::var_os("PATH") {
+        Some(v) if !v.is_empty() => out.push((OsString::from("PATH"), v)),
+        _ => out.push((OsString::from("PATH"), default_path())),
+    }
+    if let Some(v) = env::var_os("HOME") {
+        if !v.is_empty() {
+            out.push((OsString::from("HOME"), v));
+        }
+    }
+    match env::var_os("LANG") {
+        Some(v) if !v.is_empty() => out.push((OsString::from("LANG"), v)),
+        _ => out.push((OsString::from("LANG"), OsString::from("C"))),
+    }
+    debug_assert!(out
+        .iter()
+        .all(|(k, _)| CHILD_ENV_ALLOWLIST.iter().any(|a| k == a)));
+    out
+}
+
+fn default_path() -> OsString {
+    #[cfg(windows)]
+    {
+        OsString::from(r"C:\Windows\System32;C:\Windows")
+    }
+    #[cfg(not(windows))]
+    {
+        OsString::from("/usr/bin:/bin")
+    }
+}
+
+fn apply_child_env(cmd: &mut Command) {
+    cmd.env_clear();
+    for (key, value) in child_env_pairs() {
+        cmd.env(key, value);
     }
 }
 
@@ -247,6 +295,32 @@ fn truncate_utf8(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{GenerateLocalConstraints, PAYLOAD_SCHEMA_ID};
+    use aira_object::local_test_signature;
+    use std::sync::{Mutex, MutexGuard, OnceLock};
+
+    fn dummy_payload(prompt: &str) -> GenerateLocalPayload {
+        GenerateLocalPayload {
+            payload_schema: PAYLOAD_SCHEMA_ID.into(),
+            action: ACTION_GENERATE_LOCAL.into(),
+            prompt: prompt.into(),
+            problem_statement_ref: None,
+            model_artifact_ref: None,
+            constraints: GenerateLocalConstraints {
+                network: "none".into(),
+                shell: false,
+            },
+            provenance_refs: vec![],
+            signature: local_test_signature(aira_object::LOCAL_TEST_DOMAIN_MSG),
+        }
+    }
+
+    fn env_lock() -> MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+    }
 
     #[test]
     fn backend_kind_defaults_to_mock() {
@@ -278,5 +352,84 @@ mod tests {
     fn resolve_bin_false_exists() {
         let p = resolve_program(Path::new("/bin/false")).unwrap();
         assert_eq!(p, PathBuf::from("/bin/false"));
+    }
+
+    #[test]
+    fn child_env_pairs_never_include_http_token() {
+        let _g = env_lock();
+        let prev_token = env::var("AIRA_HTTP_TOKEN").ok();
+        let prev_backend = env::var("AIRA_LLM_BACKEND").ok();
+        env::set_var("AIRA_HTTP_TOKEN", "l219-secret-do-not-leak");
+        env::set_var("AIRA_LLM_BACKEND", "process");
+        let pairs = child_env_pairs();
+        match prev_token {
+            Some(v) => env::set_var("AIRA_HTTP_TOKEN", v),
+            None => env::remove_var("AIRA_HTTP_TOKEN"),
+        }
+        match prev_backend {
+            Some(v) => env::set_var("AIRA_LLM_BACKEND", v),
+            None => env::remove_var("AIRA_LLM_BACKEND"),
+        }
+        assert!(!pairs.is_empty());
+        for (k, v) in &pairs {
+            let key = k.to_string_lossy();
+            assert!(
+                CHILD_ENV_ALLOWLIST.iter().any(|a| *a == key.as_ref()),
+                "unexpected child env key {key}"
+            );
+            assert_ne!(key.as_ref(), "AIRA_HTTP_TOKEN");
+            assert!(!v.to_string_lossy().contains("l219-secret-do-not-leak"));
+        }
+        assert!(pairs.iter().any(|(k, _)| k == "PATH"));
+        assert!(pairs.iter().any(|(k, _)| k == "LANG"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn process_child_does_not_inherit_http_token() {
+        let _g = env_lock();
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("dump-env");
+        std::fs::write(
+            &script,
+            "#!/bin/sh\n\
+             if [ -n \"$AIRA_HTTP_TOKEN\" ]; then echo LEAKED_HTTP_TOKEN; else echo HTTP_TOKEN_ABSENT; fi\n\
+             if [ -n \"$AIRA_LLM_BACKEND\" ]; then echo LEAKED_LLM_BACKEND; else echo LLM_BACKEND_ABSENT; fi\n\
+             echo PATH_OK=$PATH\n",
+        )
+        .unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        let mut perm = std::fs::metadata(&script).unwrap().permissions();
+        perm.set_mode(0o755);
+        std::fs::set_permissions(&script, perm).unwrap();
+
+        let prev_token = env::var("AIRA_HTTP_TOKEN").ok();
+        let prev_backend = env::var("AIRA_LLM_BACKEND").ok();
+        env::set_var("AIRA_HTTP_TOKEN", "l219-secret-do-not-leak");
+        env::set_var("AIRA_LLM_BACKEND", "process");
+        let out = ProcessBackend::new(&script)
+            .generate(&dummy_payload("ignored-prompt"))
+            .expect("dump-env script must complete");
+        match prev_token {
+            Some(v) => env::set_var("AIRA_HTTP_TOKEN", v),
+            None => env::remove_var("AIRA_HTTP_TOKEN"),
+        }
+        match prev_backend {
+            Some(v) => env::set_var("AIRA_LLM_BACKEND", v),
+            None => env::remove_var("AIRA_LLM_BACKEND"),
+        }
+        let text = out["result"].as_str().expect("result string");
+        assert!(
+            text.contains("HTTP_TOKEN_ABSENT"),
+            "child must not inherit AIRA_HTTP_TOKEN, got {text}"
+        );
+        assert!(!text.contains("LEAKED_HTTP_TOKEN"), "{text}");
+        assert!(!text.contains("l219-secret-do-not-leak"), "{text}");
+        assert!(
+            text.contains("LLM_BACKEND_ABSENT"),
+            "child must not inherit AIRA_LLM_BACKEND, got {text}"
+        );
+        assert!(text.contains("PATH_OK="), "{text}");
+        assert_eq!(out["backend"], json!(PROCESS_BACKEND_ID));
     }
 }
