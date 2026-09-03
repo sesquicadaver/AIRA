@@ -1,4 +1,4 @@
-//! Phase M wiring contract (#224) + Landlock FS (#225) + seccomp (#226) + netns (#227). Per-atom tests land with #228–#230.
+//! Phase M wiring contract (#224) + Landlock FS (#225) + seccomp (#226) + netns (#227) + sandbox-required (#228). Per-atom tests land with #229–#230.
 
 use std::path::PathBuf;
 
@@ -82,11 +82,19 @@ fn phase_m_queue_wiring_224_done() {
         !text.contains("| 227 | **OPEN**"),
         "QUEUE #227 must not stay OPEN after netns"
     );
-    for n in 228..=230 {
+    assert!(
+        text.contains("| 228 | **DONE**"),
+        "QUEUE #228 must be DONE after sandbox-required"
+    );
+    assert!(
+        !text.contains("| 228 | **OPEN**"),
+        "QUEUE #228 must not stay OPEN after sandbox-required"
+    );
+    for n in 229..=230 {
         let open = format!("| {n} | **OPEN**");
         let done = format!("| {n} | **DONE**");
-        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #227");
-        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #227");
+        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #228");
+        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #228");
     }
     for needle in [
         "M0 govern",
@@ -145,12 +153,12 @@ fn phase_m_next_problem() {
         "NEXT_PROBLEM must stay provenance"
     );
     assert!(
-        !text.contains("перший OPEN = `#227`"),
-        "NEXT_PROBLEM must not keep #227 as first-OPEN after netns"
+        !text.contains("перший OPEN = `#228`"),
+        "NEXT_PROBLEM must not keep #228 as first-OPEN after sandbox-required"
     );
     assert!(
-        text.contains("перший OPEN = `#228`") || text.contains("first OPEN `#228`"),
-        "NEXT_PROBLEM must point at first OPEN #228"
+        text.contains("перший OPEN = `#229`") || text.contains("first OPEN `#229`"),
+        "NEXT_PROBLEM must point at first OPEN #229"
     );
     assert!(
         text.contains("QUEUE L closed"),
@@ -292,5 +300,50 @@ fn phase_m_netns_227() {
     assert!(
         !rfc.contains("AIRA-RFC-0117 —"),
         "RFC-0120 must not be filed as RFC-0117"
+    );
+}
+
+#[test]
+fn phase_m_sandbox_required_228() {
+    let process =
+        std::fs::read_to_string(repo_root().join("csu/execution-llm/src/process.rs")).unwrap();
+    let sandbox =
+        std::fs::read_to_string(repo_root().join("csu/execution-llm/src/sandbox.rs")).unwrap();
+    let rfc =
+        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0121-sandbox-required.md"))
+            .unwrap();
+    for needle in [
+        "with_sandbox_required",
+        "ENV_LLM_SANDBOX_REQUIRED",
+        "SANDBOX_REQUIRED",
+        "fn sandbox_required_missing_kernel_is_fail_closed",
+        "with_unavailable_kernel_for_test",
+    ] {
+        assert!(
+            process.contains(needle),
+            "process.rs missing sandbox-required needle: {needle}"
+        );
+    }
+    assert!(
+        sandbox.contains("SANDBOX_REQUIRED"),
+        "sandbox.rs must fail-closed with SANDBOX_REQUIRED"
+    );
+    assert!(
+        sandbox.contains("fn enforce"),
+        "sandbox.rs must expose enforce"
+    );
+    for needle in [
+        "AIRA-RFC-0121",
+        "sandbox required",
+        "fail-closed",
+        "SANDBOX_REQUIRED",
+        "GPU marketplace",
+        "RFC-0117",
+    ] {
+        assert!(rfc.contains(needle), "RFC-0121 missing: {needle}");
+    }
+    assert!(
+        !rfc.contains("AIRA-RFC-0117 —"),
+        "RFC-0121 must not be filed as RFC-0117"
     );
 }

@@ -1,7 +1,5 @@
-# TODO_FIXME — Analyze-261
+# TODO_FIXME — Analyze-263
 
-- [x] `#226` seccomp syscall filter on ProcessBackend child
-- [x] `#227` Linux network namespace (offline argv; ollama loopback exception)
 - [x] `#228` sandbox required + missing kernel/OS → CapsuleFailed
 - [ ] `#229` docs/schema OS isolation vs AIRA-mediated none
 - [ ] `#230` RFC-0117; QUEUE M closed
