@@ -11,13 +11,14 @@
 //! never a truncated CapsuleCompleted / fake VERIFIED.
 //!
 //! Network (RFC-0105 / RFC-0110 / RFC-0116): `constraints.network = none` is
-//! **AIRA-mediated**. This adapter opens **no sockets**. Opt-in Landlock FS
-//! (`#225`), opt-in seccomp (`#226`), and opt-in netns (`#227`) restrict the
-//! child when enabled. netns is for offline argv (llama.cpp-style). Combining
-//! netns with ollama-style loopback is **fail-closed** ([`NETNS_BLOCKS_LOOPBACK`])
-//! so host `127.0.0.1` is not silently isolated. A child such as `ollama` may
-//! talk to a loopback daemon only when netns is off — an explicit host-process
-//! exception, not `network=none` OS enforcement.
+//! **AIRA-mediated**. This adapter opens **no sockets**. It is **not** an OS
+//! network-off sandbox: that const stays adapter-only even when opt-in Landlock
+//! FS (`#225`), opt-in seccomp (`#226`), and opt-in netns (`#227`) restrict the
+//! child. netns is for offline argv (llama.cpp-style). Combining netns with
+//! ollama-style loopback is **fail-closed** ([`NETNS_BLOCKS_LOOPBACK`]) so host
+//! `127.0.0.1` is not silently isolated. A child such as `ollama` may talk to a
+//! loopback daemon only when netns is off — an explicit host-process exception,
+//! not `network=none` OS enforcement.
 //!
 //! Missing binary, spawn failure, non-zero exit, timeout, empty stdout, or pipe
 //! overflow → error string for
