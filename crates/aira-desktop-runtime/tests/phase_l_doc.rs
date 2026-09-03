@@ -59,7 +59,7 @@ fn phase_l_queue_wiring_217_done() {
         !text.contains("| 217 | **OPEN**"),
         "QUEUE #217 must not stay OPEN after wiring"
     );
-    for n in 218..=223 {
+    for n in 219..=223 {
         let open = format!("| {n} | **OPEN**");
         let done = format!("| {n} | **DONE**");
         assert!(text.contains(&open), "QUEUE #{n} must be OPEN after wiring");
@@ -68,6 +68,14 @@ fn phase_l_queue_wiring_217_done() {
             "QUEUE #{n} must not be DONE at wiring"
         );
     }
+    assert!(
+        text.contains("| 218 | **DONE**"),
+        "QUEUE #218 must be DONE after activate evidence"
+    );
+    assert!(
+        !text.contains("| 218 | **OPEN**"),
+        "QUEUE #218 must not stay OPEN after activate evidence"
+    );
     for needle in ["L0 govern", "Analyze-252", "RFC-0111", "Activate evidence"] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
@@ -129,5 +137,43 @@ fn phase_l_next_problem_not_phase_g_pointer() {
     assert!(
         text.contains("phase-l-plan.md") || text.contains("QUEUE.md"),
         "NEXT_PROBLEM must point at QUEUE / Phase L"
+    );
+}
+
+#[test]
+fn phase_l_activate_evidence_218() {
+    let gate = repo_root().join("crates/aira-flow/src/activate_gate.rs");
+    let text = std::fs::read_to_string(&gate).expect("activate_gate.rs");
+    for needle in [
+        "struct ActivatedPointerGate",
+        "fn install_fixture",
+        "content_hash mismatch",
+        "evidence artifact missing",
+        "fn forged_model_ref_only_pointer_is_denied",
+        "fn cache_hash_mismatch_is_denied",
+        "fn fixture_pointer_allows_generate",
+        "activated!=true",
+    ] {
+        assert!(text.contains(needle), "activate_gate.rs missing: {needle}");
+    }
+    let flow = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/lib.rs")).unwrap();
+    assert!(flow.contains("fn forged_model_ref_pointer_is_capsule_failed"));
+    let rfc = repo_root().join("specs/rfc/AIRA-RFC-0112-activate-evidence-gate.md");
+    assert!(rfc.is_file(), "RFC-0112 must exist for #218");
+    let rfc_text = std::fs::read_to_string(&rfc).unwrap();
+    assert!(rfc_text.contains("AIRA-RFC-0112"));
+    assert!(rfc_text.contains("content_hash"));
+    assert!(rfc_text.contains("## 5. Non-Goals"));
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 218 | **DONE**"));
+    assert!(!queue.contains("| 218 | **OPEN**"));
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #218 | Activate evidence"));
+    assert!(status.contains("RFC-0112"));
+    let hits = rfc_0111_hits();
+    assert!(
+        hits.is_empty(),
+        "RFC-0111 must stay file-free, found {hits:?}"
     );
 }

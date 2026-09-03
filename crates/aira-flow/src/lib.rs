@@ -7,16 +7,19 @@
 //! event runtime, scheduler, distributed runtime, or federation runtime.
 //! Operator-facing status: `docs/operational-plane.md`.
 
+mod activate_gate;
 mod local;
 mod plane;
 mod reuse;
+
+pub use activate_gate::ActivatedPointerGate;
 
 pub use local::{
     init_node, load_config, node_config_present, open_node_sqlite_object_store,
     read_event_log_resilient, EventLogFile, EventLogReadOutcome, LocalSession, NodeConfig,
     NodePaths, ProblemRecord, DEFAULT_AIRA_ROOT, EVENT_LOG_CORRUPT_BACKUP,
 };
-pub use plane::{ActivatedPointerGate, FlowError, OperationalPlane, SubmitOutcome};
+pub use plane::{FlowError, OperationalPlane, SubmitOutcome};
 
 /// Crate version string.
 pub fn crate_version() -> &'static str {
@@ -280,20 +283,7 @@ mod tests {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
         let aira_root = dir.path().join("node");
-        std::fs::create_dir_all(aira_root.join("models")).unwrap();
-        std::fs::write(
-            aira_root.join("models/activated.latest.json"),
-            serde_json::json!({
-                "updated_at": "2026-09-01T00:00:00Z",
-                "model_ref": "aira:model:test-activated",
-                "cache_path": "models/cache/slot/weights.gguf",
-                "verified_path": "models/verified/slot/weights.gguf",
-                "content_hash": "sha256:00",
-                "evidence_artifact_id": "aira:artifact:acq-activate:00"
-            })
-            .to_string(),
-        )
-        .unwrap();
+        ActivatedPointerGate::install_fixture(&aira_root).unwrap();
         let mut plane = OperationalPlane::open(dir.path().join("arts")).unwrap();
         plane.bind_phase_d_activate_from_root(&aira_root).unwrap();
         let prompt = "Summarize the local Problem Statement without leaving the host.";
@@ -303,6 +293,32 @@ mod tests {
             "activated pointer + MockBackend must complete, got {out:?}"
         );
         assert!(!plane.has_verified_result_artifact());
+    }
+
+    #[test]
+    fn forged_model_ref_pointer_is_capsule_failed() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let aira_root = dir.path().join("node");
+        std::fs::create_dir_all(aira_root.join("models")).unwrap();
+        std::fs::write(
+            aira_root.join("models/activated.latest.json"),
+            r#"{"model_ref":"aira:model:anything"}"#,
+        )
+        .unwrap();
+        let mut plane = OperationalPlane::open(dir.path().join("arts")).unwrap();
+        plane.bind_phase_d_activate_from_root(&aira_root).unwrap();
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let err = plane.submit_problem(prompt).unwrap_err();
+        assert!(
+            plane
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleFailed),
+            "forged pointer must CapsuleFailed, got {err}"
+        );
+        assert!(!plane.has_verified_result_artifact());
+        assert!(plane.latest_generate_local_output().is_none());
     }
 
     #[test]
