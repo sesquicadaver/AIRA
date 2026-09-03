@@ -1,4 +1,4 @@
-//! Local CLI generate backend (QUEUE #215 / Analyze-250; env whitelist `#219`).
+//! Local CLI generate backend (QUEUE #215 / Analyze-250; env `#219`; pipes `#220`).
 //!
 //! Spawns a **fixed argv** via [`std::process::Command::new`] (explicit program +
 //! args). Never `sh -c`, never a user-controlled shell string.
@@ -6,18 +6,24 @@
 //! Child environment (`#219`): [`Command::env_clear`] then only PATH / HOME / LANG.
 //! Host secrets such as `AIRA_HTTP_TOKEN` MUST NOT be inherited.
 //!
+//! Pipes (`#220`): stdout/stderr are capped **during** read. Overflow → fail-closed,
+//! never a truncated CapsuleCompleted / fake VERIFIED.
+//!
 //! Network (RFC-0105 / RFC-0110): the payload still requires `network=none`.
 //! This adapter opens **no sockets**. A child such as `ollama` may talk to a
 //! loopback daemon; AIRA does not initiate WAN. llama.cpp-style argv is offline.
 //!
-//! Missing binary, spawn failure, non-zero exit, timeout, or empty stdout →
-//! error string for [`EventType::CapsuleFailed`](aira_event::EventType::CapsuleFailed)
+//! Missing binary, spawn failure, non-zero exit, timeout, empty stdout, or pipe
+//! overflow → error string for
+//! [`EventType::CapsuleFailed`](aira_event::EventType::CapsuleFailed)
 //! — never a fake VERIFIED result.
 
 use std::ffi::OsString;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{env, thread};
 
@@ -43,6 +49,16 @@ pub const TIMED_OUT: &str = "generate process timed out (fail-closed; not VERIFI
 /// Fail-closed empty stdout.
 pub const EMPTY_STDOUT: &str = "generate process produced no stdout (fail-closed; not VERIFIED)";
 
+/// Fail-closed when stdout or stderr exceeds the bound **during** read.
+pub const PIPE_OVERFLOW: &str =
+    "generate process output exceeded bound (fail-closed; not VERIFIED)";
+
+/// Max stdout bytes retained while reading. Overflow is not truncated success.
+pub const PIPE_STDOUT_LIMIT: usize = 1024 * 1024;
+
+/// Max stderr bytes retained while reading. Overflow is not truncated success.
+pub const PIPE_STDERR_LIMIT: usize = 64 * 1024;
+
 /// `AIRA_LLM_BACKEND=mock|process`. Unset / anything else → mock (CI default).
 pub const ENV_LLM_BACKEND: &str = "AIRA_LLM_BACKEND";
 
@@ -59,7 +75,7 @@ pub const ENV_PROCESS_TIMEOUT_MS: &str = "AIRA_LLM_PROCESS_TIMEOUT_MS";
 pub const CHILD_ENV_ALLOWLIST: &[&str] = &["PATH", "HOME", "LANG"];
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
-const STDERR_LIMIT: usize = 512;
+const STDERR_SNIPPET: usize = 512;
 
 /// Select mock vs process from an env value. Default (None / not `process`) is mock.
 pub fn backend_kind_from(value: Option<&str>) -> &'static str {
@@ -166,19 +182,39 @@ impl GenerateBackend for ProcessBackend {
             .stderr
             .take()
             .ok_or_else(|| format!("{SPAWN_FAILED}: stderr pipe missing"))?;
+        let overflow = Arc::new(AtomicBool::new(false));
+        let out_flag = overflow.clone();
+        let err_flag = overflow.clone();
         let out_h = thread::spawn(move || {
-            let mut buf = Vec::new();
-            let _ = stdout_pipe.read_to_end(&mut buf);
-            buf
+            let r = read_bounded(&mut stdout_pipe, PIPE_STDOUT_LIMIT);
+            if matches!(r, BoundedRead::Overflow) {
+                out_flag.store(true, Ordering::SeqCst);
+            }
+            r
         });
         let err_h = thread::spawn(move || {
-            let mut buf = Vec::new();
-            let _ = stderr_pipe.read_to_end(&mut buf);
-            buf
+            let r = read_bounded(&mut stderr_pipe, PIPE_STDERR_LIMIT);
+            if matches!(r, BoundedRead::Overflow) {
+                err_flag.store(true, Ordering::SeqCst);
+            }
+            r
         });
-        let status = wait_with_timeout(&mut child, self.timeout)?;
-        let stdout = out_h.join().unwrap_or_default();
-        let stderr = err_h.join().unwrap_or_default();
+        let wait_result = wait_with_timeout(&mut child, self.timeout, &overflow);
+        let stdout_r = out_h.join().unwrap_or(BoundedRead::Io);
+        let stderr_r = err_h.join().unwrap_or(BoundedRead::Io);
+        if matches!(stdout_r, BoundedRead::Overflow) || matches!(stderr_r, BoundedRead::Overflow) {
+            return Err(PIPE_OVERFLOW.into());
+        }
+        if matches!(stdout_r, BoundedRead::Io) || matches!(stderr_r, BoundedRead::Io) {
+            return Err(format!("{SPAWN_FAILED}: pipe read failed"));
+        }
+        let status = wait_result?;
+        let BoundedRead::Complete(stdout) = stdout_r else {
+            return Err(PIPE_OVERFLOW.into());
+        };
+        let BoundedRead::Complete(stderr) = stderr_r else {
+            return Err(PIPE_OVERFLOW.into());
+        };
         if !status.success() {
             let err = truncate_utf8(&stderr);
             return Err(format!("{NONZERO_EXIT}: {err}"));
@@ -235,6 +271,33 @@ fn apply_child_env(cmd: &mut Command) {
     }
 }
 
+#[derive(Debug)]
+enum BoundedRead {
+    Complete(Vec<u8>),
+    Overflow,
+    Io,
+}
+
+/// Cap the pipe **while** reading. Does not `read_to_end` then truncate.
+fn read_bounded(reader: &mut impl Read, limit: usize) -> BoundedRead {
+    let mut buf = Vec::new();
+    let mut chunk = [0u8; 8192];
+    loop {
+        match reader.read(&mut chunk) {
+            Ok(0) => return BoundedRead::Complete(buf),
+            Ok(n) => {
+                let remaining = limit.saturating_sub(buf.len());
+                if n > remaining {
+                    return BoundedRead::Overflow;
+                }
+                buf.extend_from_slice(&chunk[..n]);
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(_) => return BoundedRead::Io,
+        }
+    }
+}
+
 fn resolve_program(program: &Path) -> Result<PathBuf, String> {
     if program.as_os_str().is_empty() {
         return Err(MISSING_BINARY.into());
@@ -258,9 +321,15 @@ fn resolve_program(program: &Path) -> Result<PathBuf, String> {
 fn wait_with_timeout(
     child: &mut std::process::Child,
     timeout: Duration,
+    overflow: &AtomicBool,
 ) -> Result<std::process::ExitStatus, String> {
     let start = Instant::now();
     loop {
+        if overflow.load(Ordering::SeqCst) {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(PIPE_OVERFLOW.into());
+        }
         match child.try_wait() {
             Ok(Some(status)) => return Ok(status),
             Ok(None) => {
@@ -283,10 +352,10 @@ fn wait_with_timeout(
 fn truncate_utf8(bytes: &[u8]) -> String {
     let s = String::from_utf8_lossy(bytes);
     let t = s.trim();
-    if t.len() <= STDERR_LIMIT {
+    if t.len() <= STDERR_SNIPPET {
         t.to_string()
     } else {
-        let mut out = t.chars().take(STDERR_LIMIT).collect::<String>();
+        let mut out = t.chars().take(STDERR_SNIPPET).collect::<String>();
         out.push('…');
         out
     }
@@ -431,5 +500,84 @@ mod tests {
         );
         assert!(text.contains("PATH_OK="), "{text}");
         assert_eq!(out["backend"], json!(PROCESS_BACKEND_ID));
+    }
+
+    #[test]
+    fn read_bounded_ok_under_limit() {
+        let data = b"hello".to_vec();
+        match read_bounded(&mut std::io::Cursor::new(data), 50) {
+            BoundedRead::Complete(buf) => assert_eq!(buf, b"hello"),
+            other => panic!("expected complete, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn read_bounded_overflow_during_read() {
+        let data = vec![b'x'; 100];
+        assert!(matches!(
+            read_bounded(&mut std::io::Cursor::new(data), 50),
+            BoundedRead::Overflow
+        ));
+    }
+
+    #[test]
+    fn read_bounded_exact_limit_is_complete() {
+        let data = vec![b'y'; 8];
+        match read_bounded(&mut std::io::Cursor::new(data), 8) {
+            BoundedRead::Complete(buf) => assert_eq!(buf.len(), 8),
+            other => panic!("expected complete at limit, got {other:?}"),
+        }
+    }
+
+    #[cfg(unix)]
+    fn chmod_exec(path: &Path) {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perm = std::fs::metadata(path).unwrap().permissions();
+        perm.set_mode(0o755);
+        std::fs::set_permissions(path, perm).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stdout_overflow_during_read_is_fail_closed() {
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("overflow-stdout");
+        let kb = (PIPE_STDOUT_LIMIT / 1024) + 512;
+        std::fs::write(
+            &script,
+            format!("#!/bin/sh\ndd if=/dev/zero bs=1024 count={kb} 2>/dev/null\n"),
+        )
+        .unwrap();
+        chmod_exec(&script);
+        let err = ProcessBackend::new(&script)
+            .with_timeout(Duration::from_secs(10))
+            .generate(&dummy_payload("ignored"))
+            .unwrap_err();
+        assert!(
+            err.contains(PIPE_OVERFLOW),
+            "stdout overflow must fail-closed, got {err}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stderr_overflow_during_read_is_fail_closed() {
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("overflow-stderr");
+        let kb = (PIPE_STDERR_LIMIT / 1024) + 64;
+        std::fs::write(
+            &script,
+            format!("#!/bin/sh\ndd if=/dev/zero bs=1024 count={kb} >&2\necho ok\n"),
+        )
+        .unwrap();
+        chmod_exec(&script);
+        let err = ProcessBackend::new(&script)
+            .with_timeout(Duration::from_secs(10))
+            .generate(&dummy_payload("ignored"))
+            .unwrap_err();
+        assert!(
+            err.contains(PIPE_OVERFLOW),
+            "stderr overflow must fail-closed, got {err}"
+        );
     }
 }
