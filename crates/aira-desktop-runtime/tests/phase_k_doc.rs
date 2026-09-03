@@ -435,13 +435,25 @@ fn phase_k_activate_gate_214() {
     );
     let plane_text =
         std::fs::read_to_string(repo_root().join("crates/aira-flow/src/plane.rs")).unwrap();
+    let gate_text =
+        std::fs::read_to_string(repo_root().join("crates/aira-flow/src/activate_gate.rs")).unwrap();
     for needle in [
-        "struct ActivatedPointerGate",
         "fn bind_activate_gate",
         "fn enable_activated_mock_llm",
         "fn bind_phase_d_activate_from_root",
     ] {
         assert!(plane_text.contains(needle), "plane.rs missing: {needle}");
+    }
+    for needle in [
+        "struct ActivatedPointerGate",
+        "fn install_fixture",
+        "content_hash mismatch",
+        "evidence artifact missing",
+    ] {
+        assert!(
+            gate_text.contains(needle),
+            "activate_gate.rs missing: {needle}"
+        );
     }
     let flow_tests =
         std::fs::read_to_string(repo_root().join("crates/aira-flow/src/lib.rs")).unwrap();

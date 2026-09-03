@@ -21,8 +21,9 @@ use aira_csu_evidence_basic::EvidenceBasicCsu;
 use aira_csu_execution_basic::ExecutionBasicCsu;
 use aira_csu_execution_llm::{
     AlwaysActivated, ExecutionLlmCsu, ModelActivateGate, ProcessBackend, ACTION_GENERATE_LOCAL,
-    ACTIVATE_DENIED,
 };
+
+use crate::activate_gate::ActivatedPointerGate;
 use aira_csu_reduction_basic::ReductionBasicCsu;
 use aira_csu_verification_basic::VerificationBasicCsu;
 use aira_event::{EventDescriptor, EventSink, EventType, MemoryEventLog};
@@ -64,53 +65,6 @@ pub enum SubmitOutcome {
     },
     /// Normative alternatives require human collapse (Issue #56).
     NeedsHumanCollapse { field_artifact_id: AiraRef },
-}
-
-/// Phase D activate handle: presence of `models/activated.latest.json`.
-///
-/// Lives on the plane (not in execution-llm) so CSU ↛ CSU holds. Does not
-/// mutate inventory or download weights.
-#[derive(Debug, Clone)]
-pub struct ActivatedPointerGate {
-    pointer_path: PathBuf,
-}
-
-impl ActivatedPointerGate {
-    /// Pointer path relative to an `.aira` (or equivalent) root.
-    pub fn from_aira_root(root: impl AsRef<Path>) -> Self {
-        Self {
-            pointer_path: root.as_ref().join("models/activated.latest.json"),
-        }
-    }
-}
-
-impl ModelActivateGate for ActivatedPointerGate {
-    fn check_activated(
-        &self,
-        payload: &aira_csu_execution_llm::GenerateLocalPayload,
-    ) -> Result<(), String> {
-        if !self.pointer_path.is_file() {
-            return Err(ACTIVATE_DENIED.into());
-        }
-        let raw =
-            std::fs::read_to_string(&self.pointer_path).map_err(|_| ACTIVATE_DENIED.to_string())?;
-        let v: Value = serde_json::from_str(&raw).map_err(|_| {
-            "activated pointer is not valid JSON (fail-closed; not VERIFIED)".to_string()
-        })?;
-        let model_ref = v.get("model_ref").and_then(|x| x.as_str()).unwrap_or("");
-        if model_ref.is_empty() {
-            return Err(ACTIVATE_DENIED.into());
-        }
-        if let Some(want) = &payload.model_artifact_ref {
-            if want.as_str() != model_ref {
-                return Err(format!(
-                    "model {} is not Phase D activated (activated {model_ref}; fail-closed; not VERIFIED)",
-                    want.as_str()
-                ));
-            }
-        }
-        Ok(())
-    }
 }
 
 /// Local in-process C1 reference plane (demo / conformance), not production runtime.

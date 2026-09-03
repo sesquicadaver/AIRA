@@ -146,21 +146,7 @@ mod tests {
     }
 
     fn write_activated_pointer(root: &std::path::Path) {
-        let models = root.join("models");
-        std::fs::create_dir_all(&models).unwrap();
-        std::fs::write(
-            models.join("activated.latest.json"),
-            json!({
-                "updated_at": "2026-09-01T00:00:00Z",
-                "model_ref": "aira:model:test-activated",
-                "cache_path": "models/cache/slot/weights.gguf",
-                "verified_path": "models/verified/slot/weights.gguf",
-                "content_hash": "sha256:00",
-                "evidence_artifact_id": "aira:artifact:acq-activate:00"
-            })
-            .to_string(),
-        )
-        .unwrap();
+        aira_flow::ActivatedPointerGate::install_fixture(root).unwrap();
     }
 
     #[tokio::test]

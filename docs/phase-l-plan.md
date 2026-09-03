@@ -74,7 +74,7 @@ L0 govern (wiring)
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
 | `#217` | L0 | Phase L wiring | цей план **IN PROGRESS**; QUEUE `#217` DONE + `#218`–`#223` OPEN; `phase_l_doc`; `NEXT_PROBLEM.md` drift fixed | activate evidence (#218) |
-| `#218` | L1 | Activate evidence | gate checks `content_hash` + cache bytes + evidence artifact; forged `{model_ref}` fail-closed | env (#219) |
+| `#218` | L1 | Activate evidence | gate checks `content_hash` + cache bytes + evidence artifact; forged `{model_ref}` fail-closed **DONE** (RFC-0112) | env (#219) |
 | `#219` | L2 | Child env whitelist | `env_clear` + minimal PATH/HOME/LANG; no `AIRA_HTTP_TOKEN` leak | bounded IO (#220) |
 | `#220` | L3 | Bounded pipes | stdout/stderr capped **during** read; overflow → CapsuleFailed | ProblemRecord (#221) |
 | `#221` | L4 | ProblemRecord split | persisted `execution_artifact_id`; GET не кладе executed в `verified_artifact_id` | network RFC (#222) |
@@ -113,6 +113,6 @@ aira-core has no inference.
 
 ```text
 #216 DONE (RFC-0104) + post-K audit 2026-09-03 + /autopilot → цей план активовано атомом `#217`.
-#217 wiring IN PROGRESS; `#218`–`#223` OPEN.
+#217 wiring DONE (RFC-0112 path); `#218` Activate evidence DONE; `#219`–`#223` OPEN.
 RFC-0111 file-free until `#223`.
 ```
