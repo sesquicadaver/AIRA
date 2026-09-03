@@ -1,5 +1,5 @@
 //! Local CLI generate backend (QUEUE #215 / Analyze-250; env `#219`; pipes `#220`;
-//! Landlock `#225`; seccomp `#226`).
+//! Landlock `#225`; seccomp `#226`; netns `#227`).
 //!
 //! Spawns a **fixed argv** via [`std::process::Command::new`] (explicit program +
 //! args). Never `sh -c`, never a user-controlled shell string.
@@ -11,11 +11,13 @@
 //! never a truncated CapsuleCompleted / fake VERIFIED.
 //!
 //! Network (RFC-0105 / RFC-0110 / RFC-0116): `constraints.network = none` is
-//! **AIRA-mediated**. This adapter opens **no sockets**. It is **not** an OS
-//! network-off sandbox (no netns in this atom). Opt-in Landlock FS (`#225`) and
-//! opt-in seccomp (`#226`) restrict the child when enabled. A child such as
-//! `ollama` may talk to a loopback daemon — an explicit host-process exception,
-//! not `network=none` OS enforcement. llama.cpp-style argv is offline.
+//! **AIRA-mediated**. This adapter opens **no sockets**. Opt-in Landlock FS
+//! (`#225`), opt-in seccomp (`#226`), and opt-in netns (`#227`) restrict the
+//! child when enabled. netns is for offline argv (llama.cpp-style). Combining
+//! netns with ollama-style loopback is **fail-closed** ([`NETNS_BLOCKS_LOOPBACK`])
+//! so host `127.0.0.1` is not silently isolated. A child such as `ollama` may
+//! talk to a loopback daemon only when netns is off — an explicit host-process
+//! exception, not `network=none` OS enforcement.
 //!
 //! Missing binary, spawn failure, non-zero exit, timeout, empty stdout, or pipe
 //! overflow → error string for
@@ -36,12 +38,16 @@ use serde_json::{json, Value};
 use super::landlock::landlock_enabled_from;
 #[cfg(target_os = "linux")]
 use super::landlock::{default_allow_paths, restrict_fs_self};
+use super::netns::netns_enabled_from;
+#[cfg(target_os = "linux")]
+use super::netns::restrict_netns_self;
 #[cfg(target_os = "linux")]
 use super::seccomp::restrict_syscalls_self;
 use super::seccomp::seccomp_enabled_from;
 use super::{GenerateBackend, GenerateLocalPayload, ACTION_GENERATE_LOCAL, MOCK_BACKEND_ID};
 
 pub use super::landlock::{ENV_LLM_LANDLOCK, LANDLOCK_FAILED, LANDLOCK_UNSUPPORTED};
+pub use super::netns::{ENV_LLM_NETNS, NETNS_BLOCKS_LOOPBACK, NETNS_FAILED, NETNS_UNSUPPORTED};
 pub use super::seccomp::{ENV_LLM_SECCOMP, SECCOMP_FAILED, SECCOMP_UNSUPPORTED, SECCOMP_VIOLATION};
 
 /// Backend id stamped on successful process output.
@@ -115,6 +121,8 @@ pub struct ProcessBackend {
     timeout: Duration,
     landlock: bool,
     seccomp: bool,
+    netns: bool,
+    host_loopback: bool,
 }
 
 impl ProcessBackend {
@@ -126,6 +134,8 @@ impl ProcessBackend {
             timeout: DEFAULT_TIMEOUT,
             landlock: false,
             seccomp: false,
+            netns: false,
+            host_loopback: false,
         }
     }
 
@@ -137,9 +147,12 @@ impl ProcessBackend {
     /// ollama-style: `{program} run {model} {prompt}`.
     ///
     /// AIRA still does not open sockets (RFC-0116). The child may use loopback
-    /// only; that is not OS `network=none` enforcement.
+    /// only; that is not OS `network=none` enforcement. Combined with
+    /// [`Self::with_netns`] this constructor fail-closes ([`NETNS_BLOCKS_LOOPBACK`]).
     pub fn ollama(program: impl Into<PathBuf>, model: impl Into<String>) -> Self {
-        Self::new(program).with_args(["run", &model.into()])
+        let mut backend = Self::new(program).with_args(["run", &model.into()]);
+        backend.host_loopback = true;
+        backend
     }
 
     /// Fixed extra argv (not including the prompt). Tokens are not shell-parsed.
@@ -176,10 +189,24 @@ impl ProcessBackend {
         self
     }
 
+    /// Opt-in Linux network namespace in the child (`pre_exec`). Default off.
+    ///
+    /// Applied **before** Landlock and seccomp (needs `/proc/self` maps and
+    /// `unshare`; the `#226` filter later denies `SYS_unshare`). Apply failure
+    /// or non-Linux → fail-closed ([`NETNS_FAILED`] / [`NETNS_UNSUPPORTED`]).
+    /// Combined with ollama-style loopback → [`NETNS_BLOCKS_LOOPBACK`].
+    pub fn with_netns(mut self) -> Self {
+        self.netns = true;
+        self
+    }
+
     /// Config from env. Missing binary is **not** resolved here; generate fails closed.
     pub fn from_env() -> Self {
         let program = env::var(ENV_PROCESS_BIN).unwrap_or_else(|_| "ollama".into());
         let mut backend = Self::new(program);
+        if looks_like_ollama(&backend.program) {
+            backend.host_loopback = true;
+        }
         if let Ok(raw) = env::var(ENV_PROCESS_ARGS) {
             backend = backend.with_args(raw.split_whitespace().map(str::to_string));
         }
@@ -194,6 +221,9 @@ impl ProcessBackend {
         if seccomp_enabled_from(env::var(ENV_LLM_SECCOMP).ok().as_deref()) {
             backend = backend.with_seccomp();
         }
+        if netns_enabled_from(env::var(ENV_LLM_NETNS).ok().as_deref()) {
+            backend = backend.with_netns();
+        }
         backend
     }
 
@@ -205,6 +235,9 @@ impl ProcessBackend {
 impl GenerateBackend for ProcessBackend {
     fn generate(&self, payload: &GenerateLocalPayload) -> Result<Value, String> {
         payload.validate()?;
+        if self.netns && (self.host_loopback || looks_like_ollama(&self.program)) {
+            return Err(NETNS_BLOCKS_LOOPBACK.to_string());
+        }
         let program = self.resolve_program()?;
         let mut cmd = Command::new(&program);
         cmd.args(&self.args)
@@ -225,9 +258,22 @@ impl GenerateBackend for ProcessBackend {
                 return Err(SECCOMP_UNSUPPORTED.to_string());
             }
         }
+        if self.netns {
+            #[cfg(not(target_os = "linux"))]
+            {
+                return Err(NETNS_UNSUPPORTED.to_string());
+            }
+        }
         #[cfg(target_os = "linux")]
         {
             use std::os::unix::process::CommandExt;
+            if self.netns {
+                // SAFETY: runs in the forked child before exec, before Landlock
+                // and seccomp. Needs /proc maps and unshare; seccomp denies both.
+                unsafe {
+                    cmd.pre_exec(restrict_netns_self);
+                }
+            }
             if self.landlock {
                 let allow = default_allow_paths(&program);
                 // SAFETY: runs in the forked child before exec; Landlock applies to
@@ -237,7 +283,7 @@ impl GenerateBackend for ProcessBackend {
                 }
             }
             if self.seccomp {
-                // SAFETY: runs in the forked child before exec, after Landlock.
+                // SAFETY: runs in the forked child before exec, after netns/Landlock.
                 // Filter is thread-local until exec; failure fail-closes spawn.
                 unsafe {
                     cmd.pre_exec(restrict_syscalls_self);
@@ -246,7 +292,7 @@ impl GenerateBackend for ProcessBackend {
         }
         let mut child = cmd
             .spawn()
-            .map_err(|e| map_spawn_err(e, self.landlock, self.seccomp))?;
+            .map_err(|e| map_spawn_err(e, self.landlock, self.seccomp, self.netns))?;
         let mut stdout_pipe = child
             .stdout
             .take()
@@ -351,7 +397,7 @@ fn apply_child_env(cmd: &mut Command) {
     }
 }
 
-fn map_spawn_err(e: std::io::Error, landlock: bool, seccomp: bool) -> String {
+fn map_spawn_err(e: std::io::Error, landlock: bool, seccomp: bool, netns: bool) -> String {
     if e.kind() == std::io::ErrorKind::NotFound {
         return MISSING_BINARY.to_string();
     }
@@ -362,13 +408,27 @@ fn map_spawn_err(e: std::io::Error, landlock: bool, seccomp: bool) -> String {
     if seccomp && msg.contains(SECCOMP_FAILED) {
         return msg;
     }
+    if netns && msg.contains(NETNS_FAILED) {
+        return msg;
+    }
     if landlock {
         return format!("{LANDLOCK_FAILED}: {e}");
     }
     if seccomp {
         return format!("{SECCOMP_FAILED}: {e}");
     }
+    if netns {
+        return format!("{NETNS_FAILED}: {e}");
+    }
     format!("{SPAWN_FAILED}: {e}")
+}
+
+fn looks_like_ollama(program: &Path) -> bool {
+    program
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.eq_ignore_ascii_case("ollama"))
+        .unwrap_or(false)
 }
 
 #[cfg(all(test, target_os = "linux"))]
@@ -403,6 +463,61 @@ int main(void) {
         })
         .expect("cc/gcc must be available to compile the socket probe");
     assert!(status.success(), "socket probe compile failed: {status}");
+    use std::os::unix::fs::PermissionsExt;
+    let mut perm = std::fs::metadata(&bin).unwrap().permissions();
+    perm.set_mode(0o755);
+    std::fs::set_permissions(&bin, perm).unwrap();
+    bin
+}
+
+#[cfg(all(test, target_os = "linux"))]
+pub(crate) fn compile_connect_probe(dir: &Path) -> PathBuf {
+    let src = dir.join("connect_probe.c");
+    let bin = dir.join("connect_probe");
+    std::fs::write(
+        &src,
+        r#"
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+int main(int argc, char **argv) {
+    struct sockaddr_in a;
+    int fd;
+    if (argc < 3) return 2;
+    memset(&a, 0, sizeof a);
+    a.sin_family = AF_INET;
+    a.sin_port = htons((unsigned short)atoi(argv[2]));
+    if (inet_pton(AF_INET, argv[1], &a.sin_addr) != 1) return 2;
+    fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) return 1;
+    if (connect(fd, (struct sockaddr *)&a, sizeof a) != 0) {
+        puts("CONNECT_FAIL");
+        return 1;
+    }
+    puts("CONNECT_OK");
+    return 0;
+}
+"#,
+    )
+    .unwrap();
+    let status = Command::new("cc")
+        .args(["-o"])
+        .arg(&bin)
+        .arg(&src)
+        .status()
+        .or_else(|_| {
+            Command::new("gcc")
+                .args(["-o"])
+                .arg(&bin)
+                .arg(&src)
+                .status()
+        })
+        .expect("cc/gcc must be available to compile the connect probe");
+    assert!(status.success(), "connect probe compile failed: {status}");
     use std::os::unix::fs::PermissionsExt;
     let mut perm = std::fs::metadata(&bin).unwrap().permissions();
     perm.set_mode(0o755);
@@ -880,5 +995,119 @@ mod tests {
         let text = out["result"].as_str().expect("result string");
         assert!(text.contains("SECCOMP_OK"), "got {text}");
         assert_eq!(out["backend"], json!(PROCESS_BACKEND_ID));
+    }
+
+    #[test]
+    fn from_env_netns_opt_in() {
+        let _g = env_lock();
+        let prev = env::var(ENV_LLM_NETNS).ok();
+        env::remove_var(ENV_LLM_NETNS);
+        assert!(!ProcessBackend::from_env().netns);
+        env::set_var(ENV_LLM_NETNS, "1");
+        assert!(ProcessBackend::from_env().netns);
+        env::set_var(ENV_LLM_NETNS, "true");
+        assert!(ProcessBackend::from_env().netns);
+        env::set_var(ENV_LLM_NETNS, "0");
+        assert!(!ProcessBackend::from_env().netns);
+        match prev {
+            Some(v) => env::set_var(ENV_LLM_NETNS, v),
+            None => env::remove_var(ENV_LLM_NETNS),
+        }
+    }
+
+    #[test]
+    fn ollama_with_netns_is_fail_closed() {
+        let err = ProcessBackend::ollama("aira-llm-process-missing-bin-215-do-not-install", "m")
+            .with_netns()
+            .generate(&dummy_payload("ignored"))
+            .unwrap_err();
+        assert!(
+            err.contains(NETNS_BLOCKS_LOOPBACK),
+            "ollama + netns must fail-closed before spawn, got {err}"
+        );
+        assert!(!err.contains(MISSING_BINARY), "{err}");
+    }
+
+    #[test]
+    fn from_env_ollama_netns_is_fail_closed() {
+        let _g = env_lock();
+        let prev_bin = env::var(ENV_PROCESS_BIN).ok();
+        let prev_netns = env::var(ENV_LLM_NETNS).ok();
+        env::remove_var(ENV_PROCESS_BIN);
+        env::set_var(ENV_LLM_NETNS, "1");
+        let err = ProcessBackend::from_env()
+            .generate(&dummy_payload("ignored"))
+            .unwrap_err();
+        match prev_bin {
+            Some(v) => env::set_var(ENV_PROCESS_BIN, v),
+            None => env::remove_var(ENV_PROCESS_BIN),
+        }
+        match prev_netns {
+            Some(v) => env::set_var(ENV_LLM_NETNS, v),
+            None => env::remove_var(ENV_LLM_NETNS),
+        }
+        assert!(
+            err.contains(NETNS_BLOCKS_LOOPBACK),
+            "default ollama + AIRA_LLM_NETNS must fail-closed, got {err}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn netns_echo_succeeds_or_fail_closed() {
+        let result = ProcessBackend::new("/bin/echo")
+            .with_netns()
+            .generate(&dummy_payload("NETNS_OK"));
+        match result {
+            Ok(out) => {
+                let text = out["result"].as_str().expect("result string");
+                assert!(text.contains("NETNS_OK"), "got {text}");
+                assert_eq!(out["backend"], json!(PROCESS_BACKEND_ID));
+            }
+            Err(err) => {
+                assert!(
+                    err.contains(NETNS_FAILED) || err.contains(NETNS_UNSUPPORTED),
+                    "echo + netns must complete or fail-closed, got {err}"
+                );
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn netns_isolates_host_loopback() {
+        let dir = tempfile::tempdir().unwrap();
+        let probe = super::compile_connect_probe(dir.path());
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let host = addr.ip().to_string();
+        let port = addr.port().to_string();
+        std::thread::spawn(move || {
+            let _ = listener.accept();
+        });
+
+        let leaked = ProcessBackend::new(&probe)
+            .with_args([&host, &port])
+            .generate(&dummy_payload("ignored"))
+            .expect("unsandboxed connect probe must reach host loopback");
+        let leaked_text = leaked["result"].as_str().expect("result string");
+        assert!(
+            leaked_text.contains("CONNECT_OK"),
+            "control path must prove host loopback, got {leaked_text}"
+        );
+
+        let err = ProcessBackend::new(&probe)
+            .with_args([&host, &port])
+            .with_netns()
+            .generate(&dummy_payload("ignored"))
+            .unwrap_err();
+        assert!(
+            !err.contains("CONNECT_OK"),
+            "netns child must not report CONNECT_OK, got {err}"
+        );
+        assert!(
+            err.contains(NONZERO_EXIT) || err.contains(NETNS_FAILED),
+            "netns isolate or apply fail must fail-closed, got {err}"
+        );
     }
 }
