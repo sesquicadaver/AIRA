@@ -326,6 +326,7 @@ dependencies = [
  "aira-event",
  "aira-object",
  "aira-schema",
+ "libc",
  "serde",
  "serde_json",
  "tempfile",

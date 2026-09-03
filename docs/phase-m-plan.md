@@ -74,8 +74,8 @@ M0 govern (wiring)
 
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
-| `#224` | M0 | Phase M wiring | цей план **IN PROGRESS**; QUEUE `#224` DONE + `#225`–`#230` OPEN; `phase_m_doc` | Landlock (#225) |
-| `#225` | M1 | Landlock FS | Linux Landlock on ProcessBackend child; FS restriction fail-closed | seccomp (#226) |
+| `#224` | M0 | Phase M wiring **DONE** | цей план **IN PROGRESS**; QUEUE `#224` DONE | Landlock (#225) |
+| `#225` | M1 | Landlock FS **DONE** | Linux Landlock on ProcessBackend child; FS restriction fail-closed | seccomp (#226) |
 | `#226` | M2 | seccomp | syscall filter on child; forbidden syscall → CapsuleFailed | netns (#227) |
 | `#227` | M3 | netns | Linux network namespace for offline argv; ollama loopback not silently broken | policy (#228) |
 | `#228` | M4 | missing sandbox fail-closed | sandbox required + no kernel/OS → CapsuleFailed, not VERIFIED | schema (#229) |

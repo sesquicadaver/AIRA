@@ -144,7 +144,7 @@ Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.
 `constraints.network = none` on `text.generate.local` is an **AIRA-mediated** adapter contract, not an OS sandbox:
 
 - MockBackend / ProcessBackend open **no sockets**. AIRA does not initiate WAN.
-- The child is **not** Landlock / seccomp / network-namespace isolated.
+- Landlock FS is **opt-in** (`AIRA_LLM_LANDLOCK=1` / `ProcessBackend::with_landlock()`; QUEUE `#225` / RFC-0118). Default child is **not** Landlock-restricted. seccomp and network-namespace isolation are later Phase M atoms.
 - ollama-style CLI may use **loopback** to a local daemon; that is a host-process exception, not `network=none` OS enforcement.
 - llama.cpp-style argv is offline.
 

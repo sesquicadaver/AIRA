@@ -6,6 +6,6 @@
 | QUEUE M wired | `QUEUE.md` `#224` DONE, `#225`–`#230` OPEN | `phase_m_queue_wiring_224_done` | **DONE** |
 | Cross-links | README, `docs/README`, `phase-l-plan` | `phase_m_readme_and_docs_index`; `phase_l_points_to_phase_m` | **DONE** |
 | RFC-0117 reserved | no `AIRA-RFC-0117*` yet | `phase_m_rfc_0117_id_free` | **DONE** |
-| NEXT_PROBLEM | first OPEN `#225`; QUEUE L closed stays | `phase_m_next_problem` | **DONE** |
-| Landlock | ProcessBackend FS sandbox | — | **OUT** (`#225`) |
+| NEXT_PROBLEM | first OPEN `#225` at wiring; QUEUE L closed stays | `phase_m_next_problem` | **DONE** (pointer moved in `#225`) |
+| Landlock | ProcessBackend FS sandbox | `phase_m_landlock_225` | **DONE** (`#225`) |
 | seccomp | syscall filter | — | **OUT** (`#226`) |
