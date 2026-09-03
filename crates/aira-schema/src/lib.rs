@@ -558,6 +558,14 @@ mod tests {
             "generate-local must document ollama-style loopback exception"
         );
         assert!(
+            schema_text.contains("RFC-0122"),
+            "generate-local must cross-ref OS vs AIRA-mediated (RFC-0122)"
+        );
+        assert!(
+            schema_text.contains("not encoded in this payload"),
+            "generate-local constraints must state OS layers are not in payload"
+        );
+        assert!(
             !schema_text.contains("Host-local generate: no network."),
             "stale OS-sounding network description must be gone"
         );

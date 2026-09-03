@@ -47,7 +47,7 @@ Use `aira_csu::support::{basic_manifest, make_event, make_artifact}` for MVP hel
 | context-basic | ProblemSubmitted → Context |
 | reduction-basic | reuse or CapsuleCreated; non-math/echo/upper → `text.generate.local` (`#212`; plane dispatch `#213` DONE) |
 | execution-basic | safe math/text actions |
-| execution-llm | `text.generate.local` via bound backend + injected activate gate; MockBackend default on OperationalPlane; ProcessBackend opt-in (not CI); Desktop Work `POST /v1/problems` (`#209`–`#216` DONE @ RFC-0104); process-boundary hardening Phase L `#217`–`#223` **DONE** @ RFC-0111; OS child sandbox Phase M `#224` **DONE**; Landlock FS `#225` **DONE** @ RFC-0118; seccomp `#226` **DONE** @ RFC-0119; netns `#227` **DONE** @ RFC-0120; sandbox-required `#228` **DONE** @ RFC-0121; `#229`–`#230` OPEN |
+| execution-llm | `text.generate.local` via bound backend + injected activate gate; MockBackend default on OperationalPlane; ProcessBackend opt-in (not CI); Desktop Work `POST /v1/problems` (`#209`–`#216` DONE @ RFC-0104); process-boundary hardening Phase L `#217`–`#223` **DONE** @ RFC-0111; OS child sandbox Phase M `#224` **DONE**; Landlock FS `#225` **DONE** @ RFC-0118; seccomp `#226` **DONE** @ RFC-0119; netns `#227` **DONE** @ RFC-0120; sandbox-required `#228` **DONE** @ RFC-0121; OS vs AIRA-mediated docs `#229` **DONE** @ RFC-0122 (`constraints.network=none` = adapter only; OS layers opt-in, not in payload); `#230` OPEN |
 | verification-basic | Verified Result |
 | evidence-basic | failure/result evidence |
 | epistemic-basic | EPI-001 assessment (Evidence/Confidence/Scope/Status; `#146`) |

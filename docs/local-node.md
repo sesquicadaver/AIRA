@@ -144,11 +144,25 @@ Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.
 `constraints.network = none` on `text.generate.local` is an **AIRA-mediated** adapter contract, not an OS sandbox:
 
 - MockBackend / ProcessBackend open **no sockets**. AIRA does not initiate WAN.
-- Landlock FS is **opt-in** (`AIRA_LLM_LANDLOCK=1` / `ProcessBackend::with_landlock()`; QUEUE `#225` / RFC-0118). seccomp is **opt-in** (`AIRA_LLM_SECCOMP=1` / `ProcessBackend::with_seccomp()`; QUEUE `#226` / RFC-0119). netns is **opt-in** (`AIRA_LLM_NETNS=1` / `ProcessBackend::with_netns()`; QUEUE `#227` / RFC-0120) for offline argv. OS sandbox **required** is **opt-in** (`AIRA_LLM_SANDBOX_REQUIRED=1` / `ProcessBackend::with_sandbox_required()`; QUEUE `#228` / RFC-0121): missing kernel or non-Linux fail-closes (`SANDBOX_REQUIRED`); ollama-style loopback cannot satisfy required OS isolation (`SANDBOX_REQUIRED_LOOPBACK`). Default child is **not** Landlock-, seccomp-, or netns-restricted. Combining netns with ollama-style loopback fail-closes (`NETNS_BLOCKS_LOOPBACK`) so host `127.0.0.1` is not silently isolated.
 - ollama-style CLI may use **loopback** to a local daemon; that is a host-process exception, not `network=none` OS enforcement.
 - llama.cpp-style argv is offline.
 
 C1 `Calculate 2 + 2` still uses `execution-basic` and never this path. See [`AIRA-RFC-0116`](../specs/rfc/AIRA-RFC-0116-network-none-contract.md).
+
+## OS isolation vs AIRA-mediated none (RFC-0122)
+
+Two layers — do not conflate them:
+
+| Layer | What it means | Where encoded |
+|-------|---------------|---------------|
+| **AIRA-mediated none** | Generate adapter opens no sockets (RFC-0116) | Payload `constraints.network=none` |
+| **OS child sandbox** | Landlock FS, seccomp, netns, sandbox-required (Phase M) | Operator opt-in env / `ProcessBackend` only |
+
+OS isolation is **not** implied by `network=none` and is **not** a field on the generate-local payload (`aira:schema:execution:generate-local:0.1` unchanged).
+
+Landlock FS is **opt-in** (`AIRA_LLM_LANDLOCK=1` / `ProcessBackend::with_landlock()`; QUEUE `#225` / RFC-0118). seccomp is **opt-in** (`AIRA_LLM_SECCOMP=1` / `ProcessBackend::with_seccomp()`; QUEUE `#226` / RFC-0119). netns is **opt-in** (`AIRA_LLM_NETNS=1` / `ProcessBackend::with_netns()`; QUEUE `#227` / RFC-0120) for offline argv. OS sandbox **required** is **opt-in** (`AIRA_LLM_SANDBOX_REQUIRED=1` / `ProcessBackend::with_sandbox_required()`; QUEUE `#228` / RFC-0121): missing kernel or non-Linux fail-closes (`SANDBOX_REQUIRED`); ollama-style loopback cannot satisfy required OS isolation (`SANDBOX_REQUIRED_LOOPBACK`). Default child is **not** Landlock-, seccomp-, or netns-restricted. Combining netns with ollama-style loopback fail-closes (`NETNS_BLOCKS_LOOPBACK`) so host `127.0.0.1` is not silently isolated.
+
+See [`AIRA-RFC-0122`](../specs/rfc/AIRA-RFC-0122-os-vs-aira-mediated.md).
 
 ## Notes
 
