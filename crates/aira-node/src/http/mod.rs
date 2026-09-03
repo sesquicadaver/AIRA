@@ -206,6 +206,36 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn http_get_problem_generate_parity_not_verified() {
+        let (_dir, state) = setup();
+        write_activated_pointer(&state.root);
+        let app = router(state);
+        let (st, posted) = json_req(
+            app.clone(),
+            "POST",
+            "/v1/problems",
+            Some(
+                json!({"text": "Summarize the local Problem Statement without leaving the host."}),
+            ),
+        )
+        .await;
+        assert_eq!(st, StatusCode::OK, "{posted}");
+        assert_eq!(posted["status"], "executed");
+        assert!(posted.get("verified_artifact_id").is_none());
+        let pid = posted["problem_id"].as_str().unwrap();
+        let exec_id = posted["execution_artifact_id"].as_str().unwrap();
+        let (st2, rec) = json_req(app, "GET", &format!("/v1/problems/{pid}"), None).await;
+        assert_eq!(st2, StatusCode::OK, "{rec}");
+        assert_eq!(rec["status"], "executed");
+        assert_eq!(rec["problem_id"], pid);
+        assert!(
+            rec.get("verified_artifact_id").is_none(),
+            "GET must not label executed as verified: {rec}"
+        );
+        assert_eq!(rec["execution_artifact_id"].as_str(), Some(exec_id));
+    }
+
+    #[tokio::test]
     async fn http_problem_status_roundtrip() {
         let (_dir, state) = setup();
         let app = router(state);
@@ -222,6 +252,11 @@ mod tests {
         assert_eq!(st2, StatusCode::OK, "{rec}");
         assert_eq!(rec["problem_id"], pid);
         assert_eq!(rec["status"], "completed");
+        assert!(rec["verified_artifact_id"]
+            .as_str()
+            .unwrap()
+            .starts_with("aira:"));
+        assert!(rec.get("execution_artifact_id").is_none());
     }
 
     #[tokio::test]
