@@ -116,3 +116,5 @@ aira-core has no inference.
 #217 wiring DONE; `#218` Activate evidence DONE (RFC-0112); `#219` Child env DONE (RFC-0113); `#220` Bounded pipes DONE (RFC-0114); `#221` ProblemRecord split DONE (RFC-0115); `#222` network=none contract DONE (RFC-0116); `#223` RFC-0111 + close DONE.
 QUEUE L closed.
 ```
+
+Далі: [`phase-m-plan.md`](phase-m-plan.md) `#224`–`#230` (RFC-0117 reserved).

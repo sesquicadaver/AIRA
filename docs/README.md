@@ -1,6 +1,6 @@
 # AIRA documentation index
 
-**Оновлено:** 2026-09-03. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase L `#217`–`#223` **DONE** @ RFC-0111; QUEUE L closed; Phase K `#209`–`#216` **DONE** @ RFC-0104; QUEUE K closed; Phase J `#199`–`#208` **DONE** @ RFC-0096; QUEUE J closed; Phase I `#184`–`#198` **DONE** @ RFC-0078; QUEUE I closed; Phase H `#152`–`#183` **DONE** @ RFC-0077; Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.3-strict**; [`phase-l-plan.md`](phase-l-plan.md); [`AIRA-RFC-0111`](../specs/rfc/AIRA-RFC-0111-phase-l-execution-boundary.md); [`AIRA-RFC-0104`](../specs/rfc/AIRA-RFC-0104-phase-k-local-llm-csu.md); [`AIRA-RFC-0096`](../specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md)).
+**Оновлено:** 2026-09-03. Канон виконання: [`QUEUE.md`](../QUEUE.md) (Phase M `#224` **DONE**; `#225`–`#230` OPEN; RFC-0117 reserved; Phase L `#217`–`#223` **DONE** @ RFC-0111; QUEUE L closed; Phase K `#209`–`#216` **DONE** @ RFC-0104; QUEUE K closed; Phase J `#199`–`#208` **DONE** @ RFC-0096; QUEUE J closed; Phase I `#184`–`#198` **DONE** @ RFC-0078; QUEUE I closed; Phase H `#152`–`#183` **DONE** @ RFC-0077; Phase G `#120`–`#151` **DONE**). Статус реалізації: [`implementation-status.md`](implementation-status.md) (**Reference v0.3-strict**; [`phase-m-plan.md`](phase-m-plan.md); [`phase-l-plan.md`](phase-l-plan.md); [`AIRA-RFC-0111`](../specs/rfc/AIRA-RFC-0111-phase-l-execution-boundary.md); [`AIRA-RFC-0104`](../specs/rfc/AIRA-RFC-0104-phase-k-local-llm-csu.md); [`AIRA-RFC-0096`](../specs/rfc/AIRA-RFC-0096-phase-j-book-gap-local.md); [`AIRA-RFC-0078`](../specs/rfc/AIRA-RFC-0078-phase-i-semantic-stabilization.md); [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md)).
 
 ## Anti-mission (ніколи в product / QUEUE)
 
@@ -27,12 +27,13 @@ Core що «вирішує задачі» замість CSU contracts
 | J | [`phase-j-plan.md`](phase-j-plan.md) | `#199`–`#208` | **DONE** (RFC-0096) |
 | K | [`phase-k-plan.md`](phase-k-plan.md) | `#209`–`#216` | **DONE** (RFC-0104); QUEUE K closed |
 | L | [`phase-l-plan.md`](phase-l-plan.md) | `#217`–`#223` | **DONE** @ RFC-0111; QUEUE L closed |
+| M | [`phase-m-plan.md`](phase-m-plan.md) | `#224`–`#230` | **IN PROGRESS** (`#224` DONE; first OPEN `#225`; RFC-0117 reserved) |
 
 ## Core reference
 
 | Doc | Topic |
 |-----|-------|
-| [`implementation-status.md`](implementation-status.md) | Book 0–IV matrix; C0–C5; Phase gates; **Reference v0.3-strict**; QUEUE J closed; QUEUE K closed @ RFC-0104; QUEUE L closed @ RFC-0111 |
+| [`implementation-status.md`](implementation-status.md) | Book 0–IV matrix; C0–C5; Phase gates; **Reference v0.3-strict**; QUEUE J closed; QUEUE K closed @ RFC-0104; QUEUE L closed @ RFC-0111; Phase M IN PROGRESS |
 | [`rfc-p-promotion.md`](rfc-p-promotion.md) | RFC-P: Book V → operational лише через promotion (`#177`) |
 | [`operational-plane.md`](operational-plane.md) | C1 reference/demo plane (не production runtime) |
 | [`conformance.md`](conformance.md) | C0–C5 runners; v0.3 index; security baseline |

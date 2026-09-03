@@ -3,16 +3,16 @@
 **Оновлено:** 2026-09-03  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
-**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **DONE** (2026-08-28, RFC-0069). Phase H Protocol depth v0.3 [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — `#152`–`#183` **DONE** (2026-08-30, RFC-0077). Phase I Semantic contract stabilization [`docs/phase-i-plan.md`](docs/phase-i-plan.md) — `#184`–`#198` **DONE** (2026-08-30, RFC-0078). Phase J Book-gap local remainder [`docs/phase-j-plan.md`](docs/phase-j-plan.md) — `#199`–`#208` **DONE** @ RFC-0096. QUEUE J closed. Phase K Local LLM Execution CSU [`docs/phase-k-plan.md`](docs/phase-k-plan.md) — `#209`–`#216` **DONE** @ RFC-0104. QUEUE K closed. Phase L Execution-boundary hardening [`docs/phase-l-plan.md`](docs/phase-l-plan.md) — `#217`–`#223` **DONE** @ RFC-0111. QUEUE L closed.
+**План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **DONE** (2026-08-28, RFC-0069). Phase H Protocol depth v0.3 [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — `#152`–`#183` **DONE** (2026-08-30, RFC-0077). Phase I Semantic contract stabilization [`docs/phase-i-plan.md`](docs/phase-i-plan.md) — `#184`–`#198` **DONE** (2026-08-30, RFC-0078). Phase J Book-gap local remainder [`docs/phase-j-plan.md`](docs/phase-j-plan.md) — `#199`–`#208` **DONE** @ RFC-0096. QUEUE J closed. Phase K Local LLM Execution CSU [`docs/phase-k-plan.md`](docs/phase-k-plan.md) — `#209`–`#216` **DONE** @ RFC-0104. QUEUE K closed. Phase L Execution-boundary hardening [`docs/phase-l-plan.md`](docs/phase-l-plan.md) — `#217`–`#223` **DONE** @ RFC-0111. QUEUE L closed. Phase M OS child sandbox [`docs/phase-m-plan.md`](docs/phase-m-plan.md) — `#224` **DONE**; `#225`–`#230` OPEN (RFC-0117 reserved).
 
 ## Стан
 
 | | |
 |--|--|
-| `main` | Phase L `#217`–`#223` **DONE** @ RFC-0111; QUEUE L closed; K `#209`–`#216` **DONE** @ RFC-0104 |
+| `main` | Phase M `#224` **DONE** (wiring); first OPEN `#225`; L `#217`–`#223` **DONE** @ RFC-0111; QUEUE L closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | немає OPEN (QUEUE L closed) |
+| Активна черга | Phase M `#225` (перший OPEN) |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** (2026-08-28). Phase H — [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#183` **DONE** (RFC-0077). Phase I — [`docs/phase-i-plan.md`](docs/phase-i-plan.md); `#184`–`#198` **DONE** (RFC-0078). Phase J — [`docs/phase-j-plan.md`](docs/phase-j-plan.md); `#199`–`#208` **DONE** (RFC-0096). Phase K — [`docs/phase-k-plan.md`](docs/phase-k-plan.md); `#209`–`#216` **DONE** (RFC-0104). Phase L — [`docs/phase-l-plan.md`](docs/phase-l-plan.md); `#217`–`#223` **DONE** @ RFC-0111. QUEUE L closed.
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** (2026-08-28). Phase H — [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#183` **DONE** (RFC-0077). Phase I — [`docs/phase-i-plan.md`](docs/phase-i-plan.md); `#184`–`#198` **DONE** (RFC-0078). Phase J — [`docs/phase-j-plan.md`](docs/phase-j-plan.md); `#199`–`#208` **DONE** (RFC-0096). Phase K — [`docs/phase-k-plan.md`](docs/phase-k-plan.md); `#209`–`#216` **DONE** (RFC-0104). Phase L — [`docs/phase-l-plan.md`](docs/phase-l-plan.md); `#217`–`#223` **DONE** @ RFC-0111. QUEUE L closed. Phase M — [`docs/phase-m-plan.md`](docs/phase-m-plan.md); `#224` **DONE**; `#225` OPEN (RFC-0117).
 
 ---
 
@@ -502,6 +502,39 @@ L0 govern (#217)
 
 ---
 
+## Активна черга (лінійна) — Phase M: OS child sandbox
+
+План: [`docs/phase-m-plan.md`](docs/phase-m-plan.md). Джерела: Phase L §3.1 Out; RFC-0116 post-L Landlock/seccomp/netns.  
+**Не** GPU marketplace; **не** LLM у `aira-core`; consolidating RFC-0117 у `#230`; **не** Landlock (`#225`) у wiring.
+
+| # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
+|---|--------|---------|-----------------|-----------|------------------|
+| 224 | **DONE** | ~~Analyze-259 — Phase M wiring~~ | `docs/README` + QUEUE + phase-l + NEXT_PROBLEM → phase-m-plan; living smoke ids `#224`–`#230`; M0 govern | docs + QUEUE узгоджені; `phase_m_doc` | Landlock (#225) |
+| 225 | **OPEN** | Analyze-260 — Landlock FS | Linux Landlock on ProcessBackend child; FS restriction fail-closed | тест Landlock | seccomp (#226) |
+| 226 | **OPEN** | Analyze-261 — seccomp | syscall filter on child; forbidden syscall → CapsuleFailed | тест seccomp | netns (#227) |
+| 227 | **OPEN** | Analyze-262 — netns | Linux network namespace for offline argv; ollama loopback not silently broken | тест netns | policy (#228) |
+| 228 | **OPEN** | Analyze-263 — missing sandbox fail-closed | sandbox required + no kernel/OS → CapsuleFailed, not VERIFIED | тест fail-closed | schema (#229) |
+| 229 | **OPEN** | Analyze-264 — OS vs AIRA-mediated docs | schema/docs distinguish OS isolation from RFC-0116 adapter none | RFC + docs | RFC-0117 (#230) |
+| 230 | **OPEN** | Analyze-265 — Phase M docs + RFC-0117 | consolidating RFC-0117; QUEUE M closed | QUEUE M DONE | — |
+
+### Наступний цикл (Phase M)
+
+**Перший OPEN:** `#225`. `#224` M0 govern **DONE**. RFC-0117 file-free until `#230`.
+
+```text
+M0 govern (#224)
+  → M1 Landlock FS (#225)
+    → M2 seccomp (#226)
+      → M3 netns (#227)
+        → M4 fail-closed policy (#228)
+          → M5 OS vs AIRA-mediated docs (#229)
+            → M6 RFC-0117 (#230)
+```
+
+Анти-місія README **ніколи** в QUEUE.
+
+---
+
 ## Джерела (мапінг Out → рядок)
 
 | Джерело | Рядки |
@@ -537,5 +570,6 @@ L0 govern (#217)
 | Book-gap local remainder (post-I) | [`docs/phase-j-plan.md`](docs/phase-j-plan.md); `#199`–`#208` **DONE** @ RFC-0096; QUEUE J closed |
 | Local LLM Execution CSU (post-J / post-D) | [`docs/phase-k-plan.md`](docs/phase-k-plan.md); `#209`–`#216` **DONE** @ RFC-0104; QUEUE K closed |
 | Execution-boundary hardening (post-K audit) | [`docs/phase-l-plan.md`](docs/phase-l-plan.md); `#217`–`#223` **DONE** @ RFC-0111; QUEUE L closed |
+| OS child sandbox (post-L) | [`docs/phase-m-plan.md`](docs/phase-m-plan.md); `#224` **DONE**; `#225`–`#230` OPEN; RFC-0117 reserved |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
