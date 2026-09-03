@@ -1,4 +1,4 @@
-//! Phase M wiring contract (#224) + Landlock FS (#225). Per-atom tests land with #226–#230.
+//! Phase M wiring contract (#224) + Landlock FS (#225) + seccomp (#226). Per-atom tests land with #227–#230.
 
 use std::path::PathBuf;
 
@@ -66,11 +66,19 @@ fn phase_m_queue_wiring_224_done() {
         !text.contains("| 225 | **OPEN**"),
         "QUEUE #225 must not stay OPEN after Landlock FS"
     );
-    for n in 226..=230 {
+    assert!(
+        text.contains("| 226 | **DONE**"),
+        "QUEUE #226 must be DONE after seccomp"
+    );
+    assert!(
+        !text.contains("| 226 | **OPEN**"),
+        "QUEUE #226 must not stay OPEN after seccomp"
+    );
+    for n in 227..=230 {
         let open = format!("| {n} | **OPEN**");
         let done = format!("| {n} | **DONE**");
-        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #225");
-        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #225");
+        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #226");
+        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #226");
     }
     for needle in [
         "M0 govern",
@@ -129,12 +137,12 @@ fn phase_m_next_problem() {
         "NEXT_PROBLEM must stay provenance"
     );
     assert!(
-        !text.contains("перший OPEN = `#225`"),
-        "NEXT_PROBLEM must not keep #225 as first-OPEN after Landlock"
+        !text.contains("перший OPEN = `#226`"),
+        "NEXT_PROBLEM must not keep #226 as first-OPEN after seccomp"
     );
     assert!(
-        text.contains("перший OPEN = `#226`") || text.contains("first OPEN `#226`"),
-        "NEXT_PROBLEM must point at first OPEN #226"
+        text.contains("перший OPEN = `#227`") || text.contains("first OPEN `#227`"),
+        "NEXT_PROBLEM must point at first OPEN #227"
     );
     assert!(
         text.contains("QUEUE L closed"),
@@ -187,5 +195,49 @@ fn phase_m_landlock_225() {
     assert!(
         !rfc.contains("AIRA-RFC-0117 —"),
         "RFC-0118 must not be filed as RFC-0117"
+    );
+}
+
+#[test]
+fn phase_m_seccomp_226() {
+    let process =
+        std::fs::read_to_string(repo_root().join("csu/execution-llm/src/process.rs")).unwrap();
+    let seccomp =
+        std::fs::read_to_string(repo_root().join("csu/execution-llm/src/seccomp.rs")).unwrap();
+    let rfc =
+        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0119-seccomp.md")).unwrap();
+    for needle in [
+        "SECCOMP_VIOLATION",
+        "with_seccomp",
+        "ENV_LLM_SECCOMP",
+        "fn seccomp_forbidden_syscall_is_fail_closed",
+        "pre_exec",
+    ] {
+        assert!(
+            process.contains(needle),
+            "process.rs missing seccomp needle: {needle}"
+        );
+    }
+    assert!(
+        seccomp.contains("SECCOMP_SET_MODE_FILTER"),
+        "seccomp.rs must install SECCOMP_SET_MODE_FILTER"
+    );
+    assert!(
+        seccomp.contains("PR_SET_NO_NEW_PRIVS"),
+        "seccomp.rs must set no-new-privs before filter"
+    );
+    for needle in [
+        "AIRA-RFC-0119",
+        "seccomp",
+        "fail-closed",
+        "netns",
+        "GPU marketplace",
+        "RFC-0117",
+    ] {
+        assert!(rfc.contains(needle), "RFC-0119 missing: {needle}");
+    }
+    assert!(
+        !rfc.contains("AIRA-RFC-0117 —"),
+        "RFC-0119 must not be filed as RFC-0117"
     );
 }

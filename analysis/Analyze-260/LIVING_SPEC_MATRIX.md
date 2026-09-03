@@ -12,6 +12,6 @@
 | Fail-closed | `LANDLOCK_FAILED` / `LANDLOCK_UNSUPPORTED` | `phase_m_landlock_225`; spawn map | **DONE** |
 | RFC-D | `AIRA-RFC-0118-landlock-fs.md` | `phase_m_landlock_225` | **DONE** |
 | RFC-0117 reserved | no `AIRA-RFC-0117*` | `phase_m_rfc_0117_id_free` | **DONE** |
-| QUEUE `#225` DONE | first OPEN `#226` | `phase_m_queue_wiring_224_done`; `phase_m_next_problem` | **DONE** |
+| QUEUE `#225` DONE | first OPEN `#226` at `#225` close | `phase_m_queue_wiring_224_done`; `phase_m_next_problem` | **DONE** (pointer moved in `#226`) |
 | C1 2+2 | execution-basic | `calculate_two_plus_two_stays_execution_basic` | **DONE** |
-| seccomp | — | — | **OUT** (`#226`) |
+| seccomp | ProcessBackend syscall filter | `phase_m_seccomp_226` | **DONE** (`#226`) |

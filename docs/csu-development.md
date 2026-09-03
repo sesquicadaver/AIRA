@@ -13,7 +13,7 @@ Signed `CsuManifest` (`aira:schema:csu:manifest:0.1`):
 - `csu_id`, `csu_type`, `abi_version` (`0.1`)
 - `event_subscriptions` / `event_outputs`
 - `sandbox` with `network: none`, `secret_access: none` for basic CSUs (declared contract, not Landlock)
-- Generate-local payload `constraints.network = none` is a separate AIRA-mediated adapter rule ([`local-node.md`](local-node.md) / RFC-0116): the generate adapter opens no sockets; the child is not an OS network-off sandbox. Opt-in Landlock FS (`AIRA_LLM_LANDLOCK`; `#225` / RFC-0118) is a ProcessBackend child restrict, not that adapter contract.
+- Generate-local payload `constraints.network = none` is a separate AIRA-mediated adapter rule ([`local-node.md`](local-node.md) / RFC-0116): the generate adapter opens no sockets; the child is not an OS network-off sandbox. Opt-in Landlock FS (`AIRA_LLM_LANDLOCK`; `#225` / RFC-0118) and opt-in seccomp (`AIRA_LLM_SECCOMP`; `#226` / RFC-0119) are ProcessBackend child restricts, not that adapter contract.
 - non-empty `signature.signature_value` (unsigned manifests are rejected)
 
 Validate:
@@ -47,7 +47,7 @@ Use `aira_csu::support::{basic_manifest, make_event, make_artifact}` for MVP hel
 | context-basic | ProblemSubmitted → Context |
 | reduction-basic | reuse or CapsuleCreated; non-math/echo/upper → `text.generate.local` (`#212`; plane dispatch `#213` DONE) |
 | execution-basic | safe math/text actions |
-| execution-llm | `text.generate.local` via bound backend + injected activate gate; MockBackend default on OperationalPlane; ProcessBackend opt-in (not CI); Desktop Work `POST /v1/problems` (`#209`–`#216` DONE @ RFC-0104); process-boundary hardening Phase L `#217`–`#223` **DONE** @ RFC-0111; OS child sandbox Phase M `#224` **DONE**; Landlock FS `#225` **DONE** @ RFC-0118; `#226`–`#230` OPEN |
+| execution-llm | `text.generate.local` via bound backend + injected activate gate; MockBackend default on OperationalPlane; ProcessBackend opt-in (not CI); Desktop Work `POST /v1/problems` (`#209`–`#216` DONE @ RFC-0104); process-boundary hardening Phase L `#217`–`#223` **DONE** @ RFC-0111; OS child sandbox Phase M `#224` **DONE**; Landlock FS `#225` **DONE** @ RFC-0118; seccomp `#226` **DONE** @ RFC-0119; `#227`–`#230` OPEN |
 | verification-basic | Verified Result |
 | evidence-basic | failure/result evidence |
 | epistemic-basic | EPI-001 assessment (Evidence/Confidence/Scope/Status; `#146`) |
