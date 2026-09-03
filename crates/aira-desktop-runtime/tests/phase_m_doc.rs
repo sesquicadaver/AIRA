@@ -98,7 +98,10 @@ fn phase_m_queue_wiring_224_done() {
         !text.contains("| 229 | **OPEN**"),
         "QUEUE #229 must not stay OPEN after OS vs AIRA-mediated"
     );
-    assert!(text.contains("| 230 | **OPEN**"), "QUEUE #230 must be OPEN after #229");
+    assert!(
+        text.contains("| 230 | **OPEN**"),
+        "QUEUE #230 must be OPEN after #229"
+    );
     assert!(
         !text.contains("| 230 | **DONE**"),
         "QUEUE #230 must not be DONE at #229"
@@ -357,10 +360,9 @@ fn phase_m_sandbox_required_228() {
 
 #[test]
 fn phase_m_os_vs_aira_mediated_229() {
-    let schema_text = std::fs::read_to_string(
-        repo_root().join("schemas/execution/generate-local.schema.json"),
-    )
-    .unwrap();
+    let schema_text =
+        std::fs::read_to_string(repo_root().join("schemas/execution/generate-local.schema.json"))
+            .unwrap();
     for needle in [
         "AIRA-mediated",
         "RFC-0116",
