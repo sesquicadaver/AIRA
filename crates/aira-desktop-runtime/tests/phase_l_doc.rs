@@ -59,7 +59,7 @@ fn phase_l_queue_wiring_217_done() {
         !text.contains("| 217 | **OPEN**"),
         "QUEUE #217 must not stay OPEN after wiring"
     );
-    for n in 221..=223 {
+    for n in 222..=223 {
         let open = format!("| {n} | **OPEN**");
         let done = format!("| {n} | **DONE**");
         assert!(text.contains(&open), "QUEUE #{n} must be OPEN after wiring");
@@ -68,6 +68,14 @@ fn phase_l_queue_wiring_217_done() {
             "QUEUE #{n} must not be DONE at wiring"
         );
     }
+    assert!(
+        text.contains("| 221 | **DONE**"),
+        "QUEUE #221 must be DONE after ProblemRecord split"
+    );
+    assert!(
+        !text.contains("| 221 | **OPEN**"),
+        "QUEUE #221 must not stay OPEN after ProblemRecord split"
+    );
     assert!(
         text.contains("| 218 | **DONE**"),
         "QUEUE #218 must be DONE after activate evidence"
@@ -259,6 +267,44 @@ fn phase_l_bounded_pipes_220() {
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
     assert!(status.contains("| #220 | Bounded pipes"));
     assert!(status.contains("RFC-0114"));
+    let hits = rfc_0111_hits();
+    assert!(
+        hits.is_empty(),
+        "RFC-0111 must stay file-free, found {hits:?}"
+    );
+}
+
+#[test]
+fn phase_l_problem_record_221() {
+    let local = repo_root().join("crates/aira-flow/src/local.rs");
+    let text = std::fs::read_to_string(&local).expect("local.rs");
+    for needle in [
+        "pub execution_artifact_id: Option<String>",
+        "fn split_executed_verified_lie",
+        "verified_artifact_id: None,",
+        "execution_artifact_id: Some(execution_artifact_id.as_str().to_string())",
+    ] {
+        assert!(text.contains(needle), "local.rs missing: {needle}");
+    }
+    let flow = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/lib.rs")).unwrap();
+    assert!(flow.contains("fn local_session_generate_persists_execution_not_verified"));
+    assert!(flow.contains("fn problem_status_remaps_legacy_executed_verified_lie"));
+    let http =
+        std::fs::read_to_string(repo_root().join("crates/aira-node/src/http/mod.rs")).unwrap();
+    assert!(http.contains("fn http_get_problem_generate_parity_not_verified"));
+    let rfc = repo_root().join("specs/rfc/AIRA-RFC-0115-problem-record-split.md");
+    assert!(rfc.is_file(), "RFC-0115 must exist for #221");
+    let rfc_text = std::fs::read_to_string(&rfc).unwrap();
+    assert!(rfc_text.contains("AIRA-RFC-0115"));
+    assert!(rfc_text.contains("execution_artifact_id"));
+    assert!(rfc_text.contains("## 5. Non-Goals"));
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 221 | **DONE**"));
+    assert!(!queue.contains("| 221 | **OPEN**"));
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #221 | ProblemRecord split"));
+    assert!(status.contains("RFC-0115"));
     let hits = rfc_0111_hits();
     assert!(
         hits.is_empty(),

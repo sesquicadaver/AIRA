@@ -178,6 +178,9 @@ pub struct ProblemRecord {
     pub status: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub verified_artifact_id: Option<String>,
+    /// Generate-local ExecutionArtifact. Never stored in `verified_artifact_id`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub execution_artifact_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub field_artifact_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -536,6 +539,7 @@ impl LocalSession {
                 text: text.to_string(),
                 status: "completed".into(),
                 verified_artifact_id: Some(verified_artifact_id.as_str().to_string()),
+                execution_artifact_id: None,
                 field_artifact_id: None,
                 result: Some(result.clone()),
             },
@@ -547,7 +551,8 @@ impl LocalSession {
                 problem_id: problem_id.as_str().to_string(),
                 text: text.to_string(),
                 status: "executed".into(),
-                verified_artifact_id: Some(execution_artifact_id.as_str().to_string()),
+                verified_artifact_id: None,
+                execution_artifact_id: Some(execution_artifact_id.as_str().to_string()),
                 field_artifact_id: None,
                 result: Some(result.clone()),
             },
@@ -562,6 +567,7 @@ impl LocalSession {
                     text: text.to_string(),
                     status: "needs_human_collapse".into(),
                     verified_artifact_id: None,
+                    execution_artifact_id: None,
                     field_artifact_id: Some(field_artifact_id.as_str().to_string()),
                     result: None,
                 }
@@ -584,6 +590,7 @@ impl LocalSession {
         idx.problems
             .get(problem_ref)
             .cloned()
+            .map(split_executed_verified_lie)
             .ok_or_else(|| FlowError::Other(format!("problem not found: {problem_ref}")))
     }
 
@@ -660,6 +667,18 @@ fn bind_node_crypto(root: &Path) -> Result<(), FlowError> {
 
 fn problem_text_hash(text: &str) -> String {
     crate::reuse::problem_text_hash(text)
+}
+
+/// GET/status must not label generate-local output as a Verified Result Artifact.
+fn split_executed_verified_lie(mut rec: ProblemRecord) -> ProblemRecord {
+    if rec.status == "executed" {
+        if rec.execution_artifact_id.is_none() {
+            rec.execution_artifact_id = rec.verified_artifact_id.take();
+        } else {
+            rec.verified_artifact_id = None;
+        }
+    }
+    rec
 }
 
 fn record_reuse_index(

@@ -625,6 +625,8 @@ mod tests {
 
         let status = session.problem_status(problem_id.as_str()).unwrap();
         assert_eq!(status.status, "completed");
+        assert!(status.verified_artifact_id.is_some());
+        assert!(status.execution_artifact_id.is_none());
         let result = session.get_result(problem_id.as_str()).unwrap();
         assert_eq!(result["result"], json!(4.0));
         let (_desc, bytes) = session.get_artifact(verified_artifact_id.as_str()).unwrap();
@@ -633,6 +635,89 @@ mod tests {
         assert!(tail
             .iter()
             .any(|e| e.event_type == EventType::ProblemSubmitted));
+    }
+
+    #[test]
+    fn local_session_generate_persists_execution_not_verified() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        ActivatedPointerGate::install_fixture(&root).unwrap();
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let mut session = LocalSession::open(&root).unwrap();
+        let out = session.submit_problem(prompt).unwrap();
+        let SubmitOutcome::Executed {
+            problem_id,
+            execution_artifact_id,
+            ..
+        } = out
+        else {
+            panic!("expected Executed generate-local, got {out:?}");
+        };
+        let status = session.problem_status(problem_id.as_str()).unwrap();
+        assert_eq!(status.status, "executed");
+        assert!(status.verified_artifact_id.is_none());
+        assert_eq!(
+            status.execution_artifact_id.as_deref(),
+            Some(execution_artifact_id.as_str())
+        );
+        let idx: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(root.join("problems/index.json")).unwrap(),
+        )
+        .unwrap();
+        let rec = &idx["problems"][problem_id.as_str()];
+        assert!(
+            rec.get("verified_artifact_id").is_none(),
+            "disk must not label executed as verified: {rec}"
+        );
+        assert_eq!(
+            rec["execution_artifact_id"].as_str(),
+            Some(execution_artifact_id.as_str())
+        );
+        drop(session);
+        let session = LocalSession::open(&root).unwrap();
+        let again = session.problem_status(problem_id.as_str()).unwrap();
+        assert_eq!(again.status, "executed");
+        assert!(again.verified_artifact_id.is_none());
+        assert_eq!(
+            again.execution_artifact_id.as_deref(),
+            Some(execution_artifact_id.as_str())
+        );
+        let result = session.get_result(problem_id.as_str()).unwrap();
+        assert_eq!(result["action"], json!("text.generate.local"));
+    }
+
+    #[test]
+    fn problem_status_remaps_legacy_executed_verified_lie() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let pid = "aira:problem:legacy-executed";
+        let exec_id =
+            "aira:artifact:sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+        let idx = serde_json::json!({
+            "problems": {
+                pid: {
+                    "problem_id": pid,
+                    "text": "legacy generate",
+                    "status": "executed",
+                    "verified_artifact_id": exec_id,
+                    "result": {"result": "legacy-text", "action": "text.generate.local"}
+                }
+            }
+        });
+        std::fs::write(
+            root.join("problems/index.json"),
+            serde_json::to_string_pretty(&idx).unwrap(),
+        )
+        .unwrap();
+        let session = LocalSession::open(&root).unwrap();
+        let rec = session.problem_status(pid).unwrap();
+        assert_eq!(rec.status, "executed");
+        assert!(rec.verified_artifact_id.is_none());
+        assert_eq!(rec.execution_artifact_id.as_deref(), Some(exec_id));
     }
 
     #[test]
