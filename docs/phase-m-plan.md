@@ -79,7 +79,7 @@ M0 govern (wiring)
 | `#226` | M2 | seccomp **DONE** | syscall filter on child; forbidden syscall → CapsuleFailed | netns (#227) |
 | `#227` | M3 | netns **DONE** | Linux network namespace for offline argv; ollama loopback not silently broken | policy (#228) |
 | `#228` | M4 | missing sandbox fail-closed **DONE** | sandbox required + no kernel/OS → CapsuleFailed, not VERIFIED | schema (#229) |
-| `#229` | M5 | OS vs AIRA-mediated docs | schema/docs distinguish OS isolation from RFC-0116 adapter none | RFC-0117 (#230) |
+| `#229` | M5 | OS vs AIRA-mediated docs **DONE** | schema/docs distinguish OS isolation from RFC-0116 adapter none | RFC-0117 (#230) |
 | `#230` | M6 | RFC-0117 + close | consolidating RFC-0117; QUEUE M closed | — |
 
 ```text

@@ -1,4 +1,4 @@
-//! Phase M wiring contract (#224) + Landlock FS (#225) + seccomp (#226) + netns (#227) + sandbox-required (#228). Per-atom tests land with #229–#230.
+//! Phase M wiring contract (#224) + Landlock FS (#225) + seccomp (#226) + netns (#227) + sandbox-required (#228) + OS vs AIRA-mediated (#229). Per-atom tests land with #230.
 
 use std::path::PathBuf;
 
@@ -90,12 +90,22 @@ fn phase_m_queue_wiring_224_done() {
         !text.contains("| 228 | **OPEN**"),
         "QUEUE #228 must not stay OPEN after sandbox-required"
     );
-    for n in 229..=230 {
-        let open = format!("| {n} | **OPEN**");
-        let done = format!("| {n} | **DONE**");
-        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #228");
-        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #228");
-    }
+    assert!(
+        text.contains("| 229 | **DONE**"),
+        "QUEUE #229 must be DONE after OS vs AIRA-mediated"
+    );
+    assert!(
+        !text.contains("| 229 | **OPEN**"),
+        "QUEUE #229 must not stay OPEN after OS vs AIRA-mediated"
+    );
+    assert!(
+        text.contains("| 230 | **OPEN**"),
+        "QUEUE #230 must be OPEN after #229"
+    );
+    assert!(
+        !text.contains("| 230 | **DONE**"),
+        "QUEUE #230 must not be DONE at #229"
+    );
     for needle in [
         "M0 govern",
         "Analyze-259",
@@ -153,12 +163,12 @@ fn phase_m_next_problem() {
         "NEXT_PROBLEM must stay provenance"
     );
     assert!(
-        !text.contains("перший OPEN = `#228`"),
-        "NEXT_PROBLEM must not keep #228 as first-OPEN after sandbox-required"
+        !text.contains("перший OPEN = `#229`"),
+        "NEXT_PROBLEM must not keep #229 as first-OPEN after OS vs AIRA-mediated"
     );
     assert!(
-        text.contains("перший OPEN = `#229`") || text.contains("first OPEN `#229`"),
-        "NEXT_PROBLEM must point at first OPEN #229"
+        text.contains("перший OPEN = `#230`") || text.contains("first OPEN `#230`"),
+        "NEXT_PROBLEM must point at first OPEN #230"
     );
     assert!(
         text.contains("QUEUE L closed"),
@@ -346,4 +356,62 @@ fn phase_m_sandbox_required_228() {
         !rfc.contains("AIRA-RFC-0117 —"),
         "RFC-0121 must not be filed as RFC-0117"
     );
+}
+
+#[test]
+fn phase_m_os_vs_aira_mediated_229() {
+    let schema_text =
+        std::fs::read_to_string(repo_root().join("schemas/execution/generate-local.schema.json"))
+            .unwrap();
+    for needle in [
+        "AIRA-mediated",
+        "RFC-0116",
+        "RFC-0122",
+        "not encoded in this payload",
+        "ProcessBackend",
+        "Not an OS network-off sandbox",
+    ] {
+        assert!(
+            schema_text.contains(needle),
+            "generate-local schema missing: {needle}"
+        );
+    }
+    let local = std::fs::read_to_string(repo_root().join("docs/local-node.md")).unwrap();
+    for needle in [
+        "OS isolation vs AIRA-mediated none",
+        "AIRA-RFC-0122",
+        "constraints.network=none",
+        "Operator opt-in",
+    ] {
+        assert!(local.contains(needle), "local-node.md missing: {needle}");
+    }
+    let csu = std::fs::read_to_string(repo_root().join("docs/csu-development.md")).unwrap();
+    assert!(
+        csu.contains("RFC-0122"),
+        "csu-development must cross-ref RFC-0122"
+    );
+    let rfc =
+        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0122-os-vs-aira-mediated.md"))
+            .unwrap();
+    for needle in [
+        "AIRA-RFC-0122",
+        "OS isolation",
+        "AIRA-mediated",
+        "RFC-0116",
+        "Landlock",
+        "seccomp",
+        "netns",
+        "GPU marketplace",
+        "RFC-0117",
+    ] {
+        assert!(rfc.contains(needle), "RFC-0122 missing: {needle}");
+    }
+    assert!(
+        !rfc.contains("AIRA-RFC-0117 —"),
+        "RFC-0122 must not be filed as RFC-0117"
+    );
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #229 | OS vs AIRA-mediated docs"));
+    assert!(status.contains("RFC-0122"));
 }

@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase M `#224` `#225` `#226` `#227` `#228` **DONE**; first OPEN `#229`; L `#217`–`#223` **DONE** @ RFC-0111; QUEUE L closed |
+| `main` | Phase M `#224` `#225` `#226` `#227` `#228` `#229` **DONE**; first OPEN `#230`; L `#217`–`#223` **DONE** @ RFC-0111; QUEUE L closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase M `#229` (перший OPEN) |
+| Активна черга | Phase M `#230` (перший OPEN) |
 
 ## Правила атомарності
 
@@ -21,7 +21,7 @@
 3. **Не в scope:** колонка обов’язкова — усе інше відкладається в наступні рядки.
 4. **Anti-merge:** Noise+NAT+DHT / dual-key+Noise / authn+federation — заборонені в одному рядку. Phase C: не зливати типи дескрипторів, не зливати split різних `.rs`, не зливати CI з crypto. Phase D: не зливати різні payload schema files; не зливати schema з downloader.
 5. **Перенумерація:** нові задачі лише **в кінець** OPEN-хвоста; не вставляти між DONE і поточним OPEN без окремого рішення розробника.
-6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** (2026-08-28). Phase H — [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#183` **DONE** (RFC-0077). Phase I — [`docs/phase-i-plan.md`](docs/phase-i-plan.md); `#184`–`#198` **DONE** (RFC-0078). Phase J — [`docs/phase-j-plan.md`](docs/phase-j-plan.md); `#199`–`#208` **DONE** (RFC-0096). Phase K — [`docs/phase-k-plan.md`](docs/phase-k-plan.md); `#209`–`#216` **DONE** (RFC-0104). Phase L — [`docs/phase-l-plan.md`](docs/phase-l-plan.md); `#217`–`#223` **DONE** @ RFC-0111. QUEUE L closed. Phase M — [`docs/phase-m-plan.md`](docs/phase-m-plan.md); `#224` `#225` `#226` `#227` `#228` **DONE**; `#229` OPEN (RFC-0117).
+6. **План-перед-чергою:** поодинокі пункти не додавати. Phase C `#38`–`#52` DONE. Phase D `#53`–`#74` DONE. Phase E `#75`–`#106` DONE. Phase F `#107`–`#119` DONE. Phase G — [`docs/phase-g-plan.md`](docs/phase-g-plan.md); `#120`–`#151` **DONE** (2026-08-28). Phase H — [`docs/phase-h-plan.md`](docs/phase-h-plan.md); `#152`–`#183` **DONE** (RFC-0077). Phase I — [`docs/phase-i-plan.md`](docs/phase-i-plan.md); `#184`–`#198` **DONE** (RFC-0078). Phase J — [`docs/phase-j-plan.md`](docs/phase-j-plan.md); `#199`–`#208` **DONE** (RFC-0096). Phase K — [`docs/phase-k-plan.md`](docs/phase-k-plan.md); `#209`–`#216` **DONE** (RFC-0104). Phase L — [`docs/phase-l-plan.md`](docs/phase-l-plan.md); `#217`–`#223` **DONE** @ RFC-0111. QUEUE L closed. Phase M — [`docs/phase-m-plan.md`](docs/phase-m-plan.md); `#224` `#225` `#226` `#227` `#228` `#229` **DONE**; `#230` OPEN (RFC-0117).
 
 ---
 
@@ -514,12 +514,12 @@ L0 govern (#217)
 | 226 | **DONE** | ~~Analyze-261 — seccomp~~ | syscall filter on child; forbidden syscall → CapsuleFailed | тест seccomp | netns (#227) |
 | 227 | **DONE** | ~~Analyze-262 — netns~~ | Linux network namespace for offline argv; ollama loopback not silently broken | тест netns | policy (#228) |
 | 228 | **DONE** | ~~Analyze-263 — missing sandbox fail-closed~~ | sandbox required + no kernel/OS → CapsuleFailed, not VERIFIED | тест fail-closed | schema (#229) |
-| 229 | **OPEN** | Analyze-264 — OS vs AIRA-mediated docs | schema/docs distinguish OS isolation from RFC-0116 adapter none | RFC + docs | RFC-0117 (#230) |
+| 229 | **DONE** | ~~Analyze-264 — OS vs AIRA-mediated docs~~ | schema/docs distinguish OS isolation from RFC-0116 adapter none | RFC + docs | RFC-0117 (#230) |
 | 230 | **OPEN** | Analyze-265 — Phase M docs + RFC-0117 | consolidating RFC-0117; QUEUE M closed | QUEUE M DONE | — |
 
 ### Наступний цикл (Phase M)
 
-**Перший OPEN:** `#229`. `#224` M0 govern **DONE**. `#225` Landlock **DONE**. `#226` seccomp **DONE**. `#227` netns **DONE**. `#228` sandbox-required **DONE**. RFC-0117 file-free until `#230`.
+**Перший OPEN:** `#230`. `#224` M0 govern **DONE**. `#225` Landlock **DONE**. `#226` seccomp **DONE**. `#227` netns **DONE**. `#228` sandbox-required **DONE**. `#229` OS vs AIRA-mediated **DONE**. RFC-0117 file-free until `#230`.
 
 ```text
 M0 govern (#224)
@@ -570,6 +570,6 @@ M0 govern (#224)
 | Book-gap local remainder (post-I) | [`docs/phase-j-plan.md`](docs/phase-j-plan.md); `#199`–`#208` **DONE** @ RFC-0096; QUEUE J closed |
 | Local LLM Execution CSU (post-J / post-D) | [`docs/phase-k-plan.md`](docs/phase-k-plan.md); `#209`–`#216` **DONE** @ RFC-0104; QUEUE K closed |
 | Execution-boundary hardening (post-K audit) | [`docs/phase-l-plan.md`](docs/phase-l-plan.md); `#217`–`#223` **DONE** @ RFC-0111; QUEUE L closed |
-| OS child sandbox (post-L) | [`docs/phase-m-plan.md`](docs/phase-m-plan.md); `#224` `#225` `#226` `#227` `#228` **DONE**; `#229`–`#230` OPEN; RFC-0117 reserved |
+| OS child sandbox (post-L) | [`docs/phase-m-plan.md`](docs/phase-m-plan.md); `#224` `#225` `#226` `#227` `#228` `#229` **DONE**; `#230` OPEN; RFC-0117 reserved |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

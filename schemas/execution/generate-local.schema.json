@@ -32,6 +32,7 @@
     },
     "constraints": {
       "type": "object",
+      "description": "Adapter execution bounds. constraints.network=none is AIRA-mediated (RFC-0116): the generate adapter opens no sockets; it is not OS isolation. Optional Linux OS child sandbox (Landlock, seccomp, netns; Phase M / RFC-0122) is operator opt-in on ProcessBackend and is not encoded in this payload.",
       "additionalProperties": false,
       "required": [
         "network",
@@ -41,7 +42,7 @@
         "network": {
           "type": "string",
           "const": "none",
-          "description": "AIRA-mediated none: the generate adapter opens no sockets. Not an OS network-off sandbox. ollama-style child loopback is an explicit host-process exception."
+          "description": "AIRA-mediated none (RFC-0116): the generate adapter opens no sockets. Not an OS network-off sandbox. Optional ProcessBackend OS layers (Landlock/seccomp/netns; RFC-0122) are separate operator env, not this const. ollama-style child loopback is an explicit host-process exception."
         },
         "shell": {
           "type": "boolean",
