@@ -1,5 +1,5 @@
 //! Execution-llm CSU (QUEUE #211 / Analyze-246; plane `#213`; activate gate `#214`;
-//! process backend `#215`; child env whitelist `#219`).
+//! process backend `#215`; child env whitelist `#219`; bounded pipes `#220`).
 //!
 //! Host-local `text.generate.local` capsules complete only through a bound
 //! [`GenerateBackend`] **and** a bound [`ModelActivateGate`]. [`MockBackend`] is
@@ -12,7 +12,8 @@
 //! the activate handle (`#214`). Capsules whose action is not generate-local are
 //! skipped so fan-out with execution-basic does not fail C1 `math.eval.safe`.
 //! Process backend is selectable; default plane/CI stay mock. Child spawn uses
-//! `env_clear` plus PATH/HOME/LANG (`#219`). No Cargo dep on
+//! `env_clear` plus PATH/HOME/LANG (`#219`). stdout/stderr are capped during read
+//! (`#220`). No Cargo dep on
 //! inventory/acquisition CSUs.
 
 mod process;
@@ -20,7 +21,8 @@ mod process;
 pub use process::{
     backend_kind_from, backend_kind_from_env, ProcessBackend, CHILD_ENV_ALLOWLIST, EMPTY_STDOUT,
     ENV_LLM_BACKEND, ENV_PROCESS_ARGS, ENV_PROCESS_BIN, ENV_PROCESS_TIMEOUT_MS, MISSING_BINARY,
-    NONZERO_EXIT, PROCESS_BACKEND_ID, SPAWN_FAILED, TIMED_OUT,
+    NONZERO_EXIT, PIPE_OVERFLOW, PIPE_STDERR_LIMIT, PIPE_STDOUT_LIMIT, PROCESS_BACKEND_ID,
+    SPAWN_FAILED, TIMED_OUT,
 };
 
 use aira_artifact::ArtifactType;
@@ -881,6 +883,45 @@ mod tests {
         assert!(outs.iter().any(|o| matches!(
             o,
             CsuOutput::Failure { message } if message.contains(TIMED_OUT)
+        )));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stdout_overflow_is_capsule_failed() {
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("overflow-stdout");
+        let kb = (PIPE_STDOUT_LIMIT / 1024) + 512;
+        std::fs::write(
+            &script,
+            format!("#!/bin/sh\ndd if=/dev/zero bs=1024 count={kb} 2>/dev/null\n"),
+        )
+        .unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        let mut perm = std::fs::metadata(&script).unwrap().permissions();
+        perm.set_mode(0o755);
+        std::fs::set_permissions(&script, perm).unwrap();
+        let mut csu = ExecutionLlmCsu::new()
+            .with_process_backend(
+                ProcessBackend::new(&script).with_timeout(std::time::Duration::from_secs(10)),
+            )
+            .with_activate_gate(AlwaysActivated);
+        let mut log = MemoryEventLog::new();
+        let mut store = CasArtifactStore::open(dir.path().join("arts")).unwrap();
+        let cap = bind_capsule(&mut store, &valid_generate_body());
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(failed(&outs), "expected CapsuleFailed: {outs:?}");
+        assert!(!completed(&outs));
+        assert!(!has_verified_result(&outs));
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Failure { message } if message.contains(PIPE_OVERFLOW)
         )));
     }
 }

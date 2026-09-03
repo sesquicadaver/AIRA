@@ -59,7 +59,7 @@ fn phase_l_queue_wiring_217_done() {
         !text.contains("| 217 | **OPEN**"),
         "QUEUE #217 must not stay OPEN after wiring"
     );
-    for n in 220..=223 {
+    for n in 221..=223 {
         let open = format!("| {n} | **OPEN**");
         let done = format!("| {n} | **DONE**");
         assert!(text.contains(&open), "QUEUE #{n} must be OPEN after wiring");
@@ -83,6 +83,14 @@ fn phase_l_queue_wiring_217_done() {
     assert!(
         !text.contains("| 219 | **OPEN**"),
         "QUEUE #219 must not stay OPEN after child env whitelist"
+    );
+    assert!(
+        text.contains("| 220 | **DONE**"),
+        "QUEUE #220 must be DONE after bounded pipes"
+    );
+    assert!(
+        !text.contains("| 220 | **OPEN**"),
+        "QUEUE #220 must not stay OPEN after bounded pipes"
     );
     for needle in ["L0 govern", "Analyze-252", "RFC-0111", "Activate evidence"] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -214,6 +222,43 @@ fn phase_l_child_env_219() {
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
     assert!(status.contains("| #219 | Child env whitelist"));
     assert!(status.contains("RFC-0113"));
+    let hits = rfc_0111_hits();
+    assert!(
+        hits.is_empty(),
+        "RFC-0111 must stay file-free, found {hits:?}"
+    );
+}
+
+#[test]
+fn phase_l_bounded_pipes_220() {
+    let process = repo_root().join("csu/execution-llm/src/process.rs");
+    let text = std::fs::read_to_string(&process).expect("process.rs");
+    for needle in [
+        "fn read_bounded",
+        "PIPE_OVERFLOW",
+        "PIPE_STDOUT_LIMIT",
+        "PIPE_STDERR_LIMIT",
+        "fn read_bounded_overflow_during_read",
+        "fn stdout_overflow_during_read_is_fail_closed",
+        "fn stderr_overflow_during_read_is_fail_closed",
+    ] {
+        assert!(text.contains(needle), "process.rs missing: {needle}");
+    }
+    let lib = std::fs::read_to_string(repo_root().join("csu/execution-llm/src/lib.rs")).unwrap();
+    assert!(lib.contains("fn stdout_overflow_is_capsule_failed"));
+    let rfc = repo_root().join("specs/rfc/AIRA-RFC-0114-bounded-pipes.md");
+    assert!(rfc.is_file(), "RFC-0114 must exist for #220");
+    let rfc_text = std::fs::read_to_string(&rfc).unwrap();
+    assert!(rfc_text.contains("AIRA-RFC-0114"));
+    assert!(rfc_text.contains("during"));
+    assert!(rfc_text.contains("## 5. Non-Goals"));
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 220 | **DONE**"));
+    assert!(!queue.contains("| 220 | **OPEN**"));
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #220 | Bounded pipes"));
+    assert!(status.contains("RFC-0114"));
     let hits = rfc_0111_hits();
     assert!(
         hits.is_empty(),
