@@ -1,5 +1,5 @@
 //! Local CLI generate backend (QUEUE #215 / Analyze-250; env `#219`; pipes `#220`;
-//! Landlock `#225`; seccomp `#226`; netns `#227`).
+//! Landlock `#225`; seccomp `#226`; netns `#227`; sandbox-required `#228`).
 //!
 //! Spawns a **fixed argv** via [`std::process::Command::new`] (explicit program +
 //! args). Never `sh -c`, never a user-controlled shell string.
@@ -18,7 +18,10 @@
 //! ollama-style loopback is **fail-closed** ([`NETNS_BLOCKS_LOOPBACK`]) so host
 //! `127.0.0.1` is not silently isolated. A child such as `ollama` may talk to a
 //! loopback daemon only when netns is off — an explicit host-process exception,
-//! not `network=none` OS enforcement.
+//! not `network=none` OS enforcement. When OS sandbox is **required** (`#228`),
+//! missing kernel / non-Linux / ollama loopback → CapsuleFailed
+//! ([`SANDBOX_REQUIRED`] / [`SANDBOX_REQUIRED_LOOPBACK`]), never unsandboxed
+//! success.
 //!
 //! Missing binary, spawn failure, non-zero exit, timeout, empty stdout, or pipe
 //! overflow → error string for
@@ -42,6 +45,7 @@ use super::landlock::{default_allow_paths, restrict_fs_self};
 use super::netns::netns_enabled_from;
 #[cfg(target_os = "linux")]
 use super::netns::restrict_netns_self;
+use super::sandbox::sandbox_required_from;
 #[cfg(target_os = "linux")]
 use super::seccomp::restrict_syscalls_self;
 use super::seccomp::seccomp_enabled_from;
@@ -49,6 +53,7 @@ use super::{GenerateBackend, GenerateLocalPayload, ACTION_GENERATE_LOCAL, MOCK_B
 
 pub use super::landlock::{ENV_LLM_LANDLOCK, LANDLOCK_FAILED, LANDLOCK_UNSUPPORTED};
 pub use super::netns::{ENV_LLM_NETNS, NETNS_BLOCKS_LOOPBACK, NETNS_FAILED, NETNS_UNSUPPORTED};
+pub use super::sandbox::{ENV_LLM_SANDBOX_REQUIRED, SANDBOX_REQUIRED, SANDBOX_REQUIRED_LOOPBACK};
 pub use super::seccomp::{ENV_LLM_SECCOMP, SECCOMP_FAILED, SECCOMP_UNSUPPORTED, SECCOMP_VIOLATION};
 
 /// Backend id stamped on successful process output.
@@ -124,6 +129,9 @@ pub struct ProcessBackend {
     seccomp: bool,
     netns: bool,
     host_loopback: bool,
+    sandbox_required: bool,
+    #[cfg(test)]
+    kernel_unavailable_for_test: bool,
 }
 
 impl ProcessBackend {
@@ -137,6 +145,9 @@ impl ProcessBackend {
             seccomp: false,
             netns: false,
             host_loopback: false,
+            sandbox_required: false,
+            #[cfg(test)]
+            kernel_unavailable_for_test: false,
         }
     }
 
@@ -201,6 +212,24 @@ impl ProcessBackend {
         self
     }
 
+    /// Require OS sandbox (Landlock + seccomp + netns) on generate. Default off.
+    ///
+    /// Missing kernel, non-Linux, or ollama-style loopback → fail-closed
+    /// ([`SANDBOX_REQUIRED`] / [`SANDBOX_REQUIRED_LOOPBACK`]), never unsandboxed
+    /// success.
+    pub fn with_sandbox_required(mut self) -> Self {
+        self.sandbox_required = true;
+        self
+    }
+
+    /// Test helper: pretend Landlock ABI is missing so `#228` fail-closed is
+    /// measurable on hosts that do have the kernel.
+    #[cfg(test)]
+    pub fn with_unavailable_kernel_for_test(mut self) -> Self {
+        self.kernel_unavailable_for_test = true;
+        self
+    }
+
     /// Config from env. Missing binary is **not** resolved here; generate fails closed.
     pub fn from_env() -> Self {
         let program = env::var(ENV_PROCESS_BIN).unwrap_or_else(|_| "ollama".into());
@@ -225,18 +254,44 @@ impl ProcessBackend {
         if netns_enabled_from(env::var(ENV_LLM_NETNS).ok().as_deref()) {
             backend = backend.with_netns();
         }
+        if sandbox_required_from(env::var(ENV_LLM_SANDBOX_REQUIRED).ok().as_deref()) {
+            backend = backend.with_sandbox_required();
+        }
         backend
     }
 
     fn resolve_program(&self) -> Result<PathBuf, String> {
         resolve_program(&self.program)
     }
+
+    fn kernel_ok(&self) -> bool {
+        #[cfg(test)]
+        if self.kernel_unavailable_for_test {
+            return false;
+        }
+        super::landlock::kernel_available()
+    }
+
+    fn sandbox_layers(&self) -> (bool, bool, bool) {
+        if self.sandbox_required {
+            (true, true, true)
+        } else {
+            (self.landlock, self.seccomp, self.netns)
+        }
+    }
 }
 
 impl GenerateBackend for ProcessBackend {
     fn generate(&self, payload: &GenerateLocalPayload) -> Result<Value, String> {
         payload.validate()?;
-        if self.netns && (self.host_loopback || looks_like_ollama(&self.program)) {
+        if self.sandbox_required {
+            super::sandbox::enforce(
+                self.host_loopback || looks_like_ollama(&self.program),
+                self.kernel_ok(),
+            )?;
+        }
+        let (landlock, seccomp, netns) = self.sandbox_layers();
+        if netns && (self.host_loopback || looks_like_ollama(&self.program)) {
             return Err(NETNS_BLOCKS_LOOPBACK.to_string());
         }
         let program = self.resolve_program()?;
@@ -247,19 +302,19 @@ impl GenerateBackend for ProcessBackend {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         apply_child_env(&mut cmd);
-        if self.landlock {
+        if landlock {
             #[cfg(not(target_os = "linux"))]
             {
                 return Err(LANDLOCK_UNSUPPORTED.to_string());
             }
         }
-        if self.seccomp {
+        if seccomp {
             #[cfg(not(target_os = "linux"))]
             {
                 return Err(SECCOMP_UNSUPPORTED.to_string());
             }
         }
-        if self.netns {
+        if netns {
             #[cfg(not(target_os = "linux"))]
             {
                 return Err(NETNS_UNSUPPORTED.to_string());
@@ -268,14 +323,14 @@ impl GenerateBackend for ProcessBackend {
         #[cfg(target_os = "linux")]
         {
             use std::os::unix::process::CommandExt;
-            if self.netns {
+            if netns {
                 // SAFETY: runs in the forked child before exec, before Landlock
                 // and seccomp. Needs /proc maps and unshare; seccomp denies both.
                 unsafe {
                     cmd.pre_exec(restrict_netns_self);
                 }
             }
-            if self.landlock {
+            if landlock {
                 let allow = default_allow_paths(&program);
                 // SAFETY: runs in the forked child before exec; Landlock applies to
                 // this thread only. Failure returns Err so spawn fail-closes.
@@ -283,7 +338,7 @@ impl GenerateBackend for ProcessBackend {
                     cmd.pre_exec(move || restrict_fs_self(&allow));
                 }
             }
-            if self.seccomp {
+            if seccomp {
                 // SAFETY: runs in the forked child before exec, after netns/Landlock.
                 // Filter is thread-local until exec; failure fail-closes spawn.
                 unsafe {
@@ -293,7 +348,7 @@ impl GenerateBackend for ProcessBackend {
         }
         let mut child = cmd
             .spawn()
-            .map_err(|e| map_spawn_err(e, self.landlock, self.seccomp, self.netns))?;
+            .map_err(|e| map_spawn_err(e, landlock, seccomp, netns))?;
         let mut stdout_pipe = child
             .stdout
             .take()
@@ -339,7 +394,7 @@ impl GenerateBackend for ProcessBackend {
             #[cfg(target_os = "linux")]
             {
                 use std::os::unix::process::ExitStatusExt;
-                if self.seccomp && status.signal() == Some(libc::SIGSYS) {
+                if seccomp && status.signal() == Some(libc::SIGSYS) {
                     return Err(SECCOMP_VIOLATION.into());
                 }
             }
@@ -1110,5 +1165,78 @@ mod tests {
             err.contains(NONZERO_EXIT) || err.contains(NETNS_FAILED),
             "netns isolate or apply fail must fail-closed, got {err}"
         );
+    }
+
+    #[test]
+    fn from_env_sandbox_required_opt_in() {
+        let _g = env_lock();
+        let prev = env::var(ENV_LLM_SANDBOX_REQUIRED).ok();
+        env::remove_var(ENV_LLM_SANDBOX_REQUIRED);
+        assert!(!ProcessBackend::from_env().sandbox_required);
+        env::set_var(ENV_LLM_SANDBOX_REQUIRED, "1");
+        assert!(ProcessBackend::from_env().sandbox_required);
+        env::set_var(ENV_LLM_SANDBOX_REQUIRED, "true");
+        assert!(ProcessBackend::from_env().sandbox_required);
+        env::set_var(ENV_LLM_SANDBOX_REQUIRED, "0");
+        assert!(!ProcessBackend::from_env().sandbox_required);
+        match prev {
+            Some(v) => env::set_var(ENV_LLM_SANDBOX_REQUIRED, v),
+            None => env::remove_var(ENV_LLM_SANDBOX_REQUIRED),
+        }
+    }
+
+    #[test]
+    fn sandbox_required_missing_kernel_is_fail_closed() {
+        let err = ProcessBackend::new("/bin/echo")
+            .with_sandbox_required()
+            .with_unavailable_kernel_for_test()
+            .generate(&dummy_payload("SANDBOX_OK"))
+            .unwrap_err();
+        assert!(
+            err.contains(SANDBOX_REQUIRED),
+            "missing kernel must fail-closed, got {err}"
+        );
+        assert!(!err.contains("SANDBOX_OK"), "{err}");
+        assert!(!err.contains(MISSING_BINARY), "{err}");
+    }
+
+    #[test]
+    fn sandbox_required_ollama_is_fail_closed() {
+        let err = ProcessBackend::ollama("aira-llm-process-missing-bin-215-do-not-install", "m")
+            .with_sandbox_required()
+            .generate(&dummy_payload("ignored"))
+            .unwrap_err();
+        assert!(
+            err.contains(SANDBOX_REQUIRED_LOOPBACK),
+            "ollama + sandbox required must fail-closed, got {err}"
+        );
+        assert!(!err.contains(MISSING_BINARY), "{err}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sandbox_required_echo_succeeds_or_fail_closed() {
+        let result = ProcessBackend::new("/bin/echo")
+            .with_sandbox_required()
+            .generate(&dummy_payload("SANDBOX_OK"));
+        match result {
+            Ok(out) => {
+                let text = out["result"].as_str().expect("result string");
+                assert!(text.contains("SANDBOX_OK"), "got {text}");
+                assert_eq!(out["backend"], json!(PROCESS_BACKEND_ID));
+            }
+            Err(err) => {
+                assert!(
+                    err.contains(SANDBOX_REQUIRED)
+                        || err.contains(LANDLOCK_FAILED)
+                        || err.contains(SECCOMP_FAILED)
+                        || err.contains(NETNS_FAILED)
+                        || err.contains(LANDLOCK_UNSUPPORTED)
+                        || err.contains(SECCOMP_UNSUPPORTED)
+                        || err.contains(NETNS_UNSUPPORTED),
+                    "sandbox required must complete or fail-closed, got {err}"
+                );
+            }
+        }
     }
 }

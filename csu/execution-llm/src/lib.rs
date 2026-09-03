@@ -1,6 +1,7 @@
 //! Execution-llm CSU (QUEUE #211 / Analyze-246; plane `#213`; activate gate `#214`;
 //! process backend `#215`; child env whitelist `#219`; bounded pipes `#220`;
-//! network=none contract `#222`; Landlock FS `#225`; seccomp `#226`; netns `#227`).
+//! network=none contract `#222`; Landlock FS `#225`; seccomp `#226`; netns `#227`;
+//! sandbox-required `#228`).
 //!
 //! Host-local `text.generate.local` capsules complete only through a bound
 //! [`GenerateBackend`] **and** a bound [`ModelActivateGate`]. [`MockBackend`] is
@@ -19,19 +20,22 @@
 //! FS restrict (`#225`), opt-in seccomp (`#226`), and opt-in netns (`#227`) are
 //! applied in the child via `pre_exec` when enabled (netns before Landlock/seccomp).
 //! ollama-style + netns fail-closes so host loopback is not silently isolated.
+//! Sandbox **required** (`#228`) fail-closes when the kernel or OS cannot isolate.
 //! No Cargo dep on inventory/acquisition CSUs.
 
 mod landlock;
 mod netns;
 mod process;
+mod sandbox;
 mod seccomp;
 
 pub use process::{
     backend_kind_from, backend_kind_from_env, ProcessBackend, CHILD_ENV_ALLOWLIST, EMPTY_STDOUT,
-    ENV_LLM_BACKEND, ENV_LLM_LANDLOCK, ENV_LLM_NETNS, ENV_LLM_SECCOMP, ENV_PROCESS_ARGS,
-    ENV_PROCESS_BIN, ENV_PROCESS_TIMEOUT_MS, LANDLOCK_FAILED, LANDLOCK_UNSUPPORTED, MISSING_BINARY,
-    NETNS_BLOCKS_LOOPBACK, NETNS_FAILED, NETNS_UNSUPPORTED, NETWORK_NONE_CONTRACT, NONZERO_EXIT,
-    PIPE_OVERFLOW, PIPE_STDERR_LIMIT, PIPE_STDOUT_LIMIT, PROCESS_BACKEND_ID, SECCOMP_FAILED,
+    ENV_LLM_BACKEND, ENV_LLM_LANDLOCK, ENV_LLM_NETNS, ENV_LLM_SANDBOX_REQUIRED, ENV_LLM_SECCOMP,
+    ENV_PROCESS_ARGS, ENV_PROCESS_BIN, ENV_PROCESS_TIMEOUT_MS, LANDLOCK_FAILED,
+    LANDLOCK_UNSUPPORTED, MISSING_BINARY, NETNS_BLOCKS_LOOPBACK, NETNS_FAILED, NETNS_UNSUPPORTED,
+    NETWORK_NONE_CONTRACT, NONZERO_EXIT, PIPE_OVERFLOW, PIPE_STDERR_LIMIT, PIPE_STDOUT_LIMIT,
+    PROCESS_BACKEND_ID, SANDBOX_REQUIRED, SANDBOX_REQUIRED_LOOPBACK, SECCOMP_FAILED,
     SECCOMP_UNSUPPORTED, SECCOMP_VIOLATION, SPAWN_FAILED, TIMED_OUT,
 };
 
@@ -1108,6 +1112,35 @@ mod tests {
             CsuOutput::Failure { message }
                 if (message.contains(NONZERO_EXIT) || message.contains(NETNS_FAILED))
                     && !message.contains("CONNECT_OK")
+        )));
+    }
+
+    #[test]
+    fn sandbox_required_missing_kernel_is_capsule_failed() {
+        let mut csu = ExecutionLlmCsu::new()
+            .with_process_backend(
+                ProcessBackend::new("/bin/echo")
+                    .with_sandbox_required()
+                    .with_unavailable_kernel_for_test(),
+            )
+            .with_activate_gate(AlwaysActivated);
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap = bind_capsule(&mut store, &valid_generate_body());
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(failed(&outs), "expected CapsuleFailed: {outs:?}");
+        assert!(!completed(&outs));
+        assert!(!has_verified_result(&outs));
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Failure { message } if message.contains(SANDBOX_REQUIRED)
         )));
     }
 }

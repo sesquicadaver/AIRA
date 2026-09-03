@@ -75,6 +75,18 @@ pub fn restrict_fs_self(allow: &[PathBuf]) -> Result<(), Error> {
     }
 }
 
+/// Whether this host's kernel exposes Landlock ABI ≥ 1 (parent probe; does not restrict).
+pub fn kernel_available() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        linux::kernel_available()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        false
+    }
+}
+
 #[cfg(target_os = "linux")]
 mod linux {
     use super::LANDLOCK_FAILED;
@@ -133,6 +145,18 @@ mod linux {
             ErrorKind::PermissionDenied,
             format!("{LANDLOCK_FAILED}: {msg}"),
         )
+    }
+
+    pub(super) fn kernel_available() -> bool {
+        let abi = unsafe {
+            libc::syscall(
+                libc::SYS_landlock_create_ruleset,
+                ptr::null::<u8>(),
+                0usize,
+                LANDLOCK_CREATE_RULESET_VERSION,
+            )
+        };
+        abi >= 1
     }
 
     pub(super) fn restrict_fs_self(allow: &[PathBuf]) -> Result<(), Error> {
