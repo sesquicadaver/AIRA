@@ -1,9 +1,9 @@
 # Phase M — OS child sandbox (post-L)
 
-**Статус:** складено 2026-09-03; **IN PROGRESS** → QUEUE `#224`–`#230` (RFC-0117 reserved).  
+**Статус:** складено 2026-09-03; **DONE** 2026-09-03 → QUEUE `#224`–`#230` (RFC-0117). QUEUE M closed.  
 **Джерела:** Phase L [`phase-l-plan.md`](phase-l-plan.md) §3.1 Out; RFC-0116: operators who need Landlock / seccomp / netns wait for a post-L atom; QUEUE L closed @ RFC-0111.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase M `#224`–`#230`.  
-**Closure RFC:** `AIRA-RFC-0117` — id **confirmed free** at `#224` (файл лише в `#230`).  
+**Closure RFC:** [`AIRA-RFC-0117`](../specs/rfc/AIRA-RFC-0117-phase-m-os-child-sandbox.md) — id **confirmed free** at `#224`.  
 **Не змінює:** анти-місію README (ядро **не** хост інференсу; **не** GPU marketplace); C0/C1 `Calculate 2 + 2`; `aira-core`; AIRA-mediated `network=none` adapter contract (L5 stays honest).
 
 ## 0. Навіщо (після L, не замість L)
@@ -80,7 +80,7 @@ M0 govern (wiring)
 | `#227` | M3 | netns **DONE** | Linux network namespace for offline argv; ollama loopback not silently broken | policy (#228) |
 | `#228` | M4 | missing sandbox fail-closed **DONE** | sandbox required + no kernel/OS → CapsuleFailed, not VERIFIED | schema (#229) |
 | `#229` | M5 | OS vs AIRA-mediated docs **DONE** | schema/docs distinguish OS isolation from RFC-0116 adapter none | RFC-0117 (#230) |
-| `#230` | M6 | RFC-0117 + close | consolidating RFC-0117; QUEUE M closed | — |
+| `#230` | M6 | RFC-0117 + close **DONE** | consolidating RFC-0117; QUEUE M closed | — |
 
 ```text
 #224 M0
@@ -107,12 +107,13 @@ aira-core has no inference.
 
 ## 7. RFC
 
-- Consolidating (`#230`): `AIRA-RFC-0117` — id **confirmed free** at `#224`.
-- Per-atom RFC-S/RFC-D у `#225`–`#229` (окремі файли; не RFC-A; не RFC-0117 до close).
+- Consolidating (`#230`): [`AIRA-RFC-0117`](../specs/rfc/AIRA-RFC-0117-phase-m-os-child-sandbox.md) — id **confirmed free** at `#224`.
+- Per-atom RFC-S/RFC-D у `#225`–`#229` (окремі файли; не RFC-A). RFC-0117 exists at close.
 
 ## 8. Activation rule
 
 ```text
 #223 DONE (RFC-0111) + phase-l §3.1 Out + developer «наступний пункт» 2026-09-03 → цей план активовано атомом `#224`.
-RFC-0117 file-free until `#230`.
+#224 wiring DONE; `#225` Landlock DONE (RFC-0118); `#226` seccomp DONE (RFC-0119); `#227` netns DONE (RFC-0120); `#228` sandbox-required DONE (RFC-0121); `#229` OS vs AIRA-mediated DONE (RFC-0122); `#230` RFC-0117 + close DONE.
+QUEUE M closed.
 ```

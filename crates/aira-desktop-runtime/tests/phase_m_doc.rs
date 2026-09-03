@@ -1,4 +1,4 @@
-//! Phase M wiring contract (#224) + Landlock FS (#225) + seccomp (#226) + netns (#227) + sandbox-required (#228) + OS vs AIRA-mediated (#229). Per-atom tests land with #230.
+//! Phase M contract (#224 wiring … #230 RFC-0117 close). QUEUE M closed.
 
 use std::path::PathBuf;
 
@@ -30,6 +30,8 @@ fn phase_m_plan_present() {
         "network namespace",
         "AIRA-RFC-0117",
         "confirmed free",
+        "**DONE**",
+        "QUEUE M closed",
         "GPU marketplace",
         "LLM runtime (Core як inference host)",
         "Calculate 2 + 2",
@@ -98,13 +100,18 @@ fn phase_m_queue_wiring_224_done() {
         !text.contains("| 229 | **OPEN**"),
         "QUEUE #229 must not stay OPEN after OS vs AIRA-mediated"
     );
+    for n in 224..=230 {
+        let open = format!("| {n} | **OPEN**");
+        let done = format!("| {n} | **DONE**");
+        assert!(text.contains(&done), "QUEUE #{n} must be DONE after close");
+        assert!(
+            !text.contains(&open),
+            "QUEUE #{n} must not stay OPEN after close"
+        );
+    }
     assert!(
-        text.contains("| 230 | **OPEN**"),
-        "QUEUE #230 must be OPEN after #229"
-    );
-    assert!(
-        !text.contains("| 230 | **DONE**"),
-        "QUEUE #230 must not be DONE at #229"
+        text.contains("QUEUE M closed"),
+        "QUEUE M must be closed after #230"
     );
     for needle in [
         "M0 govern",
@@ -118,11 +125,33 @@ fn phase_m_queue_wiring_224_done() {
 }
 
 #[test]
-fn phase_m_rfc_0117_id_free() {
+fn phase_m_rfc_0117_present() {
     let hits = rfc_0117_hits();
+    assert_eq!(hits.len(), 1, "exactly one RFC-0117 file, found {hits:?}");
+    let path = repo_root().join("specs/rfc").join(&hits[0]);
+    let text = std::fs::read_to_string(&path).expect("RFC-0117 file");
+    for needle in [
+        "AIRA-RFC-0117",
+        "Phase M",
+        "#224",
+        "#225",
+        "#226",
+        "#227",
+        "#228",
+        "#229",
+        "#230",
+        "QUEUE M closed",
+        "GPU marketplace",
+        "LLM-in-Core",
+        "AIRA-mediated",
+        "confirmed free",
+        "inventing Phase N",
+    ] {
+        assert!(text.contains(needle), "RFC-0117 missing: {needle}");
+    }
     assert!(
-        hits.is_empty(),
-        "RFC-0117 must stay file-free until #230, found {hits:?}"
+        text.contains("## 5. Non-Goals"),
+        "RFC-0117 must list anti-mission as Non-Goals, not as deliverables"
     );
 }
 
@@ -132,10 +161,14 @@ fn phase_m_readme_and_docs_index() {
     assert!(readme.contains("phase-m-plan.md"));
     assert!(readme.contains("#224"));
     assert!(readme.contains("#230"));
+    assert!(readme.contains("QUEUE M closed"));
+    assert!(readme.contains("RFC-0117") || readme.contains("AIRA-RFC-0117"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-m-plan.md"));
     assert!(docs.contains("#224"));
     assert!(docs.contains("#230"));
+    assert!(docs.contains("QUEUE M closed"));
+    assert!(docs.contains("RFC-0117") || docs.contains("AIRA-RFC-0117"));
 }
 
 #[test]
@@ -163,12 +196,12 @@ fn phase_m_next_problem() {
         "NEXT_PROBLEM must stay provenance"
     );
     assert!(
-        !text.contains("перший OPEN = `#229`"),
-        "NEXT_PROBLEM must not keep #229 as first-OPEN after OS vs AIRA-mediated"
+        !text.contains("перший OPEN = `#230`"),
+        "NEXT_PROBLEM must not keep #230 as first-OPEN after Phase M close"
     );
     assert!(
-        text.contains("перший OPEN = `#230`") || text.contains("first OPEN `#230`"),
-        "NEXT_PROBLEM must point at first OPEN #230"
+        text.contains("QUEUE M closed"),
+        "NEXT_PROBLEM must record QUEUE M closed"
     );
     assert!(
         text.contains("QUEUE L closed"),
@@ -414,4 +447,44 @@ fn phase_m_os_vs_aira_mediated_229() {
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
     assert!(status.contains("| #229 | OS vs AIRA-mediated docs"));
     assert!(status.contains("RFC-0122"));
+}
+
+#[test]
+fn phase_m_close_230() {
+    let hits = rfc_0117_hits();
+    assert_eq!(hits.len(), 1, "exactly one RFC-0117 file, found {hits:?}");
+    let rfc = repo_root().join("specs/rfc").join(&hits[0]);
+    assert!(rfc.is_file(), "RFC-0117 must exist for #230");
+    let rfc_text = std::fs::read_to_string(&rfc).unwrap();
+    assert!(rfc_text.contains("AIRA-RFC-0117"));
+    assert!(rfc_text.contains("#224"));
+    assert!(rfc_text.contains("#230"));
+    assert!(rfc_text.contains("QUEUE M closed"));
+    assert!(rfc_text.contains("AIRA-mediated"));
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 230 | **DONE**"));
+    assert!(!queue.contains("| 230 | **OPEN**"));
+    assert!(queue.contains("QUEUE M closed"));
+    assert!(queue.contains("no OPEN M atoms"));
+    assert!(queue.contains("A next phase is not activated here"));
+    for n in 224..=230 {
+        let open = format!("| {n} | **OPEN**");
+        assert!(
+            !queue.contains(&open),
+            "QUEUE #{n} must not stay OPEN after Phase M close"
+        );
+    }
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #230 | RFC-0117 + close"));
+    assert!(status.contains("RFC-0117"));
+    assert!(status.contains("Phase M `#224`–`#230` **DONE**"));
+    assert!(status.contains("QUEUE M closed"));
+    let analyze = repo_root().join("analysis/Analyze-265/LIVING_SPEC_MATRIX.md");
+    assert!(analyze.is_file(), "Analyze-265 living spec missing");
+    let gui = std::fs::read_to_string(repo_root().join("docs/desktop-gui.md")).unwrap();
+    assert!(gui.contains("RFC-0117"));
+    let next = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
+    assert!(next.contains("QUEUE M closed"));
+    assert!(!next.contains("перший OPEN = `#230`"));
 }
