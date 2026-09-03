@@ -1,12 +1,12 @@
 //! Linux seccomp syscall filter for the generate-local child (QUEUE #226).
 //!
 //! Applied in the child after fork, before exec ([`std::os::unix::process::CommandExt::pre_exec`]),
-//! after Landlock when both are enabled. Default-allow BPF with a deny-list of
-//! network, ptrace, mount, module, and namespace syscalls. A denied syscall is
-//! `SECCOMP_RET_KILL_PROCESS` (SIGSYS).
+//! after netns and Landlock when those are also enabled. Default-allow BPF with a
+//! deny-list of network, ptrace, mount, module, and namespace syscalls. A denied
+//! syscall is `SECCOMP_RET_KILL_PROCESS` (SIGSYS).
 //!
 //! Opt-in only. Missing kernel / failed filter → fail-closed (not unsandboxed
-//! success). netns is a later atom.
+//! success). netns must run first because this filter denies `unshare`/`setns`.
 
 use std::io::Error;
 #[cfg(not(target_os = "linux"))]
