@@ -5,7 +5,7 @@
 //! creates, and paths outside the allowlist are denied by the kernel.
 //!
 //! Opt-in only. Missing kernel / failed restrict → fail-closed (not unsandboxed
-//! success). seccomp and netns are later atoms.
+//! success). netns is a later atom.
 
 use std::io::Error;
 #[cfg(not(target_os = "linux"))]

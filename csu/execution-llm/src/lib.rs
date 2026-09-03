@@ -1,6 +1,6 @@
 //! Execution-llm CSU (QUEUE #211 / Analyze-246; plane `#213`; activate gate `#214`;
 //! process backend `#215`; child env whitelist `#219`; bounded pipes `#220`;
-//! network=none contract `#222`; Landlock FS `#225`).
+//! network=none contract `#222`; Landlock FS `#225`; seccomp `#226`).
 //!
 //! Host-local `text.generate.local` capsules complete only through a bound
 //! [`GenerateBackend`] **and** a bound [`ModelActivateGate`]. [`MockBackend`] is
@@ -16,17 +16,20 @@
 //! `env_clear` plus PATH/HOME/LANG (`#219`). stdout/stderr are capped during read
 //! (`#220`). `network=none` is AIRA-mediated (`#222` / RFC-0116): the adapter
 //! opens no sockets; the child is not an OS network-off sandbox. Opt-in Landlock
-//! FS restrict (`#225`) is applied in the child via `pre_exec` when enabled.
+//! FS restrict (`#225`) and opt-in seccomp (`#226`) are applied in the child via
+//! `pre_exec` when enabled.
 //! No Cargo dep on inventory/acquisition CSUs.
 
 mod landlock;
 mod process;
+mod seccomp;
 
 pub use process::{
     backend_kind_from, backend_kind_from_env, ProcessBackend, CHILD_ENV_ALLOWLIST, EMPTY_STDOUT,
-    ENV_LLM_BACKEND, ENV_LLM_LANDLOCK, ENV_PROCESS_ARGS, ENV_PROCESS_BIN, ENV_PROCESS_TIMEOUT_MS,
-    LANDLOCK_FAILED, LANDLOCK_UNSUPPORTED, MISSING_BINARY, NETWORK_NONE_CONTRACT, NONZERO_EXIT,
-    PIPE_OVERFLOW, PIPE_STDERR_LIMIT, PIPE_STDOUT_LIMIT, PROCESS_BACKEND_ID, SPAWN_FAILED,
+    ENV_LLM_BACKEND, ENV_LLM_LANDLOCK, ENV_LLM_SECCOMP, ENV_PROCESS_ARGS, ENV_PROCESS_BIN,
+    ENV_PROCESS_TIMEOUT_MS, LANDLOCK_FAILED, LANDLOCK_UNSUPPORTED, MISSING_BINARY,
+    NETWORK_NONE_CONTRACT, NONZERO_EXIT, PIPE_OVERFLOW, PIPE_STDERR_LIMIT, PIPE_STDOUT_LIMIT,
+    PROCESS_BACKEND_ID, SECCOMP_FAILED, SECCOMP_UNSUPPORTED, SECCOMP_VIOLATION, SPAWN_FAILED,
     TIMED_OUT,
 };
 
@@ -1004,6 +1007,37 @@ mod tests {
             CsuOutput::Failure { message }
                 if (message.contains(NONZERO_EXIT) || message.contains(LANDLOCK_FAILED))
                     && !message.contains("LANDLOCK_SECRET_225")
+        )));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn seccomp_forbidden_syscall_is_capsule_failed() {
+        let dir = tempfile::tempdir().unwrap();
+        let bin = crate::process::compile_socket_probe(dir.path());
+        let mut csu = ExecutionLlmCsu::new()
+            .with_process_backend(ProcessBackend::new(&bin).with_seccomp())
+            .with_activate_gate(AlwaysActivated);
+        let mut log = MemoryEventLog::new();
+        let mut store = CasArtifactStore::open(dir.path().join("arts")).unwrap();
+        let cap = bind_capsule(&mut store, &valid_generate_body());
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(failed(&outs), "expected CapsuleFailed: {outs:?}");
+        assert!(!completed(&outs));
+        assert!(!has_verified_result(&outs));
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Failure { message }
+                if (message.contains(SECCOMP_VIOLATION)
+                    || message.contains(SECCOMP_FAILED)
+                    || message.contains(NONZERO_EXIT))
+                    && !message.contains("SOCKET_OK")
         )));
     }
 }

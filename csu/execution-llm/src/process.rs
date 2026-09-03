@@ -1,5 +1,5 @@
 //! Local CLI generate backend (QUEUE #215 / Analyze-250; env `#219`; pipes `#220`;
-//! Landlock `#225`).
+//! Landlock `#225`; seccomp `#226`).
 //!
 //! Spawns a **fixed argv** via [`std::process::Command::new`] (explicit program +
 //! args). Never `sh -c`, never a user-controlled shell string.
@@ -12,8 +12,8 @@
 //!
 //! Network (RFC-0105 / RFC-0110 / RFC-0116): `constraints.network = none` is
 //! **AIRA-mediated**. This adapter opens **no sockets**. It is **not** an OS
-//! network-off sandbox (no seccomp / netns in this atom). Opt-in Landlock FS
-//! (`#225`) restricts the child filesystem when enabled. A child such as
+//! network-off sandbox (no netns in this atom). Opt-in Landlock FS (`#225`) and
+//! opt-in seccomp (`#226`) restrict the child when enabled. A child such as
 //! `ollama` may talk to a loopback daemon — an explicit host-process exception,
 //! not `network=none` OS enforcement. llama.cpp-style argv is offline.
 //!
@@ -36,9 +36,13 @@ use serde_json::{json, Value};
 use super::landlock::landlock_enabled_from;
 #[cfg(target_os = "linux")]
 use super::landlock::{default_allow_paths, restrict_fs_self};
+#[cfg(target_os = "linux")]
+use super::seccomp::restrict_syscalls_self;
+use super::seccomp::seccomp_enabled_from;
 use super::{GenerateBackend, GenerateLocalPayload, ACTION_GENERATE_LOCAL, MOCK_BACKEND_ID};
 
 pub use super::landlock::{ENV_LLM_LANDLOCK, LANDLOCK_FAILED, LANDLOCK_UNSUPPORTED};
+pub use super::seccomp::{ENV_LLM_SECCOMP, SECCOMP_FAILED, SECCOMP_UNSUPPORTED, SECCOMP_VIOLATION};
 
 /// Backend id stamped on successful process output.
 pub const PROCESS_BACKEND_ID: &str = "process";
@@ -110,6 +114,7 @@ pub struct ProcessBackend {
     args: Vec<String>,
     timeout: Duration,
     landlock: bool,
+    seccomp: bool,
 }
 
 impl ProcessBackend {
@@ -120,6 +125,7 @@ impl ProcessBackend {
             args: Vec::new(),
             timeout: DEFAULT_TIMEOUT,
             landlock: false,
+            seccomp: false,
         }
     }
 
@@ -161,6 +167,15 @@ impl ProcessBackend {
         self
     }
 
+    /// Opt-in Linux seccomp deny-list in the child (`pre_exec`). Default off.
+    ///
+    /// Apply failure or non-Linux → fail-closed ([`SECCOMP_FAILED`] /
+    /// [`SECCOMP_UNSUPPORTED`]). Forbidden syscall after exec → [`SECCOMP_VIOLATION`].
+    pub fn with_seccomp(mut self) -> Self {
+        self.seccomp = true;
+        self
+    }
+
     /// Config from env. Missing binary is **not** resolved here; generate fails closed.
     pub fn from_env() -> Self {
         let program = env::var(ENV_PROCESS_BIN).unwrap_or_else(|_| "ollama".into());
@@ -175,6 +190,9 @@ impl ProcessBackend {
         }
         if landlock_enabled_from(env::var(ENV_LLM_LANDLOCK).ok().as_deref()) {
             backend = backend.with_landlock();
+        }
+        if seccomp_enabled_from(env::var(ENV_LLM_SECCOMP).ok().as_deref()) {
+            backend = backend.with_seccomp();
         }
         backend
     }
@@ -196,9 +214,21 @@ impl GenerateBackend for ProcessBackend {
             .stderr(Stdio::piped());
         apply_child_env(&mut cmd);
         if self.landlock {
-            #[cfg(target_os = "linux")]
+            #[cfg(not(target_os = "linux"))]
             {
-                use std::os::unix::process::CommandExt;
+                return Err(LANDLOCK_UNSUPPORTED.to_string());
+            }
+        }
+        if self.seccomp {
+            #[cfg(not(target_os = "linux"))]
+            {
+                return Err(SECCOMP_UNSUPPORTED.to_string());
+            }
+        }
+        #[cfg(target_os = "linux")]
+        {
+            use std::os::unix::process::CommandExt;
+            if self.landlock {
                 let allow = default_allow_paths(&program);
                 // SAFETY: runs in the forked child before exec; Landlock applies to
                 // this thread only. Failure returns Err so spawn fail-closes.
@@ -206,25 +236,17 @@ impl GenerateBackend for ProcessBackend {
                     cmd.pre_exec(move || restrict_fs_self(&allow));
                 }
             }
-            #[cfg(not(target_os = "linux"))]
-            {
-                return Err(LANDLOCK_UNSUPPORTED.to_string());
+            if self.seccomp {
+                // SAFETY: runs in the forked child before exec, after Landlock.
+                // Filter is thread-local until exec; failure fail-closes spawn.
+                unsafe {
+                    cmd.pre_exec(restrict_syscalls_self);
+                }
             }
         }
-        let mut child = cmd.spawn().map_err(|e| {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                MISSING_BINARY.to_string()
-            } else if self.landlock {
-                let msg = e.to_string();
-                if msg.contains(LANDLOCK_FAILED) {
-                    msg
-                } else {
-                    format!("{LANDLOCK_FAILED}: {e}")
-                }
-            } else {
-                format!("{SPAWN_FAILED}: {e}")
-            }
-        })?;
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| map_spawn_err(e, self.landlock, self.seccomp))?;
         let mut stdout_pipe = child
             .stdout
             .take()
@@ -267,6 +289,13 @@ impl GenerateBackend for ProcessBackend {
             return Err(PIPE_OVERFLOW.into());
         };
         if !status.success() {
+            #[cfg(target_os = "linux")]
+            {
+                use std::os::unix::process::ExitStatusExt;
+                if self.seccomp && status.signal() == Some(libc::SIGSYS) {
+                    return Err(SECCOMP_VIOLATION.into());
+                }
+            }
             let err = truncate_utf8(&stderr);
             return Err(format!("{NONZERO_EXIT}: {err}"));
         }
@@ -320,6 +349,65 @@ fn apply_child_env(cmd: &mut Command) {
     for (key, value) in child_env_pairs() {
         cmd.env(key, value);
     }
+}
+
+fn map_spawn_err(e: std::io::Error, landlock: bool, seccomp: bool) -> String {
+    if e.kind() == std::io::ErrorKind::NotFound {
+        return MISSING_BINARY.to_string();
+    }
+    let msg = e.to_string();
+    if landlock && msg.contains(LANDLOCK_FAILED) {
+        return msg;
+    }
+    if seccomp && msg.contains(SECCOMP_FAILED) {
+        return msg;
+    }
+    if landlock {
+        return format!("{LANDLOCK_FAILED}: {e}");
+    }
+    if seccomp {
+        return format!("{SECCOMP_FAILED}: {e}");
+    }
+    format!("{SPAWN_FAILED}: {e}")
+}
+
+#[cfg(all(test, target_os = "linux"))]
+pub(crate) fn compile_socket_probe(dir: &Path) -> PathBuf {
+    let src = dir.join("socket_probe.c");
+    let bin = dir.join("socket_probe");
+    std::fs::write(
+        &src,
+        r#"
+#include <stdio.h>
+#include <sys/socket.h>
+int main(void) {
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) return 1;
+    puts("SOCKET_OK");
+    return 0;
+}
+"#,
+    )
+    .unwrap();
+    let status = Command::new("cc")
+        .args(["-o"])
+        .arg(&bin)
+        .arg(&src)
+        .status()
+        .or_else(|_| {
+            Command::new("gcc")
+                .args(["-o"])
+                .arg(&bin)
+                .arg(&src)
+                .status()
+        })
+        .expect("cc/gcc must be available to compile the socket probe");
+    assert!(status.success(), "socket probe compile failed: {status}");
+    use std::os::unix::fs::PermissionsExt;
+    let mut perm = std::fs::metadata(&bin).unwrap().permissions();
+    perm.set_mode(0o755);
+    std::fs::set_permissions(&bin, perm).unwrap();
+    bin
 }
 
 #[derive(Debug)]
@@ -731,6 +819,66 @@ mod tests {
             .expect("echo-only jail script must complete under Landlock");
         let text = out["result"].as_str().expect("result string");
         assert!(text.contains("LANDLOCK_OK"), "got {text}");
+        assert_eq!(out["backend"], json!(PROCESS_BACKEND_ID));
+    }
+
+    #[test]
+    fn from_env_seccomp_opt_in() {
+        let _g = env_lock();
+        let prev = env::var(ENV_LLM_SECCOMP).ok();
+        env::remove_var(ENV_LLM_SECCOMP);
+        assert!(!ProcessBackend::from_env().seccomp);
+        env::set_var(ENV_LLM_SECCOMP, "1");
+        assert!(ProcessBackend::from_env().seccomp);
+        env::set_var(ENV_LLM_SECCOMP, "true");
+        assert!(ProcessBackend::from_env().seccomp);
+        env::set_var(ENV_LLM_SECCOMP, "0");
+        assert!(!ProcessBackend::from_env().seccomp);
+        match prev {
+            Some(v) => env::set_var(ENV_LLM_SECCOMP, v),
+            None => env::remove_var(ENV_LLM_SECCOMP),
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn seccomp_forbidden_syscall_is_fail_closed() {
+        let dir = tempfile::tempdir().unwrap();
+        let probe = super::compile_socket_probe(dir.path());
+        let leaked = ProcessBackend::new(&probe)
+            .generate(&dummy_payload("ignored"))
+            .expect("unsandboxed socket probe must complete");
+        let leaked_text = leaked["result"].as_str().expect("result string");
+        assert!(
+            leaked_text.contains("SOCKET_OK"),
+            "control path must prove socket works, got {leaked_text}"
+        );
+
+        let err = ProcessBackend::new(&probe)
+            .with_seccomp()
+            .generate(&dummy_payload("ignored"))
+            .unwrap_err();
+        assert!(
+            !err.contains("SOCKET_OK"),
+            "seccomp child must not report SOCKET_OK, got {err}"
+        );
+        assert!(
+            err.contains(SECCOMP_VIOLATION)
+                || err.contains(SECCOMP_FAILED)
+                || err.contains(NONZERO_EXIT),
+            "forbidden syscall must fail-closed, got {err}"
+        );
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn seccomp_echo_succeeds() {
+        let out = ProcessBackend::new("/bin/echo")
+            .with_seccomp()
+            .generate(&dummy_payload("SECCOMP_OK"))
+            .expect("echo must complete under seccomp deny-list");
+        let text = out["result"].as_str().expect("result string");
+        assert!(text.contains("SECCOMP_OK"), "got {text}");
         assert_eq!(out["backend"], json!(PROCESS_BACKEND_ID));
     }
 }

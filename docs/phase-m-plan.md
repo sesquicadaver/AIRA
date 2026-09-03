@@ -76,7 +76,7 @@ M0 govern (wiring)
 |----|---------|------|-----------|------------------|
 | `#224` | M0 | Phase M wiring **DONE** | цей план **IN PROGRESS**; QUEUE `#224` DONE | Landlock (#225) |
 | `#225` | M1 | Landlock FS **DONE** | Linux Landlock on ProcessBackend child; FS restriction fail-closed | seccomp (#226) |
-| `#226` | M2 | seccomp | syscall filter on child; forbidden syscall → CapsuleFailed | netns (#227) |
+| `#226` | M2 | seccomp **DONE** | syscall filter on child; forbidden syscall → CapsuleFailed | netns (#227) |
 | `#227` | M3 | netns | Linux network namespace for offline argv; ollama loopback not silently broken | policy (#228) |
 | `#228` | M4 | missing sandbox fail-closed | sandbox required + no kernel/OS → CapsuleFailed, not VERIFIED | schema (#229) |
 | `#229` | M5 | OS vs AIRA-mediated docs | schema/docs distinguish OS isolation from RFC-0116 adapter none | RFC-0117 (#230) |
