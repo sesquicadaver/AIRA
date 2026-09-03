@@ -116,4 +116,4 @@ aira-core has no inference.
 QUEUE K closed.
 ```
 
-Далі: [`phase-l-plan.md`](phase-l-plan.md) `#217`–`#223` (RFC-0111 reserved).
+Далі: [`phase-l-plan.md`](phase-l-plan.md) `#217`–`#223` **DONE** @ RFC-0111; QUEUE L closed.

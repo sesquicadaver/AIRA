@@ -1,9 +1,9 @@
 # Phase L — Execution-boundary hardening (post-K)
 
-**Статус:** складено 2026-09-03; **IN PROGRESS** → QUEUE `#217`–`#223` (RFC-0111 reserved).  
+**Статус:** складено 2026-09-03; **DONE** 2026-09-03 → QUEUE `#217`–`#223` (RFC-0111). QUEUE L closed.  
 **Джерела:** post-K audit (`aira-1.md` / 2026-09-03): Core semantic contracts стабільні; ризик на межі AIRA → child LLM; [`phase-k-plan.md`](phase-k-plan.md) QUEUE K closed @ RFC-0104.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase L `#217`–`#223`.  
-**Closure RFC:** `AIRA-RFC-0111` — id **confirmed free** at `#217` (файл лише в `#223`).  
+**Closure RFC:** [`AIRA-RFC-0111`](../specs/rfc/AIRA-RFC-0111-phase-l-execution-boundary.md) — id **confirmed free** at `#217`.  
 **Не змінює:** анти-місію README (ядро **не** хост інференсу; **не** GPU marketplace); C0/C1 `Calculate 2 + 2`; `aira-core`; Landlock/seccomp/network-namespace sandbox (Out L).
 
 ## 0. Навіщо (після K, не замість K)
@@ -79,7 +79,7 @@ L0 govern (wiring)
 | `#220` | L3 | Bounded pipes | stdout/stderr capped **during** read; overflow → CapsuleFailed **DONE** (RFC-0114) | ProblemRecord (#221) |
 | `#221` | L4 | ProblemRecord split | persisted `execution_artifact_id`; GET не кладе executed в `verified_artifact_id` **DONE** (RFC-0115) | network RFC (#222) |
 | `#222` | L5 | `network=none` contract | RFC: AIRA-mediated none; not OS sandbox; schema/docs honest **DONE** (RFC-0116) | RFC-0111 body (#223) |
-| `#223` | L6 | RFC-0111 + close | consolidating RFC-0111; QUEUE L closed | — |
+| `#223` | L6 | RFC-0111 + close | consolidating RFC-0111; QUEUE L closed **DONE** | — |
 
 ```text
 #217 L0
@@ -106,13 +106,13 @@ aira-core has no inference.
 
 ## 7. RFC
 
-- Consolidating (`#223`): `AIRA-RFC-0111` — id **confirmed free** at `#217`.
-- Per-atom RFC-S/RFC-D у `#218`–`#222` (окремі файли; не RFC-A; не RFC-0111 до close).
+- Consolidating (`#223`): [`AIRA-RFC-0111`](../specs/rfc/AIRA-RFC-0111-phase-l-execution-boundary.md) — id **confirmed free** at `#217`.
+- Per-atom RFC-S/RFC-D у `#218`–`#222` (окремі файли; не RFC-A). RFC-0111 exists at close.
 
 ## 8. Activation rule
 
 ```text
 #216 DONE (RFC-0104) + post-K audit 2026-09-03 + /autopilot → цей план активовано атомом `#217`.
-#217 wiring DONE; `#218` Activate evidence DONE (RFC-0112); `#219` Child env DONE (RFC-0113); `#220` Bounded pipes DONE (RFC-0114); `#221` ProblemRecord split DONE (RFC-0115); `#222` network=none contract DONE (RFC-0116); `#223` OPEN.
-RFC-0111 file-free until `#223`.
+#217 wiring DONE; `#218` Activate evidence DONE (RFC-0112); `#219` Child env DONE (RFC-0113); `#220` Bounded pipes DONE (RFC-0114); `#221` ProblemRecord split DONE (RFC-0115); `#222` network=none contract DONE (RFC-0116); `#223` RFC-0111 + close DONE.
+QUEUE L closed.
 ```

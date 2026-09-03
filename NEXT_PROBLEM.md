@@ -3,7 +3,7 @@
 **Status:** RESOLVED / provenance  
 **Resolved by:** [`docs/desktop-ux.md`](docs/desktop-ux.md) + [`docs/phase-e-plan.md`](docs/phase-e-plan.md) (`#75`–`#106` **DONE**, 2026-08-22)  
 **Post-resolution stabilization:** [`docs/phase-f-plan.md`](docs/phase-f-plan.md) (`#107`–`#119` **DONE**, 2026-08-24)  
-**Active backlog:** [`QUEUE.md`](QUEUE.md) Phase L `#217`–`#223` (перший OPEN = `#223`) — [`docs/phase-l-plan.md`](docs/phase-l-plan.md)  
+**Active backlog:** [`QUEUE.md`](QUEUE.md) Phase L `#217`–`#223` **DONE** @ RFC-0111; QUEUE L closed — [`docs/phase-l-plan.md`](docs/phase-l-plan.md)  
 **Не канон:** цей файл не конкурує з `desktop-ux.md` / `phase-e-plan.md` / `QUEUE.md`. Далі — лише історичний problem statement.
 
 ## Problem statement (вхід)
@@ -103,4 +103,4 @@
 
 - Desktop acceptance / profiles — [`docs/phase-e-plan.md`](docs/phase-e-plan.md), [`docs/desktop-network-profiles.md`](docs/desktop-network-profiles.md).
 - Post-E stabilization — [`docs/phase-f-plan.md`](docs/phase-f-plan.md) (**DONE**).
-- Активна лінійна черга — Phase L [`docs/phase-l-plan.md`](docs/phase-l-plan.md); виконання — перший OPEN `#223` у [`QUEUE.md`](QUEUE.md).
+- Активна лінійна черга — Phase L [`docs/phase-l-plan.md`](docs/phase-l-plan.md) **DONE** @ RFC-0111; QUEUE L closed; немає OPEN у [`QUEUE.md`](QUEUE.md).
