@@ -139,6 +139,17 @@ Shipped на HTTP: mTLS require + CN→TrustStore (A-51/55); plain `--health-lis
 
 Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.md); окремо від HTTP API.
 
+## generate-local `network=none` (RFC-0116)
+
+`constraints.network = none` on `text.generate.local` is an **AIRA-mediated** adapter contract, not an OS sandbox:
+
+- MockBackend / ProcessBackend open **no sockets**. AIRA does not initiate WAN.
+- The child is **not** Landlock / seccomp / network-namespace isolated.
+- ollama-style CLI may use **loopback** to a local daemon; that is a host-process exception, not `network=none` OS enforcement.
+- llama.cpp-style argv is offline.
+
+C1 `Calculate 2 + 2` still uses `execution-basic` and never this path. See [`AIRA-RFC-0116`](../specs/rfc/AIRA-RFC-0116-network-none-contract.md).
+
 ## Notes
 
 - Config: `config.json` (from `aira init`) **or** `config.yaml` (same `NodeConfig` schema). Both present → fail-closed. Init never writes YAML.

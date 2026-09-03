@@ -67,7 +67,7 @@ Additive. Existing capsule fixtures and C0/C1 unchanged. `Calculate 2 + 2` remai
 
 ## 10. Security Impact
 
-Payload requires `signature` and forbids shell/network in the data shape. This RFC does not execute generate, spawn a backend, or load weights.
+Payload requires `signature` and forbids shell in the data shape. `network=none` is **AIRA-mediated** (adapter opens no sockets); it is **not** OS isolation — see RFC-0116 (`#222`). This RFC does not execute generate, spawn a backend, or load weights.
 
 ## 11. Privacy Impact
 

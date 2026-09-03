@@ -542,6 +542,25 @@ mod tests {
             Some(&Value::String("none".into()))
         );
         assert_eq!(constraints.get("shell"), Some(&Value::Bool(false)));
+        let schema_text =
+            std::fs::read_to_string(root.join("schemas/execution/generate-local.schema.json"))
+                .unwrap();
+        assert!(
+            schema_text.contains("AIRA-mediated"),
+            "generate-local network description must be AIRA-mediated"
+        );
+        assert!(
+            schema_text.contains("Not an OS network-off sandbox"),
+            "generate-local must not claim OS isolation"
+        );
+        assert!(
+            schema_text.contains("loopback"),
+            "generate-local must document ollama-style loopback exception"
+        );
+        assert!(
+            !schema_text.contains("Host-local generate: no network."),
+            "stale OS-sounding network description must be gone"
+        );
         assert!(v.get("llm_model_id").is_none());
         assert!(v.get("gpu_id").is_none());
         let mut extra = v.clone();

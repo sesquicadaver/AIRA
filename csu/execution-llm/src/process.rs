@@ -9,9 +9,11 @@
 //! Pipes (`#220`): stdout/stderr are capped **during** read. Overflow → fail-closed,
 //! never a truncated CapsuleCompleted / fake VERIFIED.
 //!
-//! Network (RFC-0105 / RFC-0110): the payload still requires `network=none`.
-//! This adapter opens **no sockets**. A child such as `ollama` may talk to a
-//! loopback daemon; AIRA does not initiate WAN. llama.cpp-style argv is offline.
+//! Network (RFC-0105 / RFC-0110 / RFC-0116): `constraints.network = none` is
+//! **AIRA-mediated**. This adapter opens **no sockets**. It is **not** an OS
+//! network-off sandbox (no Landlock / seccomp / netns). A child such as
+//! `ollama` may talk to a loopback daemon — an explicit host-process exception,
+//! not `network=none` OS enforcement. llama.cpp-style argv is offline.
 //!
 //! Missing binary, spawn failure, non-zero exit, timeout, empty stdout, or pipe
 //! overflow → error string for
@@ -33,6 +35,10 @@ use super::{GenerateBackend, GenerateLocalPayload, ACTION_GENERATE_LOCAL, MOCK_B
 
 /// Backend id stamped on successful process output.
 pub const PROCESS_BACKEND_ID: &str = "process";
+
+/// Honest `constraints.network = none` (RFC-0116). Adapter-only; not OS isolation.
+pub const NETWORK_NONE_CONTRACT: &str =
+    "AIRA-mediated none (adapter opens no sockets; child is not OS-isolated)";
 
 /// Fail-closed when the CLI binary is not on PATH and not an existing file.
 pub const MISSING_BINARY: &str = "generate process binary missing (fail-closed; not VERIFIED)";
@@ -115,7 +121,8 @@ impl ProcessBackend {
 
     /// ollama-style: `{program} run {model} {prompt}`.
     ///
-    /// AIRA still does not open sockets. The child may use loopback only.
+    /// AIRA still does not open sockets (RFC-0116). The child may use loopback
+    /// only; that is not OS `network=none` enforcement.
     pub fn ollama(program: impl Into<PathBuf>, model: impl Into<String>) -> Self {
         Self::new(program).with_args(["run", &model.into()])
     }
@@ -398,6 +405,31 @@ mod tests {
         assert_eq!(backend_kind_from(Some("mock")), MOCK_BACKEND_ID);
         assert_eq!(backend_kind_from(Some("PROCESS")), PROCESS_BACKEND_ID);
         assert_eq!(backend_kind_from(Some("process")), PROCESS_BACKEND_ID);
+    }
+
+    #[test]
+    fn process_backend_adapter_does_not_open_sockets() {
+        let src = include_str!("process.rs");
+        let prod = src
+            .split("#[cfg(test)]")
+            .next()
+            .expect("production ProcessBackend source");
+        for needle in [
+            "std::net::",
+            "TcpStream",
+            "TcpListener",
+            "UdpSocket",
+            "reqwest",
+            "hyper::",
+            "ureq",
+        ] {
+            assert!(
+                !prod.contains(needle),
+                "ProcessBackend must not open sockets; found {needle}"
+            );
+        }
+        assert!(prod.contains(NETWORK_NONE_CONTRACT));
+        assert!(prod.contains("OS-isolated"));
     }
 
     #[test]

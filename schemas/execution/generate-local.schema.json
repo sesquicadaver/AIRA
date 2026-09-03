@@ -41,7 +41,7 @@
         "network": {
           "type": "string",
           "const": "none",
-          "description": "Host-local generate: no network."
+          "description": "AIRA-mediated none: the generate adapter opens no sockets. Not an OS network-off sandbox. ollama-style child loopback is an explicit host-process exception."
         },
         "shell": {
           "type": "boolean",

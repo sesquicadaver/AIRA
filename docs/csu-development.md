@@ -12,7 +12,8 @@ Signed `CsuManifest` (`aira:schema:csu:manifest:0.1`):
 
 - `csu_id`, `csu_type`, `abi_version` (`0.1`)
 - `event_subscriptions` / `event_outputs`
-- `sandbox` with `network: none`, `secret_access: none` for basic CSUs
+- `sandbox` with `network: none`, `secret_access: none` for basic CSUs (declared contract, not Landlock)
+- Generate-local payload `constraints.network = none` is a separate AIRA-mediated adapter rule ([`local-node.md`](local-node.md) / RFC-0116): the generate adapter opens no sockets; the child is not an OS network-off sandbox.
 - non-empty `signature.signature_value` (unsigned manifests are rejected)
 
 Validate:

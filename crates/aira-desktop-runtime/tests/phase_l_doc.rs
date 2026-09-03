@@ -59,7 +59,7 @@ fn phase_l_queue_wiring_217_done() {
         !text.contains("| 217 | **OPEN**"),
         "QUEUE #217 must not stay OPEN after wiring"
     );
-    for n in 222..=223 {
+    for n in 223..=223 {
         let open = format!("| {n} | **OPEN**");
         let done = format!("| {n} | **DONE**");
         assert!(text.contains(&open), "QUEUE #{n} must be OPEN after wiring");
@@ -68,6 +68,14 @@ fn phase_l_queue_wiring_217_done() {
             "QUEUE #{n} must not be DONE at wiring"
         );
     }
+    assert!(
+        text.contains("| 222 | **DONE**"),
+        "QUEUE #222 must be DONE after network=none contract"
+    );
+    assert!(
+        !text.contains("| 222 | **OPEN**"),
+        "QUEUE #222 must not stay OPEN after network=none contract"
+    );
     assert!(
         text.contains("| 221 | **DONE**"),
         "QUEUE #221 must be DONE after ProblemRecord split"
@@ -305,6 +313,53 @@ fn phase_l_problem_record_221() {
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
     assert!(status.contains("| #221 | ProblemRecord split"));
     assert!(status.contains("RFC-0115"));
+    let hits = rfc_0111_hits();
+    assert!(
+        hits.is_empty(),
+        "RFC-0111 must stay file-free, found {hits:?}"
+    );
+}
+
+#[test]
+fn phase_l_network_none_222() {
+    let schema = repo_root().join("schemas/execution/generate-local.schema.json");
+    let schema_text = std::fs::read_to_string(&schema).expect("generate-local.schema.json");
+    for needle in ["AIRA-mediated", "Not an OS network-off sandbox", "loopback"] {
+        assert!(
+            schema_text.contains(needle),
+            "generate-local schema missing: {needle}"
+        );
+    }
+    assert!(!schema_text.contains("Host-local generate: no network."));
+    let process = std::fs::read_to_string(repo_root().join("csu/execution-llm/src/process.rs"))
+        .expect("process.rs");
+    for needle in [
+        "NETWORK_NONE_CONTRACT",
+        "fn process_backend_adapter_does_not_open_sockets",
+        "OS-isolated",
+        "network-off sandbox",
+    ] {
+        assert!(process.contains(needle), "process.rs missing: {needle}");
+    }
+    let lib = std::fs::read_to_string(repo_root().join("csu/execution-llm/src/lib.rs")).unwrap();
+    assert!(lib.contains("fn network_not_none_is_capsule_failed_aira_mediated"));
+    let local = std::fs::read_to_string(repo_root().join("docs/local-node.md")).unwrap();
+    for needle in ["AIRA-mediated", "Landlock", "loopback", "RFC-0116"] {
+        assert!(local.contains(needle), "local-node.md missing: {needle}");
+    }
+    let rfc = repo_root().join("specs/rfc/AIRA-RFC-0116-network-none-contract.md");
+    assert!(rfc.is_file(), "RFC-0116 must exist for #222");
+    let rfc_text = std::fs::read_to_string(&rfc).unwrap();
+    assert!(rfc_text.contains("AIRA-RFC-0116"));
+    assert!(rfc_text.contains("not") && rfc_text.contains("OS"));
+    assert!(rfc_text.contains("## 5. Non-Goals"));
+    let queue = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(queue.contains("| 222 | **DONE**"));
+    assert!(!queue.contains("| 222 | **OPEN**"));
+    let status =
+        std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
+    assert!(status.contains("| #222 | `network=none` contract"));
+    assert!(status.contains("RFC-0116"));
     let hits = rfc_0111_hits();
     assert!(
         hits.is_empty(),

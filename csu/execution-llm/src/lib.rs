@@ -1,5 +1,6 @@
 //! Execution-llm CSU (QUEUE #211 / Analyze-246; plane `#213`; activate gate `#214`;
-//! process backend `#215`; child env whitelist `#219`; bounded pipes `#220`).
+//! process backend `#215`; child env whitelist `#219`; bounded pipes `#220`;
+//! network=none contract `#222`).
 //!
 //! Host-local `text.generate.local` capsules complete only through a bound
 //! [`GenerateBackend`] **and** a bound [`ModelActivateGate`]. [`MockBackend`] is
@@ -13,7 +14,8 @@
 //! skipped so fan-out with execution-basic does not fail C1 `math.eval.safe`.
 //! Process backend is selectable; default plane/CI stay mock. Child spawn uses
 //! `env_clear` plus PATH/HOME/LANG (`#219`). stdout/stderr are capped during read
-//! (`#220`). No Cargo dep on
+//! (`#220`). `network=none` is AIRA-mediated (`#222` / RFC-0116): the adapter
+//! opens no sockets; the child is not an OS network-off sandbox. No Cargo dep on
 //! inventory/acquisition CSUs.
 
 mod process;
@@ -21,8 +23,8 @@ mod process;
 pub use process::{
     backend_kind_from, backend_kind_from_env, ProcessBackend, CHILD_ENV_ALLOWLIST, EMPTY_STDOUT,
     ENV_LLM_BACKEND, ENV_PROCESS_ARGS, ENV_PROCESS_BIN, ENV_PROCESS_TIMEOUT_MS, MISSING_BINARY,
-    NONZERO_EXIT, PIPE_OVERFLOW, PIPE_STDERR_LIMIT, PIPE_STDOUT_LIMIT, PROCESS_BACKEND_ID,
-    SPAWN_FAILED, TIMED_OUT,
+    NETWORK_NONE_CONTRACT, NONZERO_EXIT, PIPE_OVERFLOW, PIPE_STDERR_LIMIT, PIPE_STDOUT_LIMIT,
+    PROCESS_BACKEND_ID, SPAWN_FAILED, TIMED_OUT,
 };
 
 use aira_artifact::ArtifactType;
@@ -45,7 +47,10 @@ pub const MOCK_BACKEND_ID: &str = "mock";
 /// Fail-closed activate-gate message. Not a VERIFIED result.
 pub const ACTIVATE_DENIED: &str = "model is not Phase D activated (fail-closed; not VERIFIED)";
 
-/// Constraints frozen by the generate-local schema (`network=none`, `shell=false`).
+/// Constraints frozen by the generate-local schema.
+///
+/// `network=none` is AIRA-mediated ([`NETWORK_NONE_CONTRACT`]): the adapter
+/// opens no sockets. It is not an OS sandbox.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GenerateLocalConstraints {
@@ -88,7 +93,9 @@ impl GenerateLocalPayload {
             return Err("prompt must be non-empty".into());
         }
         if self.constraints.network != "none" {
-            return Err("network access forbidden".into());
+            return Err(format!(
+                "network access forbidden ({NETWORK_NONE_CONTRACT})"
+            ));
         }
         if self.constraints.shell {
             return Err("shell execution forbidden".into());
@@ -664,6 +671,34 @@ mod tests {
         assert!(failed(&outs));
         assert!(!completed(&outs));
         assert!(!has_verified_result(&outs));
+    }
+
+    #[test]
+    fn network_not_none_is_capsule_failed_aira_mediated() {
+        let mut csu = ExecutionLlmCsu::new()
+            .with_mock_backend()
+            .with_activate_gate(AlwaysActivated);
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let mut body = valid_generate_body();
+        body["constraints"]["network"] = json!("full");
+        let cap = bind_capsule(&mut store, &body);
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(failed(&outs));
+        assert!(!completed(&outs));
+        assert!(!has_verified_result(&outs));
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Failure { message }
+                if message.contains(NETWORK_NONE_CONTRACT)
+        )));
     }
 
     #[test]

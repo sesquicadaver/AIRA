@@ -78,7 +78,7 @@ Additive. Default plane/CI behavior is unchanged (MockBackend). Operators opt in
 ## 10. Security Impact
 
 - `shell=false`: spawn is `Command::new(program)` + explicit args. Never `sh -c`.
-- `network=none` on the payload remains required. ProcessBackend opens **no sockets**.
+- `network=none` on the payload remains required. ProcessBackend opens **no sockets**. Normative reading: RFC-0116 (`#222`) — AIRA-mediated, not OS sandbox.
 - Network choice: AIRA does not initiate WAN. A child such as `ollama` may use **loopback** to a local daemon; llama.cpp-style argv is offline. No WAN from this crate.
 - Missing binary is fail-closed, not a fake VERIFIED / CapsuleCompleted.
 
