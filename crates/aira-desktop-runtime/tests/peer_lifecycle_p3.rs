@@ -86,6 +86,10 @@ fn free_listen() -> String {
     format!("127.0.0.1:{port}")
 }
 
+fn free_peer_listen() -> String {
+    aira_peer::format_available_loopback_tcp_bind().expect("prime peer bind")
+}
+
 fn relay_hub_path(root: &Path) -> PathBuf {
     root.join("peers").join("relay_hub.json")
 }
@@ -108,7 +112,7 @@ fn start_p3_with_ports(
 ) -> (aira_desktop_runtime::StartOutcome, String, String) {
     for attempt in 0..PORT_RETRY_ATTEMPTS {
         let http = free_listen();
-        let peer = free_listen();
+        let peer = free_peer_listen();
         let mut settings = load_or_create_settings(paths).unwrap();
         settings.http_listen = http.clone();
         settings.network_profile = NetworkProfile::P3;

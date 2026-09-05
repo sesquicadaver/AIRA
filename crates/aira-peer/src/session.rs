@@ -1,6 +1,6 @@
 //! Authenticated peer session: dial / accept + Noise XX + envelope exchange.
 
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -229,6 +229,7 @@ pub async fn dial(
     }
     let book = AddressBook::load(&local_root)?;
     let addr = book.resolve(peer_identity_id)?;
+    crate::prime_port::validate_aira_port(addr.port())?;
     let mut stream =
         with_timeout(async { TcpStream::connect(addr).await.map_err(PeerError::from) }).await?;
     let hello = with_timeout(handshake_as_initiator(&mut stream, &local_root)).await?;
@@ -279,6 +280,7 @@ fn is_loopback_bind(bind: &str) -> bool {
 
 /// Bind a **loopback** listener for inbound peer links.
 pub async fn listen(bind: &str) -> Result<TcpListener, PeerError> {
+    crate::prime_port::validate_aira_bind(bind)?;
     if !is_loopback_bind(bind) {
         return Err(PeerError::Io(format!(
             "P0 listen requires loopback bind, got {bind} — use listen_explicit for overrides"
@@ -298,5 +300,26 @@ pub async fn listen(bind: &str) -> Result<TcpListener, PeerError> {
 
 /// Bind without loopback restriction (operator / advanced).
 pub async fn listen_explicit(bind: &str) -> Result<TcpListener, PeerError> {
+    crate::prime_port::validate_aira_bind(bind)?;
     Ok(TcpListener::bind(bind).await?)
+}
+
+/// Bind the first free loopback `P_AIRA` TCP port (tests / operators without identity hash).
+pub async fn listen_available_loopback() -> Result<(TcpListener, SocketAddr), PeerError> {
+    for &port in crate::prime_port::p_aira_ports() {
+        let bind = format!("127.0.0.1:{port}");
+        match listen(&bind).await {
+            Ok(listener) => {
+                let addr = listener.local_addr()?;
+                return Ok((listener, addr));
+            }
+            Err(PeerError::InvalidPort(msg)) => {
+                return Err(PeerError::InvalidPort(msg));
+            }
+            Err(_) => continue,
+        }
+    }
+    Err(PeerError::InvalidPort(
+        "no free AIRA prime TCP port available on 127.0.0.1".into(),
+    ))
 }

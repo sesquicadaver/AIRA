@@ -153,7 +153,7 @@ mod tests {
             identity_ref: "aira:identity:desktop".into(),
             public_key_hex: "d4295b4daeeb41c8dcc7ab0823210104b257a68f38f79d26bdd66875265e0444"
                 .into(),
-            addr: Some("127.0.0.1:9797".into()),
+            addr: Some("127.0.0.1:49157".into()),
             display_name: None,
             created_at: None,
         };
@@ -169,7 +169,7 @@ mod tests {
             identity_ref: "aira:identity:desktop".into(),
             public_key_hex: "d4295b4daeeb41c8dcc7ab0823210104b257a68f38f79d26bdd66875265e0444"
                 .into(),
-            addr: Some("127.0.0.1:9797".into()),
+            addr: Some("127.0.0.1:49157".into()),
             display_name: None,
             created_at: None,
         };

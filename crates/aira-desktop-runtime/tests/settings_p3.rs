@@ -37,10 +37,10 @@ fn p3_custom_relay_ttl_kept() {
     let paths = DesktopPaths::for_data_root(tmp.path());
     let mut s = load_or_create_settings(&paths).unwrap();
     s.network_profile = NetworkProfile::P3;
-    s.peer_listen = Some("127.0.0.1:19003".into());
+    s.peer_listen = Some("127.0.0.1:49177".into());
     s.relay_ttl_days = Some(14);
     write_settings(&paths, &s).unwrap();
     let loaded = load_or_create_settings(&paths).unwrap();
     assert_eq!(loaded.relay_ttl_days, Some(14));
-    assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:19003"));
+    assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:49177"));
 }

@@ -51,7 +51,7 @@
     },
     "peer_listen": {
       "type": ["string", "null"],
-      "description": "Peer listen host:port. Unused/null on P0; required for P1+ (runtime default 127.0.0.1:9797)."
+      "description": "Peer listen host:port. Unused/null on P0; required for P1+ (runtime default 127.0.0.1:49157)."
     },
     "relay_ttl_days": {
       "type": ["integer", "null"],

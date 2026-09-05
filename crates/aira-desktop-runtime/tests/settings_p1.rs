@@ -35,8 +35,8 @@ fn p1_custom_peer_listen_kept() {
     let paths = DesktopPaths::for_data_root(tmp.path());
     let mut s = load_or_create_settings(&paths).unwrap();
     s.network_profile = NetworkProfile::P1;
-    s.peer_listen = Some("127.0.0.1:19001".into());
+    s.peer_listen = Some("127.0.0.1:49171".into());
     write_settings(&paths, &s).unwrap();
     let loaded = load_or_create_settings(&paths).unwrap();
-    assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:19001"));
+    assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:49171"));
 }

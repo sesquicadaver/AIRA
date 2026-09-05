@@ -19,19 +19,19 @@ fn export_import_trust_and_book() {
 
     let mut settings = load_or_create_settings(&alice).unwrap();
     settings.network_profile = NetworkProfile::P1;
-    settings.peer_listen = Some("127.0.0.1:19001".into());
+    settings.peer_listen = Some("127.0.0.1:49157".into());
     write_settings(&alice, &settings).unwrap();
 
     let out = tmp.path().join("alice.invite.json");
     let invite = export_invite_file(&alice, &out, None).expect("export");
     assert_eq!(invite.payload_schema, PEER_INVITE_SCHEMA_ID);
-    assert_eq!(invite.addr.as_deref(), Some("127.0.0.1:19001"));
+    assert_eq!(invite.addr.as_deref(), Some("127.0.0.1:49157"));
     assert!(out.is_file());
 
     let applied = import_invite_file(&bob, &out).expect("import");
     assert!(applied.trusted);
     assert!(applied.book_updated);
-    assert_eq!(applied.addr.as_deref(), Some("127.0.0.1:19001"));
+    assert_eq!(applied.addr.as_deref(), Some("127.0.0.1:49157"));
 
     let store = TrustStore::load(&bob.data_root).unwrap();
     assert!(store
@@ -45,7 +45,7 @@ fn export_import_trust_and_book() {
     assert!(book
         .peers
         .iter()
-        .any(|p| p.identity_id == invite.identity_ref && p.addr == "127.0.0.1:19001"));
+        .any(|p| p.identity_id == invite.identity_ref && p.addr == "127.0.0.1:49157"));
 }
 
 #[test]

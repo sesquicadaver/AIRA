@@ -1,4 +1,4 @@
-//! Phase N wiring contract (#231). Per-atom tests land with #232–#247.
+//! Phase N contract smoke (#231 wiring; #232 Prime Port). Per-atom tests land with #233–#247.
 
 use std::path::PathBuf;
 
@@ -52,7 +52,7 @@ fn phase_n_plan_present() {
 }
 
 #[test]
-fn phase_n_queue_wiring_231_done() {
+fn phase_n_queue_232_done() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(
         text.contains("phase-n-plan.md"),
@@ -60,23 +60,29 @@ fn phase_n_queue_wiring_231_done() {
     );
     assert!(
         text.contains("| 231 | **DONE**"),
-        "QUEUE #231 must be DONE after wiring"
+        "QUEUE #231 must stay DONE"
     );
     assert!(
-        !text.contains("| 231 | **OPEN**"),
-        "QUEUE #231 must not stay OPEN after wiring"
+        text.contains("| 232 | **DONE**"),
+        "QUEUE #232 must be DONE after Prime Port"
     );
-    for n in 232..=247 {
+    assert!(
+        !text.contains("| 232 | **OPEN**"),
+        "QUEUE #232 must not stay OPEN after Prime Port"
+    );
+    for n in 233..=247 {
         let open = format!("| {n} | **OPEN**");
         let done = format!("| {n} | **DONE**");
-        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #231");
-        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #231");
+        assert!(text.contains(&open), "QUEUE #{n} must be OPEN after #232");
+        assert!(!text.contains(&done), "QUEUE #{n} must not be DONE at #232");
     }
     for needle in [
-        "N0 govern",
-        "Analyze-266",
-        "RFC-0123",
-        "Prime Port",
+        "N1 Prime Port",
+        "Analyze-267",
+        "RFC-0124",
+        "P_AIRA",
+        "1491",
+        "перший OPEN `#233`",
         "QUEUE M closed",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -93,6 +99,28 @@ fn phase_n_rfc_0123_id_free() {
 }
 
 #[test]
+fn phase_n_rfc_0124_prime_port_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0124-prime-port.md");
+    let text = std::fs::read_to_string(&path).unwrap();
+    for needle in [
+        "Prime Private Port",
+        "P_AIRA",
+        "1491",
+        "49157",
+        "65521",
+        "#232",
+        "#233",
+        "fail closed",
+        "Fail-closed",
+        "HTTP",
+        "STUN",
+        "Polygon",
+    ] {
+        assert!(text.contains(needle), "RFC-0124 missing: {needle}");
+    }
+}
+
+#[test]
 fn phase_n_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-n-plan.md"));
@@ -100,8 +128,8 @@ fn phase_n_readme_and_docs_index() {
     assert!(readme.contains("#247"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-n-plan.md"));
-    assert!(docs.contains("#231"));
-    assert!(docs.contains("#247"));
+    assert!(docs.contains("#232"));
+    assert!(docs.contains("#233"));
 }
 
 #[test]
@@ -112,12 +140,13 @@ fn phase_m_points_to_phase_n() {
 }
 
 #[test]
-fn phase_n_status_row_231() {
+fn phase_n_status_row_232() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
     assert!(status.contains("Phase N gates"));
     assert!(status.contains("phase_n_doc.rs"));
-    assert!(status.contains("| #231 | Phase N wiring + contract"));
+    assert!(status.contains("| #232 | Prime Port invariant"));
+    assert!(status.contains("RFC-0124"));
     assert!(status.contains("phase-n-plan.md"));
 }
 
@@ -129,12 +158,12 @@ fn phase_n_next_problem() {
         "NEXT_PROBLEM must stay provenance"
     );
     assert!(
-        !text.contains("немає OPEN (QUEUE M closed)") && !text.contains("перший OPEN = `#231`"),
-        "NEXT_PROBLEM must not keep M-closed-only or #231 as first-OPEN after wiring"
+        !text.contains("перший OPEN = `#232`") && !text.contains("first OPEN `#232`"),
+        "NEXT_PROBLEM must not keep #232 as first-OPEN after Prime Port"
     );
     assert!(
-        text.contains("перший OPEN = `#232`") || text.contains("first OPEN `#232`"),
-        "NEXT_PROBLEM must point at first OPEN #232"
+        text.contains("перший OPEN = `#233`") || text.contains("first OPEN `#233`"),
+        "NEXT_PROBLEM must point at first OPEN #233"
     );
     assert!(
         text.contains("QUEUE M closed"),
@@ -144,4 +173,16 @@ fn phase_n_next_problem() {
         text.contains("phase-n-plan.md") || text.contains("QUEUE.md"),
         "NEXT_PROBLEM must point at QUEUE / Phase N"
     );
+}
+
+#[test]
+fn phase_n_prime_port_module_contract() {
+    assert_eq!(aira_peer::P_AIRA_COUNT, 1491);
+    assert_eq!(aira_peer::P_AIRA_FIRST, 49157);
+    assert_eq!(aira_peer::P_AIRA_LAST, 65521);
+    assert!(aira_peer::is_valid_aira_port(49157));
+    assert!(!aira_peer::is_valid_aira_port(9797));
+    assert!(!aira_peer::is_valid_aira_port(0));
+    assert!(aira_peer::validate_aira_bind("127.0.0.1:49157").is_ok());
+    assert!(aira_peer::validate_aira_bind("127.0.0.1:9797").is_err());
 }

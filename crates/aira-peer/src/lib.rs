@@ -10,6 +10,7 @@
 //! Analyze-66: STUN Binding client + `peers/stun_reflexive.json` (no ICE; dial stays TCP/book).
 //! Analyze-67: UDP discv5-style announce (signed datagram → local DHT store).
 //! Analyze-68: iterative FIND_NODE over UDP discv (XOR closest; no apply-book).
+//! QUEUE #232: Prime Private Port Invariant for AIRA-owned peer/discv/relay endpoints.
 
 mod address_book;
 mod dht;
@@ -22,6 +23,7 @@ mod gossip;
 mod handshake;
 mod noise;
 mod notify;
+mod prime_port;
 mod relay;
 mod replay;
 mod session;
@@ -59,6 +61,12 @@ pub use noise::{
 pub use notify::{
     notify_peer_of_rekey, notify_peers_of_rekey, upcoming_rekey_delta, NotifyPeerResult,
 };
+pub use prime_port::{
+    format_available_loopback_tcp_bind, is_prime_port, is_valid_aira_port, p_aira_ports,
+    parse_bind_port, select_available_loopback_tcp, select_available_loopback_udp,
+    validate_aira_bind, validate_aira_port, P_AIRA_COUNT, P_AIRA_FIRST, P_AIRA_LAST,
+    P_AIRA_RANGE_MAX, P_AIRA_RANGE_MIN,
+};
 pub use relay::{
     make_relay_deliver_envelope, parse_relay_deliver, send_envelope_to_peer, serve_relay_peer,
     with_relay_hub_registry, RelayDeliver, RelayHub, RelayHubEntry, RelayHubRegistry,
@@ -67,7 +75,8 @@ pub use relay::{
 };
 pub use replay::{admit_received_envelope, envelope_replay_path};
 pub use session::{
-    accept, accept_tcp, complete_accept, dial, listen, listen_explicit, AuthenticatedPeer,
+    accept, accept_tcp, complete_accept, dial, listen, listen_available_loopback, listen_explicit,
+    AuthenticatedPeer,
     DEFAULT_PEER_TIMEOUT,
 };
 pub use stun::{

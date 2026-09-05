@@ -457,7 +457,7 @@ pub(crate) enum PeerCommands {
     /// Daemon mode (Analyze-59): TCP accept stays on the loop; hello/Noise (+recv/relay)
     /// run on per-connection tasks so a slow handshake cannot block further accepts.
     Listen {
-        #[arg(long, default_value = "127.0.0.1:0")]
+        #[arg(long, default_value = "127.0.0.1:49157")]
         bind: String,
         /// Exit after one successful accept (and optional recv).
         #[arg(long, default_value_t = false)]
@@ -601,7 +601,7 @@ pub(crate) enum PeerStunCommands {
 pub(crate) enum PeerDiscvCommands {
     /// Bind UDP and apply inbound signed announces into `peers/dht.json` (`source=udp`).
     Listen {
-        #[arg(long, default_value = "127.0.0.1:0")]
+        #[arg(long, default_value = "127.0.0.1:49157")]
         bind: String,
         /// Exit after one successful store.
         #[arg(long, default_value_t = false)]

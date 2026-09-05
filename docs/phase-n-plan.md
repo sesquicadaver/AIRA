@@ -105,8 +105,8 @@ N0 govern (wiring)
 
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
-| `#231` | N0 | Phase N wiring **DONE** | цей план **IN PROGRESS**; QUEUE `#231` DONE; `#232`–`#247` OPEN; `phase_n_doc` | Prime Port (#232) |
-| `#232` | N1 | Prime Port invariant | `prime_port` module; `|P_AIRA|==1491`; fail-closed non-prime AIRA endpoints | preferred selection (#233) |
+| `#231` | N0 | Phase N wiring **DONE** | QUEUE `#231` DONE; `phase_n_doc` | Prime Port (#232) |
+| `#232` | N1 | Prime Port invariant **DONE** | `prime_port`; `|P_AIRA|==1491`; fail-closed; RFC-0124 | preferred selection (#233) |
 | `#233` | N2 | Deterministic port selection | `preferred_port(identity, class)`; collision → next; wrap finite | Presence (#234) |
 | `#234` | N3 | Presence Record | schema + canonical Ed25519; mutation tests | Rendezvous trait (#235) |
 | `#235` | N4 | RendezvousProvider | trait API; no ledger-specific in Core | EVM adapter (#236) |

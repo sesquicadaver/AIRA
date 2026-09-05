@@ -7,6 +7,6 @@
   "instance_id": "aira:instance:desktop-fixture-p3",
   "http_auth_mode": "bearer_token",
   "http_token_ref": "runtime/http-token",
-  "peer_listen": "127.0.0.1:9797",
+  "peer_listen": "127.0.0.1:49157",
   "relay_ttl_days": 31
 }

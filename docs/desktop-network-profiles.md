@@ -9,7 +9,7 @@ Canonical map of Desktop **network profiles** from [`desktop-ux.md`](desktop-ux.
 | Profile | HTTP node | Supervised `peer listen` | Settings extras | GUI surface | QUEUE / RFC |
 |---------|-----------|--------------------------|-----------------|-------------|-------------|
 | **P0** | always loopback | none | `peer_listen=null` | default profile | E1 `#75`–`#79`; RFC-0024 |
-| **P1** | always | `--recv` | `peer_listen` (default `127.0.0.1:9797`) | profile selector; invite file/QR | E1.1 `#80`–`#85`; [`desktop-peer.md`](desktop-peer.md) |
+| **P1** | always | `--recv` | `peer_listen` (default `127.0.0.1:49157`) | profile selector; invite file/QR | E1.1 `#80`–`#85`; [`desktop-peer.md`](desktop-peer.md) |
 | **P2** | always | `--recv --dht --apply-book` | same as P1 | peer status (DHT mode) | `#94`–`#96`; RFC-0044–0046 |
 | **P3** | always | `--relay --relay-ttl-days N` (no `--recv`) | `relay_ttl_days` (default **31**) | Advanced relay toggle + TTL | `#97`–`#99`; RFC-0047–0049 |
 | **P4** | always | `--recv --dht --apply-book --apply-trust --gossip` | mutex with P3 relay flags | Advanced gossip toggle | `#100`–`#102`; RFC-0050–0052 |

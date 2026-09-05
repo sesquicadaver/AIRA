@@ -7,7 +7,7 @@
 ```bash
 aira desktop invite-export --out ~/alice.invite.json
 # P1: includes peer_listen as addr by default
-aira desktop invite-export --out ~/alice.invite.json --addr 127.0.0.1:9797
+aira desktop invite-export --out ~/alice.invite.json --addr 127.0.0.1:49157
 
 aira desktop invite-import --file ~/alice.invite.json
 ```
@@ -18,7 +18,7 @@ Encode compact PeerInvite JSON into a PNG; decode from disk **or** from a live c
 
 ```bash
 aira desktop invite-export-qr --out ~/alice.invite.png
-aira desktop invite-export-qr --out ~/alice.invite.png --addr 127.0.0.1:9797
+aira desktop invite-export-qr --out ~/alice.invite.png --addr 127.0.0.1:49157
 
 aira desktop invite-import-qr --file ~/alice.invite.png
 ```
