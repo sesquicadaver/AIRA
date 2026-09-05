@@ -14,6 +14,7 @@
 //! QUEUE #234: Node Presence Record (canonical Ed25519).
 //! QUEUE #235: RendezvousProvider trait + mock (no ledger in Core).
 //! QUEUE #236: EvmRendezvousProvider local double + Amoy/mainnet config hooks.
+//! QUEUE #237: publish/query product layer (TTL/sequence) + rendezvous.json.
 
 mod address_book;
 mod dht;
@@ -31,6 +32,7 @@ mod presence;
 mod prime_port;
 mod relay;
 mod rendezvous;
+mod rendezvous_ops;
 mod replay;
 mod session;
 mod stun;
@@ -93,6 +95,12 @@ pub use relay::{
     RELAY_HUB_TTL_DAYS_RECOMMENDED,
 };
 pub use rendezvous::{MockRendezvousProvider, RendezvousProvider, RENDEZVOUS_KIND_MOCK};
+pub use rendezvous_ops::{
+    encode_evm_publish_call, presence_ttl_secs, EvmPublishCall, RendezvousClient,
+    RendezvousLocalState, RendezvousPublishPolicy, RENDEZVOUS_MAX_QUERY_RESULTS,
+    RENDEZVOUS_MAX_RECORD_BYTES, RENDEZVOUS_MAX_TTL_SECS, RENDEZVOUS_MIN_TTL_SECS,
+    RENDEZVOUS_STATE_SCHEMA,
+};
 pub use replay::{admit_received_envelope, envelope_replay_path};
 pub use session::{
     accept, accept_tcp, complete_accept, dial, listen, listen_available_loopback, listen_explicit,

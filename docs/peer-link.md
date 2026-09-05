@@ -138,4 +138,9 @@ Ledger-agnostic `aira_peer::RendezvousProvider` + `MockRendezvousProvider` (RFC-
 
 ## EvmRendezvousProvider (Phase N `#236`)
 
-`EvmRendezvousProvider` + local ledger double; Amoy `80002` / Polygon `137` config hooks (RFC-0128). Live JSON-RPC is `#237`. EVM payer ≠ AIRA identity.
+`EvmRendezvousProvider` + local ledger double; Amoy `80002` / Polygon `137` config hooks (RFC-0128). EVM payer ≠ AIRA identity.
+
+
+## Rendezvous publish/query (Phase N `#237`)
+
+`RendezvousClient` enforces TTL/sequence/size/query caps; local `peers/rendezvous.json` (RFC-0129). Reachability is `#238`.
