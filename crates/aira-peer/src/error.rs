@@ -43,6 +43,8 @@ pub enum PeerError {
     Rendezvous(String),
     #[error("reachability: {0}")]
     Reachability(String),
+    #[error("relay: {0}")]
+    Relay(String),
 }
 
 impl From<std::io::Error> for PeerError {
