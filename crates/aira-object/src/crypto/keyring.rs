@@ -334,6 +334,20 @@ pub fn reset_primary_signer() {
     set_primary_signer(AiraRef::parse(LOCAL_TEST_KEY_REF).expect("local-test ref"));
 }
 
+/// Serialize tests that mutate the process-wide keyring / primary signer.
+///
+/// Process slots are `OnceLock` globals shared across the test binary; parallel
+/// `cargo test` workers otherwise race (e.g. `thread_crypto_scopes_do_not_leak`
+/// vs `node_rotate_*`).
+#[cfg(test)]
+pub fn process_crypto_test_lock() -> std::sync::MutexGuard<'static, ()> {
+    use std::sync::{Mutex, OnceLock};
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+}
+
 /// Remove verifying material for `key_ref` from the process keyring.
 ///
 /// Returns `false` (no-op) for [`LOCAL_TEST_KEY_REF`] and the current [`primary_signer`].

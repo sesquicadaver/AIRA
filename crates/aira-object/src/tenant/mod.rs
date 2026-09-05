@@ -40,15 +40,14 @@ mod tests {
     use ed25519_dalek::SigningKey;
     use std::fs;
     use std::path::Path;
-    use std::sync::{Mutex, OnceLock};
     use tempfile::tempdir;
 
     /// Serialize tests that mutate the process-wide tenant map / primary signer.
+    ///
+    /// Shares [`crate::crypto::process_crypto_test_lock`] so tenant and crypto
+    /// smoke tests cannot race the same process primary slot.
     fn tenant_test_lock() -> std::sync::MutexGuard<'static, ()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
+        crate::crypto::process_crypto_test_lock()
     }
 
     fn write_min_node(root: &Path, name: &str, seed: [u8; 32]) {
