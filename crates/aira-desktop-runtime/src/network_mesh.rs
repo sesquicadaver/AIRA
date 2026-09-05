@@ -4,8 +4,8 @@ use std::path::Path;
 
 use aira_object::Keyring;
 use aira_peer::{
-    preferred_port, AddressBook, ReachabilityLocalState, ReachabilityStatus,
-    RendezvousLocalState, StunReflexiveRecord, TransportClass,
+    preferred_port, AddressBook, ReachabilityLocalState, ReachabilityStatus, RendezvousLocalState,
+    StunReflexiveRecord, TransportClass,
 };
 use anyhow::Result;
 
@@ -111,11 +111,7 @@ pub fn load_network_mesh_snapshot(
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .map(str::to_string)
-        .or_else(|| {
-            reach
-                .local_port
-                .map(|p| format!("127.0.0.1:{p}"))
-        });
+        .or_else(|| reach.local_port.map(|p| format!("127.0.0.1:{p}")));
 
     let external_observed = reach
         .observed_endpoint
@@ -133,13 +129,12 @@ pub fn load_network_mesh_snapshot(
     } else {
         "no"
     };
-    let relay_reachability = if reach.status == ReachabilityStatus::RelayOnly
-        || !reach.relay_routes.is_empty()
-    {
-        "yes"
-    } else {
-        "no"
-    };
+    let relay_reachability =
+        if reach.status == ReachabilityStatus::RelayOnly || !reach.relay_routes.is_empty() {
+            "yes"
+        } else {
+            "no"
+        };
 
     Ok(NetworkMeshSnapshot {
         identity,
@@ -164,7 +159,7 @@ mod tests {
 
     use aira_flow::NodePaths;
     use aira_object::{ensure_trust_defaults, sign_with_key, AiraRef};
-    use aira_peer::{RelayRouteRecord};
+    use aira_peer::RelayRouteRecord;
     use ed25519_dalek::SigningKey;
     use tempfile::tempdir;
 
@@ -214,10 +209,12 @@ mod tests {
             .unwrap();
         book.save(root).unwrap();
 
-        let snap =
-            load_network_mesh_snapshot(root, Some("127.0.0.1:49157")).unwrap();
+        let snap = load_network_mesh_snapshot(root, Some("127.0.0.1:49157")).unwrap();
         assert_eq!(snap.identity, id.as_str());
-        assert_eq!(snap.preferred_port, Some(preferred_port(id.as_str(), TransportClass::TcpPeer)));
+        assert_eq!(
+            snap.preferred_port,
+            Some(preferred_port(id.as_str(), TransportClass::TcpPeer))
+        );
         assert_eq!(snap.local_bind.as_deref(), Some("127.0.0.1:49157"));
         assert_eq!(snap.reachability_status, "LOCAL_ONLY");
         assert_eq!(snap.top_level, "OFFLINE");
