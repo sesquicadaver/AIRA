@@ -1,0 +1,15 @@
+{
+  "schema": "aira:schema:peer:reachability-challenge:0.1",
+  "challenge_id": "aira:challenge:fixture01",
+  "nonce_hex": "0123456789abcdef0123456789abcdef",
+  "target_identity_ref": "aira:identity:reach-fixture",
+  "target_public_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "endpoint": "127.0.0.1:49157",
+  "created_at": "2026-09-05T12:00:00Z",
+  "expires_at": "2026-09-05T13:00:00Z",
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:reach-fixture",
+    "signature_value": "00"
+  }
+}

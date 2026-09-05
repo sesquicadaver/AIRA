@@ -175,6 +175,10 @@
     {
       "schema": "aira:schema:peer:presence-record:0.1",
       "file": "fixtures/valid/peer/presence-record.json"
+    },
+    {
+      "schema": "aira:schema:peer:reachability-challenge:0.1",
+      "file": "fixtures/valid/peer/reachability-challenge.json"
     }
   ],
   "invalid": [
@@ -297,6 +301,10 @@
     {
       "schema": "aira:schema:peer:presence-record:0.1",
       "file": "fixtures/invalid/peer/presence-record-missing-identity-ref.json"
+    },
+    {
+      "schema": "aira:schema:peer:reachability-challenge:0.1",
+      "file": "fixtures/invalid/peer/reachability-challenge-missing-target.json"
     }
   ]
 }

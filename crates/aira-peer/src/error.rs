@@ -41,6 +41,8 @@ pub enum PeerError {
     InvalidPort(String),
     #[error("rendezvous: {0}")]
     Rendezvous(String),
+    #[error("reachability: {0}")]
+    Reachability(String),
 }
 
 impl From<std::io::Error> for PeerError {
