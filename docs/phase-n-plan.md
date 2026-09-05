@@ -120,7 +120,7 @@ N0 govern (wiring)
 | `#243` | N12 | CLI **DONE** | peer port/reachability/rendezvous; RFC-0135 | Desktop (#244) |
 | `#244` | N13 | Desktop UX **DONE** | Network panel; RFC-0136 | ab ovo (#245) |
 | `#245` | N14 | Ab ovo integration **DONE** | publish→discover→trust→dial; RFC-0137 | NAT/relay (#246) |
-| `#246` | N15 | NAT/relay integration | both inbound blocked → relay Noise succeeds | RFC close (#247) |
+| `#246` | N15 | NAT/relay integration **DONE** | inbound blocked → relay courier; RFC-0138 | RFC close (#247) |
 | `#247` | N16 | RFC-0123 + close | consolidating RFC; QUEUE N closed | — |
 
 ```text
