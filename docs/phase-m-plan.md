@@ -55,7 +55,7 @@ cross-platform CI matrix for ProcessBackend/desktop
 LLM result semantic verification / remote execution
 full Book II wire / distributed OperationalPlane
 model marketplace
-inventing Phase N
+inventing Phase N **during M** (post-M: [`phase-n-plan.md`](phase-n-plan.md))
 ```
 
 ## 4. Смуги (одна лінія)
@@ -117,3 +117,5 @@ aira-core has no inference.
 #224 wiring DONE; `#225` Landlock DONE (RFC-0118); `#226` seccomp DONE (RFC-0119); `#227` netns DONE (RFC-0120); `#228` sandbox-required DONE (RFC-0121); `#229` OS vs AIRA-mediated DONE (RFC-0122); `#230` RFC-0117 + close DONE.
 QUEUE M closed.
 ```
+
+Далі: [`phase-n-plan.md`](phase-n-plan.md) `#231`–`#247` (RFC-0123 reserved).
