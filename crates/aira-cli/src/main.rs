@@ -74,3 +74,38 @@ mod clap_secret_hex_file {
         assert!(!msg.contains("abababab"));
     }
 }
+
+#[cfg(test)]
+mod phase_n_cli_parse {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn parses_peer_port_reachability_rendezvous() {
+        for args in [
+            vec!["aira", "peer", "port", "status"],
+            vec!["aira", "peer", "port", "select", "--class", "udp-discv"],
+            vec!["aira", "peer", "reachability", "status"],
+            vec!["aira", "peer", "reachability", "check", "--port", "49157"],
+            vec!["aira", "peer", "rendezvous", "status"],
+            vec![
+                "aira",
+                "peer",
+                "rendezvous",
+                "publish",
+                "--ttl-secs",
+                "3600",
+            ],
+            vec![
+                "aira",
+                "peer",
+                "rendezvous",
+                "query",
+                "--identity",
+                "aira:identity:x",
+            ],
+        ] {
+            Cli::try_parse_from(args).expect("phase-n peer CLI should parse");
+        }
+    }
+}

@@ -167,3 +167,7 @@ Peer-assisted signed challenge + attestation; hairpin forbidden (RFC-0130).
 ## Presence refresh (Phase N `#242`)
 
 `refresh_and_sign_presence` / `endpoint_change_and_sign_presence` / `retain_unexpired_presence`: sequence++; renew TTL; endpoint change drops old ads; notify list from AddressBook (RFC-0134). CLI is `#243`.
+
+## Phase N CLI ( `#243`)
+
+`aira peer port status|select`, `reachability status|check`, `rendezvous status|publish|query` orchestrate peer APIs; local-file ledger at `peers/rendezvous_ledger.json` (RFC-0135). Desktop UX is `#244`.

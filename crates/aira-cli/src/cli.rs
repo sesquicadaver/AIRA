@@ -503,6 +503,21 @@ pub(crate) enum PeerCommands {
         #[command(subcommand)]
         command: PeerDiscvCommands,
     },
+    /// Prime port diagnostics (Phase N `#243`).
+    Port {
+        #[command(subcommand)]
+        command: PeerPortCommands,
+    },
+    /// Reachability state / local check (Phase N `#243`).
+    Reachability {
+        #[command(subcommand)]
+        command: PeerReachabilityCommands,
+    },
+    /// Rendezvous publish/query against local-file ledger (Phase N `#243`).
+    Rendezvous {
+        #[command(subcommand)]
+        command: PeerRendezvousCommands,
+    },
     /// Hold an outbound session to a relay (register for inbound delivers).
     RelayHold {
         #[arg(long)]
@@ -631,6 +646,71 @@ pub(crate) enum PeerDiscvCommands {
         to: Option<String>,
         #[arg(long, default_value_t = aira_peer::DHT_DEFAULT_K)]
         k: usize,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub(crate) enum PeerPortCommands {
+    /// Show preferred / suggested AIRA prime port for this node identity.
+    Status {
+        /// Transport class for selection (`tcp-peer` default).
+        #[arg(long, default_value = "tcp-peer")]
+        class: String,
+    },
+    /// Select next free loopback prime starting at preferred (collision walk).
+    Select {
+        #[arg(long, default_value = "tcp-peer")]
+        class: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub(crate) enum PeerReachabilityCommands {
+    /// Print `peers/reachability.json` status.
+    Status,
+    /// Local bind check → `LOCAL_ONLY` (never hairpin DIRECT). Optional JSON probe result.
+    Check {
+        /// Host for bind probe (default loopback).
+        #[arg(long, default_value = "127.0.0.1")]
+        host: String,
+        /// Port to check (default: preferred tcp-peer for this identity).
+        #[arg(long)]
+        port: Option<u16>,
+        /// Apply a verified `ReachabilityResult` JSON file (peer-assisted probe).
+        #[arg(long)]
+        result_json: Option<String>,
+        /// If set with no result, record direct-failed → OFFLINE/OUTBOUND_ONLY/RELAY_ONLY.
+        #[arg(long, default_value_t = false)]
+        mark_direct_failed: bool,
+        /// When `--mark-direct-failed`, claim outbound still works.
+        #[arg(long, default_value_t = true)]
+        outbound_ok: bool,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub(crate) enum PeerRendezvousCommands {
+    /// Print local rendezvous service metadata (`peers/rendezvous.json`).
+    Status,
+    /// Build/sign Presence and publish (or update) into local-file ledger.
+    Publish {
+        /// TCP host to advertise (default 127.0.0.1).
+        #[arg(long, default_value = "127.0.0.1")]
+        host: String,
+        /// Port to advertise (default: preferred tcp-peer).
+        #[arg(long)]
+        port: Option<u16>,
+        /// Presence TTL seconds (default 86400).
+        #[arg(long, default_value_t = aira_peer::PRESENCE_REFRESH_TTL_SECS_DEFAULT)]
+        ttl_secs: u64,
+    },
+    /// Query active peers from local-file ledger at `--as-of` (default now).
+    Query {
+        #[arg(long)]
+        as_of: Option<String>,
+        /// If set, query one identity only.
+        #[arg(long)]
+        identity: Option<String>,
     },
 }
 

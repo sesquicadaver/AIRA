@@ -155,6 +155,114 @@ impl RendezvousProvider for MockRendezvousProvider {
     }
 }
 
+/// Kind id for durable local-file rendezvous (CLI / Desktop offline substrate).
+pub const RENDEZVOUS_KIND_LOCAL_FILE: &str = "local-file";
+
+/// Schema for `peers/rendezvous_ledger.json`.
+pub const RENDEZVOUS_LEDGER_SCHEMA: &str = "aira:peer:rendezvous-ledger:0.1";
+
+/// Durable local rendezvous ledger (file-backed mock semantics; no chain).
+#[derive(Debug, Clone)]
+pub struct LocalFileRendezvousProvider {
+    root: std::path::PathBuf,
+    inner: MockRendezvousProvider,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct RendezvousLedgerFile {
+    schema: String,
+    records: Vec<NodePresenceRecord>,
+}
+
+impl LocalFileRendezvousProvider {
+    /// Load from `<root>/peers/rendezvous_ledger.json` (or empty).
+    pub fn open(root: impl AsRef<std::path::Path>) -> Result<Self, PeerError> {
+        let root = root.as_ref().to_path_buf();
+        let path = Self::path(&root);
+        let mut inner = MockRendezvousProvider::new();
+        if path.exists() {
+            let raw = std::fs::read_to_string(&path).map_err(|e| PeerError::Io(e.to_string()))?;
+            let file: RendezvousLedgerFile =
+                serde_json::from_str(&raw).map_err(|e| PeerError::Rendezvous(e.to_string()))?;
+            if file.schema != RENDEZVOUS_LEDGER_SCHEMA {
+                return Err(PeerError::Rendezvous(format!(
+                    "rendezvous ledger schema mismatch: {}",
+                    file.schema
+                )));
+            }
+            for rec in file.records {
+                rec.verify_canonical_signature()?;
+                inner.by_identity.insert(rec.identity_ref.clone(), rec);
+            }
+        }
+        Ok(Self { root, inner })
+    }
+
+    /// Path to durable ledger.
+    pub fn path(root: impl AsRef<std::path::Path>) -> std::path::PathBuf {
+        root.as_ref().join("peers").join("rendezvous_ledger.json")
+    }
+
+    fn persist(&self) -> Result<(), PeerError> {
+        let path = Self::path(&self.root);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| PeerError::Io(e.to_string()))?;
+        }
+        let mut records: Vec<_> = self.inner.by_identity.values().cloned().collect();
+        records.sort_by(|a, b| a.identity_ref.cmp(&b.identity_ref));
+        let file = RendezvousLedgerFile {
+            schema: RENDEZVOUS_LEDGER_SCHEMA.into(),
+            records,
+        };
+        let json = serde_json::to_string_pretty(&file)?;
+        std::fs::write(&path, format!("{json}\n")).map_err(|e| PeerError::Io(e.to_string()))?;
+        Ok(())
+    }
+}
+
+impl RendezvousProvider for LocalFileRendezvousProvider {
+    fn publish_presence(&mut self, record: NodePresenceRecord) -> Result<(), PeerError> {
+        self.inner.publish_presence(record)?;
+        self.persist()
+    }
+
+    fn update_presence(&mut self, record: NodePresenceRecord) -> Result<(), PeerError> {
+        self.inner.update_presence(record)?;
+        self.persist()
+    }
+
+    fn remove_or_expire_presence(
+        &mut self,
+        identity_ref: &str,
+        as_of: &str,
+        force: bool,
+    ) -> Result<bool, PeerError> {
+        let removed = self
+            .inner
+            .remove_or_expire_presence(identity_ref, as_of, force)?;
+        if removed {
+            self.persist()?;
+        }
+        Ok(removed)
+    }
+
+    fn query_active_peers(&self, as_of: &str) -> Result<Vec<NodePresenceRecord>, PeerError> {
+        self.inner.query_active_peers(as_of)
+    }
+
+    fn query_identity(&self, identity_ref: &str) -> Result<Option<NodePresenceRecord>, PeerError> {
+        self.inner.query_identity(identity_ref)
+    }
+
+    fn query_relays(&self, as_of: &str) -> Result<Vec<NodePresenceRecord>, PeerError> {
+        self.inner.query_relays(as_of)
+    }
+
+    fn provider_kind(&self) -> &'static str {
+        RENDEZVOUS_KIND_LOCAL_FILE
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -336,5 +444,22 @@ mod tests {
         provider.publish_presence(rec).unwrap();
         let same = signed_presence(root, &id, &pub_hex, 1, vec![]);
         assert!(provider.update_presence(same).is_err());
+    }
+
+    #[test]
+    fn local_file_ledger_survives_reopen() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let (id, pub_hex, _) = write_node(root, "rv-file", [45u8; 32]);
+        let rec = signed_presence(root, &id, &pub_hex, 1, vec![]);
+        {
+            let mut p = LocalFileRendezvousProvider::open(root).unwrap();
+            p.publish_presence(rec).unwrap();
+        }
+        let p2 = LocalFileRendezvousProvider::open(root).unwrap();
+        let got = p2.query_identity(id.as_str()).unwrap().unwrap();
+        assert_eq!(got.sequence, 1);
+        assert!(LocalFileRendezvousProvider::path(root).is_file());
+        assert_eq!(p2.provider_kind(), RENDEZVOUS_KIND_LOCAL_FILE);
     }
 }

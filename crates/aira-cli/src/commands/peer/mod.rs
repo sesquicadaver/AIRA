@@ -1,8 +1,11 @@
-//! Peer / DHT / STUN / discv commands (Analyze-81 / QUEUE #129 split).
+//! Peer / DHT / STUN / discv / Phase-N port·reachability·rendezvous (QUEUE #129 / #243).
 
 mod book;
 mod dht;
 mod discv;
+mod port;
+mod reachability;
+mod rendezvous;
 mod session;
 mod stun;
 
@@ -21,6 +24,9 @@ pub(crate) async fn run_peer(root: &Path, command: PeerCommands) -> Result<ExitC
         PeerCommands::Dht { command } => dht::run(root, command).await,
         PeerCommands::Stun { command } => stun::run(root, command).await,
         PeerCommands::Discv { command } => discv::run(root, command).await,
+        PeerCommands::Port { command } => port::run(root, command).await,
+        PeerCommands::Reachability { command } => reachability::run(root, command).await,
+        PeerCommands::Rendezvous { command } => rendezvous::run(root, command).await,
         PeerCommands::Listen {
             bind,
             once,
