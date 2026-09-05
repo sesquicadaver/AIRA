@@ -6,6 +6,11 @@ use ed25519_dalek::SigningKey;
 use std::fs;
 use tempfile::tempdir;
 
+/// Hold across any test that mutates process keyring / primary signer.
+fn lock_process_crypto() -> std::sync::MutexGuard<'static, ()> {
+    process_crypto_test_lock()
+}
+
 #[test]
 fn local_test_sign_verify_roundtrip() {
     let msg = b"aira:artifact:hash-demo";
@@ -61,6 +66,7 @@ fn with_verifying_hex_detached_roundtrip_and_no_local_test() {
 
 #[test]
 fn node_identity_keyring_sign_verify() {
+    let _lock = lock_process_crypto();
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
@@ -108,6 +114,7 @@ fn node_identity_keyring_sign_verify() {
 
 #[test]
 fn active_signature_does_not_fallback_to_local_test() {
+    let _lock = lock_process_crypto();
     reset_primary_signer();
     let missing = AiraRef::parse("aira:identity:no-signing-key").unwrap();
     set_primary_signer(missing.clone());
@@ -123,6 +130,7 @@ fn active_signature_does_not_fallback_to_local_test() {
 
 #[test]
 fn thread_crypto_scopes_do_not_leak() {
+    let _lock = lock_process_crypto();
     reset_primary_signer();
     fn scoped(seed: u8, name: &str) -> (AiraRef, Keyring) {
         let id = AiraRef::parse(format!("aira:identity:{name}")).unwrap();
@@ -138,7 +146,9 @@ fn thread_crypto_scopes_do_not_leak() {
         assert_eq!(active_identity().as_str(), id_a.as_str());
         active_signature(b"same-thread").unwrap();
     }
+    // Drop restores process primary; under the shared lock it stays local-test.
     assert_eq!(primary_signer().as_str(), LOCAL_TEST_KEY_REF);
+    assert_ne!(primary_signer().as_str(), id_a.as_str());
     assert!(process_keyring_snapshot()
         .verifying_key(id_a.as_str())
         .is_none());
@@ -233,6 +243,7 @@ fn trust_upsert_rejects_local_test() {
 
 #[test]
 fn ensure_trust_defaults_strips_legacy_local_test() {
+    let _lock = lock_process_crypto();
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
@@ -565,6 +576,7 @@ fn trust_rekey_grace_allows_old_same_id() {
 
 #[test]
 fn node_signing_secret_rotate_cutover() {
+    let _lock = lock_process_crypto();
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
@@ -638,6 +650,7 @@ fn node_signing_secret_rotate_cutover() {
 
 #[test]
 fn node_rotate_rolls_back_when_node_revoked() {
+    let _lock = lock_process_crypto();
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
@@ -679,6 +692,7 @@ fn node_rotate_rolls_back_when_node_revoked() {
 
 #[test]
 fn node_rotate_requires_existing_identity() {
+    let _lock = lock_process_crypto();
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
@@ -689,6 +703,7 @@ fn node_rotate_requires_existing_identity() {
 
 #[test]
 fn node_rotate_backup_writes_prev() {
+    let _lock = lock_process_crypto();
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
@@ -741,6 +756,7 @@ fn node_rotate_backup_writes_prev() {
 
 #[test]
 fn node_rotate_backup_archives_prior_slot() {
+    let _lock = lock_process_crypto();
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
@@ -797,6 +813,7 @@ fn node_rotate_backup_archives_prior_slot() {
 
 #[test]
 fn node_rotate_backup_fail_closed() {
+    let _lock = lock_process_crypto();
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
@@ -841,6 +858,7 @@ fn node_rotate_backup_fail_closed() {
 
 #[test]
 fn node_rotate_backup_preserves_prev_slot_on_trust_fail() {
+    let _lock = lock_process_crypto();
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
@@ -886,6 +904,7 @@ fn node_rotate_backup_preserves_prev_slot_on_trust_fail() {
 
 #[test]
 fn node_rotate_backup_commit_clears_prev_dir_trap() {
+    let _lock = lock_process_crypto();
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
@@ -931,6 +950,7 @@ fn node_rotate_backup_commit_clears_prev_dir_trap() {
 
 #[test]
 fn node_rotate_grace_allows_old_until() {
+    let _lock = lock_process_crypto();
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
@@ -995,6 +1015,7 @@ fn node_rotate_grace_allows_old_until() {
 
 #[test]
 fn node_rotate_rejects_bad_grace_until() {
+    let _lock = lock_process_crypto();
     let dir = tempdir().unwrap();
     let root = dir.path();
     fs::create_dir_all(root.join("identity")).unwrap();
