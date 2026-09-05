@@ -98,7 +98,7 @@ impl AiraDesktopApp {
             });
         });
         let rv = if snap.rendezvous_provider.is_empty() {
-            format!("{na}")
+            na.to_string()
         } else {
             format!(
                 "{} · seq {} · {}",
