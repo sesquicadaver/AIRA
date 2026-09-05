@@ -17,6 +17,7 @@
 //! QUEUE #237: publish/query product layer (TTL/sequence) + rendezvous.json.
 //! QUEUE #238: peer-assisted Reachability Probe (no hairpin proof).
 //! QUEUE #239: Reachability states + peers/reachability.json.
+//! QUEUE #240: Presence → AddressBook promotion (trust-gated).
 
 mod address_book;
 mod dht;
@@ -31,6 +32,7 @@ mod handshake;
 mod noise;
 mod notify;
 mod presence;
+mod presence_promote;
 mod prime_port;
 mod reachability;
 mod reachability_state;
@@ -82,6 +84,9 @@ pub use presence::{
     empty_capabilities_hash, presence_now, presence_to_value, NodePresenceRecord,
     PresenceDirectEndpoint, PresenceDraft, PresenceReachability, PresenceRelayEndpoint,
     PRESENCE_SCHEMA, PUBLIC_NETWORK_ID,
+};
+pub use presence_promote::{
+    dial_target_from_presence, promote_presence_to_address_book, trust_policy_allows,
 };
 pub use prime_port::{
     format_available_loopback_tcp_bind, is_prime_port, is_valid_aira_port, next_candidate_port,

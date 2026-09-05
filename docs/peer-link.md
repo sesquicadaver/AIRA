@@ -153,4 +153,9 @@ Peer-assisted signed challenge + attestation; hairpin forbidden (RFC-0130).
 
 ## Reachability states (Phase N `#239`)
 
-`ReachabilityLocalState` persists UNKNOWN…OFFLINE in `peers/reachability.json` (RFC-0131). DIRECT only after verified probe. AddressBook promotion is `#240`.
+`ReachabilityLocalState` persists UNKNOWN…OFFLINE in `peers/reachability.json` (RFC-0131). DIRECT only after verified probe.
+
+
+## AddressBook promotion (Phase N `#240`)
+
+`promote_presence_to_address_book`: valid Presence + trust policy → dial book only; no auto-trust (RFC-0132). Relay product path is `#241`.
