@@ -25,8 +25,8 @@ fn discv_announce_smoke_sends() {
     let tmp = tempfile::tempdir().unwrap();
     let paths = DesktopPaths::for_data_root(tmp.path());
     // No listener required: operator shortcut only proves signed send path.
-    let msg = run_discv_announce(&paths, "127.0.0.1:49157", "127.0.0.1:49229").unwrap();
-    assert!(msg.contains("127.0.0.1:49229"));
+    let msg = run_discv_announce(&paths, "127.0.0.1:49157", "127.0.0.1:49253").unwrap();
+    assert!(msg.contains("127.0.0.1:49253"));
 }
 
 #[test]
