@@ -1,0 +1,51 @@
+{
+  "$id": "aira:schema:peer:reachability-challenge:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "challenge_id",
+    "nonce_hex",
+    "target_identity_ref",
+    "target_public_key",
+    "endpoint",
+    "created_at",
+    "expires_at",
+    "signature"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "aira:schema:peer:reachability-challenge:0.1"
+    },
+    "challenge_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nonce_hex": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{32,}$"
+    },
+    "target_identity_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "target_public_key": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{64}$"
+    },
+    "endpoint": {
+      "type": "string",
+      "minLength": 1,
+      "description": "host:port in P_AIRA"
+    },
+    "created_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "expires_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}

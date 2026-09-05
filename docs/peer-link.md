@@ -143,4 +143,9 @@ Ledger-agnostic `aira_peer::RendezvousProvider` + `MockRendezvousProvider` (RFC-
 
 ## Rendezvous publish/query (Phase N `#237`)
 
-`RendezvousClient` enforces TTL/sequence/size/query caps; local `peers/rendezvous.json` (RFC-0129). Reachability is `#238`.
+`RendezvousClient` enforces TTL/sequence/size/query caps; local `peers/rendezvous.json` (RFC-0129).
+
+
+## Reachability Probe (Phase N `#238`)
+
+Peer-assisted signed challenge + attestation; hairpin forbidden (RFC-0130). State machine / `reachability.json` is `#239`.

@@ -15,6 +15,7 @@
 //! QUEUE #235: RendezvousProvider trait + mock (no ledger in Core).
 //! QUEUE #236: EvmRendezvousProvider local double + Amoy/mainnet config hooks.
 //! QUEUE #237: publish/query product layer (TTL/sequence) + rendezvous.json.
+//! QUEUE #238: peer-assisted Reachability Probe (no hairpin proof).
 
 mod address_book;
 mod dht;
@@ -30,6 +31,7 @@ mod noise;
 mod notify;
 mod presence;
 mod prime_port;
+mod reachability;
 mod relay;
 mod rendezvous;
 mod rendezvous_ops;
@@ -87,6 +89,11 @@ pub use prime_port::{
     suggested_aira_port, validate_aira_bind, validate_aira_port, TransportClass,
     PORT_SELECT_VERSION, P_AIRA_COUNT, P_AIRA_FIRST, P_AIRA_LAST, P_AIRA_RANGE_MAX,
     P_AIRA_RANGE_MIN,
+};
+pub use reachability::{
+    ChallengeDraft, ReachabilityAttestation, ReachabilityChallenge, ReachabilityReplayLog,
+    ReachabilityResult, REACHABILITY_ATTESTATION_SCHEMA, REACHABILITY_CHALLENGE_SCHEMA,
+    REACHABILITY_REPLAY_CAP, REACHABILITY_RESULT_SCHEMA,
 };
 pub use relay::{
     make_relay_deliver_envelope, parse_relay_deliver, send_envelope_to_peer, serve_relay_peer,

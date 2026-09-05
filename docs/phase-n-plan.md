@@ -112,7 +112,7 @@ N0 govern (wiring)
 | `#235` | N4 | RendezvousProvider **DONE** | trait + mock; RFC-0127 | EVM adapter (#236) |
 | `#236` | N5 | EVM ledger adapter **DONE** | local double; Amoy/mainnet hooks; RFC-0128 | publish/query (#237) |
 | `#237` | N6 | Publish/query **DONE** | TTL/sequence + rendezvous.json; RFC-0129 | Reachability probe (#238) |
-| `#238` | N7 | Reachability Probe | peer-assisted signed challenge; no hairpin proof | state machine (#239) |
+| `#238` | N7 | Reachability Probe **DONE** | peer-assisted challenge; RFC-0130 | state machine (#239) |
 | `#239` | N8 | Reachability states | UNKNOWN…OFFLINE; `reachability.json` | AddressBook (#240) |
 | `#240` | N9 | AddressBook promotion | valid Presence + trust policy → AddressBook only | relay (#241) |
 | `#241` | N10 | Relay integration | direct→NAT→relay; prime relay ads; dual reservation SHOULD | refresh (#242) |
