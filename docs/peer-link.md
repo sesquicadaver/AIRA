@@ -148,4 +148,9 @@ Ledger-agnostic `aira_peer::RendezvousProvider` + `MockRendezvousProvider` (RFC-
 
 ## Reachability Probe (Phase N `#238`)
 
-Peer-assisted signed challenge + attestation; hairpin forbidden (RFC-0130). State machine / `reachability.json` is `#239`.
+Peer-assisted signed challenge + attestation; hairpin forbidden (RFC-0130).
+
+
+## Reachability states (Phase N `#239`)
+
+`ReachabilityLocalState` persists UNKNOWN…OFFLINE in `peers/reachability.json` (RFC-0131). DIRECT only after verified probe. AddressBook promotion is `#240`.

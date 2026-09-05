@@ -1,4 +1,4 @@
-//! Phase N contract smoke (#231–#238). Per-atom tests land with #239–#247.
+//! Phase N contract smoke (#231–#239). Per-atom tests land with #240–#247.
 
 use std::path::PathBuf;
 
@@ -23,12 +23,12 @@ fn phase_n_plan_present() {
         "Phase N",
         "Global Node Rendezvous",
         "#231",
-        "#238",
+        "#239",
         "#247",
-        "Reachability Probe",
+        "Reachability states",
+        "reachability.json",
         "EvmRendezvousProvider",
         "P_AIRA",
-        "1491",
         "AIRA-RFC-0123",
         "confirmed free",
         "aira-core",
@@ -38,10 +38,10 @@ fn phase_n_plan_present() {
 }
 
 #[test]
-fn phase_n_queue_238_done() {
+fn phase_n_queue_239_done() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-n-plan.md"));
-    for n in 231..=238 {
+    for n in 231..=239 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
@@ -51,21 +51,21 @@ fn phase_n_queue_238_done() {
             "QUEUE #{n} must not stay OPEN"
         );
     }
-    for n in 239..=247 {
+    for n in 240..=247 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
-            "QUEUE #{n} must be OPEN after #238"
+            "QUEUE #{n} must be OPEN after #239"
         );
         assert!(
             !text.contains(&format!("| {n} | **DONE**")),
-            "QUEUE #{n} must not be DONE at #238"
+            "QUEUE #{n} must not be DONE at #239"
         );
     }
     for needle in [
-        "N7 Reachability Probe",
-        "Analyze-273",
-        "RFC-0130",
-        "перший OPEN `#239`",
+        "N8 Reachability states",
+        "Analyze-274",
+        "RFC-0131",
+        "перший OPEN `#240`",
         "QUEUE M closed",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -82,19 +82,20 @@ fn phase_n_rfc_0123_id_free() {
 }
 
 #[test]
-fn phase_n_rfc_0130_probe_present() {
+fn phase_n_rfc_0131_states_present() {
     let text =
-        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0130-reachability-probe.md"))
+        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0131-reachability-states.md"))
             .unwrap();
     for needle in [
-        "ReachabilityChallenge",
-        "hairpin",
-        "#238",
+        "ReachabilityLocalState",
+        "UNKNOWN",
+        "DIRECT_REACHABLE",
+        "reachability.json",
         "#239",
-        "probe",
+        "#240",
         "aira-core",
     ] {
-        assert!(text.contains(needle), "RFC-0130 missing: {needle}");
+        assert!(text.contains(needle), "RFC-0131 missing: {needle}");
     }
 }
 
@@ -103,8 +104,8 @@ fn phase_n_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-n-plan.md"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
-    assert!(docs.contains("#238"));
     assert!(docs.contains("#239"));
+    assert!(docs.contains("#240"));
 }
 
 #[test]
@@ -114,37 +115,34 @@ fn phase_m_points_to_phase_n() {
 }
 
 #[test]
-fn phase_n_status_row_238() {
+fn phase_n_status_row_239() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #238 | Reachability Probe"));
-    assert!(status.contains("RFC-0130"));
+    assert!(status.contains("| #239 | Reachability states"));
+    assert!(status.contains("RFC-0131"));
 }
 
 #[test]
 fn phase_n_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(
-        !text.contains("перший OPEN = `#238`") && !text.contains("first OPEN `#238`"),
-        "NEXT_PROBLEM must not keep #238 as first-OPEN"
+        !text.contains("перший OPEN = `#239`") && !text.contains("first OPEN `#239`"),
+        "NEXT_PROBLEM must not keep #239 as first-OPEN"
     );
     assert!(
-        text.contains("перший OPEN = `#239`") || text.contains("first OPEN `#239`"),
-        "NEXT_PROBLEM must point at first OPEN #239"
+        text.contains("перший OPEN = `#240`") || text.contains("first OPEN `#240`"),
+        "NEXT_PROBLEM must point at first OPEN #240"
     );
     assert!(text.contains("QUEUE M closed"));
 }
 
 #[test]
-fn phase_n_reachability_module_contract() {
+fn phase_n_reachability_state_contract() {
     assert_eq!(
-        aira_peer::REACHABILITY_CHALLENGE_SCHEMA,
-        "aira:schema:peer:reachability-challenge:0.1"
+        aira_peer::REACHABILITY_STATE_SCHEMA,
+        "aira:peer:reachability-state:0.1"
     );
-    assert_eq!(
-        aira_peer::REACHABILITY_RESULT_SCHEMA,
-        "aira:schema:peer:reachability-result:0.1"
-    );
-    let path = repo_root().join("schemas/peer/reachability-challenge.schema.json");
-    assert!(path.is_file(), "missing reachability challenge schema");
+    let st = aira_peer::ReachabilityLocalState::default();
+    assert_eq!(st.status, aira_peer::ReachabilityStatus::Unknown);
+    assert!(!st.may_advertise_direct());
 }

@@ -1,8 +1,8 @@
 //! Peer-assisted Reachability Probe (QUEUE #238 / Phase N).
 //!
 //! Signed challenge + external probe attestation. Hairpin/self-connect
-//! (`probe_identity == target_identity`) is never proof. Full state machine
-//! persistence (`reachability.json`) is `#239`.
+//! (`probe_identity == target_identity`) is never proof. State persistence:
+//! [`crate::reachability_state`].
 
 use std::collections::HashSet;
 use std::path::Path;
