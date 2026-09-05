@@ -19,6 +19,7 @@
 //! QUEUE #239: Reachability states + peers/reachability.json.
 //! QUEUE #240: Presence → AddressBook promotion (trust-gated).
 //! QUEUE #241: Relay integration (direct→NAT→relay; prime ads; dual reservation).
+//! QUEUE #242: Presence refresh (sequence++; expire stale; endpoint change).
 
 mod address_book;
 mod dht;
@@ -34,6 +35,7 @@ mod noise;
 mod notify;
 mod presence;
 mod presence_promote;
+mod presence_refresh;
 mod prime_port;
 mod reachability;
 mod reachability_state;
@@ -89,6 +91,12 @@ pub use presence::{
 };
 pub use presence_promote::{
     dial_target_from_presence, promote_presence_to_address_book, trust_policy_allows,
+};
+pub use presence_refresh::{
+    endpoint_change_and_sign_presence, endpoint_change_presence_draft, is_presence_expired,
+    presence_endpoints_equal, refresh_and_sign_presence, refresh_presence_draft,
+    retain_unexpired_presence, sign_presence_draft_for_node, trusted_peers_to_notify,
+    PRESENCE_REFRESH_TTL_SECS_DEFAULT,
 };
 pub use prime_port::{
     format_available_loopback_tcp_bind, is_prime_port, is_valid_aira_port, next_candidate_port,

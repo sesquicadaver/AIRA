@@ -163,3 +163,7 @@ Peer-assisted signed challenge + attestation; hairpin forbidden (RFC-0130).
 ## Relay integration (Phase N `#241`)
 
 `plan_dial_path` / `RelayAdvertisement` / `select_relay_reservations`: direct→NAT→relay order; prime-port ads; dual reservation SHOULD; no auto-trust (RFC-0133). Live NAT/relay Noise smoke is `#246`.
+
+## Presence refresh (Phase N `#242`)
+
+`refresh_and_sign_presence` / `endpoint_change_and_sign_presence` / `retain_unexpired_presence`: sequence++; renew TTL; endpoint change drops old ads; notify list from AddressBook (RFC-0134). CLI is `#243`.
