@@ -110,7 +110,7 @@ N0 govern (wiring)
 | `#233` | N2 | Deterministic port selection **DONE** | `preferred_port`; collision walk; RFC-0125 | Presence (#234) |
 | `#234` | N3 | Presence Record **DONE** | schema + canonical Ed25519; RFC-0126 | Rendezvous trait (#235) |
 | `#235` | N4 | RendezvousProvider **DONE** | trait + mock; RFC-0127 | EVM adapter (#236) |
-| `#236` | N5 | EVM ledger adapter | local deterministic double; Amoy/mainnet config hooks | publish/query (#237) |
+| `#236` | N5 | EVM ledger adapter **DONE** | local double; Amoy/mainnet hooks; RFC-0128 | publish/query (#237) |
 | `#237` | N6 | Publish/query | publish/update/query_active/query_identity; TTL/sequence | Reachability probe (#238) |
 | `#238` | N7 | Reachability Probe | peer-assisted signed challenge; no hairpin proof | state machine (#239) |
 | `#239` | N8 | Reachability states | UNKNOWN…OFFLINE; `reachability.json` | AddressBook (#240) |

@@ -1,7 +1,7 @@
 //! RendezvousProvider abstraction (QUEUE #235 / Phase N).
 //!
 //! Ledger-agnostic discovery API. Implementations live outside `aira-core`.
-//! EVM adapter is `#236`; deeper TTL/sequence ledger rules deepen in `#237`.
+//! EVM adapter: `#236`. Deeper TTL/sequence ledger rules: `#237`.
 //! `DISCOVERED ≠ TRUSTED`: provider I/O must not upsert TrustStore.
 
 use std::collections::HashMap;

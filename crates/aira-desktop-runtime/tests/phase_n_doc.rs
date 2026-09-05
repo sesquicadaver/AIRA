@@ -1,4 +1,4 @@
-//! Phase N contract smoke (#231–#235). Per-atom tests land with #236–#247.
+//! Phase N contract smoke (#231–#236). Per-atom tests land with #237–#247.
 
 use std::path::PathBuf;
 
@@ -23,15 +23,15 @@ fn phase_n_plan_present() {
         "Phase N",
         "Global Node Rendezvous",
         "#231",
-        "#235",
+        "#236",
         "#247",
         "Presence Record",
         "RendezvousProvider",
+        "EvmRendezvousProvider",
         "preferred_port",
         "P_AIRA",
         "1491",
         "aira:network:public:v1",
-        "EvmRendezvousProvider",
         "AIRA-RFC-0123",
         "confirmed free",
         "GPU marketplace",
@@ -42,10 +42,10 @@ fn phase_n_plan_present() {
 }
 
 #[test]
-fn phase_n_queue_235_done() {
+fn phase_n_queue_236_done() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-n-plan.md"));
-    for n in 231..=235 {
+    for n in 231..=236 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
@@ -55,21 +55,21 @@ fn phase_n_queue_235_done() {
             "QUEUE #{n} must not stay OPEN"
         );
     }
-    for n in 236..=247 {
+    for n in 237..=247 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
-            "QUEUE #{n} must be OPEN after #235"
+            "QUEUE #{n} must be OPEN after #236"
         );
         assert!(
             !text.contains(&format!("| {n} | **DONE**")),
-            "QUEUE #{n} must not be DONE at #235"
+            "QUEUE #{n} must not be DONE at #236"
         );
     }
     for needle in [
-        "N4 RendezvousProvider",
-        "Analyze-270",
-        "RFC-0127",
-        "перший OPEN `#236`",
+        "N5 EVM adapter",
+        "Analyze-271",
+        "RFC-0128",
+        "перший OPEN `#237`",
         "QUEUE M closed",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -86,21 +86,21 @@ fn phase_n_rfc_0123_id_free() {
 }
 
 #[test]
-fn phase_n_rfc_0127_rendezvous_present() {
+fn phase_n_rfc_0128_evm_present() {
     let text =
-        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0127-rendezvous-provider.md"))
+        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0128-evm-rendezvous.md"))
             .unwrap();
     for needle in [
-        "RendezvousProvider",
-        "MockRendezvousProvider",
-        "#235",
+        "EvmRendezvousProvider",
+        "80002",
+        "137",
+        "local double",
         "#236",
+        "#237",
         "aira-core",
-        "DISCOVERED",
-        "TRUSTED",
-        "publish_presence",
+        "Ed25519",
     ] {
-        assert!(text.contains(needle), "RFC-0127 missing: {needle}");
+        assert!(text.contains(needle), "RFC-0128 missing: {needle}");
     }
 }
 
@@ -109,8 +109,8 @@ fn phase_n_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-n-plan.md"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
-    assert!(docs.contains("#235"));
     assert!(docs.contains("#236"));
+    assert!(docs.contains("#237"));
 }
 
 #[test]
@@ -120,32 +120,33 @@ fn phase_m_points_to_phase_n() {
 }
 
 #[test]
-fn phase_n_status_row_235() {
+fn phase_n_status_row_236() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #235 | RendezvousProvider"));
-    assert!(status.contains("RFC-0127"));
+    assert!(status.contains("| #236 | EVM ledger adapter"));
+    assert!(status.contains("RFC-0128"));
 }
 
 #[test]
 fn phase_n_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(
-        !text.contains("перший OPEN = `#235`") && !text.contains("first OPEN `#235`"),
-        "NEXT_PROBLEM must not keep #235 as first-OPEN"
+        !text.contains("перший OPEN = `#236`") && !text.contains("first OPEN `#236`"),
+        "NEXT_PROBLEM must not keep #236 as first-OPEN"
     );
     assert!(
-        text.contains("перший OPEN = `#236`") || text.contains("first OPEN `#236`"),
-        "NEXT_PROBLEM must point at first OPEN #236"
+        text.contains("перший OPEN = `#237`") || text.contains("first OPEN `#237`"),
+        "NEXT_PROBLEM must point at first OPEN #237"
     );
     assert!(text.contains("QUEUE M closed"));
 }
 
 #[test]
-fn phase_n_rendezvous_module_contract() {
-    assert_eq!(aira_peer::RENDEZVOUS_KIND_MOCK, "mock");
-    let mut mock = aira_peer::MockRendezvousProvider::new();
-    assert!(mock.is_empty());
-    assert_eq!(aira_peer::RendezvousProvider::provider_kind(&mock), "mock");
-    let _ = &mut mock;
+fn phase_n_evm_module_contract() {
+    assert_eq!(aira_peer::RENDEZVOUS_KIND_EVM, "evm");
+    assert_eq!(aira_peer::EVM_CHAIN_AMOY, 80002);
+    assert_eq!(aira_peer::EVM_CHAIN_POLYGON, 137);
+    let evm = aira_peer::EvmRendezvousProvider::local_double();
+    assert_eq!(aira_peer::RendezvousProvider::provider_kind(&evm), "evm");
+    assert_eq!(evm.config().chain_id, aira_peer::EVM_CHAIN_LOCAL_DOUBLE);
 }
