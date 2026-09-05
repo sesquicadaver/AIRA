@@ -37,6 +37,86 @@ impl eframe::App for AiraDesktopApp {
 }
 
 impl AiraDesktopApp {
+    fn ui_mesh_status(&self, ui: &mut egui::Ui) {
+        let l = self.labels();
+        let snap = &self.mesh_snapshot;
+        ui.heading(l.mesh_heading);
+        let banner_color = match snap.top_level.as_str() {
+            "DIRECT" => egui::Color32::from_rgb(40, 140, 70),
+            "RELAYED" => egui::Color32::from_rgb(40, 100, 180),
+            "OUTBOUND ONLY" => egui::Color32::from_rgb(180, 120, 40),
+            _ => egui::Color32::from_rgb(140, 60, 60),
+        };
+        ui.horizontal(|ui| {
+            ui.strong(l.mesh_banner);
+            ui.colored_label(banner_color, &snap.top_level);
+        });
+        let na = l.mesh_na;
+        let yes = l.mesh_yes;
+        let no = l.mesh_no;
+        let identity = if snap.identity.is_empty() {
+            na
+        } else {
+            snap.identity.as_str()
+        };
+        ui.horizontal(|ui| {
+            ui.strong(l.mesh_identity);
+            ui.monospace(identity);
+        });
+        ui.horizontal(|ui| {
+            ui.strong(l.mesh_preferred_port);
+            ui.label(
+                snap.preferred_port
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| na.to_string()),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.strong(l.mesh_local_bind);
+            ui.monospace(snap.local_bind.as_deref().unwrap_or(na));
+        });
+        ui.horizontal(|ui| {
+            ui.strong(l.mesh_external);
+            ui.monospace(snap.external_observed.as_deref().unwrap_or(na));
+        });
+        ui.horizontal(|ui| {
+            ui.strong(l.mesh_reachability);
+            ui.label(&snap.reachability_status);
+        });
+        ui.horizontal(|ui| {
+            ui.strong(l.mesh_direct);
+            ui.label(if snap.direct_reachability == "yes" {
+                yes
+            } else {
+                no
+            });
+            ui.strong(l.mesh_relay);
+            ui.label(if snap.relay_reachability == "yes" {
+                yes
+            } else {
+                no
+            });
+        });
+        let rv = if snap.rendezvous_provider.is_empty() {
+            format!("{na}")
+        } else {
+            format!(
+                "{} · seq {} · {}",
+                snap.rendezvous_provider,
+                snap.rendezvous_sequence,
+                if snap.rendezvous_connected { yes } else { no }
+            )
+        };
+        ui.horizontal(|ui| {
+            ui.strong(l.mesh_rendezvous);
+            ui.label(rv);
+        });
+        ui.horizontal(|ui| {
+            ui.strong(l.mesh_peer_count);
+            ui.label(snap.peer_count.to_string());
+        });
+    }
+
     fn ui_work(&mut self, ui: &mut egui::Ui) {
         let l = self.labels();
         ui.heading(l.work_heading);
@@ -163,6 +243,8 @@ impl AiraDesktopApp {
 
     fn ui_network(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let l = self.labels();
+        self.ui_mesh_status(ui);
+        ui.separator();
         ui.heading(l.network_profile);
         ui.horizontal(|ui| {
             if ui

@@ -13,6 +13,7 @@ mod health;
 mod invite;
 mod invite_qr;
 mod launcher;
+mod network_mesh;
 mod node_http;
 mod paths;
 mod peer;
@@ -52,6 +53,7 @@ pub use launcher::{
     validate_gui_desktop_file, AIRA_DESKTOP_ENTRY, AIRA_DESKTOP_FILENAME, AIRA_GUI_DESKTOP_ENTRY,
     AIRA_GUI_DESKTOP_FILENAME,
 };
+pub use network_mesh::{load_network_mesh_snapshot, MeshTopLevel, NetworkMeshSnapshot};
 pub use node_http::{submit_desktop_problem, submit_problem_http};
 pub use paths::DesktopPaths;
 pub use peer::PeerPidRecordView;

@@ -1,4 +1,4 @@
-//! Phase N contract smoke (#231–#243). Per-atom tests land with #244–#247.
+//! Phase N contract smoke (#231–#244). Per-atom tests land with #245–#247.
 
 use std::path::PathBuf;
 
@@ -23,9 +23,9 @@ fn phase_n_plan_present() {
         "Phase N",
         "Global Node Rendezvous",
         "#231",
-        "#243",
+        "#244",
         "#247",
-        "CLI",
+        "Desktop UX",
         "P_AIRA",
         "AIRA-RFC-0123",
         "confirmed free",
@@ -36,10 +36,10 @@ fn phase_n_plan_present() {
 }
 
 #[test]
-fn phase_n_queue_243_done() {
+fn phase_n_queue_244_done() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-n-plan.md"));
-    for n in 231..=243 {
+    for n in 231..=244 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
@@ -49,21 +49,21 @@ fn phase_n_queue_243_done() {
             "QUEUE #{n} must not stay OPEN"
         );
     }
-    for n in 244..=247 {
+    for n in 245..=247 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
-            "QUEUE #{n} must be OPEN after #243"
+            "QUEUE #{n} must be OPEN after #244"
         );
         assert!(
             !text.contains(&format!("| {n} | **DONE**")),
-            "QUEUE #{n} must not be DONE at #243"
+            "QUEUE #{n} must not be DONE at #244"
         );
     }
     for needle in [
-        "N12 CLI",
-        "Analyze-278",
-        "RFC-0135",
-        "перший OPEN `#244`",
+        "N13 Desktop",
+        "Analyze-279",
+        "RFC-0136",
+        "перший OPEN `#245`",
         "QUEUE M closed",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
@@ -80,20 +80,23 @@ fn phase_n_rfc_0123_id_free() {
 }
 
 #[test]
-fn phase_n_rfc_0135_cli_present() {
-    let text =
-        std::fs::read_to_string(repo_root().join("specs/rfc/AIRA-RFC-0135-peer-cli-phase-n.md"))
-            .unwrap();
+fn phase_n_rfc_0136_desktop_present() {
+    let text = std::fs::read_to_string(
+        repo_root().join("specs/rfc/AIRA-RFC-0136-desktop-network-mesh.md"),
+    )
+    .unwrap();
     for needle in [
-        "peer port",
-        "reachability",
-        "rendezvous",
-        "LocalFileRendezvousProvider",
-        "#243",
+        "Network",
+        "DIRECT",
+        "RELAYED",
+        "OUTBOUND ONLY",
+        "OFFLINE",
+        "load_network_mesh_snapshot",
         "#244",
+        "#245",
         "aira-core",
     ] {
-        assert!(text.contains(needle), "RFC-0135 missing: {needle}");
+        assert!(text.contains(needle), "RFC-0136 missing: {needle}");
     }
 }
 
@@ -102,8 +105,8 @@ fn phase_n_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-n-plan.md"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
-    assert!(docs.contains("#243"));
     assert!(docs.contains("#244"));
+    assert!(docs.contains("#245"));
 }
 
 #[test]
@@ -113,23 +116,23 @@ fn phase_m_points_to_phase_n() {
 }
 
 #[test]
-fn phase_n_status_row_243() {
+fn phase_n_status_row_244() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #243 | CLI"));
-    assert!(status.contains("RFC-0135"));
+    assert!(status.contains("| #244 | Desktop UX"));
+    assert!(status.contains("RFC-0136"));
 }
 
 #[test]
 fn phase_n_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(
-        !text.contains("перший OPEN = `#243`") && !text.contains("first OPEN `#243`"),
-        "NEXT_PROBLEM must not keep #243 as first-OPEN"
+        !text.contains("перший OPEN = `#244`") && !text.contains("first OPEN `#244`"),
+        "NEXT_PROBLEM must not keep #244 as first-OPEN"
     );
     assert!(
-        text.contains("перший OPEN = `#244`") || text.contains("first OPEN `#244`"),
-        "NEXT_PROBLEM must point at first OPEN #244"
+        text.contains("перший OPEN = `#245`") || text.contains("first OPEN `#245`"),
+        "NEXT_PROBLEM must point at first OPEN #245"
     );
     assert!(text.contains("QUEUE M closed"));
 }
