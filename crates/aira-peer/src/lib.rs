@@ -62,10 +62,13 @@ pub use notify::{
     notify_peer_of_rekey, notify_peers_of_rekey, upcoming_rekey_delta, NotifyPeerResult,
 };
 pub use prime_port::{
-    format_available_loopback_tcp_bind, is_prime_port, is_valid_aira_port, p_aira_ports,
-    parse_bind_port, select_available_loopback_tcp, select_available_loopback_udp,
-    validate_aira_bind, validate_aira_port, P_AIRA_COUNT, P_AIRA_FIRST, P_AIRA_LAST,
-    P_AIRA_RANGE_MAX, P_AIRA_RANGE_MIN,
+    format_available_loopback_tcp_bind, is_prime_port, is_valid_aira_port, next_candidate_port,
+    next_candidate_port_from_index, p_aira_ports, parse_bind_port, preferred_port,
+    preferred_port_index, select_available_loopback_tcp, select_available_loopback_tcp_for,
+    select_available_loopback_udp, select_available_loopback_udp_for, select_available_port,
+    suggested_aira_port, validate_aira_bind, validate_aira_port, TransportClass,
+    PORT_SELECT_VERSION, P_AIRA_COUNT, P_AIRA_FIRST, P_AIRA_LAST, P_AIRA_RANGE_MAX,
+    P_AIRA_RANGE_MIN,
 };
 pub use relay::{
     make_relay_deliver_envelope, parse_relay_deliver, send_envelope_to_peer, serve_relay_peer,

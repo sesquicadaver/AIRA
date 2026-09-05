@@ -1,16 +1,42 @@
-//! Prime Private Port Invariant (QUEUE #232 / Phase N).
+//! Prime Private Port Invariant + deterministic selection (QUEUE #232–#233 / Phase N).
 //!
 //! AIRA-owned TCP/UDP peer transport endpoints MUST use a prime port in
 //! `49152..=65535` (`P_AIRA`, exactly 1491 values). This is a cheap structural
 //! pre-filter — not authentication. Outbound to Polygon RPC / STUN / HTTP is
 //! out of scope (not AIRA-owned transport).
 //!
-//! Deterministic `preferred_port(identity, …)` lands in QUEUE `#233`.
+//! `#233`: `preferred_port(identity, transport_class)` hashes
+//! `identity_ref || class || version` (SHA-256) into `P_AIRA`; collisions walk
+//! the next primes with wrap, never spinning forever.
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, UdpSocket};
 use std::sync::LazyLock;
 
+use aira_object::ContentHash;
+
 use crate::error::PeerError;
+
+/// Domain tag mixed into preferred-port selection (`aira-prime` §6).
+pub const PORT_SELECT_VERSION: &str = "aira:port-select:v1";
+
+/// Transport classes that own an AIRA listen/advertise port (not HTTP/STUN/RPC).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TransportClass {
+    /// Authenticated peer TCP (`listen` / address book).
+    TcpPeer,
+    /// UDP discv announce / FIND.
+    UdpDiscv,
+}
+
+impl TransportClass {
+    /// Stable ASCII token concatenated into the selection hash.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::TcpPeer => "tcp-peer",
+            Self::UdpDiscv => "udp-discv",
+        }
+    }
+}
 
 /// Inclusive floor of the Dynamic/Private range scanned for `P_AIRA`.
 pub const P_AIRA_RANGE_MIN: u16 = 49152;
@@ -139,9 +165,142 @@ pub fn format_available_loopback_tcp_bind() -> Result<String, PeerError> {
     Ok(addr.to_string())
 }
 
+/// SHA-256 input bytes: `identity_ref || transport_class || version` (TZ §6).
+fn selection_preimage(identity_ref: &str, class: TransportClass) -> Vec<u8> {
+    let mut buf =
+        Vec::with_capacity(identity_ref.len() + class.as_str().len() + PORT_SELECT_VERSION.len());
+    buf.extend_from_slice(identity_ref.as_bytes());
+    buf.extend_from_slice(class.as_str().as_bytes());
+    buf.extend_from_slice(PORT_SELECT_VERSION.as_bytes());
+    buf
+}
+
+/// Index into `P_AIRA` for `identity_ref` + `class` (`0..P_AIRA_COUNT`).
+pub fn preferred_port_index(identity_ref: &str, class: TransportClass) -> usize {
+    let digest = ContentHash::sha256_bytes(&selection_preimage(identity_ref, class));
+    let hex = digest
+        .as_str()
+        .strip_prefix("sha256:")
+        .expect("ContentHash::sha256_bytes always prefixes sha256:");
+    let bytes = hex::decode(hex).expect("sha256 hex is valid");
+    debug_assert_eq!(bytes.len(), 32);
+    let mut word = [0u8; 8];
+    word.copy_from_slice(&bytes[..8]);
+    let n = u64::from_be_bytes(word);
+    (n % (P_AIRA_COUNT as u64)) as usize
+}
+
+/// Deterministic preferred AIRA port for an identity and transport class.
+pub fn preferred_port(identity_ref: &str, class: TransportClass) -> u16 {
+    p_aira_ports()[preferred_port_index(identity_ref, class)]
+}
+
+/// Alias used in operator diagnostics (`suggested preferred`).
+pub fn suggested_aira_port(identity_ref: &str, class: TransportClass) -> u16 {
+    preferred_port(identity_ref, class)
+}
+
+/// Port at `preferred_index + offset` (mod `|P_AIRA|`).
+pub fn next_candidate_port_from_index(preferred_index: usize, offset: usize) -> u16 {
+    let idx = preferred_index
+        .wrapping_add(offset)
+        .rem_euclid(P_AIRA_COUNT);
+    p_aira_ports()[idx]
+}
+
+/// Next candidate after `current` in the wrap-around walk that started at `preferred`.
+///
+/// `current` must be in `P_AIRA`; otherwise returns [`PeerError::InvalidPort`].
+pub fn next_candidate_port(preferred: u16, current: u16) -> Result<u16, PeerError> {
+    let ports = p_aira_ports();
+    let start = ports.binary_search(&preferred).map_err(|_| {
+        PeerError::InvalidPort(format!(
+            "preferred port {preferred} is not in P_AIRA (suggested {P_AIRA_FIRST})"
+        ))
+    })?;
+    let cur = ports.binary_search(&current).map_err(|_| {
+        PeerError::InvalidPort(format!(
+            "current port {current} is not in P_AIRA (suggested {P_AIRA_FIRST})"
+        ))
+    })?;
+    let offset = cur.wrapping_sub(start).rem_euclid(P_AIRA_COUNT) + 1;
+    Ok(next_candidate_port_from_index(start, offset))
+}
+
+/// Walk `P_AIRA` from the preferred index until `is_free` accepts a port (finite wrap).
+pub fn select_available_port<F>(
+    identity_ref: &str,
+    class: TransportClass,
+    mut is_free: F,
+) -> Result<u16, PeerError>
+where
+    F: FnMut(u16) -> bool,
+{
+    let start = preferred_port_index(identity_ref, class);
+    for offset in 0..P_AIRA_COUNT {
+        let port = next_candidate_port_from_index(start, offset);
+        if is_free(port) {
+            return Ok(port);
+        }
+    }
+    Err(PeerError::InvalidPort(format!(
+        "no free AIRA prime port available after full P_AIRA walk \
+         (preferred {} for {identity_ref} / {})",
+        preferred_port(identity_ref, class),
+        class.as_str()
+    )))
+}
+
+/// Bind loopback TCP starting at the identity's preferred prime (collision → next).
+pub fn select_available_loopback_tcp_for(
+    identity_ref: &str,
+) -> Result<(TcpListener, SocketAddr), PeerError> {
+    let start = preferred_port_index(identity_ref, TransportClass::TcpPeer);
+    for offset in 0..P_AIRA_COUNT {
+        let port = next_candidate_port_from_index(start, offset);
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
+        match TcpListener::bind(addr) {
+            Ok(listener) => {
+                let local = listener.local_addr().map_err(PeerError::from)?;
+                return Ok((listener, local));
+            }
+            Err(_) => continue,
+        }
+    }
+    Err(PeerError::InvalidPort(format!(
+        "no free AIRA prime TCP port on 127.0.0.1 after full walk \
+         (preferred {})",
+        preferred_port(identity_ref, TransportClass::TcpPeer)
+    )))
+}
+
+/// Bind loopback UDP starting at the identity's preferred discv prime.
+pub fn select_available_loopback_udp_for(
+    identity_ref: &str,
+) -> Result<(UdpSocket, SocketAddr), PeerError> {
+    let start = preferred_port_index(identity_ref, TransportClass::UdpDiscv);
+    for offset in 0..P_AIRA_COUNT {
+        let port = next_candidate_port_from_index(start, offset);
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
+        match UdpSocket::bind(addr) {
+            Ok(sock) => {
+                let local = sock.local_addr().map_err(PeerError::from)?;
+                return Ok((sock, local));
+            }
+            Err(_) => continue,
+        }
+    }
+    Err(PeerError::InvalidPort(format!(
+        "no free AIRA prime UDP port on 127.0.0.1 after full walk \
+         (preferred {})",
+        preferred_port(identity_ref, TransportClass::UdpDiscv)
+    )))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
 
     #[test]
     fn p_aira_cardinality_and_bounds() {
@@ -185,5 +344,66 @@ mod tests {
         assert!(validate_aira_bind("127.0.0.1:0").is_err());
         assert!(validate_aira_bind("127.0.0.1:443").is_err());
         assert!(validate_aira_bind("127.0.0.1:9797").is_err());
+    }
+
+    #[test]
+    fn same_identity_same_preferred_port() {
+        let id = "aira:identity:port-select-alice";
+        let a = preferred_port(id, TransportClass::TcpPeer);
+        let b = preferred_port(id, TransportClass::TcpPeer);
+        assert_eq!(a, b);
+        assert!(is_valid_aira_port(a));
+        assert_eq!(suggested_aira_port(id, TransportClass::TcpPeer), a);
+        // Different class may differ (not required to differ, but index is independent).
+        let _udp = preferred_port(id, TransportClass::UdpDiscv);
+        assert!(is_valid_aira_port(_udp));
+    }
+
+    #[test]
+    fn different_identities_usually_differ() {
+        let a = preferred_port("aira:identity:ps-a", TransportClass::TcpPeer);
+        let b = preferred_port("aira:identity:ps-b", TransportClass::TcpPeer);
+        // Collisions allowed statistically; just ensure both valid.
+        assert!(is_valid_aira_port(a));
+        assert!(is_valid_aira_port(b));
+    }
+
+    #[test]
+    fn collision_walks_next_prime() {
+        let id = "aira:identity:collision-walk";
+        let preferred = preferred_port(id, TransportClass::TcpPeer);
+        let mut blocked = HashSet::new();
+        blocked.insert(preferred);
+        let next =
+            select_available_port(id, TransportClass::TcpPeer, |p| !blocked.contains(&p)).unwrap();
+        assert_ne!(next, preferred);
+        assert_eq!(next, next_candidate_port(preferred, preferred).unwrap());
+    }
+
+    #[test]
+    fn full_wrap_is_finite_and_errors() {
+        let id = "aira:identity:full-wrap";
+        let err = select_available_port(id, TransportClass::TcpPeer, |_| false).unwrap_err();
+        assert!(err.to_string().contains("full P_AIRA walk"), "{err}");
+    }
+
+    #[test]
+    fn next_candidate_wraps_from_last_index() {
+        let last = P_AIRA_COUNT - 1;
+        let first_again = next_candidate_port_from_index(last, 1);
+        assert_eq!(first_again, P_AIRA_FIRST);
+        let preferred = p_aira_ports()[last];
+        assert_eq!(
+            next_candidate_port(preferred, preferred).unwrap(),
+            P_AIRA_FIRST
+        );
+    }
+
+    #[test]
+    fn selection_index_in_range() {
+        for name in ["a", "b", "aira:identity:z", ""] {
+            let idx = preferred_port_index(name, TransportClass::TcpPeer);
+            assert!(idx < P_AIRA_COUNT);
+        }
     }
 }

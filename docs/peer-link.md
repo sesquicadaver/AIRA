@@ -119,3 +119,8 @@ Non-loopback UDP bind requires `--explicit`. Untrusted / revoked / bad signature
 See [`analysis/Analyze-43/provenance/ADR-connectivity-relay-first.md`](../analysis/Analyze-43/provenance/ADR-connectivity-relay-first.md).
 
 Desktop supervise mapping (P0–P6): [`desktop-network-profiles.md`](desktop-network-profiles.md).
+
+
+## Preferred port (Phase N `#233`)
+
+Deterministic selection: `aira_peer::preferred_port(identity, TransportClass)` over `P_AIRA` (RFC-0125). Collision walks the next primes with wrap.
