@@ -21,6 +21,7 @@
 //! QUEUE #241: Relay integration (direct→NAT→relay; prime ads; dual reservation).
 //! QUEUE #242: Presence refresh (sequence++; expire stale; endpoint change).
 //! QUEUE #245: Ab ovo publish → discover → trust → dial (no preconfigured peers).
+//! QUEUE #246: NAT/relay integration (both inbound blocked → relay courier).
 
 mod ab_ovo;
 mod address_book;
@@ -33,6 +34,7 @@ mod evm_rendezvous;
 mod frame;
 mod gossip;
 mod handshake;
+mod nat_relay;
 mod noise;
 mod notify;
 mod presence;
@@ -79,6 +81,7 @@ pub use gossip::{
     GOSSIP_SEEN_CAP,
 };
 pub use handshake::{HelloMessage, HelloResult, HELLO_DOMAIN};
+pub use nat_relay::{configure_inbound_blocked_via_relay, plan_inbound_blocked_relay_path};
 pub use noise::{
     list_noise_static_backups, load_or_create_noise_static, prune_noise_static_backups,
     rotate_noise_static, x25519_public, NoiseStaticBackupInfo, NoiseStaticPruneReport,
