@@ -16,6 +16,7 @@
 //! QUEUE #236: EvmRendezvousProvider local double + Amoy/mainnet config hooks.
 //! QUEUE #237: publish/query product layer (TTL/sequence) + rendezvous.json.
 //! QUEUE #238: peer-assisted Reachability Probe (no hairpin proof).
+//! QUEUE #239: Reachability states + peers/reachability.json.
 
 mod address_book;
 mod dht;
@@ -32,6 +33,7 @@ mod notify;
 mod presence;
 mod prime_port;
 mod reachability;
+mod reachability_state;
 mod relay;
 mod rendezvous;
 mod rendezvous_ops;
@@ -94,6 +96,9 @@ pub use reachability::{
     ChallengeDraft, ReachabilityAttestation, ReachabilityChallenge, ReachabilityReplayLog,
     ReachabilityResult, REACHABILITY_ATTESTATION_SCHEMA, REACHABILITY_CHALLENGE_SCHEMA,
     REACHABILITY_REPLAY_CAP, REACHABILITY_RESULT_SCHEMA,
+};
+pub use reachability_state::{
+    ReachabilityLocalState, ReachabilityStatus, RelayRouteRecord, REACHABILITY_STATE_SCHEMA,
 };
 pub use relay::{
     make_relay_deliver_envelope, parse_relay_deliver, send_envelope_to_peer, serve_relay_peer,
