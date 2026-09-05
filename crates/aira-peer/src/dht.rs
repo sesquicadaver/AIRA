@@ -73,6 +73,7 @@ impl DhtAnnounce {
         self.addr
             .parse::<std::net::SocketAddr>()
             .map_err(|e| PeerError::Protocol(format!("dht bad addr {}: {e}", self.addr)))?;
+        crate::prime_port::validate_aira_bind(&self.addr)?;
         Ok(())
     }
 }
@@ -151,6 +152,7 @@ impl PeerDhtStore {
         let addr = addr.into();
         addr.parse::<std::net::SocketAddr>()
             .map_err(|e| PeerError::Protocol(format!("dht bad addr {addr}: {e}")))?;
+        crate::prime_port::validate_aira_bind(&addr)?;
         let key_hex = dht_key_hex(&identity_id);
         let updated_at = utc_now_rfc3339().map_err(|e| PeerError::AddressBook(e.to_string()))?;
         if let Some(r) = self
@@ -287,7 +289,7 @@ pub fn promote_dht_to_address_book(
     }
     let root = root.as_ref();
     let mut book = AddressBook::load(root)?;
-    book.upsert_addr_preserve_via(identity_id, addr);
+    book.upsert_addr_preserve_via(identity_id, addr)?;
     book.save(root)
 }
 
@@ -444,10 +446,10 @@ mod tests {
         let root = dir.path();
         let mut store = PeerDhtStore::default();
         store
-            .upsert("aira:identity:a", "127.0.0.1:1", Some("local".into()))
+            .upsert("aira:identity:a", "127.0.0.1:49157", Some("local".into()))
             .unwrap();
         store
-            .upsert("aira:identity:b", "127.0.0.1:2", None)
+            .upsert("aira:identity:b", "127.0.0.1:49171", None)
             .unwrap();
         store.save(root).unwrap();
         let loaded = PeerDhtStore::load(root).unwrap();
@@ -462,9 +464,13 @@ mod tests {
         let dir = tempdir().unwrap();
         let root = dir.path();
         let issuer = aira_object::AiraRef::parse("aira:identity:alice").unwrap();
-        let bad = DhtAnnounce::new("aira:identity:bob", "127.0.0.1:9");
+        let bad = DhtAnnounce::new("aira:identity:bob", "127.0.0.1:49157");
         let err = apply_dht_announce(root, &issuer, &bad).unwrap_err();
         assert!(matches!(err, PeerError::IdentityMismatch));
+        let non_prime = DhtAnnounce::new("aira:identity:bob", "127.0.0.1:9");
+        assert!(non_prime.validate_shape().is_err());
+        let composite = DhtAnnounce::new("aira:identity:bob", "127.0.0.1:50000");
+        assert!(composite.validate_shape().is_err());
     }
 
     #[test]

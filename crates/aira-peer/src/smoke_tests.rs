@@ -98,10 +98,9 @@ async fn trusted_peers_hello_and_envelope_roundtrip() {
     let (id_b, pub_b) = write_node_identity(root_b, "bob", [13u8; 32]);
     mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book = AddressBook::default();
-    book.upsert(id_b.as_str(), addr.to_string());
+    book.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book.save(root_a).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -132,10 +131,9 @@ async fn recv_envelope_rejects_expired() {
     let (id_b, pub_b) = write_node_identity(root_b, "bob-exp", [43u8; 32]);
     mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book = AddressBook::default();
-    book.upsert(id_b.as_str(), addr.to_string());
+    book.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book.save(root_a).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -184,10 +182,9 @@ async fn recv_envelope_rejects_replayed_message_id() {
     let (id_b, pub_b) = write_node_identity(root_b, "bob-rp", [53u8; 32]);
     mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book = AddressBook::default();
-    book.upsert(id_b.as_str(), addr.to_string());
+    book.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book.save(root_a).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -220,10 +217,9 @@ async fn listen_accepts_multiple_hello_only_dials() {
     let (id_b, pub_b) = write_node_identity(root_b, "bob-d", [33u8; 32]);
     mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book = AddressBook::default();
-    book.upsert(id_b.as_str(), addr.to_string());
+    book.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book.save(root_a).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -400,8 +396,7 @@ async fn local_test_identity_rejected_at_handshake() {
     )
     .unwrap();
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let root_v = root.to_path_buf();
     let accept_task = tokio::spawn(async move {
         let stream = accept_tcp(&listener).await.unwrap();
@@ -451,10 +446,9 @@ async fn untrusted_peer_rejected_at_handshake() {
     ta.upsert(id_b.as_str(), &pub_b).unwrap();
     ta.save(root_a).unwrap();
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book = AddressBook::default();
-    book.upsert(id_b.as_str(), addr.to_string());
+    book.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book.save(root_a).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -489,7 +483,7 @@ async fn revoked_peer_cannot_dial() {
     ta.save(root_a).unwrap();
 
     let mut book = AddressBook::default();
-    book.upsert(id_b.as_str(), "127.0.0.1:9");
+    book.upsert(id_b.as_str(), "127.0.0.1:49157").unwrap();
     book.save(root_a).unwrap();
     let err = dial(root_a, id_b.as_str()).await.unwrap_err();
     assert!(matches!(err, PeerError::Revoked(_)));
@@ -507,10 +501,9 @@ async fn envelope_issuer_mismatch_rejected() {
     let (id_b, pub_b) = write_node_identity(root_b, "bob-m", [27u8; 32]);
     mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book = AddressBook::default();
-    book.upsert(id_b.as_str(), addr.to_string());
+    book.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book.save(root_a).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -575,8 +568,16 @@ async fn truncated_frame_rejected() {
 
 #[tokio::test]
 async fn listen_rejects_non_loopback() {
-    let err = listen("0.0.0.0:0").await.unwrap_err();
-    assert!(matches!(err, PeerError::Io(_)));
+    let err = listen("0.0.0.0:49157").await.unwrap_err();
+    assert!(matches!(err, PeerError::Io(_)), "{err}");
+}
+
+#[tokio::test]
+async fn listen_rejects_non_prime_port() {
+    let err = listen("127.0.0.1:9797").await.unwrap_err();
+    assert!(matches!(err, PeerError::InvalidPort(_)), "{err}");
+    let err0 = listen("127.0.0.1:0").await.unwrap_err();
+    assert!(matches!(err0, PeerError::InvalidPort(_)), "{err0}");
 }
 
 #[test]
@@ -607,10 +608,9 @@ async fn trust_delta_revoke_roundtrip_applies() {
     mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
     // Alice self-announces revoke of her own identity (Analyze-52).
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book = AddressBook::default();
-    book.upsert(id_b.as_str(), addr.to_string());
+    book.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book.save(root_a).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -811,10 +811,9 @@ async fn notify_rekey_updates_peer_trust() {
     let new_sk = SigningKey::from_bytes(&[105u8; 32]);
     let new_pub = hex::encode(new_sk.verifying_key().to_bytes());
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book = AddressBook::default();
-    book.upsert(id_b.as_str(), addr.to_string());
+    book.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book.save(root_a).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -864,10 +863,9 @@ async fn notify_rekey_with_grace_keeps_old_pubkey() {
     let new_pub = hex::encode(new_sk.verifying_key().to_bytes());
     let until = "2099-12-01T00:00:00Z";
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book = AddressBook::default();
-    book.upsert(id_b.as_str(), addr.to_string());
+    book.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book.save(root_a).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -956,7 +954,8 @@ async fn gossip_skips_non_self_sovereign_trust_delta() {
     let victim = "aira:identity:gossip-victim-53";
     // Address-book peer that must NOT be dialed for doomed deltas.
     let mut book = AddressBook::default();
-    book.upsert("aira:identity:would-dial", "127.0.0.1:1");
+    book.upsert("aira:identity:would-dial", "127.0.0.1:49157")
+        .unwrap();
     book.save(root).unwrap();
 
     let delta = TrustDelta::revoke(victim, Some("hostile-crl".into()));
@@ -1006,10 +1005,10 @@ async fn gossip_trust_delta_a_to_b_to_c() {
     ta.save(root_a).unwrap();
 
     // C listens for gossip from B.
-    let listener_c = listen("127.0.0.1:0").await.unwrap();
+    let listener_c = listen_available_loopback().await.unwrap().0;
     let addr_c = listener_c.local_addr().unwrap();
     let mut book_b = AddressBook::default();
-    book_b.upsert(id_c.as_str(), addr_c.to_string());
+    book_b.upsert(id_c.as_str(), addr_c.to_string()).unwrap();
     book_b.save(root_b).unwrap();
 
     let root_c2 = root_c.to_path_buf();
@@ -1032,10 +1031,10 @@ async fn gossip_trust_delta_a_to_b_to_c() {
     });
 
     // B listens for A, applies, then gossips to C.
-    let listener_b = listen("127.0.0.1:0").await.unwrap();
+    let listener_b = listen_available_loopback().await.unwrap().0;
     let addr_b = listener_b.local_addr().unwrap();
     let mut book_a = AddressBook::default();
-    book_a.upsert(id_b.as_str(), addr_b.to_string());
+    book_a.upsert(id_b.as_str(), addr_b.to_string()).unwrap();
     book_a.save(root_a).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -1102,7 +1101,7 @@ async fn relay_hub_delivers_trust_delta_a_to_c_via_r() {
     tc.save(root_c).unwrap();
 
     let hub = RelayHub::new();
-    let listener = listen("127.0.0.1:0").await.unwrap();
+    let listener = listen_available_loopback().await.unwrap().0;
     let addr_r = listener.local_addr().unwrap();
     let hub_accept = hub.clone();
     let root_r2 = root_r.to_path_buf();
@@ -1119,17 +1118,19 @@ async fn relay_hub_delivers_trust_delta_a_to_c_via_r() {
     });
 
     let mut book_c = AddressBook::default();
-    book_c.upsert(id_r.as_str(), addr_r.to_string());
+    book_c.upsert(id_r.as_str(), addr_r.to_string()).unwrap();
     book_c.save(root_c).unwrap();
 
     let mut book_a = AddressBook::default();
-    book_a.upsert(id_r.as_str(), addr_r.to_string());
+    book_a.upsert(id_r.as_str(), addr_r.to_string()).unwrap();
     // C is not dialable from A — courier via R only (dummy addr).
-    book_a.upsert_via(
-        id_c.as_str(),
-        "127.0.0.1:1",
-        Some(id_r.as_str().to_string()),
-    );
+    book_a
+        .upsert_via(
+            id_c.as_str(),
+            "127.0.0.1:65521",
+            Some(id_r.as_str().to_string()),
+        )
+        .unwrap();
     book_a.save(root_a).unwrap();
 
     let root_c2 = root_c.to_path_buf();
@@ -1180,10 +1181,10 @@ async fn dht_announce_a_to_b_then_find() {
     let (id_b, pub_b) = write_node_identity(root_b, "dht-bob", [133u8; 32]);
     mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
+    let listener = listen_available_loopback().await.unwrap().0;
     let addr_b = listener.local_addr().unwrap();
     let mut book_a = AddressBook::default();
-    book_a.upsert(id_b.as_str(), addr_b.to_string());
+    book_a.upsert(id_b.as_str(), addr_b.to_string()).unwrap();
     book_a.save(root_a).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -1195,7 +1196,7 @@ async fn dht_announce_a_to_b_then_find() {
         announce
     });
 
-    let announce_addr = "127.0.0.1:17900";
+    let announce_addr = "127.0.0.1:49157";
     let results = dht_announce_to_peers(root_a, announce_addr).await.unwrap();
     assert!(
         results.iter().any(|(id, ok, _)| id == id_b.as_str() && *ok),
@@ -1229,19 +1230,21 @@ async fn dht_announce_apply_book_then_dial() {
     mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
     // B listens for announce; A has B in book for fan-out.
-    let listener = listen("127.0.0.1:0").await.unwrap();
+    let listener = listen_available_loopback().await.unwrap().0;
     let addr_b = listener.local_addr().unwrap();
     let mut book_a = AddressBook::default();
-    book_a.upsert(id_b.as_str(), addr_b.to_string());
+    book_a.upsert(id_b.as_str(), addr_b.to_string()).unwrap();
     book_a.save(root_a).unwrap();
 
     // B already has a via entry for A that must survive promote.
     let mut book_b = AddressBook::default();
-    book_b.upsert_via(
-        id_a.as_str(),
-        "127.0.0.1:1",
-        Some("aira:identity:relay-keep".into()),
-    );
+    book_b
+        .upsert_via(
+            id_a.as_str(),
+            "127.0.0.1:65521",
+            Some("aira:identity:relay-keep".into()),
+        )
+        .unwrap();
     book_b.save(root_b).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -1254,7 +1257,7 @@ async fn dht_announce_apply_book_then_dial() {
     });
 
     // Announce A's real listen addr so B can dial A after promote.
-    let listener_a = listen("127.0.0.1:0").await.unwrap();
+    let listener_a = listen_available_loopback().await.unwrap().0;
     let announce_addr = listener_a.local_addr().unwrap().to_string();
     let results = dht_announce_to_peers(root_a, &announce_addr).await.unwrap();
     assert!(
@@ -1292,7 +1295,11 @@ fn apply_book_exact_from_find_skips_closest_only() {
     init_node(root).unwrap();
     let mut store = PeerDhtStore::default();
     store
-        .upsert("aira:identity:known", "127.0.0.1:9", Some("local".into()))
+        .upsert(
+            "aira:identity:known",
+            "127.0.0.1:49157",
+            Some("local".into()),
+        )
         .unwrap();
     store.save(root).unwrap();
     // Production find --apply-book path: no exact → Ok(None), book untouched.
@@ -1304,14 +1311,14 @@ fn apply_book_exact_from_find_skips_closest_only() {
         .unwrap()
         .expect("exact");
     assert_eq!(hit.0, "aira:identity:known");
-    assert_eq!(hit.1, "127.0.0.1:9");
+    assert_eq!(hit.1, "127.0.0.1:49157");
     assert_eq!(
         AddressBook::load(root)
             .unwrap()
             .resolve("aira:identity:known")
             .unwrap()
             .to_string(),
-        "127.0.0.1:9"
+        "127.0.0.1:49157"
     );
 }
 
@@ -1320,10 +1327,10 @@ fn promote_without_prior_book_inserts() {
     let dir = tempdir().unwrap();
     let root = dir.path();
     init_node(root).unwrap();
-    promote_dht_to_address_book(root, "aira:identity:x", "127.0.0.1:55").unwrap();
+    promote_dht_to_address_book(root, "aira:identity:x", "127.0.0.1:49157").unwrap();
     let book = AddressBook::load(root).unwrap();
     assert_eq!(book.peers.len(), 1);
-    assert_eq!(book.peers[0].addr, "127.0.0.1:55");
+    assert_eq!(book.peers[0].addr, "127.0.0.1:49157");
     assert!(book.peers[0].via.is_none());
 }
 
@@ -1340,10 +1347,9 @@ async fn hung_tcp_does_not_block_accept_loop() {
     let (id_b, pub_b) = write_node_identity(root_b, "a59-bob", [143u8; 32]);
     mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book = AddressBook::default();
-    book.upsert(id_b.as_str(), addr.to_string());
+    book.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book.save(root_a).unwrap();
 
     let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<AuthenticatedPeer, PeerError>>(4);
@@ -1405,10 +1411,9 @@ async fn broken_handshake_does_not_kill_listener() {
     let (id_b, pub_b) = write_node_identity(root_b, "a59b-bob", [147u8; 32]);
     mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book = AddressBook::default();
-    book.upsert(id_b.as_str(), addr.to_string());
+    book.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book.save(root_a).unwrap();
 
     let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<AuthenticatedPeer, PeerError>>(4);
@@ -1471,13 +1476,12 @@ async fn two_parallel_sessions_recv() {
     mutual_trust(root_a, id_a.as_str(), &pub_a, root_b, id_b.as_str(), &pub_b);
     mutual_trust(root_c, id_c.as_str(), &pub_c, root_b, id_b.as_str(), &pub_b);
 
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book_a = AddressBook::default();
-    book_a.upsert(id_b.as_str(), addr.to_string());
+    book_a.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book_a.save(root_a).unwrap();
     let mut book_c = AddressBook::default();
-    book_c.upsert(id_b.as_str(), addr.to_string());
+    book_c.upsert(id_b.as_str(), addr.to_string()).unwrap();
     book_c.save(root_c).unwrap();
 
     let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(4);
@@ -1546,10 +1550,9 @@ async fn relay_accept_tcp_spawn_survives_hung_peer() {
     mutual_trust(root_a, id_a.as_str(), &pub_a, root_r, id_r.as_str(), &pub_r);
 
     let hub = RelayHub::new();
-    let listener = listen("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let (listener, addr) = listen_available_loopback().await.unwrap();
     let mut book = AddressBook::default();
-    book.upsert(id_r.as_str(), addr.to_string());
+    book.upsert(id_r.as_str(), addr.to_string()).unwrap();
     book.save(root_a).unwrap();
 
     let root_r2 = root_r.to_path_buf();

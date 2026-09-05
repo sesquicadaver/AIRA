@@ -88,6 +88,10 @@ fn free_listen() -> String {
     format!("127.0.0.1:{port}")
 }
 
+fn free_peer_listen() -> String {
+    aira_peer::format_available_loopback_tcp_bind().expect("prime peer bind")
+}
+
 #[test]
 fn p1_starts_http_and_peer_then_stop() {
     let (node, aira) = ensure_bins();
@@ -97,7 +101,7 @@ fn p1_starts_http_and_peer_then_stop() {
     let paths = DesktopPaths::for_data_root(tmp.path());
     paths.ensure_dirs().unwrap();
     let http = free_listen();
-    let peer = free_listen();
+    let peer = free_peer_listen();
     let mut settings = load_or_create_settings(&paths).unwrap();
     settings.http_listen = http.clone();
     settings.network_profile = NetworkProfile::P1;

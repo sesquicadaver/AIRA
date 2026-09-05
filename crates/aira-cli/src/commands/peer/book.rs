@@ -18,7 +18,8 @@ pub(super) async fn add(
         require_trusted(root, via_id)?;
     }
     let mut book = aira_peer::AddressBook::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
-    book.upsert_via(&key_ref, &addr, via.clone());
+    book.upsert_via(&key_ref, &addr, via.clone())
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
     book.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
     match &via {
         Some(v) => println!("peer {key_ref} -> {addr} via {v}"),

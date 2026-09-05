@@ -17,8 +17,8 @@ use crate::paths::DesktopPaths;
 
 pub const SETTINGS_SCHEMA_ID: &str = "aira:schema:desktop:settings:0.1";
 
-/// Default peer listen for P1+ (phase-e §4a; same-host Developer Preview).
-pub const DEFAULT_PEER_LISTEN: &str = "127.0.0.1:9797";
+/// Default peer listen for P1+ (Phase N Prime Port; same-host Developer Preview).
+pub const DEFAULT_PEER_LISTEN: &str = "127.0.0.1:49157";
 
 /// Default relay hub offline registry TTL for P3 (phase-e §4d).
 pub const DEFAULT_RELAY_TTL_DAYS: u32 = 31;
@@ -167,6 +167,9 @@ fn normalize_peer_listen(settings: &mut DesktopSettings) -> Result<()> {
         _ => DEFAULT_PEER_LISTEN.to_string(),
     };
     validate_listen_addr(&listen).context("peer_listen")?;
+    aira_peer::validate_aira_bind(&listen)
+        .map_err(|e| anyhow::anyhow!("{e}"))
+        .context("peer_listen")?;
     settings.peer_listen = Some(listen);
     Ok(())
 }

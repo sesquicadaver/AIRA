@@ -155,11 +155,11 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let paths = DesktopPaths::for_data_root(tmp.path());
         let mut settings = load_or_create_settings(&paths).unwrap();
-        apply_network_profile(&mut settings, NetworkProfile::P2, "127.0.0.1:19095", None).unwrap();
+        apply_network_profile(&mut settings, NetworkProfile::P2, "127.0.0.1:49199", None).unwrap();
         persist_settings(&paths, &settings).unwrap();
         let loaded = load_or_create_settings(&paths).unwrap();
         assert_eq!(loaded.network_profile, NetworkProfile::P2);
-        assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:19095"));
+        assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:49199"));
     }
 
     #[test]
@@ -170,14 +170,14 @@ mod tests {
         apply_network_profile(
             &mut settings,
             NetworkProfile::P3,
-            "127.0.0.1:19096",
+            "127.0.0.1:49201",
             Some(21),
         )
         .unwrap();
         persist_settings(&paths, &settings).unwrap();
         let loaded = load_or_create_settings(&paths).unwrap();
         assert_eq!(loaded.network_profile, NetworkProfile::P3);
-        assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:19096"));
+        assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:49201"));
         assert_eq!(loaded.relay_ttl_days, Some(21));
     }
 
@@ -186,11 +186,11 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let paths = DesktopPaths::for_data_root(tmp.path());
         let mut settings = load_or_create_settings(&paths).unwrap();
-        apply_network_profile(&mut settings, NetworkProfile::P4, "127.0.0.1:19097", None).unwrap();
+        apply_network_profile(&mut settings, NetworkProfile::P4, "127.0.0.1:49207", None).unwrap();
         persist_settings(&paths, &settings).unwrap();
         let loaded = load_or_create_settings(&paths).unwrap();
         assert_eq!(loaded.network_profile, NetworkProfile::P4);
-        assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:19097"));
+        assert_eq!(loaded.peer_listen.as_deref(), Some("127.0.0.1:49207"));
         assert!(loaded.relay_ttl_days.is_none());
     }
 
@@ -203,10 +203,10 @@ mod tests {
         bob.ensure_dirs().unwrap();
 
         let mut settings = load_or_create_settings(&alice).unwrap();
-        apply_network_profile(&mut settings, NetworkProfile::P1, "127.0.0.1:19085", None).unwrap();
+        apply_network_profile(&mut settings, NetworkProfile::P1, "127.0.0.1:49211", None).unwrap();
         persist_settings(&alice, &settings).unwrap();
         assert_eq!(settings.network_profile, NetworkProfile::P1);
-        assert_eq!(settings.peer_listen.as_deref(), Some("127.0.0.1:19085"));
+        assert_eq!(settings.peer_listen.as_deref(), Some("127.0.0.1:49211"));
 
         let (_inv, w, h, rgba) = preview_invite_qr(&alice, &mut settings).unwrap();
         assert!(w >= 256 && h >= 256);
@@ -246,7 +246,7 @@ mod tests {
         bob.ensure_dirs().unwrap();
 
         let mut settings = load_or_create_settings(&alice).unwrap();
-        apply_network_profile(&mut settings, NetworkProfile::P1, "127.0.0.1:19088", None).unwrap();
+        apply_network_profile(&mut settings, NetworkProfile::P1, "127.0.0.1:49223", None).unwrap();
         persist_settings(&alice, &settings).unwrap();
 
         let png = tmp.path().join("alice.png");

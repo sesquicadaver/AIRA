@@ -170,7 +170,8 @@ pub fn import_invite(paths: &DesktopPaths, invite: &PeerInvite) -> Result<Import
     let addr = invite.addr.as_ref().map(|a| a.trim().to_string());
     if let Some(ref a) = addr {
         let mut book = AddressBook::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
-        book.upsert(&invite.identity_ref, a);
+        book.upsert(&invite.identity_ref, a)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         book.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
         book_updated = true;
     }

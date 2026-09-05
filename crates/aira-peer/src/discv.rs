@@ -199,6 +199,7 @@ fn check_loopback_socket(sock: &UdpSocket, bind: &str) -> Result<(), PeerError> 
 
 /// Bind a **loopback** UDP listener for discv announce.
 pub fn bind_udp(bind: &str) -> Result<UdpSocket, PeerError> {
+    crate::prime_port::validate_aira_bind(bind)?;
     if !is_loopback_bind(bind) {
         return Err(PeerError::Discv(format!(
             "discv listen requires loopback bind, got {bind} — pass --explicit"
@@ -211,6 +212,7 @@ pub fn bind_udp(bind: &str) -> Result<UdpSocket, PeerError> {
 
 /// Bind UDP without loopback restriction (operator / advanced).
 pub fn bind_udp_explicit(bind: &str) -> Result<UdpSocket, PeerError> {
+    crate::prime_port::validate_aira_bind(bind)?;
     UdpSocket::bind(bind).map_err(|e| PeerError::Discv(e.to_string()))
 }
 
@@ -222,6 +224,8 @@ pub fn sign_discv_announce(
     advertised_addr
         .parse::<SocketAddr>()
         .map_err(|e| PeerError::Discv(format!("bad advertised addr {advertised_addr}: {e}")))?;
+    crate::prime_port::validate_aira_bind(advertised_addr)
+        .map_err(|e| PeerError::Discv(e.to_string()))?;
     let root = root.as_ref();
     let (local_id, ring) = Keyring::load_node_identity(root)?;
     let nonce_hex = random_nonce_hex();
@@ -514,7 +518,9 @@ fn query_find_one(
 ) -> Result<DiscvNodes, PeerError> {
     let find = sign_discv_find(root.as_ref(), target_id, k)?;
     let json = serde_json::to_vec(&find).map_err(|e| PeerError::Discv(e.to_string()))?;
-    let sock = UdpSocket::bind("127.0.0.1:0").map_err(|e| PeerError::Discv(e.to_string()))?;
+    let sock = crate::prime_port::select_available_loopback_udp()
+        .map(|(s, _)| s)
+        .map_err(|e| PeerError::Discv(e.to_string()))?;
     set_udp_timeout(&sock, timeout)?;
     send_json(&sock, to, &json)?;
     let mut buf = [0u8; MAX_DISCV_DATAGRAM];
@@ -633,7 +639,9 @@ pub fn send_discv_announce(
             "signed announce exceeds datagram cap".into(),
         ));
     }
-    let sock = UdpSocket::bind("127.0.0.1:0").map_err(|e| PeerError::Discv(e.to_string()))?;
+    let sock = crate::prime_port::select_available_loopback_udp()
+        .map(|(s, _)| s)
+        .map_err(|e| PeerError::Discv(e.to_string()))?;
     sock.send_to(&json, to)
         .map_err(|e| PeerError::Discv(e.to_string()))?;
     Ok(())
@@ -660,6 +668,25 @@ pub fn set_udp_timeout(sock: &UdpSocket, timeout: Duration) -> Result<(), PeerEr
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn bind_udp_available() -> std::net::UdpSocket {
+        for &port in crate::prime_port::p_aira_ports() {
+            if let Ok(sock) = bind_udp(&format!("127.0.0.1:{port}")) {
+                return sock;
+            }
+        }
+        panic!("no free AIRA prime UDP port");
+    }
+
+    fn bind_udp_explicit_available() -> std::net::UdpSocket {
+        for &port in crate::prime_port::p_aira_ports() {
+            if let Ok(sock) = bind_udp_explicit(&format!("127.0.0.1:{port}")) {
+                return sock;
+            }
+        }
+        panic!("no free AIRA prime UDP port");
+    }
+
     use std::fs;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Arc;
@@ -740,10 +767,10 @@ mod tests {
             &pub_b,
         );
 
-        let sock = bind_udp("127.0.0.1:0").unwrap();
+        let sock = bind_udp_available();
         set_udp_timeout(&sock, Duration::from_secs(2)).unwrap();
         let to = sock.local_addr().unwrap();
-        let advertised = "127.0.0.1:7900";
+        let advertised = "127.0.0.1:49157";
         let root_a2 = root_a.clone();
         let h = thread::spawn(move || {
             thread::sleep(Duration::from_millis(20));
@@ -768,7 +795,7 @@ mod tests {
         let root_b = dir.path().join("b");
         let (_id_a, _) = write_node_identity(&root_a, "alice-untrust", [23u8; 32]);
         let _ = write_node_identity(&root_b, "bob-untrust", [24u8; 32]);
-        let announce = sign_discv_announce(&root_a, "127.0.0.1:1").unwrap();
+        let announce = sign_discv_announce(&root_a, "127.0.0.1:49157").unwrap();
         let err = apply_discv_announce(&root_b, &announce).unwrap_err();
         assert!(matches!(err, PeerError::Untrusted(_)), "{err}");
         assert!(PeerDhtStore::load(&root_b).unwrap().records.is_empty());
@@ -792,16 +819,16 @@ mod tests {
         let mut tb = TrustStore::load(&root_b).unwrap();
         tb.revoke(id_a.as_str(), Some("test")).unwrap();
         tb.save(&root_b).unwrap();
-        let announce = sign_discv_announce(&root_a, "127.0.0.1:2").unwrap();
+        let announce = sign_discv_announce(&root_a, "127.0.0.1:49157").unwrap();
         let err = apply_discv_announce(&root_b, &announce).unwrap_err();
         assert!(matches!(err, PeerError::Revoked(_)), "{err}");
     }
 
     #[test]
     fn bind_udp_rejects_non_loopback_without_explicit() {
-        let err = bind_udp("0.0.0.0:0").unwrap_err();
+        let err = bind_udp("0.0.0.0:49157").unwrap_err();
         assert!(err.to_string().contains("loopback"), "{err}");
-        let sock = bind_udp_explicit("127.0.0.1:0").unwrap();
+        let sock = bind_udp_explicit_available();
         assert!(sock.local_addr().unwrap().ip().is_loopback());
     }
 
@@ -820,7 +847,7 @@ mod tests {
             id_b.as_str(),
             &pub_b,
         );
-        let mut announce = sign_discv_announce(&root_a, "127.0.0.1:3").unwrap();
+        let mut announce = sign_discv_announce(&root_a, "127.0.0.1:49157").unwrap();
         announce.signature.key_ref = id_b.clone();
         let err = apply_discv_announce(&root_b, &announce).unwrap_err();
         assert!(matches!(err, PeerError::IdentityMismatch), "{err}");
@@ -867,9 +894,9 @@ mod tests {
             &pub_c,
         );
 
-        let sock_b = bind_udp("127.0.0.1:0").unwrap();
+        let sock_b = bind_udp_available();
         let addr_b = sock_b.local_addr().unwrap();
-        let sock_c = bind_udp("127.0.0.1:0").unwrap();
+        let sock_c = bind_udp_available();
         let addr_c = sock_c.local_addr().unwrap();
         apply_discv_announce(
             &root_b,
@@ -922,7 +949,7 @@ mod tests {
         let root_b = dir.path().join("b");
         let (id_a, _) = write_node_identity(&root_a, "alice-fnu", [34u8; 32]);
         let _ = write_node_identity(&root_b, "bob-fnu", [35u8; 32]);
-        let sock_b = bind_udp("127.0.0.1:0").unwrap();
+        let sock_b = bind_udp_available();
         let addr_b = sock_b.local_addr().unwrap();
         let stop = Arc::new(AtomicBool::new(false));
         let listen_b = sock_b.try_clone().unwrap();
@@ -969,14 +996,14 @@ mod tests {
             id_c.as_str(),
             &pub_c,
         );
-        let sock_c = bind_udp("127.0.0.1:0").unwrap();
+        let sock_c = bind_udp_available();
         let addr_c = sock_c.local_addr().unwrap();
         apply_discv_announce(
             &root_b,
             &sign_discv_announce(&root_c, &addr_c.to_string()).unwrap(),
         )
         .unwrap();
-        let sock_b = bind_udp("127.0.0.1:0").unwrap();
+        let sock_b = bind_udp_available();
         let addr_b = sock_b.local_addr().unwrap();
         apply_discv_announce(
             &root_a,
@@ -1016,10 +1043,10 @@ mod tests {
             id_b.as_str(),
             &pub_b,
         );
-        let sock = bind_udp("127.0.0.1:0").unwrap();
+        let sock = bind_udp_available();
         set_udp_timeout(&sock, Duration::from_secs(2)).unwrap();
         let to = sock.local_addr().unwrap();
-        let advertised = "127.0.0.1:7901";
+        let advertised = "127.0.0.1:49171";
         let root_a2 = root_a.clone();
         let h = thread::spawn(move || {
             thread::sleep(Duration::from_millis(20));

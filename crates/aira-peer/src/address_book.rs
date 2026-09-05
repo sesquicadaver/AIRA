@@ -53,9 +53,13 @@ impl AddressBook {
         fs::write(path, format!("{json}\n")).map_err(|e| PeerError::AddressBook(e.to_string()))
     }
 
-    /// Insert or replace by identity_id (clears `via`).
-    pub fn upsert(&mut self, identity_id: impl Into<String>, addr: impl Into<String>) {
-        self.upsert_via(identity_id, addr, None);
+    /// Insert or replace by identity_id (clears `via`). Fail-closed on non-`P_AIRA` ports.
+    pub fn upsert(
+        &mut self,
+        identity_id: impl Into<String>,
+        addr: impl Into<String>,
+    ) -> Result<(), PeerError> {
+        self.upsert_via(identity_id, addr, None)
     }
 
     /// Insert or replace by identity_id, optionally setting courier relay.
@@ -64,9 +68,10 @@ impl AddressBook {
         identity_id: impl Into<String>,
         addr: impl Into<String>,
         via: Option<String>,
-    ) {
+    ) -> Result<(), PeerError> {
         let identity_id = identity_id.into();
         let addr = addr.into();
+        Self::validate_addr_string(&addr)?;
         if let Some(p) = self.peers.iter_mut().find(|p| p.identity_id == identity_id) {
             p.addr = addr;
             p.via = via;
@@ -78,6 +83,7 @@ impl AddressBook {
             });
         }
         self.peers.sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
+        Ok(())
     }
 
     /// Update/insert dial addr while preserving an existing `via` (Analyze-57 DHT promote).
@@ -87,9 +93,10 @@ impl AddressBook {
         &mut self,
         identity_id: impl Into<String>,
         addr: impl Into<String>,
-    ) {
+    ) -> Result<(), PeerError> {
         let identity_id = identity_id.into();
         let addr = addr.into();
+        Self::validate_addr_string(&addr)?;
         if let Some(p) = self.peers.iter_mut().find(|p| p.identity_id == identity_id) {
             p.addr = addr;
         } else {
@@ -100,6 +107,7 @@ impl AddressBook {
             });
         }
         self.peers.sort_by(|a, b| a.identity_id.cmp(&b.identity_id));
+        Ok(())
     }
 
     /// Lookup socket address for identity.
@@ -109,9 +117,16 @@ impl AddressBook {
             .iter()
             .find(|p| p.identity_id == identity_id)
             .ok_or_else(|| PeerError::AddressBook(format!("unknown peer {identity_id}")))?;
-        ep.addr
+        let addr: SocketAddr = ep
+            .addr
             .parse()
-            .map_err(|e| PeerError::AddressBook(format!("bad addr {}: {e}", ep.addr)))
+            .map_err(|e| PeerError::AddressBook(format!("bad addr {}: {e}", ep.addr)))?;
+        crate::prime_port::validate_aira_port(addr.port())?;
+        Ok(addr)
+    }
+
+    fn validate_addr_string(addr: &str) -> Result<(), PeerError> {
+        crate::prime_port::validate_aira_bind(addr).map(|_| ())
     }
 
     /// Courier relay identity for `identity_id`, if configured.
@@ -140,16 +155,18 @@ mod tests {
         let mut book = AddressBook::default();
         book.upsert_via(
             "aira:identity:a",
-            "127.0.0.1:1",
+            "127.0.0.1:49157",
             Some("aira:identity:relay".into()),
-        );
-        book.upsert_addr_preserve_via("aira:identity:a", "127.0.0.1:2");
+        )
+        .unwrap();
+        book.upsert_addr_preserve_via("aira:identity:a", "127.0.0.1:49171")
+            .unwrap();
         let ep = book
             .peers
             .iter()
             .find(|p| p.identity_id == "aira:identity:a")
             .unwrap();
-        assert_eq!(ep.addr, "127.0.0.1:2");
+        assert_eq!(ep.addr, "127.0.0.1:49171");
         assert_eq!(ep.via.as_deref(), Some("aira:identity:relay"));
     }
 
@@ -158,18 +175,29 @@ mod tests {
         let mut book = AddressBook::default();
         book.upsert_via(
             "aira:identity:a",
-            "127.0.0.1:1",
+            "127.0.0.1:49157",
             Some("aira:identity:relay".into()),
-        );
-        book.upsert("aira:identity:a", "127.0.0.1:2");
+        )
+        .unwrap();
+        book.upsert("aira:identity:a", "127.0.0.1:49171").unwrap();
         assert!(book.peers[0].via.is_none());
     }
 
     #[test]
     fn upsert_addr_preserve_via_inserts_new() {
         let mut book = AddressBook::default();
-        book.upsert_addr_preserve_via("aira:identity:b", "127.0.0.1:9");
+        book.upsert_addr_preserve_via("aira:identity:b", "127.0.0.1:49157")
+            .unwrap();
         assert_eq!(book.peers.len(), 1);
         assert!(book.peers[0].via.is_none());
+    }
+
+    #[test]
+    fn upsert_rejects_non_prime_port() {
+        let mut book = AddressBook::default();
+        let err = book
+            .upsert("aira:identity:a", "127.0.0.1:9797")
+            .unwrap_err();
+        assert!(err.to_string().contains("Prime Private Port Invariant"));
     }
 }

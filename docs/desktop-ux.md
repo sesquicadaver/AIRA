@@ -42,7 +42,7 @@
 
 **Онбординг P1:** обмін файлом/QR (pubkey + опційно addr) — Addendum E1.1 (`#80`–`#85`).  
 **Рішення 2026-08-20:** варіант **C** — E1 = лише **P0 + GUI**; P1 = E1.1.  
-**Рішення E1.1 (2026-08-20):** default `peer_listen=127.0.0.1:9797`; non-loopback лише explicit; QR = PNG файл (без камери).  
+**Рішення E1.1 (2026-08-20):** default `peer_listen=127.0.0.1:49157`; non-loopback лише explicit; QR = PNG файл (без камери).  
 **Рішення E4 (2026-08-22):** P2–P6 відкрито в [`phase-e-plan.md`](phase-e-plan.md) §4d → QUEUE `#94`–`#106` — **DONE**.
 **Phase G (2026-08-24):** peer lifecycle P3/P4 CI stabilization (`#131`–`#132`); invite QR **camera** capture (`#133`); production packaging scripts (`#143`–`#145`).
 
@@ -75,7 +75,7 @@ E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS (`#86`–`#89`) → E3
 | `autostart_on_login` | `false` | Linux XDG `#78`; macOS LaunchAgent `#87`; Windows `#91` |
 | `http_listen` | `127.0.0.1:8787` | fixed; conflict → fail або attach ([phase-e §2.3](phase-e-plan.md)) |
 | `instance_id` | generated once | для attach-семантики |
-| `peer_listen` | `null` @ P0; default `127.0.0.1:9797` @ P1 | обов’язковий при P1 |
+| `peer_listen` | `null` @ P0; default `127.0.0.1:49157` @ P1 | обов’язковий при P1 |
 | auth fields | per `#75`/`#76` | token-ref або IPC mode |
 
 ## 7. Посилання

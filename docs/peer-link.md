@@ -40,7 +40,7 @@ Static address book: `.aira/peers/address_book.json` — authoritative dial sour
 ## CLI
 
 ```bash
-cargo run -p aira-cli -- --root "$B" peer listen --bind 127.0.0.1:0 --recv --dht --apply-book
+cargo run -p aira-cli -- --root "$B" peer listen --bind 127.0.0.1:49157 --recv --dht --apply-book
 cargo run -p aira-cli -- --root "$A" peer dht announce --addr 127.0.0.1:7900
 cargo run -p aira-cli -- --root "$B" peer dht find --key-ref aira:identity:alice --apply-book
 cargo run -p aira-cli -- --root "$B" peer dht list
@@ -106,7 +106,7 @@ cargo run -p aira-cli -- --root "$A" peer discv find --key-ref aira:identity:car
 Untrusted requester / bad signature → no NODES. TCP `dial` unchanged.
 
 ```bash
-cargo run -p aira-cli -- --root "$B" peer discv listen --bind 127.0.0.1:0 --once
+cargo run -p aira-cli -- --root "$B" peer discv listen --bind 127.0.0.1:49157 --once
 cargo run -p aira-cli -- --root "$A" peer discv announce --to 127.0.0.1:PORT --addr 127.0.0.1:7900
 # or --from-stun after `peer stun query`
 cargo run -p aira-cli -- --root "$B" peer dht find --key-ref aira:identity:alice --apply-book
