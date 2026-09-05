@@ -133,4 +133,9 @@ Deterministic selection: `aira_peer::preferred_port(identity, TransportClass)` o
 
 ## RendezvousProvider (Phase N `#235`)
 
-Ledger-agnostic `aira_peer::RendezvousProvider` + `MockRendezvousProvider` (RFC-0127). EVM adapter is `#236`. Discovery does not upsert TrustStore.
+Ledger-agnostic `aira_peer::RendezvousProvider` + `MockRendezvousProvider` (RFC-0127). EVM adapter: `#236`. Discovery does not upsert TrustStore.
+
+
+## EvmRendezvousProvider (Phase N `#236`)
+
+`EvmRendezvousProvider` + local ledger double; Amoy `80002` / Polygon `137` config hooks (RFC-0128). Live JSON-RPC is `#237`. EVM payer ≠ AIRA identity.

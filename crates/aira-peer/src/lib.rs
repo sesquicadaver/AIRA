@@ -13,6 +13,7 @@
 //! QUEUE #232: Prime Private Port Invariant for AIRA-owned peer/discv/relay endpoints.
 //! QUEUE #234: Node Presence Record (canonical Ed25519).
 //! QUEUE #235: RendezvousProvider trait + mock (no ledger in Core).
+//! QUEUE #236: EvmRendezvousProvider local double + Amoy/mainnet config hooks.
 
 mod address_book;
 mod dht;
@@ -20,6 +21,7 @@ mod discovery;
 mod discv;
 mod envelope;
 mod error;
+mod evm_rendezvous;
 mod frame;
 mod gossip;
 mod handshake;
@@ -51,6 +53,11 @@ pub use discv::{
 };
 pub use envelope::make_peer_ping;
 pub use error::PeerError;
+pub use evm_rendezvous::{
+    evm_identity_hash, EvmChainProfile, EvmRendezvousConfig, EvmRendezvousProvider,
+    EVM_AMOY_RPC_DEFAULT, EVM_CHAIN_AMOY, EVM_CHAIN_LOCAL_DOUBLE, EVM_CHAIN_POLYGON,
+    EVM_LOCAL_CONTRACT_PLACEHOLDER, EVM_POLYGON_RPC_DEFAULT, RENDEZVOUS_KIND_EVM,
+};
 pub use frame::{read_frame, write_frame, MAX_FRAME_BYTES};
 pub use gossip::{
     gossip_forward_trust_delta, gossip_mark_seen, GossipForwardResult, GossipSeenLog,
