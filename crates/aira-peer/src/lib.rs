@@ -20,7 +20,9 @@
 //! QUEUE #240: Presence → AddressBook promotion (trust-gated).
 //! QUEUE #241: Relay integration (direct→NAT→relay; prime ads; dual reservation).
 //! QUEUE #242: Presence refresh (sequence++; expire stale; endpoint change).
+//! QUEUE #245: Ab ovo publish → discover → trust → dial (no preconfigured peers).
 
+mod ab_ovo;
 mod address_book;
 mod dht;
 mod discovery;
@@ -48,6 +50,7 @@ mod session;
 mod stun;
 mod trust_delta;
 
+pub use ab_ovo::{admit_peer_trust, discover_admit_promote, record_discovered_presence};
 pub use address_book::{AddressBook, PeerEndpoint};
 pub use dht::{
     apply_book_exact_from_dht_find, apply_dht_announce, apply_dht_announce_maybe_book,
