@@ -29,13 +29,13 @@ fn is_prime_u16(n: u16) -> bool {
     if n < 2 {
         return false;
     }
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         return n == 2;
     }
     let mut d = 3u32;
     let n32 = u32::from(n);
     while d * d <= n32 {
-        if n32 % d == 0 {
+        if n32.is_multiple_of(d) {
             return false;
         }
         d += 2;
