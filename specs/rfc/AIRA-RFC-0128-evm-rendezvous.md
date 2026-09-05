@@ -23,8 +23,8 @@ Blockchain = ordering/persistence/lookup substrate. AIRA Ed25519 on Presence rem
 ## 5. Non-Goals
 
 ```text
-Live JSON-RPC / contract calls (#237)
-TTL/sequence product ledger rules beyond mock (#237)
+Live JSON-RPC dial (deferred; product publish/query is #237)
+TTL/sequence product ledger rules (#237)
 Reachability / AddressBook (#238–#240)
 aira-core ledger deps
 IPFS/HTTP gateway adapter
