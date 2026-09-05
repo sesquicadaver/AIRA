@@ -1,6 +1,6 @@
 //! Node Presence Record (QUEUE #234 / Phase N).
 //!
-//! Canonical-signed discovery advertisement. Ledger publish/query is `#235+`.
+//! Canonical-signed discovery advertisement. Ledger publish uses `#235` trait / `#236+` adapters.
 //! `DISCOVERED ≠ TRUSTED`: verifying a presence does not upsert TrustStore.
 
 use aira_object::{

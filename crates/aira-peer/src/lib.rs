@@ -11,7 +11,8 @@
 //! Analyze-67: UDP discv5-style announce (signed datagram → local DHT store).
 //! Analyze-68: iterative FIND_NODE over UDP discv (XOR closest; no apply-book).
 //! QUEUE #232: Prime Private Port Invariant for AIRA-owned peer/discv/relay endpoints.
-//! QUEUE #234: Node Presence Record (canonical Ed25519; ledger publish is later).
+//! QUEUE #234: Node Presence Record (canonical Ed25519).
+//! QUEUE #235: RendezvousProvider trait + mock (no ledger in Core).
 
 mod address_book;
 mod dht;
@@ -27,6 +28,7 @@ mod notify;
 mod presence;
 mod prime_port;
 mod relay;
+mod rendezvous;
 mod replay;
 mod session;
 mod stun;
@@ -83,6 +85,7 @@ pub use relay::{
     RELAY_DELIVER_MESSAGE_TYPE, RELAY_DELIVER_SCHEMA, RELAY_HUB_REGISTRY_SCHEMA,
     RELAY_HUB_TTL_DAYS_RECOMMENDED,
 };
+pub use rendezvous::{MockRendezvousProvider, RendezvousProvider, RENDEZVOUS_KIND_MOCK};
 pub use replay::{admit_received_envelope, envelope_replay_path};
 pub use session::{
     accept, accept_tcp, complete_accept, dial, listen, listen_available_loopback, listen_explicit,
