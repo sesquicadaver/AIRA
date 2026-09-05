@@ -127,7 +127,10 @@ pub use relay_integrate::{
     RELAY_ADS_STATE_SCHEMA, RELAY_ADVERTISEMENT_SCHEMA, RELAY_AD_NETWORK_ID,
     RELAY_RESERVATION_TARGET,
 };
-pub use rendezvous::{MockRendezvousProvider, RendezvousProvider, RENDEZVOUS_KIND_MOCK};
+pub use rendezvous::{
+    LocalFileRendezvousProvider, MockRendezvousProvider, RendezvousProvider,
+    RENDEZVOUS_KIND_LOCAL_FILE, RENDEZVOUS_KIND_MOCK, RENDEZVOUS_LEDGER_SCHEMA,
+};
 pub use rendezvous_ops::{
     encode_evm_publish_call, presence_ttl_secs, EvmPublishCall, RendezvousClient,
     RendezvousLocalState, RendezvousPublishPolicy, RENDEZVOUS_MAX_QUERY_RESULTS,
