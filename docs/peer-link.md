@@ -158,4 +158,8 @@ Peer-assisted signed challenge + attestation; hairpin forbidden (RFC-0130).
 
 ## AddressBook promotion (Phase N `#240`)
 
-`promote_presence_to_address_book`: valid Presence + trust policy → dial book only; no auto-trust (RFC-0132). Relay product path is `#241`.
+`promote_presence_to_address_book`: valid Presence + trust policy → dial book only; no auto-trust (RFC-0132).
+
+## Relay integration (Phase N `#241`)
+
+`plan_dial_path` / `RelayAdvertisement` / `select_relay_reservations`: direct→NAT→relay order; prime-port ads; dual reservation SHOULD; no auto-trust (RFC-0133). Live NAT/relay Noise smoke is `#246`.

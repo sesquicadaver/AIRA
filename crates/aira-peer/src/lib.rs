@@ -18,6 +18,7 @@
 //! QUEUE #238: peer-assisted Reachability Probe (no hairpin proof).
 //! QUEUE #239: Reachability states + peers/reachability.json.
 //! QUEUE #240: Presence → AddressBook promotion (trust-gated).
+//! QUEUE #241: Relay integration (direct→NAT→relay; prime ads; dual reservation).
 
 mod address_book;
 mod dht;
@@ -37,6 +38,7 @@ mod prime_port;
 mod reachability;
 mod reachability_state;
 mod relay;
+mod relay_integrate;
 mod rendezvous;
 mod rendezvous_ops;
 mod replay;
@@ -110,6 +112,12 @@ pub use relay::{
     with_relay_hub_registry, RelayDeliver, RelayHub, RelayHubEntry, RelayHubRegistry,
     RELAY_DELIVER_MESSAGE_TYPE, RELAY_DELIVER_SCHEMA, RELAY_HUB_REGISTRY_SCHEMA,
     RELAY_HUB_TTL_DAYS_RECOMMENDED,
+};
+pub use relay_integrate::{
+    nat_observed_from_root, plan_dial_path, plan_dial_path_with_relays, select_relay_reservations,
+    DialPathInput, DialPathStep, RelayAdDraft, RelayAdStore, RelayAdvertisement,
+    RELAY_ADS_STATE_SCHEMA, RELAY_ADVERTISEMENT_SCHEMA, RELAY_AD_NETWORK_ID,
+    RELAY_RESERVATION_TARGET,
 };
 pub use rendezvous::{MockRendezvousProvider, RendezvousProvider, RENDEZVOUS_KIND_MOCK};
 pub use rendezvous_ops::{
