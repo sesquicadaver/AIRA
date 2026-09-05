@@ -107,7 +107,7 @@ N0 govern (wiring)
 |----|---------|------|-----------|------------------|
 | `#231` | N0 | Phase N wiring **DONE** | QUEUE `#231` DONE; `phase_n_doc` | Prime Port (#232) |
 | `#232` | N1 | Prime Port invariant **DONE** | `prime_port`; `|P_AIRA|==1491`; fail-closed; RFC-0124 | preferred selection (#233) |
-| `#233` | N2 | Deterministic port selection | `preferred_port(identity, class)`; collision → next; wrap finite | Presence (#234) |
+| `#233` | N2 | Deterministic port selection **DONE** | `preferred_port`; collision walk; RFC-0125 | Presence (#234) |
 | `#234` | N3 | Presence Record | schema + canonical Ed25519; mutation tests | Rendezvous trait (#235) |
 | `#235` | N4 | RendezvousProvider | trait API; no ledger-specific in Core | EVM adapter (#236) |
 | `#236` | N5 | EVM ledger adapter | local deterministic double; Amoy/mainnet config hooks | publish/query (#237) |
