@@ -128,4 +128,9 @@ Deterministic selection: `aira_peer::preferred_port(identity, TransportClass)` o
 
 ## Presence Record (Phase N `#234`)
 
-`NodePresenceRecord` (`aira:schema:peer:presence-record:0.1`) — canonical Ed25519; see RFC-0126. Ledger publish is `#235+`.
+`NodePresenceRecord` (`aira:schema:peer:presence-record:0.1`) — canonical Ed25519; see RFC-0126.
+
+
+## RendezvousProvider (Phase N `#235`)
+
+Ledger-agnostic `aira_peer::RendezvousProvider` + `MockRendezvousProvider` (RFC-0127). EVM adapter is `#236`. Discovery does not upsert TrustStore.

@@ -39,6 +39,8 @@ pub enum PeerError {
     Discv(String),
     #[error("invalid AIRA peer port: {0}")]
     InvalidPort(String),
+    #[error("rendezvous: {0}")]
+    Rendezvous(String),
 }
 
 impl From<std::io::Error> for PeerError {
