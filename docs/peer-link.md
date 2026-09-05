@@ -124,3 +124,8 @@ Desktop supervise mapping (P0–P6): [`desktop-network-profiles.md`](desktop-net
 ## Preferred port (Phase N `#233`)
 
 Deterministic selection: `aira_peer::preferred_port(identity, TransportClass)` over `P_AIRA` (RFC-0125). Collision walks the next primes with wrap.
+
+
+## Presence Record (Phase N `#234`)
+
+`NodePresenceRecord` (`aira:schema:peer:presence-record:0.1`) — canonical Ed25519; see RFC-0126. Ledger publish is `#235+`.

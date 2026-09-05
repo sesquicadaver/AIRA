@@ -1,0 +1,113 @@
+{
+  "$id": "aira:schema:peer:presence-record:0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "network_id",
+    "identity_ref",
+    "identity_public_key",
+    "sequence",
+    "created_at",
+    "expires_at",
+    "direct_endpoints",
+    "relay_endpoints",
+    "capabilities_hash",
+    "signature"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "aira:schema:peer:presence-record:0.1"
+    },
+    "network_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Public mesh id; reference value aira:network:public:v1."
+    },
+    "identity_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "identity_public_key": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{64}$",
+      "description": "Ed25519 verifying public key hex (32 bytes)."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "created_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "expires_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "direct_endpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["transport", "host", "port", "reachability_state", "observed_at"],
+        "properties": {
+          "transport": {
+            "type": "string",
+            "enum": ["tcp-peer", "udp-discv"]
+          },
+          "host": {
+            "type": "string",
+            "minLength": 1
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "reachability_state": {
+            "type": "string",
+            "enum": ["UNKNOWN", "DIRECT", "NAT", "RELAY", "OFFLINE"]
+          },
+          "observed_at": {
+            "$ref": "aira:schema:common:timestamp:0.1"
+          }
+        }
+      }
+    },
+    "relay_endpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "relay_identity_ref",
+          "relay_endpoint",
+          "reservation_id",
+          "expires_at"
+        ],
+        "properties": {
+          "relay_identity_ref": {
+            "$ref": "aira:schema:common:ref:0.1"
+          },
+          "relay_endpoint": {
+            "type": "string",
+            "minLength": 1,
+            "description": "host:port of the relay AIRA endpoint (must be P_AIRA at runtime)."
+          },
+          "reservation_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expires_at": {
+            "$ref": "aira:schema:common:timestamp:0.1"
+          }
+        }
+      }
+    },
+    "capabilities_hash": {
+      "$ref": "aira:schema:common:hash:0.1"
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
+  }
+}

@@ -171,6 +171,10 @@
     {
       "schema": "aira:schema:desktop:peer-invite:0.1",
       "file": "fixtures/valid/desktop/peer-invite.json"
+    },
+    {
+      "schema": "aira:schema:peer:presence-record:0.1",
+      "file": "fixtures/valid/peer/presence-record.json"
     }
   ],
   "invalid": [
@@ -289,6 +293,10 @@
     {
       "schema": "aira:schema:desktop:peer-invite:0.1",
       "file": "fixtures/invalid/desktop/peer-invite-missing-identity-ref.json"
+    },
+    {
+      "schema": "aira:schema:peer:presence-record:0.1",
+      "file": "fixtures/invalid/peer/presence-record-missing-identity-ref.json"
     }
   ]
 }

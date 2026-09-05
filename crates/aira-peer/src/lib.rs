@@ -11,6 +11,7 @@
 //! Analyze-67: UDP discv5-style announce (signed datagram → local DHT store).
 //! Analyze-68: iterative FIND_NODE over UDP discv (XOR closest; no apply-book).
 //! QUEUE #232: Prime Private Port Invariant for AIRA-owned peer/discv/relay endpoints.
+//! QUEUE #234: Node Presence Record (canonical Ed25519; ledger publish is later).
 
 mod address_book;
 mod dht;
@@ -23,6 +24,7 @@ mod gossip;
 mod handshake;
 mod noise;
 mod notify;
+mod presence;
 mod prime_port;
 mod relay;
 mod replay;
@@ -60,6 +62,11 @@ pub use noise::{
 };
 pub use notify::{
     notify_peer_of_rekey, notify_peers_of_rekey, upcoming_rekey_delta, NotifyPeerResult,
+};
+pub use presence::{
+    empty_capabilities_hash, presence_now, presence_to_value, NodePresenceRecord,
+    PresenceDirectEndpoint, PresenceDraft, PresenceReachability, PresenceRelayEndpoint,
+    PRESENCE_SCHEMA, PUBLIC_NETWORK_ID,
 };
 pub use prime_port::{
     format_available_loopback_tcp_bind, is_prime_port, is_valid_aira_port, next_candidate_port,
