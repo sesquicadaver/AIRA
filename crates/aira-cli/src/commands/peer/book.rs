@@ -62,6 +62,7 @@ pub(super) async fn discovery(root: &Path) -> Result<ExitCode> {
             let src = match e.source {
                 aira_peer::DiscoverySource::Direct => "direct",
                 aira_peer::DiscoverySource::Gossip => "gossip",
+                aira_peer::DiscoverySource::Rendezvous => "rendezvous",
             };
             println!(
                 "{}\t{}\t{}\t{}\t{}",

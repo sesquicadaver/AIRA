@@ -17,6 +17,8 @@ use crate::error::PeerError;
 pub enum DiscoverySource {
     Direct,
     Gossip,
+    /// Observed via rendezvous ledger Presence (DISCOVERED; not TRUSTED).
+    Rendezvous,
 }
 
 /// One durable discovery record.

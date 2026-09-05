@@ -174,4 +174,8 @@ Peer-assisted signed challenge + attestation; hairpin forbidden (RFC-0130).
 
 ## Phase N Desktop Network (`#244`)
 
-Network tab mesh banner + Identity / preferred port / bind / external / reachability / rendezvous / peer count via `load_network_mesh_snapshot` (RFC-0136). Ab ovo is `#245`.
+Network tab mesh banner + Identity / preferred port / bind / external / reachability / rendezvous / peer count via `load_network_mesh_snapshot` (RFC-0136).
+
+## Phase N Ab ovo (`#245`)
+
+`discover_admit_promote` / `admit_peer_trust` / `record_discovered_presence`: empty book → ledger query → DISCOVERED → trust → AddressBook → dial (RFC-0137). NAT/relay is `#246`.
