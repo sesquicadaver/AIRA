@@ -1,0 +1,16 @@
+{
+  "schema": "aira:schema:peer:presence-record:0.1",
+  "network_id": "aira:network:public:v1",
+  "identity_public_key": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "sequence": 1,
+  "created_at": "2026-09-05T12:00:00Z",
+  "expires_at": "2026-09-12T12:00:00Z",
+  "direct_endpoints": [],
+  "relay_endpoints": [],
+  "capabilities_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "signature": {
+    "algorithm": "ed25519",
+    "key_ref": "aira:identity:presence-fixture",
+    "signature_value": "00"
+  }
+}
