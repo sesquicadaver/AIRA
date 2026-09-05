@@ -30,7 +30,7 @@ RFC-0123 consolidating body (#247)
 
 ## 6. Compatibility / Security
 
-Additive. Signature verify before persist. Discovery ≠ trust. EVM payer ≠ AIRA identity.
+Additive. Signature verify before persist. Discovery ≠ trust. EVM payer ≠ AIRA identity. Does not add ledger deps to `aira-core`.
 
 ## 7. Rollout
 
