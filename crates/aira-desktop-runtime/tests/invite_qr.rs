@@ -56,7 +56,7 @@ fn encode_decode_roundtrip_bytes() {
     let tmp = tempfile::tempdir().unwrap();
     let alice = DesktopPaths::for_data_root(tmp.path().join("alice"));
     let out = tmp.path().join("roundtrip.png");
-    let invite = export_invite_qr_png(&alice, &out, Some("127.0.0.1:19111".into())).unwrap();
+    let invite = export_invite_qr_png(&alice, &out, Some("127.0.0.1:49253".into())).unwrap();
     encode_invite_png(&invite, &out).unwrap();
     let again = decode_invite_png(&out).unwrap();
     assert_eq!(again, invite);

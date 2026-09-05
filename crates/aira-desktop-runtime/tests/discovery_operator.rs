@@ -14,7 +14,7 @@ fn stun_query_requires_explicit_server() {
 fn discv_announce_requires_explicit_addr() {
     let tmp = tempfile::tempdir().unwrap();
     let paths = DesktopPaths::for_data_root(tmp.path());
-    let err = run_discv_announce(&paths, "127.0.0.1:9", "")
+    let err = run_discv_announce(&paths, "127.0.0.1:49157", "")
         .unwrap_err()
         .to_string();
     assert!(err.contains("explicit --addr"), "{err}");
@@ -25,8 +25,8 @@ fn discv_announce_smoke_sends() {
     let tmp = tempfile::tempdir().unwrap();
     let paths = DesktopPaths::for_data_root(tmp.path());
     // No listener required: operator shortcut only proves signed send path.
-    let msg = run_discv_announce(&paths, "127.0.0.1:9", "127.0.0.1:19099").unwrap();
-    assert!(msg.contains("127.0.0.1:19099"));
+    let msg = run_discv_announce(&paths, "127.0.0.1:49157", "127.0.0.1:49229").unwrap();
+    assert!(msg.contains("127.0.0.1:49229"));
 }
 
 #[test]
