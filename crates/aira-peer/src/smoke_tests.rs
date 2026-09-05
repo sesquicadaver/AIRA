@@ -954,7 +954,8 @@ async fn gossip_skips_non_self_sovereign_trust_delta() {
     let victim = "aira:identity:gossip-victim-53";
     // Address-book peer that must NOT be dialed for doomed deltas.
     let mut book = AddressBook::default();
-    book.upsert("aira:identity:would-dial", "127.0.0.1:49157").unwrap();
+    book.upsert("aira:identity:would-dial", "127.0.0.1:49157")
+        .unwrap();
     book.save(root).unwrap();
 
     let delta = TrustDelta::revoke(victim, Some("hostile-crl".into()));
@@ -1123,11 +1124,13 @@ async fn relay_hub_delivers_trust_delta_a_to_c_via_r() {
     let mut book_a = AddressBook::default();
     book_a.upsert(id_r.as_str(), addr_r.to_string()).unwrap();
     // C is not dialable from A — courier via R only (dummy addr).
-    book_a.upsert_via(
-        id_c.as_str(),
-        "127.0.0.1:65521",
-        Some(id_r.as_str().to_string()),
-    ).unwrap();
+    book_a
+        .upsert_via(
+            id_c.as_str(),
+            "127.0.0.1:65521",
+            Some(id_r.as_str().to_string()),
+        )
+        .unwrap();
     book_a.save(root_a).unwrap();
 
     let root_c2 = root_c.to_path_buf();
@@ -1235,11 +1238,13 @@ async fn dht_announce_apply_book_then_dial() {
 
     // B already has a via entry for A that must survive promote.
     let mut book_b = AddressBook::default();
-    book_b.upsert_via(
-        id_a.as_str(),
-        "127.0.0.1:65521",
-        Some("aira:identity:relay-keep".into()),
-    ).unwrap();
+    book_b
+        .upsert_via(
+            id_a.as_str(),
+            "127.0.0.1:65521",
+            Some("aira:identity:relay-keep".into()),
+        )
+        .unwrap();
     book_b.save(root_b).unwrap();
 
     let root_b2 = root_b.to_path_buf();
@@ -1290,7 +1295,11 @@ fn apply_book_exact_from_find_skips_closest_only() {
     init_node(root).unwrap();
     let mut store = PeerDhtStore::default();
     store
-        .upsert("aira:identity:known", "127.0.0.1:49157", Some("local".into()))
+        .upsert(
+            "aira:identity:known",
+            "127.0.0.1:49157",
+            Some("local".into()),
+        )
         .unwrap();
     store.save(root).unwrap();
     // Production find --apply-book path: no exact → Ok(None), book untouched.

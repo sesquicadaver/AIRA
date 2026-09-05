@@ -162,7 +162,9 @@ mod tests {
 
     #[test]
     fn rejects_range_edges_and_service_ports() {
-        for port in [49152u16, 65535, 443, 80, 22, 53, 123, 993, 3306, 5432, 8080, 0, 9797] {
+        for port in [
+            49152u16, 65535, 443, 80, 22, 53, 123, 993, 3306, 5432, 8080, 0, 9797,
+        ] {
             assert!(!is_valid_aira_port(port), "port {port} must be rejected");
             assert!(validate_aira_port(port).is_err());
         }

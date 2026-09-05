@@ -207,7 +207,8 @@ async fn p4_gossip_forward_filter_smoke() {
     std::thread::sleep(PEER_START_WAIT);
 
     let mut book = AddressBook::default();
-    book.upsert("aira:identity:would-dial", "127.0.0.1:49157").unwrap();
+    book.upsert("aira:identity:would-dial", "127.0.0.1:49157")
+        .unwrap();
     book.save(&paths.data_root).unwrap();
 
     let victim = "aira:identity:gossip-victim-desktop-101";

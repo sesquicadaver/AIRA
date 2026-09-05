@@ -76,8 +76,7 @@ pub use relay::{
 pub use replay::{admit_received_envelope, envelope_replay_path};
 pub use session::{
     accept, accept_tcp, complete_accept, dial, listen, listen_available_loopback, listen_explicit,
-    AuthenticatedPeer,
-    DEFAULT_PEER_TIMEOUT,
+    AuthenticatedPeer, DEFAULT_PEER_TIMEOUT,
 };
 pub use stun::{
     build_binding_request, parse_binding_success, query_and_save_stun_reflexive,
