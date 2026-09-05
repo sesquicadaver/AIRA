@@ -12,9 +12,10 @@ mod work;
 use std::path::PathBuf;
 
 use aira_desktop_runtime::{
-    load_or_create_settings, load_or_create_ui_prefs, start, status, stop,
-    sync_autostart_from_settings, write_ui_prefs, DesktopPaths, DesktopSettings, LifecycleStatus,
-    UiLang, UiPrefs, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    load_network_mesh_snapshot, load_or_create_settings, load_or_create_ui_prefs, start, status,
+    stop, sync_autostart_from_settings, write_ui_prefs, DesktopPaths, DesktopSettings,
+    LifecycleStatus, NetworkMeshSnapshot, UiLang, UiPrefs, DEFAULT_PEER_LISTEN,
+    DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
@@ -42,6 +43,7 @@ pub struct AiraDesktopApp {
     pub(super) status_label: String,
     pub(super) detail: String,
     pub(super) peer_detail: String,
+    pub(super) mesh_snapshot: NetworkMeshSnapshot,
     pub(super) peer_listen_edit: String,
     pub(super) relay_ttl_edit: String,
     pub(super) invite_msg: Option<String>,
@@ -102,6 +104,7 @@ impl AiraDesktopApp {
             status_label: Labels::get(UiLang::En).st_stopped.into(),
             detail: String::new(),
             peer_detail: String::new(),
+            mesh_snapshot: NetworkMeshSnapshot::unavailable(),
             peer_listen_edit,
             relay_ttl_edit,
             invite_msg: None,
@@ -195,7 +198,22 @@ impl AiraDesktopApp {
                 };
             }
         }
+        self.refresh_mesh_snapshot();
         Ok(())
+    }
+
+    /// Reload Network tab mesh fields from node root (orchestrates peer APIs only).
+    pub(super) fn refresh_mesh_snapshot(&mut self) {
+        match load_network_mesh_snapshot(
+            &self.paths.data_root,
+            self.settings.peer_listen.as_deref(),
+        ) {
+            Ok(snap) => self.mesh_snapshot = snap,
+            Err(e) => {
+                self.mesh_snapshot = NetworkMeshSnapshot::unavailable();
+                self.last_error = Some(format!("mesh snapshot: {e:#}"));
+            }
+        }
     }
 
     pub(super) fn do_start(&mut self) -> anyhow::Result<()> {
@@ -224,6 +242,7 @@ impl AiraDesktopApp {
         };
         self.restart_hint = false;
         self.last_error = None;
+        self.refresh_mesh_snapshot();
         Ok(())
     }
 
@@ -234,6 +253,7 @@ impl AiraDesktopApp {
         self.detail.clear();
         self.peer_detail.clear();
         self.last_error = None;
+        self.refresh_mesh_snapshot();
         Ok(())
     }
 
