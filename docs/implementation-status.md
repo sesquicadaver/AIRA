@@ -469,8 +469,6 @@ Plan: [`phase-n-plan.md`](phase-n-plan.md). Consolidating RFC: `AIRA-RFC-0123` (
 | #251 | Expiry before promote | expired Presence fail-closed; RFC-0143 | **DONE** @ this PR |
 | #252 | netns NAT/firewall honesty | firewall DROP ≠ non-listening; RFC-0144 | **DONE** @ this PR |
 | #253 | `next_candidate_port` wrap | modular ring wrap | OPEN |
-| #251 | Expiry before promote | fail-closed expired Presence | OPEN |
-| #253 | `next_candidate_port` wrap | ring arithmetic unit test | OPEN |
 | #254 | Presence temporal + RFC-0139 | validate_shape + close | OPEN |
 
 
