@@ -1,13 +1,20 @@
-//! EVM rendezvous adapter (QUEUE #236 / Phase N).
+//! EVM rendezvous adapter (QUEUE #236 / Phase N; live JSON-RPC `#248` / N-fix).
 //!
-//! `EvmRendezvousProvider` implements [`RendezvousProvider`] with a deterministic
-//! local ledger double for CI. Amoy (`80002`) and Polygon mainnet (`137`) are
-//! config profiles only — live JSON-RPC publish/query deepen in `#237`.
+//! `EvmRendezvousProvider` implements [`RendezvousProvider`] with either a
+//! deterministic local ledger double (`use_local_double=true`) or a live HTTP
+//! JSON-RPC dial (`use_local_double=false`) against anvil / Amoy / the
+//! [`crate::evm_rendezvous_rpc::ReferenceEvmRendezvousRpc`] stand-in.
 //! EVM tx sender is never treated as AIRA identity.
 
 use aira_object::ContentHash;
+use serde_json::{json, Value};
 
 use crate::error::PeerError;
+use crate::evm_rendezvous_rpc::{
+    RPC_ETH_CHAIN_ID, RPC_PUBLISH, RPC_QUERY_ACTIVE, RPC_QUERY_IDENTITY, RPC_QUERY_RELAYS,
+    RPC_REMOVE, RPC_UPDATE,
+};
+use crate::json_rpc_http::json_rpc_call;
 use crate::presence::NodePresenceRecord;
 use crate::rendezvous::{MockRendezvousProvider, RendezvousProvider};
 
@@ -23,9 +30,9 @@ pub const EVM_CHAIN_POLYGON: u64 = 137;
 
 /// Placeholder contract for local double (not on-chain).
 pub const EVM_LOCAL_CONTRACT_PLACEHOLDER: &str = "0x000000000000000000000000000000000000a12a";
-/// Documented Amoy RPC hook default (not dialed in `#236`).
+/// Documented Amoy RPC hook default (dialed only when `use_local_double=false`).
 pub const EVM_AMOY_RPC_DEFAULT: &str = "https://rpc-amoy.polygon.technology/";
-/// Documented Polygon mainnet RPC hook default (not dialed in `#236`).
+/// Documented Polygon mainnet RPC hook default (dialed only when live).
 pub const EVM_POLYGON_RPC_DEFAULT: &str = "https://polygon-rpc.com/";
 
 /// Which EVM profile the adapter is configured for.
@@ -49,7 +56,7 @@ impl EvmChainProfile {
         }
     }
 
-    /// Default RPC URL hook (never dialed by `#236` local path).
+    /// Default RPC URL hook.
     pub fn default_rpc_url(self) -> &'static str {
         match self {
             Self::LocalDouble => "aira://evm-local-double",
@@ -59,19 +66,19 @@ impl EvmChainProfile {
     }
 }
 
-/// Config for [`EvmRendezvousProvider`] (Amoy/mainnet hooks + local double).
+/// Config for [`EvmRendezvousProvider`] (Amoy/mainnet hooks + local double + live).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvmRendezvousConfig {
     pub profile: EvmChainProfile,
     pub chain_id: u64,
     pub rpc_url: String,
     pub contract_address: String,
-    /// When true, storage is the in-process double (required for CI / `#236`).
+    /// When true, storage is the in-process double (no network).
     pub use_local_double: bool,
 }
 
 impl EvmRendezvousConfig {
-    /// Fail-closed: Amoy/mainnet profiles must keep documented chain ids.
+    /// Fail-closed: profile chain ids; live path requires http(s) RPC URL.
     pub fn validate(&self) -> Result<(), PeerError> {
         let expected = self.profile.chain_id();
         if self.chain_id != expected {
@@ -94,20 +101,13 @@ impl EvmRendezvousConfig {
                 "evm contract_address must be hex".into(),
             ));
         }
-        if matches!(
-            self.profile,
-            EvmChainProfile::Amoy | EvmChainProfile::PolygonMainnet
-        ) && !self.use_local_double
-        {
-            return Err(PeerError::Rendezvous(
-                "live EVM RPC publish/query is #237; use_local_double=true or LocalDouble profile"
-                    .into(),
-            ));
-        }
-        if self.profile == EvmChainProfile::LocalDouble && !self.use_local_double {
-            return Err(PeerError::Rendezvous(
-                "LocalDouble profile requires use_local_double=true".into(),
-            ));
+        if !self.use_local_double {
+            let url = self.rpc_url.trim();
+            if !(url.starts_with("http://") || url.starts_with("https://")) {
+                return Err(PeerError::Rendezvous(format!(
+                    "live EVM rpc_url must be http(s)://, got {url}"
+                )));
+            }
         }
         Ok(())
     }
@@ -123,7 +123,7 @@ impl EvmRendezvousConfig {
         }
     }
 
-    /// Amoy config hooks with local storage (no network in `#236`).
+    /// Amoy config hooks with local storage (no network).
     pub fn amoy_local_double(contract_address: impl Into<String>) -> Self {
         Self {
             profile: EvmChainProfile::Amoy,
@@ -134,7 +134,7 @@ impl EvmRendezvousConfig {
         }
     }
 
-    /// Polygon mainnet config hooks with local storage (no network in `#236`).
+    /// Polygon mainnet config hooks with local storage (no network).
     pub fn polygon_mainnet_local_double(contract_address: impl Into<String>) -> Self {
         Self {
             profile: EvmChainProfile::PolygonMainnet,
@@ -145,7 +145,29 @@ impl EvmRendezvousConfig {
         }
     }
 
-    /// Override RPC URL on a config (still not dialed when `use_local_double`).
+    /// Live Amoy-shaped profile: real JSON-RPC dial (`#248`).
+    pub fn amoy_live(contract_address: impl Into<String>, rpc_url: impl Into<String>) -> Self {
+        Self {
+            profile: EvmChainProfile::Amoy,
+            chain_id: EVM_CHAIN_AMOY,
+            rpc_url: rpc_url.into(),
+            contract_address: contract_address.into(),
+            use_local_double: false,
+        }
+    }
+
+    /// Live dial against local anvil or [`crate::evm_rendezvous_rpc::ReferenceEvmRendezvousRpc`] (`#248`).
+    pub fn anvil_live(contract_address: impl Into<String>, rpc_url: impl Into<String>) -> Self {
+        Self {
+            profile: EvmChainProfile::LocalDouble,
+            chain_id: EVM_CHAIN_LOCAL_DOUBLE,
+            rpc_url: rpc_url.into(),
+            contract_address: contract_address.into(),
+            use_local_double: false,
+        }
+    }
+
+    /// Override RPC URL on a config.
     pub fn with_rpc_url(mut self, rpc_url: impl Into<String>) -> Self {
         self.rpc_url = rpc_url.into();
         self
@@ -159,26 +181,33 @@ pub fn evm_identity_hash(identity_ref: &str) -> String {
         .to_string()
 }
 
-/// EVM-shaped rendezvous provider (local double backend in `#236`).
+#[derive(Debug, Clone)]
+enum EvmBackend {
+    Local(MockRendezvousProvider),
+    JsonRpc,
+}
+
+/// EVM-shaped rendezvous provider (local double or live JSON-RPC).
 #[derive(Debug, Clone)]
 pub struct EvmRendezvousProvider {
     config: EvmRendezvousConfig,
-    inner: MockRendezvousProvider,
+    backend: EvmBackend,
 }
 
 impl EvmRendezvousProvider {
-    /// Build from validated config (local double only in this atom).
+    /// Build from validated config (local double or live HTTP JSON-RPC).
     pub fn new(config: EvmRendezvousConfig) -> Result<Self, PeerError> {
         config.validate()?;
-        if !config.use_local_double {
-            return Err(PeerError::Rendezvous(
-                "EvmRendezvousProvider #236 requires use_local_double".into(),
-            ));
+        let backend = if config.use_local_double {
+            EvmBackend::Local(MockRendezvousProvider::new())
+        } else {
+            EvmBackend::JsonRpc
+        };
+        let provider = Self { config, backend };
+        if matches!(provider.backend, EvmBackend::JsonRpc) {
+            provider.verify_chain_id()?;
         }
-        Ok(Self {
-            config,
-            inner: MockRendezvousProvider::new(),
-        })
+        Ok(provider)
     }
 
     /// Shortcut: local double profile.
@@ -191,22 +220,85 @@ impl EvmRendezvousProvider {
         &self.config
     }
 
+    /// True when dialing remote/reference JSON-RPC (not in-process double).
+    pub fn is_live_json_rpc(&self) -> bool {
+        matches!(self.backend, EvmBackend::JsonRpc)
+    }
+
     /// Contract-facing identity hash for a presence (not EVM account).
     pub fn identity_hash_for(record: &NodePresenceRecord) -> String {
         evm_identity_hash(&record.identity_ref)
     }
+
+    fn verify_chain_id(&self) -> Result<(), PeerError> {
+        let result = json_rpc_call(&self.config.rpc_url, RPC_ETH_CHAIN_ID, json!([]))?;
+        let hex = result
+            .as_str()
+            .ok_or_else(|| PeerError::Rendezvous("eth_chainId result not string".into()))?;
+        let remote = parse_hex_u64(hex)?;
+        if remote != self.config.chain_id {
+            return Err(PeerError::Rendezvous(format!(
+                "live EVM chain_id mismatch: config {} vs eth_chainId {remote}",
+                self.config.chain_id
+            )));
+        }
+        Ok(())
+    }
+
+    fn rpc_params_record(&self, record: &NodePresenceRecord) -> Value {
+        json!({
+            "contract": self.config.contract_address,
+            "record": record,
+            "identity_hash": Self::identity_hash_for(record),
+        })
+    }
+
+    fn decode_records(v: Value) -> Result<Vec<NodePresenceRecord>, PeerError> {
+        serde_json::from_value(v).map_err(|e| PeerError::Rendezvous(e.to_string()))
+    }
+
+    fn decode_optional_record(v: Value) -> Result<Option<NodePresenceRecord>, PeerError> {
+        if v.is_null() {
+            return Ok(None);
+        }
+        serde_json::from_value(v).map_err(|e| PeerError::Rendezvous(e.to_string()))
+    }
+}
+
+fn parse_hex_u64(hex: &str) -> Result<u64, PeerError> {
+    let s = hex.trim().trim_start_matches("0x").trim_start_matches("0X");
+    u64::from_str_radix(s, 16).map_err(|e| PeerError::Rendezvous(format!("bad chain id hex: {e}")))
 }
 
 impl RendezvousProvider for EvmRendezvousProvider {
     fn publish_presence(&mut self, record: NodePresenceRecord) -> Result<(), PeerError> {
-        // Authenticity is AIRA Ed25519 on the record — never the EVM payer.
         let _ = Self::identity_hash_for(&record);
-        self.inner.publish_presence(record)
+        match &mut self.backend {
+            EvmBackend::Local(inner) => inner.publish_presence(record),
+            EvmBackend::JsonRpc => {
+                let _ = json_rpc_call(
+                    &self.config.rpc_url,
+                    RPC_PUBLISH,
+                    self.rpc_params_record(&record),
+                )?;
+                Ok(())
+            }
+        }
     }
 
     fn update_presence(&mut self, record: NodePresenceRecord) -> Result<(), PeerError> {
         let _ = Self::identity_hash_for(&record);
-        self.inner.update_presence(record)
+        match &mut self.backend {
+            EvmBackend::Local(inner) => inner.update_presence(record),
+            EvmBackend::JsonRpc => {
+                let _ = json_rpc_call(
+                    &self.config.rpc_url,
+                    RPC_UPDATE,
+                    self.rpc_params_record(&record),
+                )?;
+                Ok(())
+            }
+        }
     }
 
     fn remove_or_expire_presence(
@@ -215,20 +307,76 @@ impl RendezvousProvider for EvmRendezvousProvider {
         as_of: &str,
         force: bool,
     ) -> Result<bool, PeerError> {
-        self.inner
-            .remove_or_expire_presence(identity_ref, as_of, force)
+        match &mut self.backend {
+            EvmBackend::Local(inner) => inner.remove_or_expire_presence(identity_ref, as_of, force),
+            EvmBackend::JsonRpc => {
+                let result = json_rpc_call(
+                    &self.config.rpc_url,
+                    RPC_REMOVE,
+                    json!({
+                        "contract": self.config.contract_address,
+                        "identity_ref": identity_ref,
+                        "as_of": as_of,
+                        "force": force,
+                    }),
+                )?;
+                Ok(result
+                    .get("removed")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false))
+            }
+        }
     }
 
     fn query_active_peers(&self, as_of: &str) -> Result<Vec<NodePresenceRecord>, PeerError> {
-        self.inner.query_active_peers(as_of)
+        match &self.backend {
+            EvmBackend::Local(inner) => inner.query_active_peers(as_of),
+            EvmBackend::JsonRpc => {
+                let result = json_rpc_call(
+                    &self.config.rpc_url,
+                    RPC_QUERY_ACTIVE,
+                    json!({
+                        "contract": self.config.contract_address,
+                        "as_of": as_of,
+                    }),
+                )?;
+                Self::decode_records(result)
+            }
+        }
     }
 
     fn query_identity(&self, identity_ref: &str) -> Result<Option<NodePresenceRecord>, PeerError> {
-        self.inner.query_identity(identity_ref)
+        match &self.backend {
+            EvmBackend::Local(inner) => inner.query_identity(identity_ref),
+            EvmBackend::JsonRpc => {
+                let result = json_rpc_call(
+                    &self.config.rpc_url,
+                    RPC_QUERY_IDENTITY,
+                    json!({
+                        "contract": self.config.contract_address,
+                        "identity_ref": identity_ref,
+                    }),
+                )?;
+                Self::decode_optional_record(result)
+            }
+        }
     }
 
     fn query_relays(&self, as_of: &str) -> Result<Vec<NodePresenceRecord>, PeerError> {
-        self.inner.query_relays(as_of)
+        match &self.backend {
+            EvmBackend::Local(inner) => inner.query_relays(as_of),
+            EvmBackend::JsonRpc => {
+                let result = json_rpc_call(
+                    &self.config.rpc_url,
+                    RPC_QUERY_RELAYS,
+                    json!({
+                        "contract": self.config.contract_address,
+                        "as_of": as_of,
+                    }),
+                )?;
+                Self::decode_records(result)
+            }
+        }
     }
 
     fn provider_kind(&self) -> &'static str {
@@ -246,6 +394,7 @@ mod tests {
     use ed25519_dalek::SigningKey;
     use tempfile::tempdir;
 
+    use crate::evm_rendezvous_rpc::ReferenceEvmRendezvousRpc;
     use crate::presence::{
         empty_capabilities_hash, PresenceDirectEndpoint, PresenceDraft, PresenceReachability,
     };
@@ -318,6 +467,7 @@ mod tests {
         assert_eq!(evm.provider_kind(), RENDEZVOUS_KIND_EVM);
         assert_eq!(evm.config().chain_id, EVM_CHAIN_LOCAL_DOUBLE);
         assert!(evm.config().use_local_double);
+        assert!(!evm.is_live_json_rpc());
         let rec = signed(dir.path(), &id, &pk, 1);
         let hash = EvmRendezvousProvider::identity_hash_for(&rec);
         assert!(hash.starts_with("sha256:"));
@@ -345,11 +495,19 @@ mod tests {
     }
 
     #[test]
-    fn rejects_live_remote_without_237() {
+    fn live_amoy_config_validates_without_stub_error() {
+        let cfg =
+            EvmRendezvousConfig::amoy_live(EVM_LOCAL_CONTRACT_PLACEHOLDER, "http://127.0.0.1:8545");
+        cfg.validate().unwrap();
+        assert!(!cfg.use_local_double);
+    }
+
+    #[test]
+    fn rejects_live_without_http_url() {
         let mut cfg = EvmRendezvousConfig::amoy_local_double(EVM_LOCAL_CONTRACT_PLACEHOLDER);
         cfg.use_local_double = false;
+        cfg.rpc_url = "aira://not-http".into();
         assert!(cfg.validate().is_err());
-        assert!(EvmRendezvousProvider::new(cfg).is_err());
     }
 
     #[test]
@@ -357,5 +515,35 @@ mod tests {
         let mut cfg = EvmRendezvousConfig::local_double();
         cfg.chain_id = 1;
         assert!(cfg.validate().is_err());
+    }
+
+    #[test]
+    fn live_json_rpc_roundtrip_via_reference_server() {
+        let dir = tempdir().unwrap();
+        let (id, pk) = write_node(dir.path(), "evm-live", [77u8; 32]);
+        let server = ReferenceEvmRendezvousRpc::spawn(
+            EVM_CHAIN_LOCAL_DOUBLE,
+            EVM_LOCAL_CONTRACT_PLACEHOLDER,
+        )
+        .unwrap();
+        let cfg = EvmRendezvousConfig::anvil_live(EVM_LOCAL_CONTRACT_PLACEHOLDER, server.rpc_url());
+        let mut evm = EvmRendezvousProvider::new(cfg).unwrap();
+        assert!(evm.is_live_json_rpc());
+        let rec = signed(dir.path(), &id, &pk, 1);
+        evm.publish_presence(rec.clone()).unwrap();
+        let found = evm.query_identity(id.as_str()).unwrap().unwrap();
+        assert_eq!(found.identity_ref, rec.identity_ref);
+        assert_eq!(
+            evm.query_active_peers("2026-09-06T00:00:00Z")
+                .unwrap()
+                .len(),
+            1
+        );
+        let rec2 = signed(dir.path(), &id, &pk, 2);
+        evm.update_presence(rec2).unwrap();
+        assert!(evm
+            .remove_or_expire_presence(id.as_str(), "2026-09-06T00:00:00Z", true)
+            .unwrap());
+        assert!(evm.query_identity(id.as_str()).unwrap().is_none());
     }
 }

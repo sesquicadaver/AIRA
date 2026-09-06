@@ -1,6 +1,6 @@
 # Phase N-fix — Semantic honesty & live rendezvous gaps
 
-**Статус:** складено 2026-09-06; **IN PROGRESS** → QUEUE `#248`–`#254`.  
+**Статус:** складено 2026-09-06; **IN PROGRESS** → QUEUE `#249`–`#254` (`#248` **DONE** @ RFC-0140).  
 **Джерела:** post-N audit `aira-current.md` @ `43bf3fa` (2026-09-06); Phase N [`phase-n-plan.md`](phase-n-plan.md) **DONE** @ RFC-0123 (local reference).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase N-fix `#248`–`#254`.  
 **Closure:** honesty RFC-D на останньому атомі + статус `PARTIAL→` live global там, де Done when вимагає; consolidating id **RFC-0139** (file at `#254`).  
@@ -71,7 +71,7 @@ NF0 Live EVM JSON-RPC
 
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
-| `#248` | NF0 | Live EVM rendezvous | `EvmRendezvousProvider` виконує JSON-RPC publish/query (local anvil **або** documented Amoy); `use_local_double=false` path не stub-error; тести + RFC-D | two-process ab ovo (#249) |
+| `#248` | NF0 | Live EVM rendezvous | **DONE** @ RFC-0140: live JSON-RPC publish/query (`anvil_live` / Amoy / `ReferenceEvmRendezvousRpc`) | two-process ab ovo (#249) |
 | `#249` | NF1 | Real ab ovo harness | два окремі процеси / незалежні `--root`; shared ledger substrate; empty AddressBook B; discover→trust→dial; CI harness | session reachability (#250) |
 | `#250` | NF2 | Reachability session bind | attestation вимагає inbound accept + transcript/session binding; signed claim без connect **не** ставить `DIRECT_REACHABLE` | expiry (#251) |
 | `#251` | NF3 | Expiry before promote | `discover_admit_promote` / promotion fail-closed на expired Presence навіть через `query_identity` | netns NAT (#252) |
@@ -107,7 +107,7 @@ aira-core still has no ledger deps.
 
 ## 7. RFC
 
-- Per-atom RFC-D: `#248`→… (окремі файли; не RFC-A).
+- Per-atom RFC-D: `#248`→[`AIRA-RFC-0140`](../specs/rfc/AIRA-RFC-0140-live-evm-rendezvous.md); `#249`→… (окремі файли; не RFC-A).
 - Consolidating: **`AIRA-RFC-0139`** at `#254` (id reserved; file-free until `#254`).
 - RFC-0123 лишається історичним Phase N closure (local reference).
 
@@ -115,6 +115,6 @@ aira-core still has no ledger deps.
 
 ```text
 QUEUE N closed @ RFC-0123 + aira-current.md audit 2026-09-06
-  → цей план + QUEUE `#248`–`#254` OPEN
+  → цей план + QUEUE `#248`–`#254` ( `#248` DONE @ RFC-0140; first OPEN `#249` )
 RFC-0139 file-free until `#254`.
 ```

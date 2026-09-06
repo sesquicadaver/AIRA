@@ -184,6 +184,10 @@ Network tab mesh banner + Identity / preferred port / bind / external / reachabi
 
 `configure_inbound_blocked_via_relay` / `plan_inbound_blocked_relay_path`: dual inbound blocked → Noise to hub → courier (RFC-0138). Consolidating RFC-0123 is `#247`.
 
+## Phase N-fix Live EVM (`#248`)
+
+`EvmRendezvousProvider` live JSON-RPC (`use_local_double=false`) via `ureq` + `ReferenceEvmRendezvousRpc` / anvil / Amoy (RFC-0140). Next: real ab ovo `#249`.
+
 ## Phase N-fix (post-audit)
 
-Semantic gaps (live EVM, session-bound reachability, expiry, netns NAT): [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#248`–`#254`.
+Remaining: [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#249`–`#254` (first OPEN `#249`).
