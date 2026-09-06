@@ -8,6 +8,8 @@
 //! `#233`: `preferred_port(identity, transport_class)` hashes
 //! `identity_ref || class || version` (SHA-256) into `P_AIRA`; collisions walk
 //! the next primes with wrap, never spinning forever.
+//! `#253`: ring distance uses modular arithmetic on `P_AIRA_COUNT` (not
+//! `usize::wrapping_sub` alone).
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, UdpSocket};
 use std::sync::LazyLock;
