@@ -183,3 +183,7 @@ Network tab mesh banner + Identity / preferred port / bind / external / reachabi
 ## Phase N NAT/relay (`#246`)
 
 `configure_inbound_blocked_via_relay` / `plan_inbound_blocked_relay_path`: dual inbound blocked → Noise to hub → courier (RFC-0138). Consolidating RFC-0123 is `#247`.
+
+## Phase N-fix (post-audit)
+
+Semantic gaps (live EVM, session-bound reachability, expiry, netns NAT): [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#248`–`#254`.

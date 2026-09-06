@@ -4,6 +4,7 @@
 **Джерела:** developer ТЗ *AIRA Global Node Connectivity & Rendezvous* (`aira-prime.md`) + decisions (`aira-current.md`, 2026-09-05); peer stack (`address_book`, DHT, STUN, relay, Noise/Trust); QUEUE M closed @ RFC-0117.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase N `#231`–`#247`.  
 **Closure RFC:** [`AIRA-RFC-0123`](../specs/rfc/AIRA-RFC-0123-phase-n-global-rendezvous.md).  
+**Post-N gaps:** [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#248`–`#254` (live EVM / ab ovo honesty / reachability bind).  
 **Не змінює:** анти-місію README (ядро **не** хост інференсу; **не** GPU marketplace; AIRA **не** blockchain network); C0/C1 `Calculate 2 + 2`; `aira-core`; Phase M OS sandbox; AIRA-mediated `network=none`.
 
 > Примітка: `aira-prime.md` / `aira-current.md` — рішення розробника поза git-каноном AIRA. Канон у репо — цей план + QUEUE + RFC.
