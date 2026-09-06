@@ -1,6 +1,6 @@
 # Phase N-fix — Semantic honesty & live rendezvous gaps
 
-**Статус:** складено 2026-09-06; **IN PROGRESS** → QUEUE `#254` (`#248`–`#253` **DONE** @ RFC-0140…RFC-0145).  
+**Статус:** складено 2026-09-06; **DONE** @ RFC-0139 — QUEUE `#248`–`#254` **DONE**; **QUEUE N-fix closed** (QUEUE N closed @ RFC-0123 лишається).  
 **Джерела:** post-N audit `aira-current.md` @ `43bf3fa` (2026-09-06); Phase N [`phase-n-plan.md`](phase-n-plan.md) **DONE** @ RFC-0123 (local reference).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase N-fix `#248`–`#254`.  
 **Closure:** honesty RFC-D на останньому атомі + статус `PARTIAL→` live global там, де Done when вимагає; consolidating id **RFC-0139** (file at `#254`).  
@@ -77,7 +77,7 @@ NF0 Live EVM JSON-RPC
 | `#251` | NF3 | Expiry before promote | **DONE** @ RFC-0143: expired Presence fail-closed (promote + discover even via `query_identity`) | netns NAT (#252) |
 | `#252` | NF4 | netns NAT/firewall tests | **DONE** @ RFC-0144: firewall DROP ≠ non-listening placeholder; Docker smoke or documented path | port wrap (#253) |
 | `#253` | NF5 | `next_candidate_port` wrap | **DONE** @ RFC-0145: modular ring wrap; cur-before-preferred after wrap fixed | Presence shape (#254) |
-| `#254` | NF6 | Presence temporal + close | `validate_shape`: `created_at < expires_at`; status honesty (global = PARTIAL until live proven); RFC-0139; QUEUE N-fix closed | — |
+| `#254` | NF6 | Presence temporal + close | **DONE** @ RFC-0139: `created_at < expires_at`; global live **PARTIAL**; QUEUE N-fix closed | — |
 
 ```text
 #248 NF0 Live EVM
@@ -107,14 +107,14 @@ aira-core still has no ledger deps.
 
 ## 7. RFC
 
-- Per-atom RFC-D: `#248`→[`AIRA-RFC-0140`](../specs/rfc/AIRA-RFC-0140-live-evm-rendezvous.md); `#249`→[`AIRA-RFC-0141`](../specs/rfc/AIRA-RFC-0141-ab-ovo-two-process.md); `#250`→[`AIRA-RFC-0142`](../specs/rfc/AIRA-RFC-0142-reachability-session-bind.md); `#251`→[`AIRA-RFC-0143`](../specs/rfc/AIRA-RFC-0143-presence-expiry-before-promote.md); `#252`→[`AIRA-RFC-0144`](../specs/rfc/AIRA-RFC-0144-inbound-firewall-honesty.md); `#253`→[`AIRA-RFC-0145`](../specs/rfc/AIRA-RFC-0145-next-candidate-port-wrap.md); `#254`→RFC-0139 (окремі файли; не RFC-A).
-- Consolidating: **`AIRA-RFC-0139`** at `#254` (id reserved; file-free until `#254`).
+- Per-atom RFC-D: `#248`→[`AIRA-RFC-0140`](../specs/rfc/AIRA-RFC-0140-live-evm-rendezvous.md); `#249`→[`AIRA-RFC-0141`](../specs/rfc/AIRA-RFC-0141-ab-ovo-two-process.md); `#250`→[`AIRA-RFC-0142`](../specs/rfc/AIRA-RFC-0142-reachability-session-bind.md); `#251`→[`AIRA-RFC-0143`](../specs/rfc/AIRA-RFC-0143-presence-expiry-before-promote.md); `#252`→[`AIRA-RFC-0144`](../specs/rfc/AIRA-RFC-0144-inbound-firewall-honesty.md); `#253`→[`AIRA-RFC-0145`](../specs/rfc/AIRA-RFC-0145-next-candidate-port-wrap.md).
+- Consolidating: **[`AIRA-RFC-0139`](../specs/rfc/AIRA-RFC-0139-phase-n-fix-honesty-close.md)** at `#254` (**QUEUE N-fix closed**).
 - RFC-0123 лишається історичним Phase N closure (local reference).
 
 ## 8. Activation rule
 
 ```text
-QUEUE N closed @ RFC-0123 + aira-current.md audit 2026-09-06
-  → цей план + QUEUE `#248`–`#254` ( `#248`–`#253` DONE; first OPEN `#254` )
-RFC-0139 file-free until `#254`.
+QUEUE N-fix closed @ RFC-0139 (2026-09-06).
+`#248`–`#254` DONE; no OPEN N-fix atoms.
+Global live rendezvous status remains PARTIAL (honest).
 ```
