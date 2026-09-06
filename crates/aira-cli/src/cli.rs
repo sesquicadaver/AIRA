@@ -679,6 +679,9 @@ pub(crate) enum PeerReachabilityCommands {
         /// Apply a verified `ReachabilityResult` JSON file (peer-assisted probe).
         #[arg(long)]
         result_json: Option<String>,
+        /// Local inbound session transcript (`sha256:…`) required with `--result-json` (#250).
+        #[arg(long)]
+        session_transcript: Option<String>,
         /// If set with no result, record direct-failed → OFFLINE/OUTBOUND_ONLY/RELAY_ONLY.
         #[arg(long, default_value_t = false)]
         mark_direct_failed: bool,

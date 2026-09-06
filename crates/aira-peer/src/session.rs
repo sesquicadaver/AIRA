@@ -42,9 +42,36 @@ pub struct AuthenticatedPeer {
     pub peer_id: AiraRef,
     /// Local node identity.
     pub local_id: AiraRef,
+    /// Noise XX handshake hash (first 32 bytes) for reachability session bind (`#250`).
+    pub(crate) noise_handshake_hash: [u8; 32],
 }
 
 impl AuthenticatedPeer {
+    /// Hex of the Noise handshake hash captured at session establishment.
+    pub fn noise_handshake_hash_hex(&self) -> String {
+        hex::encode(self.noise_handshake_hash)
+    }
+
+    /// Canonical reachability session transcript for a challenge (`#250`).
+    ///
+    /// Both ends of the same Noise session produce the same value.
+    pub fn reachability_session_transcript(
+        &self,
+        challenge: &crate::reachability::ReachabilityChallenge,
+    ) -> Result<String, PeerError> {
+        crate::reachability::session_transcript_hex(
+            challenge,
+            self.local_id.as_str(),
+            self.peer_id.as_str(),
+            &self.noise_handshake_hash_hex(),
+        )
+    }
+
+    /// Local node data root for this session.
+    pub fn local_root(&self) -> &Path {
+        &self.local_root
+    }
+
     /// Send one signed protocol envelope (Noise-encrypted frame).
     ///
     /// Issuer must be the local node (direct send). For gossip relay use
@@ -176,7 +203,8 @@ async fn finish_initiator(
 ) -> Result<AuthenticatedPeer, PeerError> {
     let static_priv = load_or_create_noise_static(&local_root)?;
     let mut stream = stream;
-    let (transport, remote_static) = noise_xx_initiator(&mut stream, &static_priv).await?;
+    let (transport, remote_static, noise_handshake_hash) =
+        noise_xx_initiator(&mut stream, &static_priv).await?;
     ensure_noise_static_bind(&hello.peer_x25519_pub, &remote_static)?;
     let (local_id, _) = aira_object::Keyring::load_node_identity(&local_root)?;
     Ok(AuthenticatedPeer {
@@ -185,6 +213,7 @@ async fn finish_initiator(
         local_root,
         peer_id: hello.peer_id,
         local_id,
+        noise_handshake_hash,
     })
 }
 
@@ -195,7 +224,8 @@ async fn finish_responder(
 ) -> Result<AuthenticatedPeer, PeerError> {
     let static_priv = load_or_create_noise_static(&local_root)?;
     let mut stream = stream;
-    let (transport, remote_static) = noise_xx_responder(&mut stream, &static_priv).await?;
+    let (transport, remote_static, noise_handshake_hash) =
+        noise_xx_responder(&mut stream, &static_priv).await?;
     ensure_noise_static_bind(&hello.peer_x25519_pub, &remote_static)?;
     let (local_id, _) = aira_object::Keyring::load_node_identity(&local_root)?;
     Ok(AuthenticatedPeer {
@@ -204,6 +234,7 @@ async fn finish_responder(
         local_root,
         peer_id: hello.peer_id,
         local_id,
+        noise_handshake_hash,
     })
 }
 

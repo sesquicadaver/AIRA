@@ -206,8 +206,15 @@ impl ReachabilityLocalState {
     }
 
     /// Apply a verified successful peer-assisted probe → DIRECT_REACHABLE.
-    pub fn apply_successful_probe(&mut self, result: &ReachabilityResult) -> Result<(), PeerError> {
-        result.verify(None)?;
+    ///
+    /// `local_session_transcript_hex` must come from the target's inbound
+    /// `AuthenticatedPeer::reachability_session_transcript` (`#250`).
+    pub fn apply_successful_probe(
+        &mut self,
+        result: &ReachabilityResult,
+        local_session_transcript_hex: &str,
+    ) -> Result<(), PeerError> {
+        result.verify_with_local_session(local_session_transcript_hex, None)?;
         if !result.attestation.success {
             return Err(PeerError::Reachability(
                 "cannot apply unsuccessful probe as DIRECT".into(),
@@ -324,13 +331,72 @@ mod tests {
         assert_eq!(st.to_presence_hint(), PresenceReachability::Unknown);
     }
 
-    #[test]
-    fn successful_probe_sets_direct_and_persists() {
+    #[tokio::test]
+    async fn successful_probe_sets_direct_and_persists() {
+        use crate::{accept, admit_peer_trust, dial, listen_available_loopback, AddressBook};
+
         let target = tempdir().unwrap();
         let probe = tempdir().unwrap();
         let root = tempdir().unwrap();
         let (tid, tpk) = write_node(target.path(), "st-tgt", [81u8; 32]);
-        let _ = write_node(probe.path(), "st-prb", [82u8; 32]);
+        let (pid, ppk) = write_node(probe.path(), "st-prb", [82u8; 32]);
+        admit_peer_trust(target.path(), pid.as_str(), &ppk).unwrap();
+        admit_peer_trust(probe.path(), tid.as_str(), &tpk).unwrap();
+
+        let (listener, addr) = listen_available_loopback().await.unwrap();
+        let endpoint = format!("127.0.0.1:{}", addr.port());
+        let mut book = AddressBook::default();
+        book.upsert(tid.as_str(), &endpoint).unwrap();
+        book.save(probe.path()).unwrap();
+
+        let root_t = target.path().to_path_buf();
+        let accept_task = tokio::spawn(async move { accept(&listener, root_t).await });
+        let probe_session = dial(probe.path(), tid.as_str()).await.unwrap();
+        let target_session = accept_task.await.unwrap().unwrap();
+
+        let ch = ReachabilityChallenge::draft(ChallengeDraft {
+            target_identity_ref: tid.as_str().into(),
+            target_public_key: tpk,
+            endpoint: endpoint.clone(),
+            created_at: "2026-09-05T12:00:00Z".into(),
+            expires_at: "2026-09-05T13:00:00Z".into(),
+        })
+        .unwrap()
+        .sign_for_node_root(target.path())
+        .unwrap();
+        let local_tx = target_session
+            .reachability_session_transcript(&ch)
+            .unwrap();
+        let att = ReachabilityAttestation::issue_for_authenticated_session(
+            &ch,
+            &probe_session,
+            endpoint,
+            "2026-09-05T12:30:00Z",
+        )
+        .unwrap();
+        let result = ReachabilityResult::new(ch, att);
+        let mut st = ReachabilityLocalState::default();
+        st.apply_successful_probe(&result, &local_tx).unwrap();
+        assert_eq!(st.status, ReachabilityStatus::DirectReachable);
+        assert!(st.status.may_advertise_direct());
+        assert_eq!(st.to_presence_hint(), PresenceReachability::Direct);
+        st.save(root.path()).unwrap();
+        let loaded = ReachabilityLocalState::load(root.path()).unwrap();
+        assert_eq!(loaded.status, ReachabilityStatus::DirectReachable);
+        assert!(ReachabilityLocalState::path(root.path()).is_file());
+
+        // no-connect / wrong transcript cannot set DIRECT
+        assert!(st
+            .apply_successful_probe(&result, "sha256:00")
+            .is_err());
+    }
+
+    #[test]
+    fn signed_claim_without_session_cannot_apply_direct() {
+        let target = tempdir().unwrap();
+        let probe = tempdir().unwrap();
+        let (tid, tpk) = write_node(target.path(), "no-sess", [83u8; 32]);
+        let _ = write_node(probe.path(), "no-sess-p", [84u8; 32]);
         let ch = ReachabilityChallenge::draft(ChallengeDraft {
             target_identity_ref: tid.as_str().into(),
             target_public_key: tpk,
@@ -341,24 +407,14 @@ mod tests {
         .unwrap()
         .sign_for_node_root(target.path())
         .unwrap();
-        let att = ReachabilityAttestation::issue_for_challenge(
+        assert!(ReachabilityAttestation::issue_for_challenge(
             &ch,
             probe.path(),
             "127.0.0.1:49157",
             "2026-09-05T12:30:00Z",
             true,
         )
-        .unwrap();
-        let result = ReachabilityResult::new(ch, att);
-        let mut st = ReachabilityLocalState::default();
-        st.apply_successful_probe(&result).unwrap();
-        assert_eq!(st.status, ReachabilityStatus::DirectReachable);
-        assert!(st.status.may_advertise_direct());
-        assert_eq!(st.to_presence_hint(), PresenceReachability::Direct);
-        st.save(root.path()).unwrap();
-        let loaded = ReachabilityLocalState::load(root.path()).unwrap();
-        assert_eq!(loaded.status, ReachabilityStatus::DirectReachable);
-        assert!(ReachabilityLocalState::path(root.path()).is_file());
+        .is_err());
     }
 
     #[test]

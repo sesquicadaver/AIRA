@@ -190,8 +190,12 @@ Network tab mesh banner + Identity / preferred port / bind / external / reachabi
 
 ## Phase N-fix ab ovo harness (`#249`)
 
-`aira-ab-ovo-harness` two OS processes + shared local-file ledger; empty book B; discover→trust→dial (RFC-0141). Next: reachability bind `#250`.
+`aira-ab-ovo-harness` two OS processes + shared local-file ledger; empty book B; discover→trust→dial (RFC-0141).
+
+## Phase N-fix reachability session bind (`#250`)
+
+Successful attestation binds Noise handshake hash + session transcript; `apply_successful_probe` requires matching local inbound transcript; CLI `--session-transcript` (RFC-0142). Signed claim without connect ≠ `DIRECT_REACHABLE`.
 
 ## Phase N-fix (post-audit)
 
-Remaining: [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#250`–`#254` (first OPEN `#250`).
+Remaining: [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#251`–`#254` (first OPEN `#251`).

@@ -333,11 +333,11 @@ async fn read_noise_msg(stream: &mut TcpStream) -> Result<Vec<u8>, PeerError> {
     read_frame(stream).await
 }
 
-/// Initiator XX after hello. Returns transport + remote static public key.
+/// Initiator XX after hello. Returns transport + remote static + handshake hash.
 pub async fn noise_xx_initiator(
     stream: &mut TcpStream,
     static_priv: &[u8; 32],
-) -> Result<(TransportState, [u8; 32]), PeerError> {
+) -> Result<(TransportState, [u8; 32], [u8; 32]), PeerError> {
     let mut noise = builder(static_priv)?
         .build_initiator()
         .map_err(|e| PeerError::Crypto(format!("noise initiator: {e}")))?;
@@ -372,17 +372,24 @@ pub async fn noise_xx_initiator(
     let mut remote_arr = [0u8; 32];
     remote_arr.copy_from_slice(&remote);
 
+    let hs = noise.get_handshake_hash();
+    if hs.len() < 32 {
+        return Err(PeerError::Crypto("noise handshake hash too short".into()));
+    }
+    let mut hs_arr = [0u8; 32];
+    hs_arr.copy_from_slice(&hs[..32]);
+
     let transport = noise
         .into_transport_mode()
         .map_err(|e| PeerError::Crypto(format!("noise transport: {e}")))?;
-    Ok((transport, remote_arr))
+    Ok((transport, remote_arr, hs_arr))
 }
 
-/// Responder XX after hello. Returns transport + remote static public key.
+/// Responder XX after hello. Returns transport + remote static + handshake hash.
 pub async fn noise_xx_responder(
     stream: &mut TcpStream,
     static_priv: &[u8; 32],
-) -> Result<(TransportState, [u8; 32]), PeerError> {
+) -> Result<(TransportState, [u8; 32], [u8; 32]), PeerError> {
     let mut noise = builder(static_priv)?
         .build_responder()
         .map_err(|e| PeerError::Crypto(format!("noise responder: {e}")))?;
@@ -417,10 +424,17 @@ pub async fn noise_xx_responder(
     let mut remote_arr = [0u8; 32];
     remote_arr.copy_from_slice(&remote);
 
+    let hs = noise.get_handshake_hash();
+    if hs.len() < 32 {
+        return Err(PeerError::Crypto("noise handshake hash too short".into()));
+    }
+    let mut hs_arr = [0u8; 32];
+    hs_arr.copy_from_slice(&hs[..32]);
+
     let transport = noise
         .into_transport_mode()
         .map_err(|e| PeerError::Crypto(format!("noise transport: {e}")))?;
-    Ok((transport, remote_arr))
+    Ok((transport, remote_arr, hs_arr))
 }
 
 /// Encrypt plaintext and write as one length-prefixed frame.

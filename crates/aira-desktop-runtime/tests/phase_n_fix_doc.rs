@@ -1,4 +1,4 @@
-//! Phase N-fix contract smoke (#248–#254). `#248` DONE @ RFC-0140; `#249` DONE @ RFC-0141; first OPEN `#250`.
+//! Phase N-fix contract smoke (#248–#254). `#248`–`#250` DONE @ RFC-0140/0141/0142; first OPEN `#251`.
 
 use std::path::PathBuf;
 
@@ -37,22 +37,23 @@ fn phase_n_fix_plan_present() {
 }
 
 #[test]
-fn phase_n_fix_queue_249_done_250_open() {
+fn phase_n_fix_queue_250_done_251_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-n-fix-plan.md"));
     assert!(text.contains("| 248 | **DONE**"), "QUEUE #248 must be DONE");
     assert!(text.contains("| 249 | **DONE**"), "QUEUE #249 must be DONE");
-    for n in 250..=254 {
+    assert!(text.contains("| 250 | **DONE**"), "QUEUE #250 must be DONE");
+    for n in 251..=254 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "перший OPEN `#250`",
-        "Analyze-285",
+        "перший OPEN `#251`",
+        "Analyze-286",
         "RFC-0139",
-        "RFC-0141",
+        "RFC-0142",
         "QUEUE N closed",
         "N-fix",
     ] {
@@ -70,23 +71,25 @@ fn phase_n_fix_rfc_0139_id_free() {
 }
 
 #[test]
-fn phase_n_fix_rfc_0140_and_0141_present() {
+fn phase_n_fix_rfc_0140_through_0142_present() {
     let rfc140 = repo_root().join("specs/rfc/AIRA-RFC-0140-live-evm-rendezvous.md");
     let rfc141 = repo_root().join("specs/rfc/AIRA-RFC-0141-ab-ovo-two-process.md");
+    let rfc142 = repo_root().join("specs/rfc/AIRA-RFC-0142-reachability-session-bind.md");
     assert!(rfc140.is_file(), "RFC-0140 missing");
     assert!(rfc141.is_file(), "RFC-0141 missing");
-    let text = std::fs::read_to_string(&rfc141).unwrap();
-    assert!(text.contains("#249"));
-    assert!(text.contains("two") || text.contains("Two"));
+    assert!(rfc142.is_file(), "RFC-0142 missing");
+    let text = std::fs::read_to_string(&rfc142).unwrap();
+    assert!(text.contains("#250"));
+    assert!(text.contains("transcript") || text.contains("session"));
 }
 
 #[test]
 fn phase_n_fix_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-n-fix-plan.md"));
-    assert!(readme.contains("first OPEN `#250`") || readme.contains("перший OPEN `#250`"));
+    assert!(readme.contains("first OPEN `#251`") || readme.contains("перший OPEN `#251`"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
-    assert!(docs.contains("#250"));
+    assert!(docs.contains("#251"));
     assert!(docs.contains("phase-n-fix-plan.md"));
 }
 
@@ -100,12 +103,12 @@ fn phase_n_points_to_n_fix() {
 fn phase_n_fix_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(
-        text.contains("перший OPEN = `#250`") || text.contains("first OPEN `#250`"),
-        "NEXT_PROBLEM must point at first OPEN #250"
+        text.contains("перший OPEN = `#251`") || text.contains("first OPEN `#251`"),
+        "NEXT_PROBLEM must point at first OPEN #251"
     );
     assert!(
-        !text.contains("перший OPEN = `#249`") && !text.contains("first OPEN `#249`"),
-        "NEXT_PROBLEM must not keep #249 as first-OPEN"
+        !text.contains("перший OPEN = `#250`") && !text.contains("first OPEN `#250`"),
+        "NEXT_PROBLEM must not keep #250 as first-OPEN"
     );
     assert!(
         text.contains("QUEUE L closed"),
@@ -117,7 +120,7 @@ fn phase_n_fix_next_problem() {
 fn phase_n_fix_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #249 |"));
-    assert!(status.contains("RFC-0141") || status.contains("two-process"));
+    assert!(status.contains("| #250 |"));
+    assert!(status.contains("RFC-0142") || status.contains("transcript"));
     assert!(status.contains("phase-n-fix-plan.md") || status.contains("N-fix"));
 }
