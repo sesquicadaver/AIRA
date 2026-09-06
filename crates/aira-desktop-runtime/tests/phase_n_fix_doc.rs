@@ -46,10 +46,7 @@ fn phase_n_fix_queue_253_done_254_open() {
             "QUEUE #{n} must be DONE"
         );
     }
-    assert!(
-        text.contains("| 254 | **OPEN**"),
-        "QUEUE #254 must be OPEN"
-    );
+    assert!(text.contains("| 254 | **OPEN**"), "QUEUE #254 must be OPEN");
     for needle in [
         "перший OPEN `#254`",
         "Analyze-289",
