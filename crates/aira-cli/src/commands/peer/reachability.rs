@@ -1,4 +1,4 @@
-//! Phase N `#243`: `aira peer reachability …`
+//! Phase N `#243` / N-fix `#250`: `aira peer reachability …`
 
 use std::fs;
 use std::net::TcpListener;
@@ -43,6 +43,7 @@ pub(super) async fn run(root: &Path, command: PeerReachabilityCommands) -> Resul
             host,
             port,
             result_json,
+            session_transcript,
             mark_direct_failed,
             outbound_ok,
         } => {
@@ -52,11 +53,16 @@ pub(super) async fn run(root: &Path, command: PeerReachabilityCommands) -> Resul
             let now = aira_peer::presence_now().map_err(|e| anyhow::anyhow!("{e}"))?;
 
             if let Some(path) = result_json {
+                let transcript = session_transcript.ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "--session-transcript required with --result-json (inbound Noise bind #250)"
+                    )
+                })?;
                 let raw = fs::read_to_string(&path)
                     .with_context(|| format!("read result_json {path}"))?;
                 let result: aira_peer::ReachabilityResult =
                     serde_json::from_str(&raw).context("parse ReachabilityResult JSON")?;
-                st.apply_successful_probe(&result)
+                st.apply_successful_probe(&result, &transcript)
                     .map_err(|e| anyhow::anyhow!("{e}"))?;
                 st.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
                 println!("status {:?}", st.status);
@@ -66,6 +72,9 @@ pub(super) async fn run(root: &Path, command: PeerReachabilityCommands) -> Resul
                     aira_peer::ReachabilityLocalState::path(root).display()
                 );
                 return Ok(ExitCode::SUCCESS);
+            }
+            if session_transcript.is_some() {
+                bail!("--session-transcript requires --result-json");
             }
 
             if mark_direct_failed {

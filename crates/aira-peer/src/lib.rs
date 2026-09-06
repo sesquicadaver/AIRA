@@ -122,9 +122,10 @@ pub use prime_port::{
     P_AIRA_RANGE_MIN,
 };
 pub use reachability::{
-    ChallengeDraft, ReachabilityAttestation, ReachabilityChallenge, ReachabilityReplayLog,
-    ReachabilityResult, REACHABILITY_ATTESTATION_SCHEMA, REACHABILITY_CHALLENGE_SCHEMA,
-    REACHABILITY_REPLAY_CAP, REACHABILITY_RESULT_SCHEMA,
+    session_transcript_hex, ChallengeDraft, ReachabilityAttestation, ReachabilityChallenge,
+    ReachabilityReplayLog, ReachabilityResult, REACHABILITY_ATTESTATION_SCHEMA,
+    REACHABILITY_CHALLENGE_SCHEMA, REACHABILITY_REPLAY_CAP, REACHABILITY_RESULT_SCHEMA,
+    REACHABILITY_SESSION_DOMAIN,
 };
 pub use reachability_state::{
     ReachabilityLocalState, ReachabilityStatus, RelayRouteRecord, REACHABILITY_STATE_SCHEMA,
