@@ -564,7 +564,7 @@ M0 govern (#224)
 
 ### Наступний цикл (Phase N)
 
-**Phase N COMPLETE** (`#231`–`#247` DONE @ RFC-0123). **QUEUE N closed.**  
+**Phase N COMPLETE** (`#231`–`#247` DONE @ RFC-0123). **QUEUE N closed.** no OPEN N atoms.
 **Наступне:** Phase N-fix [`docs/phase-n-fix-plan.md`](docs/phase-n-fix-plan.md) — перший OPEN `#249` (після `#248` @ RFC-0140).
 
 ```text
