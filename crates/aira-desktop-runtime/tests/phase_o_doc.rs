@@ -30,7 +30,10 @@ fn phase_o_plan_present() {
 #[test]
 fn phase_o_queue_wiring_255_done() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
-    assert!(text.contains("phase-o-plan.md"), "QUEUE missing phase-o-plan");
+    assert!(
+        text.contains("phase-o-plan.md"),
+        "QUEUE missing phase-o-plan"
+    );
     assert!(
         text.contains("| 255 | **DONE**"),
         "QUEUE #255 must be DONE after wiring"
