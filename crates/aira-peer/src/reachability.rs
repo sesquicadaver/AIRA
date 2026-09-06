@@ -692,9 +692,7 @@ mod tests {
             "2026-09-05T12:00:00Z",
             "2026-09-05T13:00:00Z",
         );
-        let local_tx = target_session
-            .reachability_session_transcript(&ch)
-            .unwrap();
+        let local_tx = target_session.reachability_session_transcript(&ch).unwrap();
         let att = ReachabilityAttestation::issue_for_authenticated_session(
             &ch,
             &probe_session,
@@ -705,9 +703,7 @@ mod tests {
         assert!(att.success);
         assert!(!att.session_transcript_hex.is_empty());
         let result = ReachabilityResult::new(ch, att);
-        result
-            .verify_with_local_session(&local_tx, None)
-            .unwrap();
+        result.verify_with_local_session(&local_tx, None).unwrap();
 
         let mut st = crate::reachability_state::ReachabilityLocalState::default();
         st.apply_successful_probe(&result, &local_tx).unwrap();

@@ -364,9 +364,7 @@ mod tests {
         .unwrap()
         .sign_for_node_root(target.path())
         .unwrap();
-        let local_tx = target_session
-            .reachability_session_transcript(&ch)
-            .unwrap();
+        let local_tx = target_session.reachability_session_transcript(&ch).unwrap();
         let att = ReachabilityAttestation::issue_for_authenticated_session(
             &ch,
             &probe_session,
@@ -386,9 +384,7 @@ mod tests {
         assert!(ReachabilityLocalState::path(root.path()).is_file());
 
         // no-connect / wrong transcript cannot set DIRECT
-        assert!(st
-            .apply_successful_probe(&result, "sha256:00")
-            .is_err());
+        assert!(st.apply_successful_probe(&result, "sha256:00").is_err());
     }
 
     #[test]
