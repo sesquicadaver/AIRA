@@ -15,6 +15,7 @@
 //! QUEUE #235: RendezvousProvider trait + mock (no ledger in Core).
 //! QUEUE #236: EvmRendezvousProvider local double + Amoy/mainnet config hooks.
 //! QUEUE #237: publish/query product layer (TTL/sequence) + rendezvous.json.
+//! QUEUE #248: live EVM JSON-RPC publish/query (`use_local_double=false`).
 //! QUEUE #238: peer-assisted Reachability Probe (no hairpin proof).
 //! QUEUE #239: Reachability states + peers/reachability.json.
 //! QUEUE #240: Presence → AddressBook promotion (trust-gated).
@@ -31,9 +32,11 @@ mod discv;
 mod envelope;
 mod error;
 mod evm_rendezvous;
+mod evm_rendezvous_rpc;
 mod frame;
 mod gossip;
 mod handshake;
+mod json_rpc_http;
 mod nat_relay;
 mod noise;
 mod notify;
@@ -74,6 +77,10 @@ pub use evm_rendezvous::{
     evm_identity_hash, EvmChainProfile, EvmRendezvousConfig, EvmRendezvousProvider,
     EVM_AMOY_RPC_DEFAULT, EVM_CHAIN_AMOY, EVM_CHAIN_LOCAL_DOUBLE, EVM_CHAIN_POLYGON,
     EVM_LOCAL_CONTRACT_PLACEHOLDER, EVM_POLYGON_RPC_DEFAULT, RENDEZVOUS_KIND_EVM,
+};
+pub use evm_rendezvous_rpc::{
+    ReferenceEvmRendezvousRpc, RPC_ETH_CHAIN_ID, RPC_PUBLISH, RPC_QUERY_ACTIVE, RPC_QUERY_IDENTITY,
+    RPC_QUERY_RELAYS, RPC_REMOVE, RPC_UPDATE,
 };
 pub use frame::{read_frame, write_frame, MAX_FRAME_BYTES};
 pub use gossip::{
