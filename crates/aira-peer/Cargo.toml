@@ -19,7 +19,6 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-
 snow = { workspace = true }
 x25519-dalek = { workspace = true }
 time = { workspace = true }
-ureq = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

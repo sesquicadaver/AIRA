@@ -1,7 +1,11 @@
 //! Minimal JSON-RPC 2.0 HTTP client for EVM rendezvous (`#248`).
 //!
-//! Supports `http://` and `https://` via `ureq`. Used when
-//! [`crate::evm_rendezvous::EvmRendezvousConfig::use_local_double`] is false.
+//! Supports `http://` only (no TLS dependency / license surface). Live Amoy
+//! HTTPS may use an HTTP gateway or local reference RPC in CI.
+
+use std::io::{Read, Write};
+use std::net::TcpStream;
+use std::time::Duration;
 
 use serde_json::{json, Value};
 
@@ -13,25 +17,44 @@ pub fn json_rpc_call(rpc_url: &str, method: &str, params: Value) -> Result<Value
     if url.is_empty() {
         return Err(PeerError::Rendezvous("evm rpc_url empty".into()));
     }
-    if !(url.starts_with("http://") || url.starts_with("https://")) {
+    if url.starts_with("https://") {
+        return Err(PeerError::Rendezvous(
+            "live EVM JSON-RPC over https is not enabled in #248 (use http:// anvil/reference RPC or HTTP gateway)"
+                .into(),
+        ));
+    }
+    if !url.starts_with("http://") {
         return Err(PeerError::Rendezvous(format!(
-            "live EVM RPC URL must be http(s)://, got {url}"
+            "live EVM RPC URL must be http://, got {url}"
         )));
     }
+    let (host, port, path) = parse_http_url(url)?;
     let body = json!({
         "jsonrpc": "2.0",
         "id": 1,
         "method": method,
         "params": params,
-    });
-    let resp = ureq::post(url)
-        .set("content-type", "application/json")
-        .send_string(&body.to_string())
-        .map_err(|e| PeerError::Rendezvous(format!("evm JSON-RPC transport: {e}")))?;
-    let text = resp
-        .into_string()
+    })
+    .to_string();
+    let req = format!(
+        "POST {path} HTTP/1.1\r\nHost: {host}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    let mut stream = TcpStream::connect((host.as_str(), port))
+        .map_err(|e| PeerError::Rendezvous(format!("evm JSON-RPC connect: {e}")))?;
+    stream.set_read_timeout(Some(Duration::from_secs(15))).ok();
+    stream.set_write_timeout(Some(Duration::from_secs(15))).ok();
+    stream
+        .write_all(req.as_bytes())
+        .map_err(|e| PeerError::Rendezvous(format!("evm JSON-RPC write: {e}")))?;
+    let mut buf = Vec::new();
+    stream
+        .read_to_end(&mut buf)
         .map_err(|e| PeerError::Rendezvous(format!("evm JSON-RPC read: {e}")))?;
-    let v: Value = serde_json::from_str(&text)
+    let text = std::str::from_utf8(&buf)
+        .map_err(|e| PeerError::Rendezvous(format!("evm JSON-RPC utf8: {e}")))?;
+    let body = http_response_body(text)?;
+    let v: Value = serde_json::from_str(body)
         .map_err(|e| PeerError::Rendezvous(format!("evm JSON-RPC decode: {e}")))?;
     if let Some(err) = v.get("error") {
         return Err(PeerError::Rendezvous(format!("evm JSON-RPC error: {err}")));
@@ -39,6 +62,47 @@ pub fn json_rpc_call(rpc_url: &str, method: &str, params: Value) -> Result<Value
     v.get("result")
         .cloned()
         .ok_or_else(|| PeerError::Rendezvous("evm JSON-RPC missing result".into()))
+}
+
+fn parse_http_url(url: &str) -> Result<(String, u16, String), PeerError> {
+    let rest = url
+        .strip_prefix("http://")
+        .ok_or_else(|| PeerError::Rendezvous("expected http://".into()))?;
+    let (authority, path) = match rest.split_once('/') {
+        Some((a, p)) => (a, format!("/{p}")),
+        None => (rest, "/".to_string()),
+    };
+    if authority.is_empty() {
+        return Err(PeerError::Rendezvous("evm RPC host empty".into()));
+    }
+    let (host, port) = if let Some((h, p)) = authority.rsplit_once(':') {
+        let port: u16 = p
+            .parse()
+            .map_err(|_| PeerError::Rendezvous(format!("bad RPC port: {p}")))?;
+        (h.to_string(), port)
+    } else {
+        (authority.to_string(), 80)
+    };
+    Ok((host, port, path))
+}
+
+fn http_response_body(resp: &str) -> Result<&str, PeerError> {
+    let idx = resp
+        .find("\r\n\r\n")
+        .ok_or_else(|| PeerError::Rendezvous("evm JSON-RPC malformed HTTP".into()))?;
+    let (headers, body) = resp.split_at(idx + 4);
+    let status_ok = headers
+        .lines()
+        .next()
+        .map(|l| l.contains(" 200 ") || l.ends_with(" 200"))
+        .unwrap_or(false);
+    if !status_ok {
+        return Err(PeerError::Rendezvous(format!(
+            "evm JSON-RPC HTTP status: {}",
+            headers.lines().next().unwrap_or("?")
+        )));
+    }
+    Ok(body)
 }
 
 #[cfg(test)]
@@ -69,8 +133,7 @@ mod tests {
                     let cl = header.lines().find_map(|l| {
                         l.to_ascii_lowercase()
                             .strip_prefix("content-length:")
-                            .map(|v| v.trim().parse::<usize>().ok())
-                            .flatten()
+                            .and_then(|v| v.trim().parse::<usize>().ok())
                     });
                     if let Some(cl) = cl {
                         if buf.len() >= pos + 4 + cl {
@@ -102,5 +165,16 @@ mod tests {
         let req = log.lock().unwrap()[0].clone();
         assert!(req.contains("eth_chainId"));
         assert!(req.contains("POST"));
+    }
+
+    #[test]
+    fn rejects_https_in_248() {
+        let err = json_rpc_call(
+            "https://rpc-amoy.polygon.technology/",
+            "eth_chainId",
+            json!([]),
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("https"));
     }
 }

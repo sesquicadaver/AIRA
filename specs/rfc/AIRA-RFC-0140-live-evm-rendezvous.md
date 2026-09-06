@@ -14,10 +14,10 @@ Prove a real socket path for EVM-shaped rendezvous in CI without requiring live 
 
 ## 4. Scope
 
-- `json_rpc_http` — ureq JSON-RPC 2.0 client
+- `json_rpc_http` — std HTTP JSON-RPC 2.0 client (`http://` only; no TLS dep)
 - `evm_rendezvous_rpc` — reference HTTP surface (`aira_rendezvous_*` + `eth_chainId`)
 - `EvmRendezvousConfig::anvil_live` / `amoy_live`; live backend on `EvmRendezvousProvider`
-- Tests via `ReferenceEvmRendezvousRpc` (no public Amoy required in CI)
+- Tests via `ReferenceEvmRendezvousRpc` (no public Amoy / no HTTPS in CI)
 - RFC-D this file; QUEUE → `#249`
 
 ## 5. Non-Goals

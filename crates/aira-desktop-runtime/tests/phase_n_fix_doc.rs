@@ -40,10 +40,7 @@ fn phase_n_fix_plan_present() {
 fn phase_n_fix_queue_248_done_249_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-n-fix-plan.md"));
-    assert!(
-        text.contains("| 248 | **DONE**"),
-        "QUEUE #248 must be DONE"
-    );
+    assert!(text.contains("| 248 | **DONE**"), "QUEUE #248 must be DONE");
     for n in 249..=254 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),

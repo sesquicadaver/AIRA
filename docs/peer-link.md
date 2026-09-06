@@ -186,7 +186,7 @@ Network tab mesh banner + Identity / preferred port / bind / external / reachabi
 
 ## Phase N-fix Live EVM (`#248`)
 
-`EvmRendezvousProvider` live JSON-RPC (`use_local_double=false`) via `ureq` + `ReferenceEvmRendezvousRpc` / anvil / Amoy (RFC-0140). Next: real ab ovo `#249`.
+`EvmRendezvousProvider` live JSON-RPC (`use_local_double=false`) via std `http://` client + `ReferenceEvmRendezvousRpc` / anvil (RFC-0140). HTTPS Amoy deferred to HTTP gateway. Next: real ab ovo `#249`.
 
 ## Phase N-fix (post-audit)
 

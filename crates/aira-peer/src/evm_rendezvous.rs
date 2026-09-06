@@ -103,9 +103,9 @@ impl EvmRendezvousConfig {
         }
         if !self.use_local_double {
             let url = self.rpc_url.trim();
-            if !(url.starts_with("http://") || url.starts_with("https://")) {
+            if !url.starts_with("http://") {
                 return Err(PeerError::Rendezvous(format!(
-                    "live EVM rpc_url must be http(s)://, got {url}"
+                    "live EVM rpc_url must be http:// in #248 (https deferred; use anvil/reference RPC or HTTP gateway), got {url}"
                 )));
             }
         }
