@@ -1,8 +1,8 @@
-//! AddressBook promotion from Presence (QUEUE #240 / Phase N).
+//! AddressBook promotion from Presence (QUEUE #240 / Phase N; expiry `#251`).
 //!
-//! Valid Presence + local trust policy → `peers/address_book.json` only.
-//! Never auto-upserts TrustStore (`DISCOVERED ≠ TRUSTED`). Relay product
-//! integration remains `#241`.
+//! Valid, **unexpired** Presence + local trust policy → `peers/address_book.json`
+//! only. Never auto-upserts TrustStore (`DISCOVERED ≠ TRUSTED`). Expired
+//! Presence fail-closed even when obtained via `query_identity` (`#251`).
 
 use std::path::Path;
 
@@ -11,6 +11,7 @@ use aira_object::{AiraRef, TrustStore, LOCAL_TEST_KEY_REF};
 use crate::address_book::{AddressBook, PeerEndpoint};
 use crate::error::PeerError;
 use crate::presence::NodePresenceRecord;
+use crate::presence_refresh::is_presence_expired;
 use crate::prime_port::validate_aira_bind;
 
 /// True when identity is in TrustStore entries and not revoked.
@@ -51,15 +52,19 @@ pub fn dial_target_from_presence(
     ))
 }
 
-/// Promote a verified, trusted Presence into the authoritative AddressBook.
+/// Promote a verified, trusted, **unexpired** Presence into the AddressBook.
 ///
-/// Fail-closed: invalid signature, untrusted/revoked identity, or empty endpoints.
-/// Does **not** call `TrustStore::upsert`.
+/// Fail-closed: invalid signature, expired at `as_of`, untrusted/revoked
+/// identity, or empty endpoints. Does **not** call `TrustStore::upsert`.
 pub fn promote_presence_to_address_book(
     root: impl AsRef<Path>,
     presence: &NodePresenceRecord,
+    as_of: &str,
 ) -> Result<PeerEndpoint, PeerError> {
     presence.verify_canonical_signature()?;
+    if is_presence_expired(presence, as_of)? {
+        return Err(PeerError::Expired);
+    }
     let root = root.as_ref();
     let trust = TrustStore::load(root).map_err(|e| PeerError::Crypto(e.to_string()))?;
     if !trust_policy_allows(&trust, &presence.identity_ref) {
@@ -164,7 +169,8 @@ mod tests {
         trust.save(local.path()).unwrap();
 
         let presence = signed_presence(peer.path(), &pid, &ppk, vec![]);
-        let ep = promote_presence_to_address_book(local.path(), &presence).unwrap();
+        let ep = promote_presence_to_address_book(local.path(), &presence, "2026-09-05T13:00:00Z")
+            .unwrap();
         assert_eq!(ep.identity_id, pid.as_str());
         assert_eq!(ep.addr, "127.0.0.1:49157");
         let book = AddressBook::load(local.path()).unwrap();
@@ -182,7 +188,8 @@ mod tests {
         let _ = write_node(local.path(), "host", [94u8; 32]);
         let before = TrustStore::load(local.path()).unwrap();
         let presence = signed_presence(peer.path(), &pid, &ppk, vec![]);
-        let err = promote_presence_to_address_book(local.path(), &presence).unwrap_err();
+        let err = promote_presence_to_address_book(local.path(), &presence, "2026-09-05T13:00:00Z")
+            .unwrap_err();
         assert!(matches!(err, PeerError::Untrusted(_)));
         assert!(AddressBook::load(local.path()).unwrap().peers.is_empty());
         let after = TrustStore::load(local.path()).unwrap();
@@ -201,7 +208,28 @@ mod tests {
         trust.revoke(pid.as_str(), Some("test")).unwrap();
         trust.save(local.path()).unwrap();
         let presence = signed_presence(peer.path(), &pid, &ppk, vec![]);
-        assert!(promote_presence_to_address_book(local.path(), &presence).is_err());
+        assert!(
+            promote_presence_to_address_book(local.path(), &presence, "2026-09-05T13:00:00Z",)
+                .is_err()
+        );
+        assert!(AddressBook::load(local.path()).unwrap().peers.is_empty());
+    }
+
+    #[test]
+    fn rejects_expired_presence_even_when_trusted() {
+        let local = tempdir().unwrap();
+        let peer = tempdir().unwrap();
+        let (pid, ppk) = write_node(peer.path(), "expired-peer", [99u8; 32]);
+        let _ = write_node(local.path(), "host-exp", [100u8; 32]);
+        let mut trust = TrustStore::load(local.path()).unwrap();
+        trust.upsert(pid.as_str(), &ppk).unwrap();
+        trust.save(local.path()).unwrap();
+
+        let presence = signed_presence(peer.path(), &pid, &ppk, vec![]);
+        // expires_at = 2026-09-12; as_of after that → Expired
+        let err = promote_presence_to_address_book(local.path(), &presence, "2026-09-13T00:00:00Z")
+            .unwrap_err();
+        assert!(matches!(err, PeerError::Expired));
         assert!(AddressBook::load(local.path()).unwrap().peers.is_empty());
     }
 
@@ -235,7 +263,8 @@ mod tests {
         .sign_for_node_root(peer.path())
         .unwrap();
         let _ = &mut presence;
-        let ep = promote_presence_to_address_book(local.path(), &presence).unwrap();
+        let ep = promote_presence_to_address_book(local.path(), &presence, "2026-09-05T13:00:00Z")
+            .unwrap();
         assert_eq!(ep.via.as_deref(), Some("aira:identity:hub"));
         assert_eq!(ep.addr, "127.0.0.1:49171");
     }
