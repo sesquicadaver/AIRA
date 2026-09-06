@@ -8,6 +8,8 @@
 //! `#233`: `preferred_port(identity, transport_class)` hashes
 //! `identity_ref || class || version` (SHA-256) into `P_AIRA`; collisions walk
 //! the next primes with wrap, never spinning forever.
+//! `#253`: ring distance uses modular arithmetic on `P_AIRA_COUNT` (not
+//! `usize::wrapping_sub` alone).
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, UdpSocket};
 use std::sync::LazyLock;
@@ -201,16 +203,19 @@ pub fn suggested_aira_port(identity_ref: &str, class: TransportClass) -> u16 {
 }
 
 /// Port at `preferred_index + offset` (mod `|P_AIRA|`).
+///
+/// Uses modular ring arithmetic on `P_AIRA_COUNT` (`#253`) — never
+/// `usize::wrapping_add` alone without reducing modulo the ring size.
 pub fn next_candidate_port_from_index(preferred_index: usize, offset: usize) -> u16 {
-    let idx = preferred_index
-        .wrapping_add(offset)
-        .rem_euclid(P_AIRA_COUNT);
+    let idx = (preferred_index % P_AIRA_COUNT + offset % P_AIRA_COUNT) % P_AIRA_COUNT;
     p_aira_ports()[idx]
 }
 
 /// Next candidate after `current` in the wrap-around walk that started at `preferred`.
 ///
 /// `current` must be in `P_AIRA`; otherwise returns [`PeerError::InvalidPort`].
+/// Ring distance uses `(cur + |P_AIRA| - start) % |P_AIRA|` so wrap is correct when
+/// `current` has already passed the end of the table (`#253`).
 pub fn next_candidate_port(preferred: u16, current: u16) -> Result<u16, PeerError> {
     let ports = p_aira_ports();
     let start = ports.binary_search(&preferred).map_err(|_| {
@@ -223,7 +228,8 @@ pub fn next_candidate_port(preferred: u16, current: u16) -> Result<u16, PeerErro
             "current port {current} is not in P_AIRA (suggested {P_AIRA_FIRST})"
         ))
     })?;
-    let offset = cur.wrapping_sub(start).rem_euclid(P_AIRA_COUNT) + 1;
+    // Modular forward distance on the ring, then advance one step.
+    let offset = (cur + P_AIRA_COUNT - start) % P_AIRA_COUNT + 1;
     Ok(next_candidate_port_from_index(start, offset))
 }
 
@@ -396,6 +402,31 @@ mod tests {
         assert_eq!(
             next_candidate_port(preferred, preferred).unwrap(),
             P_AIRA_FIRST
+        );
+        // Preferred at first, current at last → next wraps to first (full ring step).
+        let first = p_aira_ports()[0];
+        let last_port = p_aira_ports()[last];
+        assert_eq!(next_candidate_port(first, last_port).unwrap(), first);
+    }
+
+    #[test]
+    fn next_candidate_wraps_when_current_index_before_preferred() {
+        // Prefer near end; `current` already wrapped to early indices (cur < start).
+        // Old `wrapping_sub` + `rem_euclid` on usize was wrong for this case (#253).
+        let start = P_AIRA_COUNT - 3;
+        let preferred = p_aira_ports()[start];
+        let current = p_aira_ports()[1];
+        // Walk: start, start+1, start+2(=last), 0, 1(=current) → next is index 2.
+        let next = next_candidate_port(preferred, current).unwrap();
+        assert_eq!(next, p_aira_ports()[2]);
+        assert_eq!(next_candidate_port_from_index(start, 5), p_aira_ports()[2]);
+        assert_eq!(
+            next_candidate_port_from_index(P_AIRA_COUNT - 1, 1),
+            P_AIRA_FIRST
+        );
+        assert_eq!(
+            next_candidate_port_from_index(P_AIRA_COUNT - 1, P_AIRA_COUNT),
+            p_aira_ports()[P_AIRA_COUNT - 1]
         );
     }
 

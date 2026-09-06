@@ -204,6 +204,10 @@ Expired Presence cannot enter AddressBook via promote / `discover_admit_promote`
 
 Listening + iptables INPUT DROP ≠ non-listening placeholder; Docker smoke `scripts/inbound_firewall_smoke.sh` or documented CI path (RFC-0144). Relay courier path retained under honest naming.
 
+## Phase N-fix `next_candidate_port` wrap (`#253`)
+
+Collision walk uses modular arithmetic on `P_AIRA_COUNT`; wrap correct when current index is before preferred after crossing `P_AIRA_LAST` (RFC-0145).
+
 ## Phase N-fix (post-audit)
 
-Remaining: [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#253`–`#254` (first OPEN `#253`).
+Remaining: [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#254` (first OPEN `#254`).
