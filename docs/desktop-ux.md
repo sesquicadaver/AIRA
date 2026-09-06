@@ -1,9 +1,9 @@
 # AIRA Desktop UX — канон рішень
 
-**Статус:** зафіксовано 2026-08-20; Phase E `#75`–`#106` **DONE** (2026-08-22); Phase F stabilization **DONE** (`#107`–`#119`, 2026-08-24). Активна черга: Phase G [`phase-g-plan.md`](phase-g-plan.md) `#120`–`#146`.  
-**План виконання:** [`phase-e-plan.md`](phase-e-plan.md). Канон черги: [`QUEUE.md`](../QUEUE.md).  
-**Provenance:** [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED**).  
-**Не змінює** Book 0–IV / C0–C1 / Core.  
+**Статус:** Phase E `#75`–`#106` **DONE** (2026-08-22); Phase F `#107`–`#119` **DONE** (2026-08-24).  
+**Активна черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` — UX-контракт end-user + контекстна довідка F1 (після QUEUE N-fix closed @ RFC-0139).  
+**Provenance:** [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED** → E); UX/Help draft 2026-09-06 (`aira-gui.md` + `aira-desktop-ux-help-draft.md`, поза git).  
+**Не змінює** Book 0–IV / C0–C1 / Core / `aira-core` ledger.  
 **Posture:** Linux E1 = **Developer Preview** над local reference plane.
 
 ## 1. Персони
@@ -14,78 +14,172 @@
 | **Developer** | окрема редакція **AIRA Dev** (той самий runtime + повний CLI) |
 | Оператор вузла | **поза scope** |
 
-## 2. Запуск і UI
+**Правило мови (Phase O):** користувач повинен розуміти, що відбувається, що доступно і що робити далі, **не знаючи** внутрішньої архітектури AIRA (`POST /v1/problems`, CSU, Phase D, fail-closed, mesh, bind — не основні підписи UI).
+
+## 2. Запуск і оболонка
 
 - Запуск node для end-user — **лише через GUI** (іконка / tray).
 - CLI канон: **`aira desktop start|stop|status`** (shared lifecycle з GUI).
 - Інтерактивний запуск (іконка меню, `aira-desktop`, `aira desktop gui`) **завжди відкриває вікно**.
-- `open_ui_on_start` (default **on**) — лише для **login autostart** (`aira-desktop --from-autostart`). Знятий чекбокс не блокує повторний вхід у Параметри з іконки.
-- «Open UI» = **нативне** вікно з вкладками Work / Node / Network / Settings (не голий JSON у браузері як єдиний UX).
+- `open_ui_on_start` (default **on**) — лише для **login autostart** (`aira-desktop --from-autostart`).
 - Мова UI: Українська / English (`ui-prefs.json` поруч із settings; не частина `desktop-settings` schema).
-- Вкладка Work: людська відповідь (`result.result`) + `status` + `verification_status` на передньому плані; `problem_id` / `verified_artifact_id` і повний VRA JSON — згорнуті Details. Не сирий JSON як «відповідь AIRA».
-- Локальні моделі — **не Core і не маркетплейс**. Канон: Artifact + Capability + Policy CSU (`aira models`); LLM Backend — зовнішній CSU (Book I §2). GUI Work: C1 `Calculate 2 + 2` → `execution-basic`; інший текст → `text.generate.local` (`POST /v1/problems`; MockBackend у CI; fail-closed без Phase D activate; не fake VERIFIED). Phase K [`phase-k-plan.md`](phase-k-plan.md) **DONE** @ RFC-0104.
-- Автостарт після логіну — **налаштування** (`autostart_on_login`, default **off**); OS hooks: Linux `#78` (XDG), macOS `#87` (LaunchAgent), Windows `#91` (Startup/Registry).
+- GUI tech: **Rust-only** (egui/native). Без Node.js/web build dependency.
 - Local HTTP loopback (`aira-node --http`) у Desktop **завжди** увімкнений; mutating routes — лише з Desktop auth-контрактом ([phase-e §2.4](phase-e-plan.md)).
-- GUI tech: **Rust-only** (egui/native tray). Без Node.js/web build dependency.
 
-## 3. Network profiles
+### 2.1. Цільова інформаційна архітектура (Phase O)
+
+Три основні розділи + постійна команда довідки:
+
+| Розділ | Питання користувача | Основний вміст |
+|--------|---------------------|----------------|
+| **Робота** | «Що я хочу зробити?» | Введення завдання, перебіг, результат, походження |
+| **Стан системи** | «Чи все працює?» | Готовність, модель, з’єднання, останні події |
+| **Параметри** | «Як змінити поведінку?» | Мова, запуск, моделі, участь у мережі |
+
+**Довідка · F1** — постійно доступна команда оболонки (не вкладка). Розташування не змінюється між розділами.
+
+Історичний E1 layout **Work / Node / Network / Settings** залишається в коді до атомів O4+; цільовий канон — таблиця вище. Реалізація йде по сценаріях ([`phase-o-plan.md`](phase-o-plan.md)), не одномоментною заміною всієї оболонки.
+
+### 2.2. Рядок стану (усі основні екрани)
+
+Показувати незалежно:
+
+1. **Робота:** готова / виконується / потрібна дія.
+2. **Генерація тексту:** вибрана модель / не вибрана / тестовий режим.
+3. **Мережа AIRA:** вимкнена / перевіряється / є з’єднання / з’єднання втрачено / не перевірено.
+
+Невибрана LLM **не** означає недоступність детермінованих обчислень. Вимкнена мережа **не** означає збій локальної роботи.
+
+Для моделі розрізняти: **вибрана** (налаштування) → **підготовлена** (backend підтвердив) → **використана для результату** (підтверджені дані цього виконання). Без даних: «Модель цього результату не визначена»; mock: «Тестова відповідь — модель не запускалася»; арифметика CSU: «Обчислено локальним обчислювачем».
+
+### 2.3. Два рівні подробиць
+
+Основний екран — людською мовою. **Технічні подробиці** розкривають точні параметри на тому ж екрані (ті самі дані й дозволи). Спрощення мови **без** спрощення істини: «цілісність файлу перевірено» ≠ «модель завжди права»; «адреса збережена» ≠ «з’єднання встановлено».
+
+## 3. Робота (цільовий контракт)
+
+- Заголовок орієнтир: **«Що потрібно зробити?»**; кнопка **«Виконати»**.
+- Enter = новий рядок; Ctrl+Enter (macOS: Cmd+Enter) = виконати, якщо дія доступна.
+- Чернетка не губиться при зміні розділу, F1, помилці валідації чи невдалій відправці.
+- Відсутність моделі не блокує всі типи завдань без перевірки потрібної capability.
+- Прогрес лише з відомих станів runtime; без вигаданого відсотка / ETA.
+- Один активний submit у базовому UI; повторне натискання не створює дубліката.
+- **Скасувати** — лише якщо виконавець підтверджує скасування; закриття HTTP ≠ скасування обчислення.
+- Результат: спочатку відповідь, далі статус виконання й перевірки **окремо**; mock / відсутність provenance — явно.
+
+Локальні моделі — **не Core і не маркетплейс**. Канон: Artifact + Capability + Policy CSU (`aira models`); LLM Backend — зовнішній CSU. C1 `Calculate 2 + 2` → `execution-basic`; інший текст → `text.generate.local`. Phase K **DONE** @ RFC-0104. Не fake VERIFIED.
+
+## 4. Стан системи (цільовий контракт)
+
+Секції: **Програма**, **Модель**, **З’єднання**, **Останні події**.
+
+Кожна: висновок людською мовою, час спостереження, максимум одна коригувальна дія, технічні подробиці.
+
+### 4.1. З’єднання — джерела істини (чесність Phase N / N-fix)
+
+| Значення | Джерело |
+|----------|---------|
+| Налаштований порт | збережена конфігурація |
+| Порт, що реально слухається | запущений listener |
+| Зовнішній endpoint | спостереження transport/family |
+| Пряма доступність | чинна мережева перевірка |
+| Живі з’єднання | authenticated sessions |
+| Збережені учасники | AddressBook |
+| Довірені учасники | TrustStore |
+| Пошук учасників | стан provider + час останнього успіху |
+
+UNKNOWN **не** показувати як OFFLINE. Кількість AddressBook **не** видавати за живі сесії. Локальна публікація ≠ з’єднання з глобальним provider.
+
+## 5. Параметри (цільовий контракт)
+
+Групи: **Загальні**, **Моделі**, **З’єднання**, **Додатково**.
+
+Життєвий цикл зміни: **Редагується → Перевірено → Збережено → Застосовується → Застосовано** (+ за потреби **Потрібен перезапуск**). Збережені й застосовані значення видимі окремо.
+
+Звичайний користувач бачить «Лише на цьому комп’ютері» та з’єднання з учасниками. Внутрішні **P0–P6** лишаються технічними позначеннями; P2 не перейменовувати в «Глобальна мережа» без нової поведінки.
+
+**Закрити вікно** ≠ **Зупинити AIRA**.
+
+## 6. Контракт даних і дій
+
+Три межі (без універсального GUI framework / monitoring daemon):
+
+1. **Стан:** типізований `SystemSnapshot` — read-only проєкція authoritative runtime/store. Якість даних: актуальні / застарілі / невідомі / недоступні. `request_repaint_after` **не** є оновленням даних; `refresh_status` (або еквівалент) — окремий канал.
+2. **Дія:** стабільний ID, доступність, причина недоступності; runtime повторно перевіряє policy перед ефектом.
+3. **Проблема:** стабільний код → локалізоване повідомлення → опційна команда → `help_id`.
+
+GUI-state зберігає лише вкладку/фокус/чернетку/відкриті подробиці. Не джерело істини про мережу чи модель. Залежність `aira-node → aira-desktop` заборонена.
+
+Блокувальний HTTP / важкі probes **не** в egui `update()`. Легкий статус — періодично у видимому вікні; дорогі діагностики — за явною дією.
+
+## 7. Контекстна довідка F1
+
+- F1 / «Довідка» відкриває тему для активного елемента → секція → екран → зміст.
+- Працює **без** інтернету, моделі й навіть за зупиненого runtime (локальні матеріали версії).
+- LLM **не** формує нормативну інструкцію.
+- Формат теми: **Що це? Що зробити? Що має відбутися? Що робити, якщо не вдалося?**
+- Спільний словник з `Labels`: `код → повідомлення → help_id`.
+- Відкриття Help не очищає чернетку, не змінює налаштування, не скасовує завдання.
+- Джерела (ціль): `docs/help/{uk,en}/`, вбудовані у збірку; мінімальний Markdown renderer без remote HTML/скриптів.
+
+Початковий каталог ID (реалізація в O8–O9): `start`, `work.submit`, `work.result`, `work.waiting`, `model.select`, `model.unavailable`, `network.connect`, `network.reachability`, `network.trust`, `settings.apply`, `node.lifecycle`.
+
+## 8. Network profiles (E1–E4, без змін семантики)
 
 | ID | Назва | Поведінка | Desktop |
 |----|-------|-----------|---------|
-| **P0** | Лише локально | тільки `aira-node --http` loopback | **E1 default / єдиний у першому Linux-релізі** |
-| **P1** | Приватна мережа (довірені) | + `peer listen --recv`; trust + address book | **E1.1+** (після E1) |
-| **P2** | Приватна + авто-книга | P1 + `--dht --apply-book` | **E4** (`#94`–`#96`) |
-| **P3** | Relay | `--relay` (+ TTL); dial `via` | **E4** Advanced (`#97`–`#99`) |
-| **P4** | Gossip trust | `--gossip` (не з `--relay` одночасно) | **E4** Advanced (`#100`–`#102`) |
-| **P5** | Федерація (pin) | wizard `federation join` | **E4** (`#103`–`#104`) |
-| **P6** | STUN / discv / FIND | discovery prototypes | **E4** Dev / Advanced (`#105`) |
-
-**Онбординг P1:** обмін файлом/QR (pubkey + опційно addr) — Addendum E1.1 (`#80`–`#85`).  
-**Рішення 2026-08-20:** варіант **C** — E1 = лише **P0 + GUI**; P1 = E1.1.  
-**Рішення E1.1 (2026-08-20):** default `peer_listen=127.0.0.1:49157`; non-loopback лише explicit; QR = PNG файл (без камери).  
-**Рішення E4 (2026-08-22):** P2–P6 відкрито в [`phase-e-plan.md`](phase-e-plan.md) §4d → QUEUE `#94`–`#106` — **DONE**.
-**Phase G (2026-08-24):** peer lifecycle P3/P4 CI stabilization (`#131`–`#132`); invite QR **camera** capture (`#133`); production packaging scripts (`#143`–`#145`).
+| **P0** | Лише локально | тільки `aira-node --http` loopback | **E1 default** |
+| **P1** | Приватна мережа (довірені) | + `peer listen --recv`; trust + address book | **E1.1+** |
+| **P2** | Приватна + авто-книга | P1 + `--dht --apply-book` | **E4** |
+| **P3** | Relay | `--relay` (+ TTL); dial `via` | **E4** Advanced |
+| **P4** | Gossip trust | `--gossip` (не з `--relay` одночасно) | **E4** Advanced |
+| **P5** | Федерація (pin) | wizard `federation join` | **E4** |
+| **P6** | STUN / discv / FIND | discovery prototypes | **E4** Dev / Advanced |
 
 Заборонено в default Desktop: `--allow-public-bind`, публічний STUN default, авто-trust невідомих peers, прихований auto-increment порту.
 
-## 4. Редакції
+## 9. Редакції
 
 | | AIRA Desktop | AIRA Dev |
 |--|--------------|----------|
 | Вхід | іконка / tray | GUI + повний CLI |
 | Root | OS application-data | `--root` / кілька профілів |
-| Settings / PID / logs | OS config + runtime + log dirs ([phase-e §2.1](phase-e-plan.md)) | `--root` або colocated |
-| First run | wizard → init + identity + auth material (§2.4) | CLI без змін |
-| Мережа | профілі з §3 | усі CLI-прапорці |
+| Settings / PID / logs | OS config + runtime + log dirs | `--root` або colocated |
+| First run | wizard → init + identity + auth | CLI без змін |
+| Мережа | профілі з §8 | усі CLI-прапорці |
 
-## 5. Послідовність ОС
-
-```text
-E0 (код) → E1 Linux (P0) → E1.1 P1+QR → E2 macOS (`#86`–`#89`) → E3 Windows (`#90`–`#93`) → E4 P2–P6 (`#94`–`#106`)
-```
-
-Поставка атомів: lifecycle → `.desktop` → tray/GUI → package (`#76`→`#79`) → E1.1 P1+QR (`#80`→`#85`).
-
-## 6. Мінімальні Settings (E1)
+## 10. Мінімальні Settings (E1 keys)
 
 | Key | Default | Примітка |
 |-----|---------|----------|
-| `network_profile` | `P0` | `P1` E1.1 (`#81`); `P2`–`P6` E4 (`#94`+); вищі за DONE-рівень — fail-closed |
-| `open_ui_on_start` | `true` | вікно при **login autostart**; іконка завжди відкриває UI |
-| `autostart_on_login` | `false` | Linux XDG `#78`; macOS LaunchAgent `#87`; Windows `#91` |
-| `http_listen` | `127.0.0.1:8787` | fixed; conflict → fail або attach ([phase-e §2.3](phase-e-plan.md)) |
-| `instance_id` | generated once | для attach-семантики |
+| `network_profile` | `P0` | вищі за DONE-рівень — fail-closed |
+| `open_ui_on_start` | `true` | лише **login autostart** |
+| `autostart_on_login` | `false` | Linux/macOS/Windows hooks |
+| `http_listen` | `127.0.0.1:8787` | fixed |
+| `instance_id` | generated once | attach-семантика |
 | `peer_listen` | `null` @ P0; default `127.0.0.1:49157` @ P1 | обов’язковий при P1 |
-| auth fields | per `#75`/`#76` | token-ref або IPC mode |
 
-## 7. Посилання
+## 11. Критерії приймання Phase O (канон)
 
-- Plan / acceptance: [`phase-e-plan.md`](phase-e-plan.md)
+| Перевірка | Результат |
+|-----------|-----------|
+| Перший запуск без моделі | Зрозуміло, що доступно; немає вигаданого імені моделі |
+| F1 без node / мережі / LLM | Локальна тема відкривається |
+| Повільне виконання | F1 і навігація не блокуються |
+| UNKNOWN / stale мережа | Не як підтверджений OFFLINE/CONNECTED |
+| AddressBook без сесій | Не рахуються як підключені |
+| Mock / без model provenance | Явно позначено |
+| F1 з помилки | Відповідна тема, не початок посібника |
+| UK/EN | Збіг UI, Help і переходів |
+
+Детальний порядок реалізації: [`phase-o-plan.md`](phase-o-plan.md).
+
+## 12. Посилання
+
+- Phase O plan: [`phase-o-plan.md`](phase-o-plan.md)
+- Plan E / acceptance: [`phase-e-plan.md`](phase-e-plan.md)
+- Desktop GUI (поточна реалізація): [`desktop-gui.md`](desktop-gui.md)
 - Local HTTP: [`local-node.md`](local-node.md)
-- Peer (для майбутніх P1+): [`peer-link.md`](peer-link.md)
-- Desktop P1 peer supervise: [`desktop-peer.md`](desktop-peer.md)
-- Network profiles P0–P6 (E4): [`desktop-network-profiles.md`](desktop-network-profiles.md)
-- PeerInvite file: [`desktop-invite.md`](desktop-invite.md)
-- systemd (сервери, не Desktop): [`runbook-systemd.md`](runbook-systemd.md)
-- Linux menu launcher: [`desktop-launcher.md`](desktop-launcher.md)
-- Desktop GUI: [`desktop-gui.md`](desktop-gui.md)
+- Peer: [`peer-link.md`](peer-link.md)
+- Network profiles P0–P6: [`desktop-network-profiles.md`](desktop-network-profiles.md)
+- Packaging / launcher: [`desktop-packaging.md`](desktop-packaging.md), [`desktop-launcher.md`](desktop-launcher.md)

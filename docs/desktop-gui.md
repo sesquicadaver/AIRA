@@ -1,6 +1,6 @@
 # AIRA Desktop GUI (QUEUE #78 / #85)
 
-**Status:** Phase E **DONE**. Phase G G4: peer lifecycle CI stable (`#131`–`#132`); invite QR camera (`#133`). UX: Work tab + uk/en chrome; `open_ui_on_start` cannot lock out Settings.
+**Status:** Phase E **DONE**. Phase G G4: peer lifecycle CI stable (`#131`–`#132`); invite QR camera (`#133`). UX: Work tab + uk/en chrome; `open_ui_on_start` cannot lock out Settings. **Phase O** target IA (Work / System status / Settings + Help·F1): [`desktop-ux.md`](desktop-ux.md) + [`phase-o-plan.md`](phase-o-plan.md) (`#255` DONE; first OPEN `#256`).
 
 **Binary:** `aira-desktop`  
 **CLI:** `aira desktop gui`  
