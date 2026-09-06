@@ -182,7 +182,7 @@ Network tab mesh banner + Identity / preferred port / bind / external / reachabi
 
 ## Phase N NAT/relay (`#246`)
 
-`configure_inbound_blocked_via_relay` / `plan_inbound_blocked_relay_path`: dual inbound blocked → Noise to hub → courier (RFC-0138). Consolidating RFC-0123 is `#247`.
+`configure_non_listening_placeholder_via_relay` (alias `configure_inbound_blocked_via_relay`) / `plan_inbound_blocked_relay_path`: dual **non-listening** directs → Noise to hub → courier (RFC-0138). Not a firewall — see `#252`.
 
 ## Phase N-fix Live EVM (`#248`)
 
@@ -200,6 +200,10 @@ Successful attestation binds Noise handshake hash + session transcript; `apply_s
 
 Expired Presence cannot enter AddressBook via promote / `discover_admit_promote`, even when `query_identity` still returns the row (RFC-0143).
 
+## Phase N-fix inbound firewall honesty (`#252`)
+
+Listening + iptables INPUT DROP ≠ non-listening placeholder; Docker smoke `scripts/inbound_firewall_smoke.sh` or documented CI path (RFC-0144). Relay courier path retained under honest naming.
+
 ## Phase N-fix (post-audit)
 
-Remaining: [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#252`–`#254` (first OPEN `#252`).
+Remaining: [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#253`–`#254` (first OPEN `#253`).

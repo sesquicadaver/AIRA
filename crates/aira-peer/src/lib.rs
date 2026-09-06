@@ -23,7 +23,8 @@
 //! QUEUE #242: Presence refresh (sequence++; expire stale; endpoint change).
 //! QUEUE #245: Ab ovo publish → discover → trust → dial (no preconfigured peers).
 //! QUEUE #249: two-process ab ovo CI harness (`aira-ab-ovo-harness`).
-//! QUEUE #246: NAT/relay integration (both inbound blocked → relay courier).
+//! QUEUE #246: NAT/relay integration (non-listening placeholder → relay courier).
+//! QUEUE #252: inbound firewall honesty (listening + DROP ≠ non-listening).
 
 mod ab_ovo;
 mod address_book;
@@ -37,6 +38,7 @@ mod evm_rendezvous_rpc;
 mod frame;
 mod gossip;
 mod handshake;
+mod inbound_firewall;
 mod json_rpc_http;
 mod nat_relay;
 mod noise;
@@ -89,7 +91,14 @@ pub use gossip::{
     GOSSIP_SEEN_CAP,
 };
 pub use handshake::{HelloMessage, HelloResult, HELLO_DOMAIN};
-pub use nat_relay::{configure_inbound_blocked_via_relay, plan_inbound_blocked_relay_path};
+pub use inbound_firewall::{
+    docker_daemon_usable, inbound_firewall_smoke_script, repo_root_from_peer_crate,
+    run_inbound_firewall_smoke, INBOUND_BLOCK_KIND_FIREWALL_DROP, INBOUND_FIREWALL_SMOKE_SCRIPT,
+};
+pub use nat_relay::{
+    configure_inbound_blocked_via_relay, configure_non_listening_placeholder_via_relay,
+    plan_inbound_blocked_relay_path, INBOUND_BLOCK_KIND_NON_LISTENING_PLACEHOLDER,
+};
 pub use noise::{
     list_noise_static_backups, load_or_create_noise_static, prune_noise_static_backups,
     rotate_noise_static, x25519_public, NoiseStaticBackupInfo, NoiseStaticPruneReport,
