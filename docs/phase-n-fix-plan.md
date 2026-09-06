@@ -117,4 +117,5 @@ aira-core still has no ledger deps.
 QUEUE N-fix closed @ RFC-0139 (2026-09-06).
 `#248`–`#254` DONE; no OPEN N-fix atoms.
 Global live rendezvous status remains PARTIAL (honest).
+Next: Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265`.
 ```

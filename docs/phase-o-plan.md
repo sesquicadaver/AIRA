@@ -1,0 +1,124 @@
+# Phase O — Desktop UX contract & contextual Help (F1)
+
+**Статус:** складено 2026-09-06; **IN PROGRESS** — QUEUE `#255` wiring **DONE**; first OPEN `#256`.  
+**Джерела:** UX draft 2026-09-06 (`aira-gui.md`, `aira-desktop-ux-help-draft.md`); канон [`desktop-ux.md`](desktop-ux.md); QUEUE N-fix closed @ RFC-0139.  
+**Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase O `#255`–`#265`.  
+**Closure:** consolidating **RFC-0146** (file-free until `#265`).  
+**Не змінює:** анти-місію README; C0/C1 `Calculate 2 + 2`; `aira-core` ledger / LLM-in-Core; Network profile семантика P0–P6; Book 0–IV.
+
+> Примітка: драфти поза git — канон у репо = цей план + оновлений `desktop-ux.md` + QUEUE + RFC-0146 на закритті.
+
+## 0. Навіщо (після N-fix)
+
+N / N-fix зробили мережевий reference **чесним**. Desktop UI досі говорить мовою розробника (4 вкладки Work/Node/Network/Settings; `UNKNOWN→OFFLINE`; блокувальний submit у UI-потоці; немає офлайн F1).
+
+```text
+QUEUE N-fix closed (#248–#254 / RFC-0139)
+  → Phase O: стабільний UX-контракт + Help каркас
+    → не GPU marketplace; не новий monitoring daemon; не Core rewrite
+```
+
+## 1. Мета
+
+1. Закріпити IA: **Робота / Стан системи / Параметри** + **Довідка · F1**.
+2. Чесне представлення стану через `SystemSnapshot` (проєкція, не нова БД істини).
+3. Неблокувальна робота GUI; refresh даних ≠ repaint.
+4. Стабільні action / error / help ID + спільний словник з `Labels`.
+5. Офлайн контекстна довідка без LLM.
+6. Мова end-user на екрані; техніка — у подробицях.
+
+Цільовий ярлик: **Desktop Developer Preview + honest end-user shell** (не production WCAG-сертифікація; не web UI).
+
+## 2. Інваріанти
+
+1. Лінійність: `#N` після `#N-1`; один атом = один PR.
+2. `aira-core` **не** отримує GUI / Help / egui.
+3. Немає залежності `aira-node → aira-desktop`.
+4. C1 `Calculate 2 + 2` лишається `execution-basic`.
+5. `DISCOVERED ≠ TRUSTED`; AddressBook ≠ живі сесії; UNKNOWN ≠ OFFLINE.
+6. Help працює без інтернету / моделі / running node.
+7. Не редагувати `Manifesto etc/`, `Meditation_About/`.
+8. Не створювати універсальний GUI generator / окремий monitoring daemon / другу trust-систему.
+
+## 3. Анти-місія / поза етапом
+
+```text
+GPU marketplace / LLM-in-Core
+Web/Tauri rewrite
+Required central help CDN
+WCAG formal certification as merge gate
+Rewriting Phase E–N history as never-DONE
+Global live rendezvous beyond N-fix honesty (stays PARTIAL)
+```
+
+## 4. Смуги
+
+```text
+O0 Wiring (canon + QUEUE + living smoke)
+  → O1 SystemSnapshot honesty
+    → O2 Non-blocking submit/refresh
+      → O3 Action/error/help IDs + Labels
+        → O4 Shell IA (3 sections + Help chrome)
+          → O5 Work screen
+            → O6 System status screen
+              → O7 Settings apply lifecycle
+                → O8 Offline F1 shell
+                  → O9 Seed help topics
+                    → O10 RFC-0146 close
+```
+
+## 5. Атоми → QUEUE `#255`–`#265`
+
+| ID | Підфаза | Атом | Done when | Не в цьому атомі |
+|----|---------|------|-----------|------------------|
+| `#255` | O0 | Phase O wiring | **DONE**: цей план IN PROGRESS; `desktop-ux.md` канон; QUEUE `#255`–`#265`; `phase_o_doc`; RFC-0146 reserved file-free | Snapshot (#256) |
+| `#256` | O1 | SystemSnapshot honesty | typed projection; UNKNOWN≠OFFLINE; book≠sessions; tests | non-blocking (#257) |
+| `#257` | O2 | Non-blocking work/refresh | submit/refresh off egui `update()`; repaint≠data; tests | IDs (#258) |
+| `#258` | O3 | Action/error/help IDs | stable IDs + Labels lexicon map; tests | shell IA (#259) |
+| `#259` | O4 | Shell IA | Work / System / Settings + Help·F1 chrome; docs | Work body (#260) |
+| `#260` | O5 | Work screen | user-language; draft; Ctrl+Enter; provenance honesty; tests | status screen (#261) |
+| `#261` | O6 | System status screen | Program/Model/Connection/Events; honesty texts; tests | settings (#262) |
+| `#262` | O7 | Settings apply lifecycle | Saved≠Applied≠Restart needed; tests | F1 shell (#263) |
+| `#263` | O8 | Offline F1 shell | embed help; search; context routing; works offline; tests | topics (#264) |
+| `#264` | O9 | Seed help topics | uk/en topics for catalog IDs; link check; tests | RFC close (#265) |
+| `#265` | O10 | RFC-0146 + close | consolidating RFC-0146; QUEUE O closed | — |
+
+```text
+#255 O0 wiring DONE
+  → #256 O1 snapshot
+    → #257 O2 non-blocking
+      → #258 O3 IDs
+        → #259 O4 shell
+          → #260 O5 work
+            → #261 O6 status
+              → #262 O7 settings
+                → #263 O8 F1
+                  → #264 O9 topics
+                    → #265 O10 RFC-0146
+```
+
+## 6. Acceptance Phase O
+
+```text
+QUEUE `#255`–`#265` DONE; no OPEN O atoms.
+desktop-ux.md IA matches running shell.
+SystemSnapshot honesty: UNKNOWN≠OFFLINE; AddressBook≠sessions.
+GUI does not block on HTTP submit/refresh in update().
+F1 offline without node/LLM.
+C1 2+2 still VERIFIED via execution-basic.
+aira-core still has no ledger/GUI deps.
+Анти-місія не порушена.
+```
+
+## 7. RFC
+
+- Consolidating (`#265`): **AIRA-RFC-0146** — id **confirmed free** at `#255` (file-free until close).
+- Per-atom RFC-D у `#256`–`#264` за потреби (окремі файли; не RFC-A).
+
+## 8. Activation rule
+
+```text
+QUEUE N-fix closed @ RFC-0139 + developer «канон + Phase O» 2026-09-06
+  → цей план активовано атомом `#255`.
+`#255` wiring DONE; first OPEN `#256`.
+```
