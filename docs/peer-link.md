@@ -186,8 +186,12 @@ Network tab mesh banner + Identity / preferred port / bind / external / reachabi
 
 ## Phase N-fix Live EVM (`#248`)
 
-`EvmRendezvousProvider` live JSON-RPC (`use_local_double=false`) via std `http://` client + `ReferenceEvmRendezvousRpc` / anvil (RFC-0140). HTTPS Amoy deferred to HTTP gateway. Next: real ab ovo `#249`.
+`EvmRendezvousProvider` live JSON-RPC (`use_local_double=false`) via std `http://` client + `ReferenceEvmRendezvousRpc` / anvil (RFC-0140). HTTPS Amoy deferred to HTTP gateway.
+
+## Phase N-fix ab ovo harness (`#249`)
+
+`aira-ab-ovo-harness` two OS processes + shared local-file ledger; empty book B; discover→trust→dial (RFC-0141). Next: reachability bind `#250`.
 
 ## Phase N-fix (post-audit)
 
-Remaining: [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#249`–`#254` (first OPEN `#249`).
+Remaining: [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#250`–`#254` (first OPEN `#250`).

@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; N-fix `#248` **DONE** @ RFC-0140; first OPEN `#249`; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
+| `main` | Phase N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; N-fix `#248`–`#249` **DONE** (@ RFC-0140 / RFC-0141); first OPEN `#250`; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase N-fix `#249` (перший OPEN) |
+| Активна черга | Phase N-fix `#250` (перший OPEN) |
 
 ## Правила атомарності
 
@@ -565,7 +565,7 @@ M0 govern (#224)
 ### Наступний цикл (Phase N)
 
 **Phase N COMPLETE** (`#231`–`#247` DONE @ RFC-0123). **QUEUE N closed.** no OPEN N atoms.
-**Наступне:** Phase N-fix [`docs/phase-n-fix-plan.md`](docs/phase-n-fix-plan.md) — перший OPEN `#249` (після `#248` @ RFC-0140).
+**Наступне:** Phase N-fix [`docs/phase-n-fix-plan.md`](docs/phase-n-fix-plan.md) — перший OPEN `#250` (після `#249` @ RFC-0141).
 
 ```text
 N0 govern (#231)
@@ -598,7 +598,7 @@ N0 govern (#231)
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
 | 248 | **DONE** | ~~Analyze-283 — Live EVM rendezvous~~ | JSON-RPC publish/query (anvil/Amoy); not local-double-only | adapter + тести + RFC-0140 | ab ovo harness (#249) |
-| 249 | **OPEN** | Analyze-284 — Real ab ovo harness | two external processes; independent roots; empty book B | CI harness + тести | reachability bind (#250) |
+| 249 | **DONE** | ~~Analyze-284 — Real ab ovo harness~~ | two external processes; independent roots; empty book B | CI harness + тести + RFC-0141 | reachability bind (#250) |
 | 250 | **OPEN** | Analyze-285 — Reachability session bind | attestation requires inbound session/transcript | тести: no-connect ≠ DIRECT | expiry (#251) |
 | 251 | **OPEN** | Analyze-286 — Expiry before promote | expired Presence fail-closed even via `query_identity` | тести + docs | netns NAT (#252) |
 | 252 | **OPEN** | Analyze-287 — netns NAT/firewall tests | inbound block via ns/firewall; honest naming | integration + docs | port wrap (#253) |
@@ -607,11 +607,11 @@ N0 govern (#231)
 
 ### Наступний цикл (Phase N-fix)
 
-**Перший OPEN:** `#249` (канон: перший OPEN `#249`). `#248` **DONE** @ RFC-0140. `#231`–`#247` **DONE** (QUEUE N closed). RFC-0139 file-free until `#254`.
+**Перший OPEN:** `#250` (канон: перший OPEN `#250`). `#248` **DONE** @ RFC-0140; `#249` **DONE** @ RFC-0141. `#231`–`#247` **DONE** (QUEUE N closed). RFC-0139 file-free until `#254`.
 
 ```text
 NF0 Live EVM (#248 DONE @ RFC-0140)
-  → NF1 ab ovo harness (#249)
+  → NF1 ab ovo harness (#249 DONE @ RFC-0141)
     → NF2 reachability bind (#250)
       → NF3 expiry (#251)
         → NF4 netns NAT (#252)
@@ -661,6 +661,6 @@ NF0 Live EVM (#248 DONE @ RFC-0140)
 | Execution-boundary hardening (post-K audit) | [`docs/phase-l-plan.md`](docs/phase-l-plan.md); `#217`–`#223` **DONE** @ RFC-0111; QUEUE L closed |
 | OS child sandbox (post-L) | [`docs/phase-m-plan.md`](docs/phase-m-plan.md); `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | Global rendezvous & prime connectivity (post-M) | [`docs/phase-n-plan.md`](docs/phase-n-plan.md); `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed |
-| Phase N semantic honesty / live rendezvous (post-N audit) | [`docs/phase-n-fix-plan.md`](docs/phase-n-fix-plan.md); `#248` **DONE** @ RFC-0140; `#249`–`#254` OPEN; RFC-0139 reserved |
+| Phase N semantic honesty / live rendezvous (post-N audit) | [`docs/phase-n-fix-plan.md`](docs/phase-n-fix-plan.md); `#248`–`#249` **DONE** (@ RFC-0140 / RFC-0141); `#250`–`#254` OPEN; RFC-0139 reserved |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
