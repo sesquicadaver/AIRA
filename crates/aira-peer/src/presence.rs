@@ -1,7 +1,8 @@
-//! Node Presence Record (QUEUE #234 / Phase N).
+//! Node Presence Record (QUEUE #234 / Phase N; temporal shape `#254`).
 //!
 //! Canonical-signed discovery advertisement. Ledger publish uses `#235` trait / `#236+` adapters.
 //! `DISCOVERED ≠ TRUSTED`: verifying a presence does not upsert TrustStore.
+//! `#254`: `validate_shape` requires `created_at < expires_at`.
 
 use aira_object::{
     descriptor_signing_message, utc_now_rfc3339, AiraRef, ContentHash, Keyring, Signature,
@@ -9,6 +10,8 @@ use aira_object::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 use crate::error::PeerError;
 use crate::prime_port::{is_valid_aira_port, validate_aira_bind};
@@ -17,6 +20,11 @@ use crate::prime_port::{is_valid_aira_port, validate_aira_bind};
 pub const PRESENCE_SCHEMA: &str = "aira:schema:peer:presence-record:0.1";
 /// Public mesh network id (Phase N invariant).
 pub const PUBLIC_NETWORK_ID: &str = "aira:network:public:v1";
+
+fn parse_odt(s: &str) -> Result<OffsetDateTime, PeerError> {
+    OffsetDateTime::parse(s.trim(), &Rfc3339)
+        .map_err(|e| PeerError::Protocol(format!("bad timestamp {s}: {e}")))
+}
 
 /// Direct endpoint reachability hint (full state machine lands in `#239`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -130,6 +138,12 @@ impl NodePresenceRecord {
         }
         Timestamp::parse(&self.created_at).map_err(|e| PeerError::Protocol(e.to_string()))?;
         Timestamp::parse(&self.expires_at).map_err(|e| PeerError::Protocol(e.to_string()))?;
+        // Fundamental temporal invariant (#254): expires strictly after created.
+        if parse_odt(&self.expires_at)? <= parse_odt(&self.created_at)? {
+            return Err(PeerError::Protocol(
+                "presence expires_at must be after created_at".into(),
+            ));
+        }
         ContentHash::parse(&self.capabilities_hash)
             .map_err(|e| PeerError::Protocol(e.to_string()))?;
         if self.signature.key_ref.as_str() != self.identity_ref {
@@ -411,5 +425,48 @@ mod tests {
         .unwrap();
         rec.network_id = "aira:network:other".into();
         assert!(rec.validate_shape().is_err());
+    }
+
+    #[test]
+    fn rejects_expires_at_not_after_created_at() {
+        let equal = NodePresenceRecord::draft(PresenceDraft {
+            identity_ref: "aira:identity:x".into(),
+            identity_public_key: "ac".repeat(32),
+            sequence: 1,
+            created_at: "2026-09-05T12:00:00Z".into(),
+            expires_at: "2026-09-05T12:00:00Z".into(),
+            direct_endpoints: vec![],
+            relay_endpoints: vec![],
+            capabilities_hash: empty_capabilities_hash(),
+        })
+        .unwrap();
+        let err = equal.validate_shape().unwrap_err().to_string();
+        assert!(err.contains("expires_at must be after created_at"), "{err}");
+
+        let inverted = NodePresenceRecord::draft(PresenceDraft {
+            identity_ref: "aira:identity:y".into(),
+            identity_public_key: "ad".repeat(32),
+            sequence: 1,
+            created_at: "2026-09-12T12:00:00Z".into(),
+            expires_at: "2026-09-05T12:00:00Z".into(),
+            direct_endpoints: vec![],
+            relay_endpoints: vec![],
+            capabilities_hash: empty_capabilities_hash(),
+        })
+        .unwrap();
+        assert!(inverted.validate_shape().is_err());
+
+        let ok = NodePresenceRecord::draft(PresenceDraft {
+            identity_ref: "aira:identity:z".into(),
+            identity_public_key: "ae".repeat(32),
+            sequence: 1,
+            created_at: "2026-09-05T12:00:00Z".into(),
+            expires_at: "2026-09-05T12:00:01Z".into(),
+            direct_endpoints: vec![],
+            relay_endpoints: vec![],
+            capabilities_hash: empty_capabilities_hash(),
+        })
+        .unwrap();
+        ok.validate_shape().unwrap();
     }
 }

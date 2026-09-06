@@ -208,6 +208,10 @@ Listening + iptables INPUT DROP ≠ non-listening placeholder; Docker smoke `scr
 
 Collision walk uses modular arithmetic on `P_AIRA_COUNT`; wrap correct when current index is before preferred after crossing `P_AIRA_LAST` (RFC-0145).
 
-## Phase N-fix (post-audit)
+## Phase N-fix Presence temporal + close (`#254`)
 
-Remaining: [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#254` (first OPEN `#254`).
+`NodePresenceRecord::validate_shape` requires `created_at < expires_at`. Consolidating [`AIRA-RFC-0139`](../specs/rfc/AIRA-RFC-0139-phase-n-fix-honesty-close.md); **QUEUE N-fix closed**. Global live rendezvous remains **PARTIAL** (honest).
+
+## Phase N-fix
+
+[`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#248`–`#254` **DONE**; no OPEN N-fix atoms.
