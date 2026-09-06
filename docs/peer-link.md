@@ -156,9 +156,9 @@ Peer-assisted signed challenge + attestation; hairpin forbidden (RFC-0130).
 `ReachabilityLocalState` persists UNKNOWN…OFFLINE in `peers/reachability.json` (RFC-0131). DIRECT only after verified probe.
 
 
-## AddressBook promotion (Phase N `#240`)
+## AddressBook promotion (Phase N `#240` / N-fix `#251`)
 
-`promote_presence_to_address_book`: valid Presence + trust policy → dial book only; no auto-trust (RFC-0132).
+`promote_presence_to_address_book(root, presence, as_of)`: valid **unexpired** Presence + trust policy → dial book only; no auto-trust (RFC-0132 / RFC-0143). Expired rows from `query_identity` cannot promote.
 
 ## Relay integration (Phase N `#241`)
 
@@ -196,6 +196,10 @@ Network tab mesh banner + Identity / preferred port / bind / external / reachabi
 
 Successful attestation binds Noise handshake hash + session transcript; `apply_successful_probe` requires matching local inbound transcript; CLI `--session-transcript` (RFC-0142). Signed claim without connect ≠ `DIRECT_REACHABLE`.
 
+## Phase N-fix expiry before promote (`#251`)
+
+Expired Presence cannot enter AddressBook via promote / `discover_admit_promote`, even when `query_identity` still returns the row (RFC-0143).
+
 ## Phase N-fix (post-audit)
 
-Remaining: [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#251`–`#254` (first OPEN `#251`).
+Remaining: [`phase-n-fix-plan.md`](phase-n-fix-plan.md) `#252`–`#254` (first OPEN `#252`).

@@ -1,8 +1,9 @@
-//! Ab ovo discovery → trust → dial orchestration (QUEUE #245 / Phase N).
+//! Ab ovo discovery → trust → dial orchestration (QUEUE #245 / Phase N; expiry `#251`).
 //!
 //! Zero-knowledge path: empty AddressBook on B; A publishes Presence to a shared
 //! ledger; B queries, records DISCOVERED, admits trust, promotes AddressBook, dials.
-//! NAT/relay Noise remains `#246`. Does not auto-trust from the ledger.
+//! Expired Presence from `query_identity` cannot promote (`#251`).
+//! Does not auto-trust from the ledger.
 
 use std::path::Path;
 
@@ -13,6 +14,7 @@ use crate::discovery::{DiscoverySource, PeerDiscoveryStore};
 use crate::error::PeerError;
 use crate::presence::NodePresenceRecord;
 use crate::presence_promote::promote_presence_to_address_book;
+use crate::presence_refresh::is_presence_expired;
 use crate::rendezvous::RendezvousProvider;
 
 /// Record a validated Presence as DISCOVERED (discovery journal only).
@@ -56,7 +58,8 @@ pub fn admit_peer_trust(
 
 /// Query ledger for `identity_ref`, verify, mark DISCOVERED; if trusted, promote book.
 ///
-/// Fail-closed if AddressBook already had the peer when `require_empty_book` is true.
+/// Fail-closed if AddressBook already had the peer when `require_empty_book` is true,
+/// or if Presence is expired at `as_of` (including records returned by `query_identity`).
 pub fn discover_admit_promote(
     local_root: impl AsRef<Path>,
     provider: &dyn RendezvousProvider,
@@ -85,6 +88,10 @@ pub fn discover_admit_promote(
         .ok_or_else(|| PeerError::Protocol(format!("ab ovo: {identity_ref} not in ledger")))?;
 
     presence.verify_canonical_signature()?;
+    // #251: query_identity may return expired rows; never promote them.
+    if is_presence_expired(&presence, as_of)? {
+        return Err(PeerError::Expired);
+    }
     record_discovered_presence(local_root, &presence)?;
 
     let trust = TrustStore::load(local_root).map_err(|e| PeerError::Crypto(e.to_string()))?;
@@ -92,7 +99,7 @@ pub fn discover_admit_promote(
         return Err(PeerError::Untrusted(presence.identity_ref.clone()));
     }
 
-    let ep = promote_presence_to_address_book(local_root, &presence)?;
+    let ep = promote_presence_to_address_book(local_root, &presence, as_of)?;
     Ok((presence, ep))
 }
 
@@ -255,5 +262,37 @@ mod tests {
         let server = accept_task.await.unwrap().unwrap();
         assert_eq!(client.peer_id, ida);
         assert_eq!(server.peer_id, idb);
+    }
+
+    #[test]
+    fn expired_presence_via_query_identity_cannot_promote() {
+        let ledger = tempdir().unwrap();
+        let a = tempdir().unwrap();
+        let b = tempdir().unwrap();
+        let (ida, pka) = write_node(a.path(), "exp-a", [75u8; 32]);
+        let _ = write_node(b.path(), "exp-b", [76u8; 32]);
+
+        let mut provider = LocalFileRendezvousProvider::open(ledger.path()).unwrap();
+        let presence = signed_presence(a.path(), &ida, &pka, "127.0.0.1", 49157);
+        provider.publish_presence(presence).unwrap();
+
+        // Ledger still returns the row via query_identity (may be expired).
+        assert!(provider.query_identity(ida.as_str()).unwrap().is_some());
+        assert!(provider
+            .query_active_peers("2026-09-13T00:00:00Z")
+            .unwrap()
+            .is_empty());
+
+        admit_peer_trust(b.path(), ida.as_str(), &pka).unwrap();
+        let err = discover_admit_promote(
+            b.path(),
+            &provider,
+            ida.as_str(),
+            "2026-09-13T00:00:00Z",
+            true,
+        )
+        .unwrap_err();
+        assert!(matches!(err, PeerError::Expired));
+        assert!(AddressBook::load(b.path()).unwrap().peers.is_empty());
     }
 }
