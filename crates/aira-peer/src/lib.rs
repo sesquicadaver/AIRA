@@ -22,6 +22,7 @@
 //! QUEUE #241: Relay integration (direct→NAT→relay; prime ads; dual reservation).
 //! QUEUE #242: Presence refresh (sequence++; expire stale; endpoint change).
 //! QUEUE #245: Ab ovo publish → discover → trust → dial (no preconfigured peers).
+//! QUEUE #249: two-process ab ovo CI harness (`aira-ab-ovo-harness`).
 //! QUEUE #246: NAT/relay integration (both inbound blocked → relay courier).
 
 mod ab_ovo;

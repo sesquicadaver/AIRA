@@ -19,8 +19,12 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-
 snow = { workspace = true }
 x25519-dalek = { workspace = true }
 time = { workspace = true }
+aira-flow = { path = "../aira-flow" }
+ed25519-dalek = { workspace = true }
+
+[[bin]]
+name = "aira-ab-ovo-harness"
+path = "src/bin/ab_ovo_harness.rs"
 
 [dev-dependencies]
 tempfile = { workspace = true }
-ed25519-dalek = { workspace = true }
-aira-flow = { path = "../aira-flow" }
