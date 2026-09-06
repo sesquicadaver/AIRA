@@ -1,9 +1,13 @@
-//! NAT/relay integration: inbound-blocked peers via courier hub (QUEUE #246).
+//! NAT/relay integration + inbound-block honesty (QUEUE #246 / N-fix `#252`).
 //!
-//! Models TZ §48: both endpoints cannot accept inbound; they discover a trusted
-//! relay and complete an encrypted peer payload through `RelayHub` courier.
-//! End-to-end Noise remains peer↔relay (and signed inner envelope peer↔peer);
-//! hubs never verify inner payloads. Ab ovo direct path stays `#245`.
+//! `#246` courier path configures AddressBook with a **non-listening** prime
+//! placeholder as the peer's "direct" slot — that is **not** a firewall/NAT
+//! simulation. Real inbound block (listening socket + iptables/netns DROP) is
+//! `#252` ([`crate::inbound_firewall`] + `scripts/inbound_firewall_smoke.sh`).
+//!
+//! Models TZ §48 courier: both endpoints cannot accept inbound; they discover a
+//! trusted relay and complete an encrypted peer payload through `RelayHub`.
+//! Hubs never verify inner payloads.
 
 use std::path::Path;
 
@@ -12,10 +16,17 @@ use crate::error::PeerError;
 use crate::reachability_state::RelayRouteRecord;
 use crate::relay_integrate::{plan_dial_path, DialPathInput, DialPathStep};
 
+/// Honest semantics tag for [`configure_non_listening_placeholder_via_relay`].
+///
+/// This is **not** `firewall` / `netns` — nothing is listening on the direct slot.
+pub const INBOUND_BLOCK_KIND_NON_LISTENING_PLACEHOLDER: &str = "non-listening-placeholder";
+
 /// Configure AddressBook so `peer_id` is only reachable via `relay_id` at `relay_addr`.
 ///
-/// The peer's own `direct_addr` is a non-listening placeholder (inbound blocked).
-pub fn configure_inbound_blocked_via_relay(
+/// `blocked_direct_addr` must be a prime bind string where **nothing listens**
+/// (placeholder). Prefer this name over the historical alias
+/// [`configure_inbound_blocked_via_relay`] (`#252` honesty).
+pub fn configure_non_listening_placeholder_via_relay(
     root: impl AsRef<Path>,
     peer_id: &str,
     blocked_direct_addr: &str,
@@ -30,6 +41,26 @@ pub fn configure_inbound_blocked_via_relay(
     book.upsert_via(peer_id, blocked_direct_addr, Some(relay_id.to_string()))?;
     book.save(root)?;
     Ok(())
+}
+
+/// Historical name for [`configure_non_listening_placeholder_via_relay`].
+///
+/// Does **not** install a firewall or netns rule — direct dial fails because the
+/// advertised address is a non-listening placeholder (`#252`).
+pub fn configure_inbound_blocked_via_relay(
+    root: impl AsRef<Path>,
+    peer_id: &str,
+    blocked_direct_addr: &str,
+    relay_id: &str,
+    relay_addr: &str,
+) -> Result<(), PeerError> {
+    configure_non_listening_placeholder_via_relay(
+        root,
+        peer_id,
+        blocked_direct_addr,
+        relay_id,
+        relay_addr,
+    )
 }
 
 /// Dial plan when direct/NAT are unavailable: only relay steps remain.
@@ -127,6 +158,16 @@ mod tests {
         assert!(plan_inbound_blocked_relay_path(vec![]).is_err());
     }
 
+    #[test]
+    fn configure_helper_is_non_listening_placeholder_semantics() {
+        assert_eq!(
+            INBOUND_BLOCK_KIND_NON_LISTENING_PLACEHOLDER,
+            "non-listening-placeholder"
+        );
+        assert!(!INBOUND_BLOCK_KIND_NON_LISTENING_PLACEHOLDER.contains("firewall"));
+        assert!(!INBOUND_BLOCK_KIND_NON_LISTENING_PLACEHOLDER.contains("netns"));
+    }
+
     #[tokio::test]
     async fn both_inbound_blocked_relay_courier_noise_succeeds() {
         // Shared empty ledger (discovery substrate); no preconfigured A↔B book.
@@ -164,8 +205,8 @@ mod tests {
         let (listener, addr_r) = listen_available_loopback().await.unwrap();
         let relay_addr = addr_r.to_string();
 
-        // Inbound blocked: peer direct slots are non-listening prime placeholders.
-        configure_inbound_blocked_via_relay(
+        // Non-listening placeholders (honest #246/#252 naming) — not a firewall.
+        configure_non_listening_placeholder_via_relay(
             root_a,
             id_b.as_str(),
             "127.0.0.1:49169",
@@ -173,7 +214,7 @@ mod tests {
             &relay_addr,
         )
         .unwrap();
-        configure_inbound_blocked_via_relay(
+        configure_non_listening_placeholder_via_relay(
             root_b,
             id_a.as_str(),
             "127.0.0.1:49157",
@@ -182,9 +223,12 @@ mod tests {
         )
         .unwrap();
 
-        // Direct dial of the blocked peer must fail (nothing listening).
+        // Direct dial of the placeholder must fail (nothing listening).
         let direct_err = dial(root_a, id_b.as_str()).await;
-        assert!(direct_err.is_err(), "direct must fail when inbound blocked");
+        assert!(
+            direct_err.is_err(),
+            "direct must fail for non-listening placeholder"
+        );
 
         let hub_accept = hub.clone();
         let root_r2 = root_r.to_path_buf();
