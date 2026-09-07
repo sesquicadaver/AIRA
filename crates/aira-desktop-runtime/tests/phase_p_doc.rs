@@ -129,7 +129,11 @@ fn phase_o_points_to_phase_p() {
 #[test]
 fn phase_p_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
-    assert!(text.contains("phase-p-plan.md") || text.contains("Phase P") || text.contains("QUEUE P closed"));
+    assert!(
+        text.contains("phase-p-plan.md")
+            || text.contains("Phase P")
+            || text.contains("QUEUE P closed")
+    );
     assert!(text.contains("немає OPEN") || text.contains("QUEUE P closed"));
     assert!(
         !text.contains("перший OPEN `#274`") && !text.contains("first OPEN `#274`"),
