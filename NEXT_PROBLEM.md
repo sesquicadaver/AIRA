@@ -3,7 +3,7 @@
 **Status:** RESOLVED / provenance  
 **Resolved by:** [`docs/desktop-ux.md`](docs/desktop-ux.md) + [`docs/phase-e-plan.md`](docs/phase-e-plan.md) (`#75`–`#106` **DONE**, 2026-08-22)  
 **Post-resolution stabilization:** [`docs/phase-f-plan.md`](docs/phase-f-plan.md) (`#107`–`#119` **DONE**, 2026-08-24)  
-**Active backlog:** [`QUEUE.md`](QUEUE.md) — Phase P [`docs/phase-p-plan.md`](docs/phase-p-plan.md) `#266`–`#274` (**`#266`–`#272` DONE** @ RFC-0162; перший OPEN `#274`); Phase O **DONE** @ RFC-0146 (QUEUE O closed); **QUEUE N-fix closed** @ RFC-0139; QUEUE N closed @ RFC-0123; QUEUE M closed @ RFC-0117; QUEUE L closed @ RFC-0111  
+**Active backlog:** [`QUEUE.md`](QUEUE.md) — **немає OPEN** (Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed); Phase O **DONE** @ RFC-0146 (QUEUE O closed); **QUEUE N-fix closed** @ RFC-0139; QUEUE N closed @ RFC-0123; QUEUE M closed @ RFC-0117; QUEUE L closed @ RFC-0111
 **Не канон:** цей файл не конкурує з `desktop-ux.md` / `phase-e-plan.md` / `QUEUE.md`. Далі — лише історичний problem statement.
 
 ## Problem statement (вхід)
