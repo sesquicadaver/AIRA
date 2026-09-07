@@ -123,5 +123,5 @@ QUEUE O closed @ RFC-0146.
 QUEUE N-fix closed @ RFC-0139 + developer «канон + Phase O» 2026-09-06
   → план активовано атомом `#255`.
 `#255`–`#265` DONE @ RFC-0146; QUEUE O closed; no OPEN O atoms.
-Next feature phase only by explicit developer plan (not invented in `#265`).
+Next: Phase P [`phase-p-plan.md`](phase-p-plan.md) `#266`–`#274` (activated `#266`).
 ```
