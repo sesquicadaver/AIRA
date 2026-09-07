@@ -121,3 +121,7 @@ QUEUE O closed @ RFC-0146 + developer «скласти Phase P» 2026-09-07
   → цей план активовано атомом `#266`.
 `#266`–`#274` DONE @ RFC-0156; **QUEUE P closed**; no OPEN P atoms.
 ```
+
+## 9. Після Phase P
+
+Наступний етап: [`phase-q-plan.md`](phase-q-plan.md) (Phase Q; QUEUE `#275`–`#285`).
