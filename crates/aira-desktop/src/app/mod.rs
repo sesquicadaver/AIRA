@@ -14,8 +14,8 @@ use std::path::PathBuf;
 use aira_desktop_runtime::{
     load_or_create_settings, load_or_create_ui_prefs, load_system_snapshot, start, stop,
     sync_autostart_from_settings, write_ui_prefs, DesktopPaths, DesktopSettings, LifecycleStatus,
-    NetworkMeshSnapshot, SystemSnapshot, UiLang, UiPrefs, DEFAULT_PEER_LISTEN,
-    DEFAULT_RELAY_TTL_DAYS,
+    ModelFact, ModelTripleSnapshot, NetworkMeshSnapshot, SystemSnapshot, UiLang, UiPrefs,
+    DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
@@ -58,6 +58,8 @@ pub struct AiraDesktopApp {
     pub(super) peer_detail: String,
     pub(super) mesh_snapshot: NetworkMeshSnapshot,
     pub(super) system_snapshot: SystemSnapshot,
+    /// Model selected ≠ ready ≠ used (`#269`).
+    pub(super) model_triple: ModelTripleSnapshot,
     pub(super) peer_listen_edit: String,
     pub(super) relay_ttl_edit: String,
     pub(super) invite_msg: Option<String>,
@@ -140,6 +142,7 @@ impl AiraDesktopApp {
             peer_detail: String::new(),
             mesh_snapshot: NetworkMeshSnapshot::unavailable(),
             system_snapshot: SystemSnapshot::unavailable(),
+            model_triple: ModelTripleSnapshot::undefined(),
             peer_listen_edit,
             relay_ttl_edit,
             invite_msg: None,
@@ -255,6 +258,24 @@ impl AiraDesktopApp {
         }
         self.mesh_snapshot = snap.mesh;
         self.system_snapshot = snap.system;
+        self.model_triple = snap.model.with_used(self.used_model_fact());
+    }
+
+    /// Used-in-result fact from the last Work payload only (`#269`).
+    pub(super) fn used_model_fact(&self) -> ModelFact {
+        match &self.work_result {
+            Some(w) => match &w.used_model {
+                Some(m) => ModelFact::Value(m.clone()),
+                None => ModelFact::None,
+            },
+            None => ModelFact::Undefined,
+        }
+    }
+
+    /// Reload selected/ready from disk; preserve used from last Work result.
+    pub(super) fn refresh_model_triple(&mut self) {
+        self.model_triple =
+            ModelTripleSnapshot::load(&self.paths.data_root).with_used(self.used_model_fact());
     }
 
     /// Request a background status refresh (no-op if one is already running).
@@ -273,6 +294,7 @@ impl AiraDesktopApp {
             match outcome {
                 Ok(view) => {
                     self.work_result = Some(view);
+                    self.model_triple.used = self.used_model_fact();
                     self.clear_problem();
                     // Lifecycle may have changed if submit started the node.
                     self.request_status_refresh(ctx);
@@ -304,10 +326,13 @@ impl AiraDesktopApp {
             Ok(sys) => {
                 self.mesh_snapshot = sys.network.clone();
                 self.system_snapshot = sys;
+                self.refresh_model_triple();
             }
             Err(e) => {
                 self.mesh_snapshot = NetworkMeshSnapshot::unavailable();
                 self.system_snapshot = SystemSnapshot::unavailable();
+                self.model_triple =
+                    ModelTripleSnapshot::undefined().with_used(self.used_model_fact());
                 self.set_problem(ErrorCode::MeshSnapshotFailed, format!("{e:#}"));
             }
         }

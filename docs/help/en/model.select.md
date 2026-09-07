@@ -12,7 +12,7 @@ Local models live in the model / execution layer. They are **not** part of `aira
 
 ## What should happen?
 
-Missing a model does not block tasks that do not need an LLM. When a model is required, Desktop states that clearly instead of inventing a name.
+Missing a model does not block tasks that do not need an LLM. Desktop shows **selected**, **ready**, and **used in last result** separately (System / Settings / strip) — never inventing a name or copying selected into used.
 
 ## If it failed?
 

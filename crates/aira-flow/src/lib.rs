@@ -12,7 +12,7 @@ mod local;
 mod plane;
 mod reuse;
 
-pub use activate_gate::ActivatedPointerGate;
+pub use activate_gate::{ActivatedPointerGate, ActivationObservation};
 
 pub use local::{
     init_node, load_config, node_config_present, open_node_sqlite_object_store,

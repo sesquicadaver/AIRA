@@ -1,7 +1,7 @@
 # AIRA Desktop UX — канон рішень
 
 **Статус:** Phase E `#75`–`#106` **DONE** (2026-08-22); Phase F `#107`–`#119` **DONE** (2026-08-24).  
-**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) `#266`–`#274` (**runtime-honest**; `#266`–`#268` DONE @ RFC-0158; first OPEN `#269`; RFC-0156 reserved).  
+**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) `#266`–`#274` (**runtime-honest**; `#266`–`#269` DONE @ RFC-0159; first OPEN `#270`; RFC-0156 reserved).  
 **Provenance:** [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED** → E); UX/Help draft 2026-09-06 (`aira-gui.md` + `aira-desktop-ux-help-draft.md`, поза git).  
 **Не змінює** Book 0–IV / C0–C1 / Core / `aira-core` ledger.  
 **Posture:** Linux E1 = **Developer Preview** над local reference plane.
@@ -69,7 +69,7 @@ O5 (`#260` **DONE** @ [`AIRA-RFC-0151`](../specs/rfc/AIRA-RFC-0151-work-screen-p
 - **Скасувати** — лише якщо виконавець підтверджує скасування; закриття HTTP ≠ скасування обчислення.
 - Результат: спочатку відповідь, далі статус виконання й перевірки **окремо**; mock / відсутність provenance — явно.
 
-Локальні моделі — **не Core і не маркетплейс**. Канон: Artifact + Capability + Policy CSU (`aira models`); LLM Backend — зовнішній CSU. C1 `Calculate 2 + 2` → `execution-basic`; інший текст → `text.generate.local`. Phase K **DONE** @ RFC-0104. Не fake VERIFIED.
+Локальні моделі — **не Core і не маркетплейс**. Phase P `#269` **DONE** @ [`AIRA-RFC-0159`](../specs/rfc/AIRA-RFC-0159-model-triple-ux.md): selected ≠ ready ≠ used-in-result (strip/System/Settings observe-only). Канон: Artifact + Capability + Policy CSU (`aira models`); LLM Backend — зовнішній CSU. C1 `Calculate 2 + 2` → `execution-basic`; інший текст → `text.generate.local`. Phase K **DONE** @ RFC-0104. Не fake VERIFIED.
 
 ## 4. Стан системи (цільовий контракт)
 

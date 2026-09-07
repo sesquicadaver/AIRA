@@ -3,6 +3,7 @@
 //! [`ActivatedPointerGate`] lives on the plane (CSU ↛ CSU): it does not Cargo-dep
 //! `model-acquisition`. Presence of `models/activated.latest.json` is not enough;
 //! cache bytes, `content_hash`, and a signed activate Evidence artifact must match.
+//! Desktop `#269` observes selected vs ready via [`ActivatedPointerGate::observe`].
 
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -28,6 +29,19 @@ struct ActivatedPointer {
     evidence_artifact_id: String,
 }
 
+/// Read-only activation observation for Desktop model triple (`#269`).
+///
+/// `selected_model_ref` comes from the pointer file; `ready` requires full Phase D
+/// evidence/hash confirmation (pointer presence alone is never enough).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActivationObservation {
+    pub pointer_present: bool,
+    pub selected_model_ref: Option<String>,
+    pub ready: bool,
+    /// Stable English detail for tests / technical UI (not localized).
+    pub detail: String,
+}
+
 /// Phase D activate handle: evidence/hash, not pointer-exists.
 #[derive(Debug, Clone)]
 pub struct ActivatedPointerGate {
@@ -42,6 +56,63 @@ impl ActivatedPointerGate {
         Self {
             pointer_path: aira_root.join("models/activated.latest.json"),
             aira_root,
+        }
+    }
+
+    /// Observe selected vs ready without inventing a used-in-result model (`#269`).
+    pub fn observe(&self) -> ActivationObservation {
+        if !self.pointer_path.is_file() {
+            return ActivationObservation {
+                pointer_present: false,
+                selected_model_ref: None,
+                ready: false,
+                detail: "no activated pointer".into(),
+            };
+        }
+        let raw = match fs::read_to_string(&self.pointer_path) {
+            Ok(s) => s,
+            Err(_) => {
+                return ActivationObservation {
+                    pointer_present: true,
+                    selected_model_ref: None,
+                    ready: false,
+                    detail: "activated pointer unreadable".into(),
+                };
+            }
+        };
+        let pointer: ActivatedPointer = match serde_json::from_str(&raw) {
+            Ok(p) => p,
+            Err(_) => {
+                return ActivationObservation {
+                    pointer_present: true,
+                    selected_model_ref: None,
+                    ready: false,
+                    detail: "activated pointer is not a Phase D activation record".into(),
+                };
+            }
+        };
+        if pointer.model_ref.is_empty() {
+            return ActivationObservation {
+                pointer_present: true,
+                selected_model_ref: None,
+                ready: false,
+                detail: "activated pointer missing model_ref".into(),
+            };
+        }
+        let selected = pointer.model_ref.clone();
+        match self.verify_pointer_ready(&pointer) {
+            Ok(()) => ActivationObservation {
+                pointer_present: true,
+                selected_model_ref: Some(selected),
+                ready: true,
+                detail: "activated evidence confirmed".into(),
+            },
+            Err(e) => ActivationObservation {
+                pointer_present: true,
+                selected_model_ref: Some(selected),
+                ready: false,
+                detail: e,
+            },
         }
     }
 
@@ -87,19 +158,8 @@ impl ActivatedPointerGate {
         .map_err(|e| e.to_string())?;
         Ok(Self::from_aira_root(root))
     }
-}
 
-impl ModelActivateGate for ActivatedPointerGate {
-    fn check_activated(&self, payload: &GenerateLocalPayload) -> Result<(), String> {
-        if !self.pointer_path.is_file() {
-            return Err(ACTIVATE_DENIED.into());
-        }
-        let raw =
-            fs::read_to_string(&self.pointer_path).map_err(|_| ACTIVATE_DENIED.to_string())?;
-        let pointer: ActivatedPointer = serde_json::from_str(&raw).map_err(|_| {
-            "activated pointer is not a Phase D activation record (fail-closed; not VERIFIED)"
-                .to_string()
-        })?;
+    fn verify_pointer_ready(&self, pointer: &ActivatedPointer) -> Result<(), String> {
         if pointer.model_ref.is_empty()
             || pointer.cache_path.is_empty()
             || pointer.verified_path.is_empty()
@@ -108,15 +168,6 @@ impl ModelActivateGate for ActivatedPointerGate {
             || pointer.updated_at.is_empty()
         {
             return Err(ACTIVATE_DENIED.into());
-        }
-        if let Some(want) = &payload.model_artifact_ref {
-            if want.as_str() != pointer.model_ref {
-                return Err(format!(
-                    "model {} is not Phase D activated (activated {}; fail-closed; not VERIFIED)",
-                    want.as_str(),
-                    pointer.model_ref
-                ));
-            }
         }
         let claimed = ContentHash::parse(&pointer.content_hash).map_err(|_| {
             "activated content_hash is not a valid hash (fail-closed; not VERIFIED)".to_string()
@@ -142,6 +193,30 @@ impl ModelActivateGate for ActivatedPointerGate {
         })?;
         verify_activate_evidence(&ev_bytes, &pointer.model_ref, claimed.as_str())?;
         Ok(())
+    }
+}
+
+impl ModelActivateGate for ActivatedPointerGate {
+    fn check_activated(&self, payload: &GenerateLocalPayload) -> Result<(), String> {
+        if !self.pointer_path.is_file() {
+            return Err(ACTIVATE_DENIED.into());
+        }
+        let raw =
+            fs::read_to_string(&self.pointer_path).map_err(|_| ACTIVATE_DENIED.to_string())?;
+        let pointer: ActivatedPointer = serde_json::from_str(&raw).map_err(|_| {
+            "activated pointer is not a Phase D activation record (fail-closed; not VERIFIED)"
+                .to_string()
+        })?;
+        if let Some(want) = &payload.model_artifact_ref {
+            if want.as_str() != pointer.model_ref {
+                return Err(format!(
+                    "model {} is not Phase D activated (activated {}; fail-closed; not VERIFIED)",
+                    want.as_str(),
+                    pointer.model_ref
+                ));
+            }
+        }
+        self.verify_pointer_ready(&pointer)
     }
 }
 
@@ -313,5 +388,45 @@ mod tests {
         .unwrap();
         let err = gate.check_activated(&dummy_payload()).unwrap_err();
         assert!(err.contains("content_hash mismatch"), "{err}");
+    }
+
+    #[test]
+    fn observe_without_pointer_is_not_ready() {
+        let dir = tempfile::tempdir().unwrap();
+        let obs = ActivatedPointerGate::from_aira_root(dir.path()).observe();
+        assert!(!obs.pointer_present);
+        assert!(obs.selected_model_ref.is_none());
+        assert!(!obs.ready);
+        assert_eq!(obs.detail, "no activated pointer");
+    }
+
+    #[test]
+    fn observe_fixture_selected_and_ready_differ_from_used() {
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        let obs = gate.observe();
+        assert!(obs.pointer_present);
+        assert_eq!(
+            obs.selected_model_ref.as_deref(),
+            Some("aira:model:test-activated")
+        );
+        assert!(obs.ready);
+        // Observation never invents a used-in-result identity.
+        assert!(obs.detail.contains("confirmed"));
+    }
+
+    #[test]
+    fn observe_keeps_selected_when_not_ready() {
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        fs::remove_file(dir.path().join("models/cache/l218/weights.bin")).unwrap();
+        let obs = gate.observe();
+        assert_eq!(
+            obs.selected_model_ref.as_deref(),
+            Some("aira:model:test-activated")
+        );
+        assert!(!obs.ready);
     }
 }

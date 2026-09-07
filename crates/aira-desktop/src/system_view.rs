@@ -2,8 +2,12 @@
 //!
 //! Honesty: UNKNOWN ≠ OFFLINE; AddressBook count ≠ live sessions; no invented model.
 //! Freshness (`#267`): measurement time ≠ load time; Stale/Unknown cannot paint as Current.
+//! Model triple (`#269`): selected ≠ ready ≠ used-in-result.
 
-use aira_desktop_runtime::{DataQuality, LifecycleStatus, SystemSnapshot};
+use aira_desktop_runtime::{
+    DataQuality, LifecycleStatus, ModelFact, ModelTripleConclusion, ModelTripleSnapshot,
+    SystemSnapshot,
+};
 
 #[cfg(test)]
 use aira_desktop_runtime::NetworkMeshSnapshot;
@@ -19,11 +23,26 @@ pub enum ProgramConclusion {
     Failed,
 }
 
-/// Model section — Desktop does not invent a selected model (`#261`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ModelConclusion {
-    /// No authoritative model observation on this screen yet.
-    NotChecked,
+/// Model section — three independent facts (`#269`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModelConclusion {
+    pub selected: ModelFact,
+    pub ready: bool,
+    pub ready_detail: String,
+    pub used: ModelFact,
+    pub summary: ModelTripleConclusion,
+}
+
+impl ModelConclusion {
+    pub fn from_triple(t: &ModelTripleSnapshot) -> Self {
+        Self {
+            selected: t.selected.clone(),
+            ready: t.ready,
+            ready_detail: t.ready_detail.clone(),
+            used: t.used.clone(),
+            summary: ModelTripleConclusion::from_triple(t),
+        }
+    }
 }
 
 /// Connection conclusion derived from mesh top-level (never collapses UNKNOWN→OFFLINE).
@@ -68,7 +87,11 @@ pub struct SystemStatusView {
 }
 
 impl SystemStatusView {
-    pub fn from_parts(lifecycle: LifecycleStatus, system: &SystemSnapshot) -> Self {
+    pub fn from_parts(
+        lifecycle: LifecycleStatus,
+        system: &SystemSnapshot,
+        model: &ModelTripleSnapshot,
+    ) -> Self {
         let program = match lifecycle {
             LifecycleStatus::Running => ProgramConclusion::Running,
             LifecycleStatus::Stopped => ProgramConclusion::Stopped,
@@ -80,7 +103,7 @@ impl SystemStatusView {
         let net = &system.network;
         Self {
             program,
-            model: ModelConclusion::NotChecked,
+            model: ModelConclusion::from_triple(model),
             connection: ConnectionConclusion::from_top_level(&net.top_level),
             observed_at: system.observed_at.clone(),
             loaded_at: system.loaded_at.clone(),
@@ -101,6 +124,7 @@ impl SystemStatusView {
         Self::from_parts(
             lifecycle,
             &SystemSnapshot::from_network(mesh.clone(), loaded_at),
+            &ModelTripleSnapshot::undefined(),
         )
     }
 }
@@ -138,7 +162,8 @@ mod tests {
         assert_eq!(view.live_session_count, None);
         assert_eq!(view.live_sessions_quality, DataQuality::Unknown);
         assert_eq!(view.connection, ConnectionConclusion::LocalOnly);
-        assert_eq!(view.model, ModelConclusion::NotChecked);
+        assert_eq!(view.model.summary, ModelTripleConclusion::NoneSelected);
+        assert_eq!(view.model.used, ModelFact::Undefined);
         assert_eq!(view.network_quality, DataQuality::Unknown);
         assert_eq!(view.observed_at, "unknown");
         assert_eq!(view.loaded_at, "unix:1");
@@ -166,5 +191,18 @@ mod tests {
         let mesh = NetworkMeshSnapshot::unavailable();
         let v = SystemStatusView::from_mesh(LifecycleStatus::Stopped, &mesh, "unix:0".into());
         assert_eq!(v.program, ProgramConclusion::Stopped);
+    }
+
+    #[test]
+    fn model_triple_used_not_copied_from_selected() {
+        let mut triple = ModelTripleSnapshot::undefined();
+        triple.selected = ModelFact::Value("aira:model:selected".into());
+        triple.ready = true;
+        triple.used = ModelFact::Value("aira:model:used".into());
+        let c = ModelConclusion::from_triple(&triple);
+        assert_eq!(c.selected.as_display(), "aira:model:selected");
+        assert_eq!(c.used.as_display(), "aira:model:used");
+        assert_ne!(c.selected, c.used);
+        assert_eq!(c.summary, ModelTripleConclusion::UsedInResult);
     }
 }
