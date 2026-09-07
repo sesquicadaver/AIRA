@@ -1,11 +1,26 @@
-//! Human-first view of `POST /v1/problems` JSON (Work tab).
+//! Human-first view of `POST /v1/problems` JSON (Work screen).
 //!
-//! The node returns a Verified Result Artifact envelope. The product answer is
-//! `result.result` plus `status` / `verification_status` — not hashes first.
+//! Product order: answer → run status → verification → provenance → technical details.
+//! Never invent VERIFIED or a model name when the payload does not say so (`#260`).
 
 use serde_json::Value;
 
-/// Parsed Work-tab result: lead with the human answer; keep VRA JSON secondary.
+/// How the UI should describe the origin of a Work result (`desktop-ux` §3 / `#260`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProvenanceKind {
+    /// Integrity-checked local compute (e.g. C1 arithmetic → VERIFIED).
+    VerifiedLocalCompute,
+    /// Explicit mock backend — model did not run.
+    MockGenerate,
+    /// Local generate ran; not a Verified Result.
+    LocalGenerateExecuted,
+    /// No trustworthy model/provenance fields in the payload.
+    ModelUndefined,
+    /// Incomplete / needs human — no fake answer.
+    NeedsAttention,
+}
+
+/// Parsed Work result: lead with the human answer; keep VRA JSON secondary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkResultView {
     /// `result.result` (or a short summary of an object/array).
@@ -14,6 +29,8 @@ pub struct WorkResultView {
     pub status: String,
     /// VRA `verification_status` when present (`VERIFIED`, …).
     pub verification_status: Option<String>,
+    /// Honest origin label for the result (`#260`).
+    pub provenance: ProvenanceKind,
     pub problem_id: Option<String>,
     pub verified_artifact_id: Option<String>,
     pub execution_artifact_id: Option<String>,
@@ -40,7 +57,7 @@ impl WorkResultView {
     }
 }
 
-/// Format a `/v1/problems` JSON value for the Desktop Work tab.
+/// Format a `/v1/problems` JSON value for the Desktop Work screen.
 pub fn format_work_result(v: &Value) -> WorkResultView {
     let status = opt_str(v, "status").unwrap_or_else(|| "unknown".into());
     let problem_id = opt_str(v, "problem_id");
@@ -49,16 +66,60 @@ pub fn format_work_result(v: &Value) -> WorkResultView {
     let field_artifact_id = opt_str(v, "field_artifact_id");
     let verification_status = verification_status_of(v);
     let answer = extract_answer(v).map(summarize_value).unwrap_or_default();
+    let provenance = classify_provenance(v, &status, verification_status.as_deref(), &answer);
     let details_json = serde_json::to_string_pretty(v).unwrap_or_else(|_| v.to_string());
     WorkResultView {
         answer,
         status,
         verification_status,
+        provenance,
         problem_id,
         verified_artifact_id,
         execution_artifact_id,
         field_artifact_id,
         details_json,
+    }
+}
+
+/// Classify provenance without inventing a model or VERIFIED claim.
+pub fn classify_provenance(
+    v: &Value,
+    status: &str,
+    verification_status: Option<&str>,
+    answer: &str,
+) -> ProvenanceKind {
+    if status.eq_ignore_ascii_case("needs_human_collapse") {
+        return ProvenanceKind::NeedsAttention;
+    }
+    if verification_status
+        .map(|s| s.eq_ignore_ascii_case("VERIFIED"))
+        .unwrap_or(false)
+    {
+        return ProvenanceKind::VerifiedLocalCompute;
+    }
+    let result = v.get("result");
+    let backend = result
+        .and_then(|r| r.get("backend"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let action = result
+        .and_then(|r| r.get("action"))
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if backend == Some("mock") {
+        return ProvenanceKind::MockGenerate;
+    }
+    if status.eq_ignore_ascii_case("executed") || action == "text.generate.local" {
+        if backend.is_some() {
+            return ProvenanceKind::LocalGenerateExecuted;
+        }
+        return ProvenanceKind::ModelUndefined;
+    }
+    if answer.is_empty() {
+        ProvenanceKind::NeedsAttention
+    } else {
+        ProvenanceKind::ModelUndefined
     }
 }
 
@@ -177,6 +238,7 @@ mod tests {
         );
         assert_eq!(view.status, "completed");
         assert_eq!(view.verification_status.as_deref(), Some("VERIFIED"));
+        assert_eq!(view.provenance, ProvenanceKind::VerifiedLocalCompute);
         assert!(
             lead.contains("VERIFIED"),
             "lead must show VERIFIED: {lead:?}"
@@ -216,6 +278,7 @@ mod tests {
         assert!(view.answer.contains('4'));
         assert_eq!(view.status, "completed");
         assert!(view.verification_status.is_none());
+        assert_eq!(view.provenance, ProvenanceKind::ModelUndefined);
     }
 
     #[test]
@@ -228,6 +291,7 @@ mod tests {
         let view = format_work_result(&v);
         assert!(view.answer.is_empty());
         assert_eq!(view.status, "needs_human_collapse");
+        assert_eq!(view.provenance, ProvenanceKind::NeedsAttention);
         assert_eq!(
             view.field_artifact_id.as_deref(),
             Some("aira:artifact:field")
@@ -261,6 +325,7 @@ mod tests {
             view.answer
         );
         assert_eq!(view.status, "executed");
+        assert_eq!(view.provenance, ProvenanceKind::MockGenerate);
         assert!(
             view.verification_status.is_none(),
             "generate-local must not fake VERIFIED, got {:?}",
@@ -289,12 +354,27 @@ mod tests {
     }
 
     #[test]
+    fn generate_without_backend_is_model_undefined() {
+        let v = json!({
+            "status": "executed",
+            "result": {
+                "result": "hello",
+                "action": "text.generate.local"
+            }
+        });
+        let view = format_work_result(&v);
+        assert_eq!(view.provenance, ProvenanceKind::ModelUndefined);
+        assert!(view.verification_status.is_none());
+    }
+
+    #[test]
     fn string_and_object_answers_are_summarized() {
         let s = format_work_result(&json!({
             "status": "completed",
             "result": { "result": "hello", "verification_status": "VERIFIED" }
         }));
         assert_eq!(s.answer, "hello");
+        assert_eq!(s.provenance, ProvenanceKind::VerifiedLocalCompute);
 
         let obj = format_work_result(&json!({
             "status": "completed",

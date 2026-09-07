@@ -70,9 +70,22 @@ pub struct Labels {
     pub work_hint: &'static str,
     pub work_submit: &'static str,
     pub work_submitting: &'static str,
-    pub work_not_llm: &'static str,
+    pub work_shortcut_hint: &'static str,
+    pub work_user_note: &'static str,
+    pub work_how_it_works: &'static str,
+    pub work_tech_details: &'static str,
     pub work_answer: &'static str,
+    pub work_run_status: &'static str,
     pub work_verification: &'static str,
+    pub work_provenance: &'static str,
+    pub work_prov_verified: &'static str,
+    pub work_prov_mock: &'static str,
+    pub work_prov_generate: &'static str,
+    pub work_prov_model_unknown: &'static str,
+    pub work_prov_attention: &'static str,
+    pub work_status_completed: &'static str,
+    pub work_status_executed: &'static str,
+    pub work_status_needs_human: &'static str,
     pub work_ids: &'static str,
     pub work_problem_id: &'static str,
     pub work_artifact_id: &'static str,
@@ -188,20 +201,33 @@ static EN: Labels = Labels {
     refresh: "Refresh",
     quit: "Quit",
     restart_hint: "Profile/listen changed — Stop then Start to apply peer.",
-    work_heading: "Problem",
-    work_hint: "Submit text to the local node (`POST /v1/problems`, same path as `aira problem submit`). C1 example: Calculate 2 + 2. Other text uses generate-local.",
-    work_submit: "Submit",
-    work_submitting: "Submitting…",
-    work_not_llm: "C1 `Calculate 2 + 2` uses `execution-basic` / `math.eval.safe` (VERIFIED). Other prompts run `text.generate.local` on the local Execution CSU (MockBackend in CI; status executed, not a Verified Result). Generate fail-closes without Phase D activate — this tab never fakes VERIFIED. Core does not host inference.",
+    work_heading: "What do you need done?",
+    work_hint: "Describe the task. Example: Calculate 2 + 2. Enter starts a new line.",
+    work_submit: "Run",
+    work_submitting: "Running…",
+    work_shortcut_hint: "Ctrl+Enter (⌘+Enter on Mac) runs when available. Your draft stays if you switch section, open Help, or a run fails.",
+    work_user_note: "Missing a local model does not block built-in calculation. Text generation needs an activated local model — this screen never pretends a result was verified.",
+    work_how_it_works: "How this works",
+    work_tech_details: "Technical: C1 `Calculate 2 + 2` uses `execution-basic` / `math.eval.safe` (VERIFIED). Other prompts run `text.generate.local` on the local Execution CSU (MockBackend in CI; status executed, not a Verified Result). Generate fail-closes without Phase D activate — this screen never fakes VERIFIED. Core does not host inference. Path: `POST /v1/problems` (same as `aira problem submit`).",
     work_answer: "Answer",
-    work_verification: "Verification:",
+    work_run_status: "Run status:",
+    work_verification: "Check:",
+    work_provenance: "Origin:",
+    work_prov_verified: "Computed by the local calculator — integrity checked.",
+    work_prov_mock: "Test reply — a model was not run.",
+    work_prov_generate: "Local text generation finished (not a verified result).",
+    work_prov_model_unknown: "Model for this result is undefined.",
+    work_prov_attention: "No complete answer yet — more input may be needed.",
+    work_status_completed: "Done",
+    work_status_executed: "Finished (not verified)",
+    work_status_needs_human: "Needs your input",
     work_ids: "Identifiers",
     work_problem_id: "Problem ID:",
     work_artifact_id: "Verified artifact:",
     work_execution_id: "Execution artifact:",
     work_field_id: "Field artifact:",
     work_details: "Details",
-    work_no_answer: "(no result payload)",
+    work_no_answer: "(no answer yet)",
     mesh_heading: "Mesh status",
     mesh_banner: "Connectivity:",
     mesh_identity: "Identity:",
@@ -301,20 +327,33 @@ static UK: Labels = Labels {
     refresh: "Оновити",
     quit: "Вийти",
     restart_hint: "Профіль/listen змінено — Стоп, потім Старт, щоб застосувати peer.",
-    work_heading: "Задача",
-    work_hint: "Надіслати текст на локальний вузол (`POST /v1/problems`, той самий шлях, що `aira problem submit`). C1 приклад: Calculate 2 + 2. Інший текст — generate-local.",
-    work_submit: "Надіслати",
-    work_submitting: "Надсилаємо…",
-    work_not_llm: "C1 `Calculate 2 + 2` іде через `execution-basic` / `math.eval.safe` (VERIFIED). Інші промпти — `text.generate.local` на локальному Execution CSU (MockBackend у CI; статус executed, не Verified Result). Без Phase D activate generate fail-closed — вкладка не підробляє VERIFIED. Ядро не хостить inference.",
+    work_heading: "Що потрібно зробити?",
+    work_hint: "Опишіть задачу. Приклад: Calculate 2 + 2. Enter — новий рядок.",
+    work_submit: "Виконати",
+    work_submitting: "Виконуємо…",
+    work_shortcut_hint: "Ctrl+Enter (⌘+Enter на Mac) запускає, коли дія доступна. Чернетка лишається при зміні розділу, F1 чи невдалому запуску.",
+    work_user_note: "Відсутність локальної моделі не блокує вбудовані обчислення. Генерація тексту потребує активованої локальної моделі — екран ніколи не видає результат за перевірений без даних.",
+    work_how_it_works: "Як це працює",
+    work_tech_details: "Технічно: C1 `Calculate 2 + 2` іде через `execution-basic` / `math.eval.safe` (VERIFIED). Інші промпти — `text.generate.local` на локальному Execution CSU (MockBackend у CI; статус executed, не Verified Result). Без Phase D activate generate fail-closed — екран не підробляє VERIFIED. Ядро не хостить inference. Шлях: `POST /v1/problems` (як `aira problem submit`).",
     work_answer: "Відповідь",
-    work_verification: "Верифікація:",
+    work_run_status: "Статус виконання:",
+    work_verification: "Перевірка:",
+    work_provenance: "Походження:",
+    work_prov_verified: "Обчислено локальним обчислювачем — цілісність перевірено.",
+    work_prov_mock: "Тестова відповідь — модель не запускалася.",
+    work_prov_generate: "Локальна генерація тексту завершена (не верифікований результат).",
+    work_prov_model_unknown: "Модель цього результату не визначена.",
+    work_prov_attention: "Повної відповіді ще немає — можливо, потрібна ваша участь.",
+    work_status_completed: "Готово",
+    work_status_executed: "Завершено (без перевірки)",
+    work_status_needs_human: "Потрібна ваша участь",
     work_ids: "Ідентифікатори",
     work_problem_id: "ID задачі:",
     work_artifact_id: "Верифікований артефакт:",
     work_execution_id: "Артефакт виконання:",
     work_field_id: "Артефакт поля:",
     work_details: "Деталі",
-    work_no_answer: "(немає payload результату)",
+    work_no_answer: "(відповіді ще немає)",
     mesh_heading: "Стан mesh",
     mesh_banner: "Зв’язність:",
     mesh_identity: "Identity:",
@@ -394,20 +433,33 @@ mod tests {
         assert_eq!(Labels::get(UiLang::Uk).tab_system, "Стан системи");
         assert_eq!(Labels::get(UiLang::En).help_f1, "Help · F1");
         assert_eq!(Labels::get(UiLang::Uk).help_f1, "Довідка · F1");
+        assert_eq!(
+            Labels::get(UiLang::En).work_heading,
+            "What do you need done?"
+        );
+        assert_eq!(Labels::get(UiLang::Uk).work_heading, "Що потрібно зробити?");
+        assert_eq!(Labels::get(UiLang::En).work_submit, "Run");
+        assert_eq!(Labels::get(UiLang::Uk).work_submit, "Виконати");
+        assert!(Labels::get(UiLang::En)
+            .work_shortcut_hint
+            .contains("Ctrl+Enter"));
+        assert!(Labels::get(UiLang::Uk)
+            .work_shortcut_hint
+            .contains("Ctrl+Enter"));
         assert!(Labels::get(UiLang::Uk)
             .open_window_hint
             .contains("не блокує"));
         assert!(Labels::get(UiLang::En)
-            .work_not_llm
+            .work_tech_details
             .contains("execution-basic"));
         assert!(Labels::get(UiLang::En)
-            .work_not_llm
+            .work_tech_details
             .contains("text.generate.local"));
         assert!(Labels::get(UiLang::En)
-            .work_not_llm
+            .work_tech_details
             .contains("never fakes VERIFIED"));
         assert!(Labels::get(UiLang::Uk)
-            .work_not_llm
+            .work_tech_details
             .contains("text.generate.local"));
         assert!(Labels::get(UiLang::Uk).not_llm.contains("не заборона"));
         assert_eq!(Labels::get(UiLang::Uk).work_answer, "Відповідь");
@@ -419,11 +471,17 @@ mod tests {
             "Execution artifact:"
         );
         assert!(!Labels::get(UiLang::En)
-            .work_not_llm
+            .work_user_note
             .to_ascii_lowercase()
             .contains("forbidden"));
         assert!(!Labels::get(UiLang::En)
             .not_llm
             .contains("AIRA is not an LLM runtime"));
+        assert!(Labels::get(UiLang::En)
+            .work_prov_mock
+            .contains("model was not run"));
+        assert!(Labels::get(UiLang::Uk)
+            .work_prov_verified
+            .contains("локальним обчислювачем"));
     }
 }
