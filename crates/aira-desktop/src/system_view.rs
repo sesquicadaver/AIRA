@@ -150,8 +150,11 @@ mod tests {
         mesh.identity = "aira:id:stale".into();
         mesh.top_level = "DIRECT".into();
         mesh.reachability_checked_at = Some("2026-09-07T10:00:00Z".into());
-        let view =
-            SystemStatusView::from_mesh(LifecycleStatus::Running, &mesh, "2026-09-07T12:00:00Z".into());
+        let view = SystemStatusView::from_mesh(
+            LifecycleStatus::Running,
+            &mesh,
+            "2026-09-07T12:00:00Z".into(),
+        );
         assert_eq!(view.network_quality, DataQuality::Stale);
         assert_eq!(view.observed_at, "2026-09-07T10:00:00Z");
         assert_eq!(view.loaded_at, "2026-09-07T12:00:00Z");

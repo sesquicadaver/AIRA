@@ -345,7 +345,10 @@ pub fn load_system_snapshot(
     peer_listen: Option<&str>,
 ) -> Result<SystemSnapshot> {
     let network = load_network_mesh_snapshot(root, peer_listen)?;
-    Ok(SystemSnapshot::from_network(network, projection_now_label()))
+    Ok(SystemSnapshot::from_network(
+        network,
+        projection_now_label(),
+    ))
 }
 
 #[cfg(test)]
