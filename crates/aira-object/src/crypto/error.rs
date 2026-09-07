@@ -41,6 +41,8 @@ pub enum CryptoError {
     NotRevoked(String),
     #[error("identity is not currently trusted: {0}")]
     NotTrusted(String),
+    #[error("identity already trusted with a different public key: {0}")]
+    KeyCollision(String),
     #[error("old and new identity refs must differ")]
     SameIdentity,
     #[error("invalid grace_until timestamp (need RFC3339 UTC): {0}")]

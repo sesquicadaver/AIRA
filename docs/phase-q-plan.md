@@ -1,6 +1,6 @@
 # Phase Q — Cross-install integrity & light monitoring (post-P)
 
-**Статус:** складено 2026-09-07; **IN PROGRESS** — QUEUE `#275` **DONE**; first OPEN `#276`.  
+**Статус:** складено 2026-09-07; **IN PROGRESS** — QUEUE `#275`–`#276` **DONE** @ RFC-0165; first OPEN `#277`.  
 **Джерела:** post-P audit `aira-current.md` @ `00f19cf` (2026-09-07); Phase P [`phase-p-plan.md`](phase-p-plan.md) **DONE** @ RFC-0156; QUEUE P closed; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase Q `#275`–`#285`.  
 **Closure:** consolidating **RFC-0164** (id **confirmed free** at `#275`; file-free until `#285`).  
@@ -75,7 +75,7 @@ Q0 Wiring (+ CI fmt)
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
 | `#275` | Q0 | Phase Q wiring | цей план IN PROGRESS; QUEUE `#275`–`#285`; `phase_q_doc`; tips; RFC-0164 reserved file-free; **`cargo fmt` зелений на tip** | identity (#276) |
-| `#276` | Q1 | Unique Desktop identity | install-scoped persistent ID ≠ fixed `aira:identity:desktop`; TrustStore key collision explicit; two-root `ensure_bootstrap` test | model observe (#277) |
+| `#276` | Q1 | Unique Desktop identity | **DONE** @ RFC-0165: install-scoped ID; TrustStore KeyCollision; two-root bootstrap | model observe (#277) |
 | `#277` | Q1 | Model light observe | status refresh path не `read`+sha256 повного weights; cached/versioned ready; UI Start/Stop apply не блокує тим самим full hash | verify context (#278) |
 | `#278` | Q1 | Model verify context | root-scoped verification for observe; reopen без prior test keyring → коректний ready; окремий process test | reach obs (#279) |
 | `#279` | Q1 | Reachability observation independence | local bind / external / relay — окремі observations; bind не оновлює external `checked_at` чинність; future clock ≠ Current без skew bound | NAT (#280) |
@@ -88,7 +88,7 @@ Q0 Wiring (+ CI fmt)
 
 ```text
 #275 Q0 wiring (+ fmt)
-  → #276 Q1 unique identity
+  → #276 Q1 unique identity DONE @ RFC-0165
     → #277 Q1 model light observe
       → #278 Q1 model verify context
         → #279 Q1 reach observation independence
@@ -122,12 +122,12 @@ aira-core still has no ledger/GUI deps.
 ## 7. RFC
 
 - Consolidating (`#285`): **AIRA-RFC-0164** — id **confirmed free** at `#275` (file-free until close).
-- Per-atom RFC-D: `#276`→**0165** … `#284`→**0173** (assigned at each atom PR); `#285`→0164 consolidating.
+- Per-atom RFC-D: `#276`→**0165** (DONE) … `#277`→0166 … `#284`→**0173** (assigned at each atom PR); `#285`→0164 consolidating.
 
 ## 8. Activation rule
 
 ```text
 QUEUE P closed @ RFC-0156 + developer «скласти Phase Q» 2026-09-07
   → цей план активовано атомом `#275`.
-`#275` DONE; first OPEN `#276`.
+`#275`–`#276` DONE @ RFC-0165; first OPEN `#277`.
 ```

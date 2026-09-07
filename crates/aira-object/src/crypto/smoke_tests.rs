@@ -347,6 +347,31 @@ fn trust_crl_revoke_blocks_readd_and_verify() {
 }
 
 #[test]
+fn trust_upsert_rejects_different_key_for_same_id() {
+    let mut store = TrustStore::default();
+    let sk_a = SigningKey::from_bytes(&[7u8; 32]);
+    let sk_b = SigningKey::from_bytes(&[8u8; 32]);
+    let id = "aira:identity:peer-collision";
+    let pub_a = hex::encode(sk_a.verifying_key().to_bytes());
+    let pub_b = hex::encode(sk_b.verifying_key().to_bytes());
+    store.upsert(id, &pub_a).unwrap();
+    assert_eq!(store.upsert(id, &pub_a), Ok(()));
+    assert_eq!(
+        store.upsert(id, &pub_b),
+        Err(CryptoError::KeyCollision(id.into()))
+    );
+    assert_eq!(
+        store
+            .entries
+            .iter()
+            .find(|e| e.identity_id == id)
+            .unwrap()
+            .public_key_hex,
+        pub_a
+    );
+}
+
+#[test]
 fn trust_crl_unrevoke_allows_explicit_readd() {
     let dir = tempdir().unwrap();
     let root = dir.path();

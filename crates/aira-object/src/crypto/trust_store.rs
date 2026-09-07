@@ -98,9 +98,11 @@ impl TrustStore {
         self.revoked.iter().any(|r| r.identity_id == identity_id)
     }
 
-    /// Insert or replace an entry by identity_id.
+    /// Insert an entry by identity_id (idempotent when pubkey matches).
     ///
     /// Fails with [`CryptoError::RevokedKey`] if the id is on the CRL.
+    /// Fails with [`CryptoError::KeyCollision`] if the id is already trusted with a **different** pubkey
+    /// (use [`TrustStore::rekey`] / [`TrustStore::rotate`] for intentional key change).
     /// Refuses [`LOCAL_TEST_KEY_REF`] — fixture identity must not enter runtime trust (SEC-1).
     pub fn upsert(&mut self, identity_id: &str, public_key_hex: &str) -> Result<(), CryptoError> {
         let _ = parse_public_hex(public_key_hex.trim())?;
@@ -112,17 +114,19 @@ impl TrustStore {
         if self.is_revoked(id) {
             return Err(CryptoError::RevokedKey(id.to_string()));
         }
+        let pk = public_key_hex.trim();
         if let Some(e) = self.entries.iter_mut().find(|e| e.identity_id == id) {
-            e.public_key_hex = public_key_hex.trim().to_string();
+            // Same key: idempotent. Different key: explicit collision (use rekey/rotate).
+            if e.public_key_hex.trim() != pk {
+                return Err(CryptoError::KeyCollision(id.to_string()));
+            }
             e.algorithm = "ed25519".into();
-            // Upsert is immediate cutover — drop any same-id grace slot.
-            e.previous_public_key_hex = None;
-            e.previous_grace_until = None;
+            return Ok(());
         } else {
             self.entries.push(TrustEntry {
                 identity_id: id.to_string(),
                 algorithm: "ed25519".into(),
-                public_key_hex: public_key_hex.trim().to_string(),
+                public_key_hex: pk.to_string(),
                 supersedes: None,
                 previous_public_key_hex: None,
                 previous_grace_until: None,
@@ -463,6 +467,10 @@ pub fn sync_trust_verifiers(root: impl AsRef<Path>) -> Result<usize, CryptoError
 }
 
 /// Ensure node identity (when present) is in trust.json; strip legacy local-test (SEC-1).
+///
+/// When the on-disk node identity pubkey changes for an already-trusted id (rotate),
+/// sync via [`TrustStore::rekey`] (honouring `previous_grace_until` from the identity
+/// file) instead of silent [`TrustStore::upsert`] replacement (`#276` KeyCollision).
 pub fn ensure_trust_defaults(root: impl AsRef<Path>) -> Result<TrustStore, CryptoError> {
     let root = root.as_ref();
     let mut store = TrustStore::load(root)?;
@@ -472,7 +480,21 @@ pub fn ensure_trust_defaults(root: impl AsRef<Path>) -> Result<TrustStore, Crypt
         let raw = fs::read_to_string(&id_path).map_err(|e| CryptoError::Io(e.to_string()))?;
         let desc: NodeIdentityFile =
             serde_json::from_str(&raw).map_err(|e| CryptoError::Io(e.to_string()))?;
-        store.upsert(&desc.identity_id, desc.public_key.key_hex.trim())?;
+        let id = desc.identity_id.trim();
+        let pk = desc.public_key.key_hex.trim();
+        let known = store
+            .entries
+            .iter()
+            .find(|e| e.identity_id == id)
+            .map(|e| e.public_key_hex.trim().to_string());
+        match known.as_deref() {
+            None => store.upsert(id, pk)?,
+            Some(existing) if existing == pk => {}
+            Some(_) => {
+                let grace = desc.previous_grace_until.as_deref();
+                store.rekey(id, pk, grace)?;
+            }
+        }
     }
     store.save(root)?;
     let _ = sync_trust_verifiers(root)?;
