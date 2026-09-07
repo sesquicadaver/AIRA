@@ -12,13 +12,13 @@ mod work;
 use std::path::PathBuf;
 
 use aira_desktop_runtime::{
-    load_network_mesh_snapshot, load_or_create_settings, load_or_create_ui_prefs, start, status,
-    stop, sync_autostart_from_settings, write_ui_prefs, DesktopPaths, DesktopSettings,
-    LifecycleStatus, NetworkMeshSnapshot, UiLang, UiPrefs, DEFAULT_PEER_LISTEN,
-    DEFAULT_RELAY_TTL_DAYS,
+    load_network_mesh_snapshot, load_or_create_settings, load_or_create_ui_prefs, start, stop,
+    sync_autostart_from_settings, write_ui_prefs, DesktopPaths, DesktopSettings, LifecycleStatus,
+    NetworkMeshSnapshot, UiLang, UiPrefs, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
+use crate::async_jobs::{AsyncDesktopJobs, StatusSnapshot};
 use crate::camera;
 
 use self::i18n::Labels;
@@ -59,6 +59,7 @@ pub struct AiraDesktopApp {
     pub(super) qr_camera: Option<camera::InviteQrCamera>,
     pub(super) qr_camera_status: Option<String>,
     pub(super) restart_hint: bool,
+    pub(super) async_jobs: AsyncDesktopJobs,
 }
 
 impl AiraDesktopApp {
@@ -120,6 +121,7 @@ impl AiraDesktopApp {
             qr_camera: None,
             qr_camera_status: None,
             restart_hint: false,
+            async_jobs: AsyncDesktopJobs::new(),
         };
         cc.egui_ctx.send_viewport_cmd(egui::ViewportCommand::Title(
             Labels::get(app.ui_lang()).window_title.to_string(),
@@ -165,11 +167,17 @@ impl AiraDesktopApp {
     }
 
     pub(super) fn refresh_status(&mut self) -> anyhow::Result<()> {
-        let (st, rec) = status(&self.paths)?;
-        self.node_running = matches!(st, LifecycleStatus::Running);
-        self.status_label = labels::status_label(st, self.ui_lang()).to_string();
+        let snap = crate::async_jobs::collect_status_snapshot(&self.paths, &self.settings)?;
+        self.apply_status_snapshot(snap);
+        Ok(())
+    }
+
+    /// Apply a status snapshot collected off the UI thread (`#257`).
+    pub(super) fn apply_status_snapshot(&mut self, snap: StatusSnapshot) {
+        self.node_running = matches!(snap.lifecycle, LifecycleStatus::Running);
+        self.status_label = labels::status_label(snap.lifecycle, self.ui_lang()).to_string();
         let l = self.labels();
-        match rec {
+        match snap.record {
             Some(r) => {
                 self.detail = format!("pid {} · {} · {}", r.pid, r.listen, r.instance_id);
                 self.peer_detail = match (r.peer_pid, r.peer_listen.as_ref()) {
@@ -198,8 +206,46 @@ impl AiraDesktopApp {
                 };
             }
         }
-        self.refresh_mesh_snapshot();
-        Ok(())
+        self.mesh_snapshot = snap.mesh;
+    }
+
+    /// Request a background status refresh (no-op if one is already running).
+    pub(super) fn request_status_refresh(&mut self, ctx: &egui::Context) {
+        let ctx = ctx.clone();
+        let _ = self.async_jobs.try_spawn_refresh(
+            self.paths.clone(),
+            self.settings.clone(),
+            move || ctx.request_repaint(),
+        );
+    }
+
+    /// Poll background jobs and schedule periodic data refresh (`#257`).
+    pub(super) fn pump_async_jobs(&mut self, ctx: &egui::Context) {
+        if let Some(outcome) = self.async_jobs.poll_submit() {
+            match outcome {
+                Ok(view) => {
+                    self.work_result = Some(view);
+                    self.last_error = None;
+                    // Lifecycle may have changed if submit started the node.
+                    self.request_status_refresh(ctx);
+                }
+                Err(e) => self.last_error = Some(e),
+            }
+        }
+        if let Some(outcome) = self.async_jobs.poll_refresh() {
+            match outcome {
+                Ok(snap) => {
+                    self.apply_status_snapshot(snap);
+                }
+                Err(e) => self.last_error = Some(format!("status refresh: {e}")),
+            }
+        }
+        let ctx2 = ctx.clone();
+        let _ = self.async_jobs.maybe_schedule_periodic_refresh(
+            self.paths.clone(),
+            self.settings.clone(),
+            move || ctx2.request_repaint(),
+        );
     }
 
     /// Reload Network tab mesh fields from node root (orchestrates peer APIs only).

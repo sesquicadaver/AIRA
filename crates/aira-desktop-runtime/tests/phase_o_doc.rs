@@ -17,45 +17,48 @@ fn phase_o_plan_present() {
         "F1",
         "AIRA-RFC-0146",
         "AIRA-RFC-0147",
+        "AIRA-RFC-0148",
         "confirmed free",
         "desktop-ux.md",
         "QUEUE N-fix closed",
         "GPU marketplace",
         "Calculate 2 + 2",
-        "first OPEN `#257`",
+        "first OPEN `#258`",
     ] {
         assert!(text.contains(needle), "phase-o-plan missing: {needle}");
     }
 }
 
 #[test]
-fn phase_o_queue_256_done_257_open() {
+fn phase_o_queue_257_done_258_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
+    assert!(text.contains("phase-o-plan.md"));
+    for n in 255..=257 {
+        assert!(
+            text.contains(&format!("| {n} | **DONE**")),
+            "QUEUE #{n} must be DONE"
+        );
+        assert!(
+            !text.contains(&format!("| {n} | **OPEN**")),
+            "QUEUE #{n} must not stay OPEN"
+        );
+    }
     assert!(
-        text.contains("phase-o-plan.md"),
-        "QUEUE missing phase-o-plan"
+        text.contains("| 258 | **OPEN**"),
+        "QUEUE #258 must be first OPEN"
     );
-    assert!(text.contains("| 255 | **DONE**"), "QUEUE #255 must be DONE");
-    assert!(text.contains("| 256 | **DONE**"), "QUEUE #256 must be DONE");
-    assert!(
-        !text.contains("| 256 | **OPEN**"),
-        "QUEUE #256 must not stay OPEN"
-    );
-    assert!(
-        text.contains("| 257 | **OPEN**"),
-        "QUEUE #257 must be first OPEN"
-    );
-    for n in 258..=265 {
+    for n in 259..=265 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-291",
+        "Analyze-292",
+        "RFC-0148",
         "RFC-0147",
         "RFC-0146",
-        "first OPEN `#257`",
+        "first OPEN `#258`",
         "desktop-ux.md",
         "QUEUE N-fix closed",
     ] {
@@ -89,8 +92,16 @@ fn phase_o_rfc_0147_present() {
     assert!(path.is_file(), "RFC-0147 missing");
     let text = std::fs::read_to_string(&path).unwrap();
     assert!(text.contains("#256"));
-    assert!(text.contains("SystemSnapshot") || text.contains("UNKNOWN"));
-    assert!(text.contains("AddressBook") || text.contains("live_session"));
+}
+
+#[test]
+fn phase_o_rfc_0148_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0148-nonblocking-work-refresh.md");
+    assert!(path.is_file(), "RFC-0148 missing");
+    let text = std::fs::read_to_string(&path).unwrap();
+    assert!(text.contains("#257"));
+    assert!(text.contains("request_repaint") || text.contains("repaint"));
+    assert!(text.contains("AsyncDesktopJobs") || text.contains("async_jobs"));
 }
 
 #[test]
@@ -113,12 +124,11 @@ fn phase_o_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-o-plan.md"));
     assert!(
-        readme.contains("#257") || readme.contains("first OPEN"),
+        readme.contains("#258") || readme.contains("first OPEN"),
         "README must point at Phase O first OPEN"
     );
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-o-plan.md"));
-    assert!(docs.contains("#255") || docs.contains("Phase O"));
 }
 
 #[test]
@@ -130,21 +140,15 @@ fn phase_n_fix_points_to_phase_o() {
 #[test]
 fn phase_o_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
+    assert!(text.contains("phase-o-plan.md") || text.contains("Phase O"));
+    assert!(text.contains("QUEUE N-fix closed") || text.contains("no OPEN N-fix"));
     assert!(
-        text.contains("phase-o-plan.md") || text.contains("Phase O"),
-        "NEXT_PROBLEM must mention Phase O"
+        text.contains("#258") || text.contains("перший OPEN"),
+        "NEXT_PROBLEM must show first OPEN #258"
     );
     assert!(
-        text.contains("QUEUE N-fix closed") || text.contains("no OPEN N-fix"),
-        "NEXT_PROBLEM must retain N-fix closed"
-    );
-    assert!(
-        text.contains("#257") || text.contains("перший OPEN"),
-        "NEXT_PROBLEM must show first OPEN #257"
-    );
-    assert!(
-        !text.contains("перший OPEN `#256`") && !text.contains("first OPEN `#256`"),
-        "NEXT_PROBLEM must not keep #256 as first-OPEN"
+        !text.contains("перший OPEN `#257`") && !text.contains("first OPEN `#257`"),
+        "NEXT_PROBLEM must not keep #257 as first-OPEN"
     );
 }
 
@@ -152,8 +156,7 @@ fn phase_o_next_problem() {
 fn phase_o_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #256 |") || status.contains("#256"));
-    assert!(status.contains("RFC-0147") || status.contains("0147"));
-    assert!(status.contains("phase-o-plan.md") || status.contains("Phase O"));
+    assert!(status.contains("| #257 |") || status.contains("#257"));
+    assert!(status.contains("RFC-0148") || status.contains("0148"));
     assert!(status.contains("phase_o_doc.rs"));
 }
