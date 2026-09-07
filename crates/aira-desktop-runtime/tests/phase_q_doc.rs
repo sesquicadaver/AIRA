@@ -24,7 +24,9 @@ fn phase_q_plan_present() {
         "QUEUE P closed",
         "GPU marketplace",
         "Calculate 2 + 2",
-        "first OPEN `#276`",
+        "first OPEN `#277`",
+        "#276",
+        "RFC-0165",
         "00f19cf",
     ] {
         assert!(text.contains(needle), "phase-q-plan missing: {needle}");
@@ -32,19 +34,24 @@ fn phase_q_plan_present() {
 }
 
 #[test]
-fn phase_q_queue_wiring() {
+fn phase_q_queue_276_done_277_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-q-plan.md"));
-    assert!(text.contains("| 275 | **DONE**"), "QUEUE #275 must be DONE");
+    for n in 275..=276 {
+        assert!(
+            text.contains(&format!("| {n} | **DONE**")),
+            "QUEUE #{n} must be DONE"
+        );
+        assert!(
+            !text.contains(&format!("| {n} | **OPEN**")),
+            "QUEUE #{n} must not stay OPEN"
+        );
+    }
     assert!(
-        !text.contains("| 275 | **OPEN**"),
-        "QUEUE #275 must not stay OPEN"
+        text.contains("| 277 | **OPEN**"),
+        "QUEUE #277 must be first OPEN"
     );
-    assert!(
-        text.contains("| 276 | **OPEN**"),
-        "QUEUE #276 must be first OPEN"
-    );
-    for n in 277..=285 {
+    for n in 278..=285 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
@@ -53,7 +60,9 @@ fn phase_q_queue_wiring() {
     for needle in [
         "Analyze-310",
         "RFC-0164",
-        "first OPEN `#276`",
+        "first OPEN `#277`",
+        "#276",
+        "RFC-0165",
         "QUEUE P closed",
         "desktop-ux.md",
         "aira-current.md",
@@ -66,8 +75,17 @@ fn phase_q_queue_wiring() {
 #[test]
 fn phase_q_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
-    for needle in ["phase-q-plan.md", "#275", "RFC-0164", "first OPEN `#276`"] {
+    for needle in ["phase-q-plan.md", "#276", "RFC-0165", "first OPEN `#277`"] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
+    }
+}
+
+#[test]
+fn phase_q_rfc_0165_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0165-unique-desktop-identity.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0165 missing");
+    for needle in ["#276", "desktop.", "KeyCollision", "ensure_bootstrap"] {
+        assert!(text.contains(needle), "RFC-0165 missing: {needle}");
     }
 }
 
@@ -102,7 +120,7 @@ fn phase_q_readme_and_docs_index() {
 fn phase_q_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-q-plan.md") || text.contains("Phase Q"));
-    assert!(text.contains("#276") || text.contains("перший OPEN"));
+    assert!(text.contains("#277") || text.contains("перший OPEN"));
     assert!(
         !text.contains("немає OPEN") || text.contains("Phase Q"),
         "NEXT_PROBLEM must point at Phase Q backlog"
@@ -113,10 +131,10 @@ fn phase_q_next_problem() {
 fn phase_q_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #275 |") || status.contains("#275"));
+    assert!(status.contains("| #276 |") || status.contains("#276"));
     assert!(status.contains("phase_q_doc.rs"));
     assert!(status.contains("phase-q-plan.md"));
-    assert!(status.contains("RFC-0164") || status.contains("0164"));
+    assert!(status.contains("RFC-0165") || status.contains("0165"));
 }
 
 #[test]

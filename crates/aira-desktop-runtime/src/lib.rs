@@ -32,7 +32,9 @@ pub use autostart::{
     AIRA_AUTOSTART_FILENAME, AIRA_LAUNCH_AGENT_FILENAME, AIRA_LAUNCH_AGENT_LABEL,
     AIRA_WINDOWS_STARTUP_FILENAME, FROM_AUTOSTART_FLAG,
 };
-pub use bootstrap::ensure_bootstrap;
+pub use bootstrap::{
+    ensure_bootstrap, new_desktop_identity_id, read_local_identity_id, LEGACY_DESKTOP_IDENTITY_ID,
+};
 pub use discovery::{run_discv_announce, run_discv_find, run_stun_query, DiscoveryStunOutcome};
 pub use federation::{
     join_federation_descriptor_file, leave_federation_local, read_federation_membership,

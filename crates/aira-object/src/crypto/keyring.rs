@@ -187,9 +187,9 @@ pub(super) struct NodeIdentityFile {
     pub(super) identity_id: String,
     pub(super) public_key: NodePublicKey,
     #[serde(default)]
-    previous_public_key: Option<NodePublicKey>,
+    pub(super) previous_public_key: Option<NodePublicKey>,
     #[serde(default)]
-    previous_grace_until: Option<String>,
+    pub(super) previous_grace_until: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
