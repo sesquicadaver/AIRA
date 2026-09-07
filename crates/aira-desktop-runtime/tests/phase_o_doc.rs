@@ -49,10 +49,7 @@ fn phase_o_queue_263_done_264_open() {
         text.contains("| 264 | **OPEN**"),
         "QUEUE #264 must be first OPEN"
     );
-    assert!(
-        text.contains("| 265 | **OPEN**"),
-        "QUEUE #265 must be OPEN"
-    );
+    assert!(text.contains("| 265 | **OPEN**"), "QUEUE #265 must be OPEN");
     for needle in [
         "Analyze-298",
         "RFC-0154",
