@@ -8,8 +8,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use aira_desktop_runtime::{
-    load_network_mesh_snapshot, start, status, DesktopPaths, DesktopSettings, LifecycleStatus,
-    NetworkMeshSnapshot, PidRecordView,
+    load_system_snapshot, start, status, DesktopPaths, DesktopSettings, LifecycleStatus,
+    NetworkMeshSnapshot, PidRecordView, SystemSnapshot,
 };
 
 use crate::actions;
@@ -24,6 +24,7 @@ pub struct StatusSnapshot {
     pub lifecycle: LifecycleStatus,
     pub record: Option<PidRecordView>,
     pub mesh: NetworkMeshSnapshot,
+    pub system: SystemSnapshot,
 }
 
 /// Collect lifecycle + mesh without touching egui.
@@ -32,11 +33,13 @@ pub fn collect_status_snapshot(
     settings: &DesktopSettings,
 ) -> anyhow::Result<StatusSnapshot> {
     let (lifecycle, record) = status(paths)?;
-    let mesh = load_network_mesh_snapshot(&paths.data_root, settings.peer_listen.as_deref())?;
+    let system = load_system_snapshot(&paths.data_root, settings.peer_listen.as_deref())?;
+    let mesh = system.network.clone();
     Ok(StatusSnapshot {
         lifecycle,
         record,
         mesh,
+        system,
     })
 }
 

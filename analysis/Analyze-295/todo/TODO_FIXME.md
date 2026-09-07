@@ -1,4 +1,5 @@
 # TODO_FIXME — Analyze-295
 
 - [x] `#260` Work screen
-- [ ] `#261` System status screen (next OPEN)
+- [x] `#261` System status (Analyze-296)
+- [ ] `#262` Settings apply (next OPEN)

@@ -380,40 +380,64 @@ impl AiraDesktopApp {
         }
     }
 
-    /// System section: lifecycle + mesh/network (deeper IA in `#261`).
+    /// System status: Program / Model / Connection / Events (`#261`).
     fn ui_system(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
-        self.ui_lifecycle(ui, ctx);
-        ui.separator();
-        self.ui_network(ui, ctx);
-    }
-
-    fn ui_lifecycle(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let l = self.labels();
         ui.heading(l.system_heading);
-        ui.horizontal(|ui| {
-            ui.strong(l.status);
-            ui.label(&self.status_label);
-        });
-        if !self.detail.is_empty() {
-            ui.label(&self.detail);
-        }
-        ui.horizontal(|ui| {
-            ui.strong(l.peer);
-            ui.label(&self.peer_detail);
-        });
-        ui.label(format!("data_root: {}", self.paths.data_root.display()));
+        let view =
+            crate::system_view::SystemStatusView::from_parts(self.lifecycle, &self.system_snapshot);
 
+        self.ui_sys_program(ui, ctx, &view);
         ui.separator();
+        self.ui_sys_model(ui, &view);
+        ui.separator();
+        self.ui_sys_connection(ui, ctx, &view);
+        ui.separator();
+        self.ui_sys_events(ui);
+    }
+
+    fn ui_sys_program(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &egui::Context,
+        view: &crate::system_view::SystemStatusView,
+    ) {
+        let l = self.labels();
+        ui.strong(l.sys_program);
+        ui.label(match view.program {
+            crate::system_view::ProgramConclusion::Running => l.sys_prog_running,
+            crate::system_view::ProgramConclusion::Stopped => l.sys_prog_stopped,
+            crate::system_view::ProgramConclusion::Starting => l.sys_prog_starting,
+            crate::system_view::ProgramConclusion::Stopping => l.sys_prog_stopping,
+            crate::system_view::ProgramConclusion::Unhealthy => l.sys_prog_unhealthy,
+            crate::system_view::ProgramConclusion::Failed => l.sys_prog_failed,
+        });
         ui.horizontal(|ui| {
-            if ui.button(l.start).clicked() {
-                if let Err(e) = self.do_start() {
-                    self.set_problem(crate::lexicon::ErrorCode::NodeStartFailed, format!("{e:#}"));
+            match view.program {
+                crate::system_view::ProgramConclusion::Stopped
+                | crate::system_view::ProgramConclusion::Failed => {
+                    if ui.button(l.start).clicked() {
+                        if let Err(e) = self.do_start() {
+                            self.set_problem(
+                                crate::lexicon::ErrorCode::NodeStartFailed,
+                                format!("{e:#}"),
+                            );
+                        }
+                    }
                 }
-            }
-            if ui.button(l.stop).clicked() {
-                if let Err(e) = self.do_stop() {
-                    self.set_problem(crate::lexicon::ErrorCode::NodeStopFailed, format!("{e:#}"));
+                crate::system_view::ProgramConclusion::Running
+                | crate::system_view::ProgramConclusion::Unhealthy => {
+                    if ui.button(l.stop).clicked() {
+                        if let Err(e) = self.do_stop() {
+                            self.set_problem(
+                                crate::lexicon::ErrorCode::NodeStopFailed,
+                                format!("{e:#}"),
+                            );
+                        }
+                    }
                 }
+                crate::system_view::ProgramConclusion::Starting
+                | crate::system_view::ProgramConclusion::Stopping => {}
             }
             if ui.button(l.refresh).clicked() {
                 self.request_status_refresh(ctx);
@@ -427,12 +451,130 @@ impl AiraDesktopApp {
         if self.restart_hint {
             ui.colored_label(egui::Color32::from_rgb(180, 120, 40), l.restart_hint);
         }
+        egui::CollapsingHeader::new(l.sys_tech_details)
+            .id_source("sys-program-tech")
+            .default_open(false)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.strong(l.status);
+                    ui.label(&self.status_label);
+                });
+                if !self.detail.is_empty() {
+                    ui.label(&self.detail);
+                }
+                ui.horizontal(|ui| {
+                    ui.strong(l.peer);
+                    ui.label(&self.peer_detail);
+                });
+                ui.label(format!("data_root: {}", self.paths.data_root.display()));
+            });
     }
 
-    fn ui_network(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+    fn ui_sys_model(&self, ui: &mut egui::Ui, view: &crate::system_view::SystemStatusView) {
         let l = self.labels();
-        self.ui_mesh_status(ui);
-        ui.separator();
+        ui.strong(l.sys_model);
+        let _ = view.model;
+        ui.label(l.sys_model_not_checked);
+        egui::CollapsingHeader::new(l.sys_tech_details)
+            .id_source("sys-model-tech")
+            .default_open(false)
+            .show(ui, |ui| {
+                ui.label(l.not_llm);
+            });
+    }
+
+    fn ui_sys_connection(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &egui::Context,
+        view: &crate::system_view::SystemStatusView,
+    ) {
+        let l = self.labels();
+        ui.strong(l.sys_connection);
+        ui.label(match view.connection {
+            crate::system_view::ConnectionConclusion::Direct => l.sys_conn_direct,
+            crate::system_view::ConnectionConclusion::Relayed => l.sys_conn_relayed,
+            crate::system_view::ConnectionConclusion::OutboundOnly => l.sys_conn_outbound,
+            crate::system_view::ConnectionConclusion::LocalOnly => l.sys_conn_local,
+            crate::system_view::ConnectionConclusion::Unknown => l.sys_conn_unknown,
+            crate::system_view::ConnectionConclusion::Offline => l.sys_conn_offline,
+        });
+        ui.horizontal(|ui| {
+            ui.small(format!("{} {}", l.sys_observed, view.observed_at));
+            ui.small(format!(
+                "{} {}",
+                l.sys_quality,
+                view.network_quality.as_str()
+            ));
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.sys_saved_participants);
+            ui.label(view.address_book_count.to_string());
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.sys_live_sessions);
+            ui.label(match view.live_session_count {
+                Some(n) => n.to_string(),
+                None => l.sys_live_unobserved.to_string(),
+            });
+        });
+        if matches!(
+            view.connection,
+            crate::system_view::ConnectionConclusion::Unknown
+                | crate::system_view::ConnectionConclusion::LocalOnly
+        ) && ui.button(l.refresh).clicked()
+        {
+            self.request_status_refresh(ctx);
+            self.refresh_federation_detail();
+        }
+        egui::CollapsingHeader::new(l.sys_tech_details)
+            .id_source("sys-connection-tech")
+            .default_open(false)
+            .show(ui, |ui| {
+                ui.label(format!(
+                    "banner:{} · live_q:{}",
+                    view.top_level,
+                    view.live_sessions_quality.as_str()
+                ));
+                self.ui_mesh_status(ui);
+                ui.separator();
+                self.ui_network_ops(ui, ctx);
+            });
+    }
+
+    fn ui_sys_events(&self, ui: &mut egui::Ui) {
+        let l = self.labels();
+        ui.strong(l.sys_events);
+        let mut any = false;
+        if let Some(problem) = &self.last_problem {
+            any = true;
+            ui.colored_label(egui::Color32::from_rgb(200, 60, 60), &problem.message);
+            ui.small(format!(
+                "{} · {}",
+                problem.code.as_str(),
+                problem.help_id.as_str()
+            ));
+        }
+        if let Some(msg) = &self.discovery_msg {
+            any = true;
+            ui.label(msg);
+        }
+        if let Some(msg) = &self.invite_msg {
+            any = true;
+            ui.label(msg);
+        }
+        if self.restart_hint {
+            any = true;
+            ui.colored_label(egui::Color32::from_rgb(180, 120, 40), l.restart_hint);
+        }
+        if !any {
+            ui.label(l.sys_events_empty);
+        }
+    }
+
+    /// Profile / invite / discovery controls (technical Connection details).
+    fn ui_network_ops(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+        let l = self.labels();
         ui.heading(l.network_profile);
         ui.horizontal(|ui| {
             if ui
