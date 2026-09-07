@@ -1,7 +1,7 @@
 # AIRA Desktop UX — канон рішень
 
 **Статус:** Phase E `#75`–`#106` **DONE** (2026-08-22); Phase F `#107`–`#119` **DONE** (2026-08-24).  
-**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) `#266`–`#274` (**runtime-honest**; `#266`–`#267` DONE @ RFC-0157; first OPEN `#268`; RFC-0156 reserved).  
+**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) `#266`–`#274` (**runtime-honest**; `#266`–`#268` DONE @ RFC-0158; first OPEN `#269`; RFC-0156 reserved).  
 **Provenance:** [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED** → E); UX/Help draft 2026-09-06 (`aira-gui.md` + `aira-desktop-ux-help-draft.md`, поза git).  
 **Не змінює** Book 0–IV / C0–C1 / Core / `aira-core` ledger.  
 **Posture:** Linux E1 = **Developer Preview** над local reference plane.
@@ -96,7 +96,7 @@ UNKNOWN **не** показувати як OFFLINE. Кількість AddressBo
 
 ## 5. Параметри (цільовий контракт)
 
-O7 (`#262` **DONE** @ [`AIRA-RFC-0153`](../specs/rfc/AIRA-RFC-0153-settings-apply-lifecycle.md)): Saved ≠ Applied ≠ Restart needed; групи Загальні/Моделі/З’єднання/Додатково; закриття вікна ≠ Стоп.
+O7 (`#262` **DONE** @ [`AIRA-RFC-0153`](../specs/rfc/AIRA-RFC-0153-settings-apply-lifecycle.md)): Saved ≠ Applied ≠ Restart needed; Phase P `#268` **DONE** @ [`AIRA-RFC-0158`](../specs/rfc/AIRA-RFC-0158-applied-from-runtime.md): Applied лише з підтвердженого runtime, інакше Explicitly Undefined; групи Загальні/Моделі/З’єднання/Додатково; закриття вікна ≠ Стоп.
 
 Групи: **Загальні**, **Моделі**, **З’єднання**, **Додатково**.
 

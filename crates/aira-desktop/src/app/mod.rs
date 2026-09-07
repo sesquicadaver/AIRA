@@ -73,8 +73,9 @@ pub struct AiraDesktopApp {
     pub(super) qr_camera: Option<camera::InviteQrCamera>,
     pub(super) qr_camera_status: Option<String>,
     pub(super) restart_hint: bool,
-    /// Runtime-applied network/listen subset (`#262`); differs from disk → Restart needed.
-    pub(super) applied_runtime: crate::settings_apply::AppliedRuntimeSettings,
+    /// Confirmed runtime-applied network/listen subset (`#262`/`#268`).
+    /// `None` = Explicitly Undefined (no Running confirmation yet).
+    pub(super) applied_runtime: Option<crate::settings_apply::AppliedRuntimeSettings>,
     pub(super) async_jobs: AsyncDesktopJobs,
     /// Side help panel open (`#259` chrome; offline articles `#263`).
     pub(super) help_open: bool,
@@ -123,8 +124,7 @@ impl AiraDesktopApp {
             .relay_ttl_days
             .map(|d| d.to_string())
             .unwrap_or_else(|| DEFAULT_RELAY_TTL_DAYS.to_string());
-        let applied_runtime =
-            crate::settings_apply::AppliedRuntimeSettings::from_settings(&settings);
+        let applied_runtime = None;
         let mut app = Self {
             paths,
             node_bin,
@@ -216,6 +216,14 @@ impl AiraDesktopApp {
         self.node_running = matches!(snap.lifecycle, LifecycleStatus::Running);
         self.status_label = labels::status_label(snap.lifecycle, self.ui_lang()).to_string();
         let l = self.labels();
+        // `#268`: sync Applied from confirmed Running status (never from settings alone).
+        self.applied_runtime = crate::settings_apply::AppliedRuntimeSettings::from_status(
+            snap.lifecycle,
+            snap.record.as_ref(),
+        );
+        if self.applied_runtime.is_some() {
+            self.restart_hint = false;
+        }
         match snap.record {
             Some(r) => {
                 self.detail = format!("pid {} · {} · {}", r.pid, r.listen, r.instance_id);
@@ -341,7 +349,7 @@ impl AiraDesktopApp {
 
     /// Settings lifecycle phase from saved disk vs runtime-applied (`#262`).
     pub(super) fn settings_apply_phase(&self) -> crate::settings_apply::SettingsApplyPhase {
-        crate::settings_apply::settings_apply_phase(&self.settings, &self.applied_runtime)
+        crate::settings_apply::settings_apply_phase(&self.settings, self.applied_runtime.as_ref())
     }
 
     /// True when saved network/listen differ from applied (Stop→Start needed).
@@ -352,11 +360,23 @@ impl AiraDesktopApp {
         ) || self.restart_hint
     }
 
-    /// Mark current settings as applied to the running node (after Start).
-    pub(super) fn mark_settings_applied(&mut self) {
-        self.applied_runtime =
-            crate::settings_apply::AppliedRuntimeSettings::from_settings(&self.settings);
+    /// Confirm applied values from a successful Start / attach outcome (`#268`).
+    pub(super) fn mark_settings_applied_from_outcome(
+        &mut self,
+        outcome: &aira_desktop_runtime::StartOutcome,
+    ) {
+        self.applied_runtime = Some(
+            crate::settings_apply::AppliedRuntimeSettings::from_start_outcome(
+                outcome,
+                &self.settings,
+            ),
+        );
         self.restart_hint = false;
+    }
+
+    /// Clear applied confirmation (node stopped / unconfirmed).
+    pub(super) fn clear_applied_runtime(&mut self) {
+        self.applied_runtime = None;
     }
 
     pub(super) fn do_start(&mut self) -> anyhow::Result<()> {
@@ -384,7 +404,7 @@ impl AiraDesktopApp {
             }
             _ => l.peer_off_p0.into(),
         };
-        self.mark_settings_applied();
+        self.mark_settings_applied_from_outcome(&outcome);
         self.clear_problem();
         self.refresh_mesh_snapshot();
         Ok(())
@@ -397,6 +417,7 @@ impl AiraDesktopApp {
         self.status_label = labels::status_label(st, self.ui_lang()).to_string();
         self.detail.clear();
         self.peer_detail.clear();
+        self.clear_applied_runtime();
         self.clear_problem();
         self.refresh_mesh_snapshot();
         Ok(())

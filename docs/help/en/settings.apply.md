@@ -7,7 +7,7 @@ Settings are **saved** to disk when you change them. Some values (especially net
 ## What to do?
 
 1. Change **General** options (language, open UI on start, login autostart) anytime — they apply without a node restart badge.
-2. For **Connection** / listen, compare **Saved** vs **Applied** on Settings.
+2. For **Connection** / listen, compare **Saved** vs **Applied** on Settings. If Applied shows **not confirmed**, Start (or wait for status) so values come from the running node — not from disk alone.
 3. When you see **Restart needed**, go to **System → Program**, **Stop**, then **Start**.
 
 ## What should happen?
