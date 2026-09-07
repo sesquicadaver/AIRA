@@ -1,7 +1,7 @@
 # AIRA Desktop UX — канон рішень
 
 **Статус:** Phase E `#75`–`#106` **DONE** (2026-08-22); Phase F `#107`–`#119` **DONE** (2026-08-24).  
-**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) `#266`–`#274` (**runtime-honest**; `#266`–`#270` DONE @ RFC-0160; first OPEN `#271`; RFC-0156 reserved).  
+**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) `#266`–`#274` (**runtime-honest**; `#266`–`#271` DONE @ RFC-0161; first OPEN `#272`; RFC-0156 reserved).  
 **Provenance:** [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED** → E); UX/Help draft 2026-09-06 (`aira-gui.md` + `aira-desktop-ux-help-draft.md`, поза git).  
 **Не змінює** Book 0–IV / C0–C1 / Core / `aira-core` ledger.  
 **Posture:** Linux E1 = **Developer Preview** над local reference plane.

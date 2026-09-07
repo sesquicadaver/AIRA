@@ -186,7 +186,7 @@ Network tab mesh banner + Identity / preferred port / bind / external / reachabi
 
 ## Phase N-fix Live EVM (`#248`)
 
-`EvmRendezvousProvider` live JSON-RPC (`use_local_double=false`) via std `http://` client + `ReferenceEvmRendezvousRpc` / anvil (RFC-0140). HTTPS Amoy deferred to HTTP gateway.
+`EvmRendezvousProvider` live JSON-RPC (`use_local_double=false`) via std `http://` client + `ReferenceEvmRendezvousRpc` / anvil (RFC-0140). Phase P `#271` / RFC-0161: declared Amoy/mainnet `https://` validate in config; dial PARTIAL via gateway/reference; `EvmLedgerClaim` — Mock/reference HTTP ≠ on-chain ledger.
 
 ## Phase N-fix ab ovo harness (`#249`)
 

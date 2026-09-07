@@ -1,10 +1,12 @@
-//! EVM rendezvous adapter (QUEUE #236 / Phase N; live JSON-RPC `#248` / N-fix).
+//! EVM rendezvous adapter (QUEUE #236 / Phase N; live JSON-RPC `#248`; honesty `#271`).
 //!
 //! `EvmRendezvousProvider` implements [`RendezvousProvider`] with either a
-//! deterministic local ledger double (`use_local_double=true`) or a live HTTP
-//! JSON-RPC dial (`use_local_double=false`) against anvil / Amoy / the
+//! deterministic local double (`use_local_double=true`) or a live HTTP JSON-RPC
+//! dial (`use_local_double=false`) against anvil / Amoy hooks / the
 //! [`crate::evm_rendezvous_rpc::ReferenceEvmRendezvousRpc`] stand-in.
-//! EVM tx sender is never treated as AIRA identity.
+//! Reference/Mock HTTP is **PARTIAL** — never an on-chain Polygon ledger claim.
+//! Declared Amoy/mainnet `https://` URLs validate in config; dial remains via
+//! `http://` gateway/reference until a TLS client ships. EVM tx sender ≠ AIRA identity.
 
 use aira_object::ContentHash;
 use serde_json::{json, Value};
@@ -20,6 +22,34 @@ use crate::rendezvous::{MockRendezvousProvider, RendezvousProvider};
 
 /// Adapter kind for EVM-shaped rendezvous.
 pub const RENDEZVOUS_KIND_EVM: &str = "evm";
+
+/// Honesty label for what an EVM adapter path actually proved (`#271`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EvmLedgerClaim {
+    /// In-process [`MockRendezvousProvider`] double — not a chain.
+    LocalMockDouble,
+    /// Live dial to HTTP JSON-RPC (anvil / [`crate::ReferenceEvmRendezvousRpc`]).
+    /// Socket + custom `aira_rendezvous_*` methods — **not** an on-chain ledger.
+    ReferenceHttpJsonRpc,
+    /// Config stores declared `https://` Amoy/mainnet URL; dial not completed here.
+    DeclaredHttpsConfig,
+}
+
+impl EvmLedgerClaim {
+    /// Wire / docs token.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::LocalMockDouble => "local_mock_double",
+            Self::ReferenceHttpJsonRpc => "reference_http_json_rpc",
+            Self::DeclaredHttpsConfig => "declared_https_config",
+        }
+    }
+
+    /// True only for a real on-chain claim — always false in this crate (`#271` PARTIAL).
+    pub fn is_on_chain_ledger(self) -> bool {
+        false
+    }
+}
 
 /// CI / unit local double chain id (not a public network).
 pub const EVM_CHAIN_LOCAL_DOUBLE: u64 = 31337;
@@ -103,13 +133,20 @@ impl EvmRendezvousConfig {
         }
         if !self.use_local_double {
             let url = self.rpc_url.trim();
-            if !url.starts_with("http://") {
+            let http = url.starts_with("http://");
+            let https = url.starts_with("https://");
+            if !http && !https {
                 return Err(PeerError::Rendezvous(format!(
-                    "live EVM rpc_url must be http:// in #248 (https deferred; use anvil/reference RPC or HTTP gateway), got {url}"
+                    "live EVM rpc_url must be http:// or https:// (#271), got {url}"
                 )));
             }
         }
         Ok(())
+    }
+
+    /// True when live config points at a declared HTTPS Amoy/mainnet-style URL.
+    pub fn is_declared_https_rpc(&self) -> bool {
+        !self.use_local_double && self.rpc_url.trim().starts_with("https://")
     }
 
     /// CI / unit deterministic double.
@@ -146,11 +183,29 @@ impl EvmRendezvousConfig {
     }
 
     /// Live Amoy-shaped profile: real JSON-RPC dial (`#248`).
+    ///
+    /// `rpc_url` may be `https://` (declared Amoy default) or `http://` gateway/reference.
     pub fn amoy_live(contract_address: impl Into<String>, rpc_url: impl Into<String>) -> Self {
         Self {
             profile: EvmChainProfile::Amoy,
             chain_id: EVM_CHAIN_AMOY,
             rpc_url: rpc_url.into(),
+            contract_address: contract_address.into(),
+            use_local_double: false,
+        }
+    }
+
+    /// Amoy live hooks with the documented HTTPS RPC URL (`#271` config path).
+    pub fn amoy_live_declared_https(contract_address: impl Into<String>) -> Self {
+        Self::amoy_live(contract_address, EVM_AMOY_RPC_DEFAULT)
+    }
+
+    /// Polygon mainnet live hooks with the documented HTTPS RPC URL (`#271`).
+    pub fn polygon_live_declared_https(contract_address: impl Into<String>) -> Self {
+        Self {
+            profile: EvmChainProfile::PolygonMainnet,
+            chain_id: EVM_CHAIN_POLYGON,
+            rpc_url: EVM_POLYGON_RPC_DEFAULT.into(),
             contract_address: contract_address.into(),
             use_local_double: false,
         }
@@ -221,8 +276,21 @@ impl EvmRendezvousProvider {
     }
 
     /// True when dialing remote/reference JSON-RPC (not in-process double).
+    ///
+    /// Does **not** mean an on-chain Polygon ledger success — see [`Self::ledger_claim`].
     pub fn is_live_json_rpc(&self) -> bool {
         matches!(self.backend, EvmBackend::JsonRpc)
+    }
+
+    /// What this provider instance actually claims (`#271` honesty).
+    pub fn ledger_claim(&self) -> EvmLedgerClaim {
+        if self.config.use_local_double {
+            return EvmLedgerClaim::LocalMockDouble;
+        }
+        if self.config.is_declared_https_rpc() {
+            return EvmLedgerClaim::DeclaredHttpsConfig;
+        }
+        EvmLedgerClaim::ReferenceHttpJsonRpc
     }
 
     /// Contract-facing identity hash for a presence (not EVM account).
@@ -468,6 +536,8 @@ mod tests {
         assert_eq!(evm.config().chain_id, EVM_CHAIN_LOCAL_DOUBLE);
         assert!(evm.config().use_local_double);
         assert!(!evm.is_live_json_rpc());
+        assert_eq!(evm.ledger_claim(), EvmLedgerClaim::LocalMockDouble);
+        assert!(!evm.ledger_claim().is_on_chain_ledger());
         let rec = signed(dir.path(), &id, &pk, 1);
         let hash = EvmRendezvousProvider::identity_hash_for(&rec);
         assert!(hash.starts_with("sha256:"));
@@ -503,7 +573,18 @@ mod tests {
     }
 
     #[test]
-    fn rejects_live_without_http_url() {
+    fn declared_https_amoy_and_polygon_config_validate() {
+        let amoy = EvmRendezvousConfig::amoy_live_declared_https(EVM_LOCAL_CONTRACT_PLACEHOLDER);
+        amoy.validate().unwrap();
+        assert!(amoy.is_declared_https_rpc());
+        assert_eq!(amoy.rpc_url, EVM_AMOY_RPC_DEFAULT);
+        let poly = EvmRendezvousConfig::polygon_live_declared_https(EVM_LOCAL_CONTRACT_PLACEHOLDER);
+        poly.validate().unwrap();
+        assert!(poly.rpc_url.starts_with("https://"));
+    }
+
+    #[test]
+    fn rejects_live_without_http_or_https_url() {
         let mut cfg = EvmRendezvousConfig::amoy_local_double(EVM_LOCAL_CONTRACT_PLACEHOLDER);
         cfg.use_local_double = false;
         cfg.rpc_url = "aira://not-http".into();
@@ -529,6 +610,8 @@ mod tests {
         let cfg = EvmRendezvousConfig::anvil_live(EVM_LOCAL_CONTRACT_PLACEHOLDER, server.rpc_url());
         let mut evm = EvmRendezvousProvider::new(cfg).unwrap();
         assert!(evm.is_live_json_rpc());
+        assert_eq!(evm.ledger_claim(), EvmLedgerClaim::ReferenceHttpJsonRpc);
+        assert!(!evm.ledger_claim().is_on_chain_ledger());
         let rec = signed(dir.path(), &id, &pk, 1);
         evm.publish_presence(rec.clone()).unwrap();
         let found = evm.query_identity(id.as_str()).unwrap().unwrap();
@@ -545,5 +628,18 @@ mod tests {
             .remove_or_expire_presence(id.as_str(), "2026-09-06T00:00:00Z", true)
             .unwrap());
         assert!(evm.query_identity(id.as_str()).unwrap().is_none());
+    }
+
+    #[test]
+    fn declared_https_live_provider_build_is_partial_not_ledger() {
+        let cfg = EvmRendezvousConfig::amoy_live_declared_https(EVM_LOCAL_CONTRACT_PLACEHOLDER);
+        cfg.validate().unwrap();
+        assert!(cfg.is_declared_https_rpc());
+        // Constructing dials eth_chainId — https path fails closed as PARTIAL (not ledger).
+        let err = EvmRendezvousProvider::new(cfg).unwrap_err().to_string();
+        assert!(
+            err.contains("PARTIAL") || err.contains("https"),
+            "https live build must not pretend on-chain success: {err}"
+        );
     }
 }
