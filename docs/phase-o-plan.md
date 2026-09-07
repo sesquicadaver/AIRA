@@ -1,6 +1,6 @@
 # Phase O — Desktop UX contract & contextual Help (F1)
 
-**Статус:** складено 2026-09-06; **IN PROGRESS** — QUEUE `#255`–`#263` **DONE**; first OPEN `#264`.  
+**Статус:** складено 2026-09-06; **IN PROGRESS** — QUEUE `#255`–`#264` **DONE**; first OPEN `#265`.  
 **Джерела:** UX draft 2026-09-06 (`aira-gui.md`, `aira-desktop-ux-help-draft.md`); канон [`desktop-ux.md`](desktop-ux.md); QUEUE N-fix closed @ RFC-0139.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase O `#255`–`#265`.  
 **Closure:** consolidating **RFC-0146** (file-free until `#265`).  
@@ -80,7 +80,7 @@ O0 Wiring (canon + QUEUE + living smoke)
 | `#261` | O6 | System status screen | **DONE** @ RFC-0152: Program/Model/Connection/Events; honesty; tests | settings (#262) |
 | `#262` | O7 | Settings apply lifecycle | **DONE** @ RFC-0153: Saved≠Applied≠Restart needed; tests | F1 shell (#263) |
 | `#263` | O8 | Offline F1 shell | **DONE** @ RFC-0154: embed help; search; context routing; offline; tests | topics (#264) |
-| `#264` | O9 | Seed help topics | uk/en topics for catalog IDs; link check; tests | RFC close (#265) |
+| `#264` | O9 | Seed help topics | **DONE** @ RFC-0155: uk/en seed; help: link check; tests | RFC close (#265) |
 | `#265` | O10 | RFC-0146 + close | consolidating RFC-0146; QUEUE O closed | — |
 
 ```text
@@ -93,8 +93,8 @@ O0 Wiring (canon + QUEUE + living smoke)
             → #261 O6 status DONE @ RFC-0152
               → #262 O7 settings DONE @ RFC-0153
                 → #263 O8 F1 DONE @ RFC-0154
-                  → #264 O9 topics OPEN
-                    → #265 O10 RFC-0146
+                  → #264 O9 topics DONE @ RFC-0155
+                    → #265 O10 RFC-0146 OPEN
 ```
 
 ## 6. Acceptance Phase O
@@ -113,12 +113,12 @@ aira-core still has no ledger/GUI deps.
 ## 7. RFC
 
 - Consolidating (`#265`): **AIRA-RFC-0146** — id **confirmed free** at `#255` (file-free until close).
-- Per-atom: `#256`→[`AIRA-RFC-0147`](../specs/rfc/AIRA-RFC-0147-system-snapshot-honesty.md); `#257`→[`AIRA-RFC-0148`](../specs/rfc/AIRA-RFC-0148-nonblocking-work-refresh.md); `#258`→[`AIRA-RFC-0149`](../specs/rfc/AIRA-RFC-0149-action-error-help-ids.md); `#259`→[`AIRA-RFC-0150`](../specs/rfc/AIRA-RFC-0150-shell-ia-help-f1.md); `#260`→[`AIRA-RFC-0151`](../specs/rfc/AIRA-RFC-0151-work-screen-provenance.md); `#261`→[`AIRA-RFC-0152`](../specs/rfc/AIRA-RFC-0152-system-status-screen.md); `#262`→[`AIRA-RFC-0153`](../specs/rfc/AIRA-RFC-0153-settings-apply-lifecycle.md); `#263`→[`AIRA-RFC-0154`](../specs/rfc/AIRA-RFC-0154-offline-f1-shell.md); further RFC-D у `#264` за потреби.
+- Per-atom: `#256`→[`AIRA-RFC-0147`](../specs/rfc/AIRA-RFC-0147-system-snapshot-honesty.md); `#257`→[`AIRA-RFC-0148`](../specs/rfc/AIRA-RFC-0148-nonblocking-work-refresh.md); `#258`→[`AIRA-RFC-0149`](../specs/rfc/AIRA-RFC-0149-action-error-help-ids.md); `#259`→[`AIRA-RFC-0150`](../specs/rfc/AIRA-RFC-0150-shell-ia-help-f1.md); `#260`→[`AIRA-RFC-0151`](../specs/rfc/AIRA-RFC-0151-work-screen-provenance.md); `#261`→[`AIRA-RFC-0152`](../specs/rfc/AIRA-RFC-0152-system-status-screen.md); `#262`→[`AIRA-RFC-0153`](../specs/rfc/AIRA-RFC-0153-settings-apply-lifecycle.md); `#263`→[`AIRA-RFC-0154`](../specs/rfc/AIRA-RFC-0154-offline-f1-shell.md); `#264`→[`AIRA-RFC-0155`](../specs/rfc/AIRA-RFC-0155-seed-help-topics.md).
 
 ## 8. Activation rule
 
 ```text
 QUEUE N-fix closed @ RFC-0139 + developer «канон + Phase O» 2026-09-06
   → цей план активовано атомом `#255`.
-`#255`–`#263` DONE; first OPEN `#264`.
+`#255`–`#264` DONE; first OPEN `#265`.
 ```
