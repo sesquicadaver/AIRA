@@ -448,7 +448,7 @@ impl AiraDesktopApp {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
         });
-        if self.restart_hint {
+        if self.restart_hint || self.settings_need_restart() {
             ui.colored_label(egui::Color32::from_rgb(180, 120, 40), l.restart_hint);
         }
         egui::CollapsingHeader::new(l.sys_tech_details)
@@ -563,7 +563,7 @@ impl AiraDesktopApp {
             any = true;
             ui.label(msg);
         }
-        if self.restart_hint {
+        if self.restart_hint || self.settings_need_restart() {
             any = true;
             ui.colored_label(egui::Color32::from_rgb(180, 120, 40), l.restart_hint);
         }
@@ -724,6 +724,26 @@ impl AiraDesktopApp {
     fn ui_settings(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let l = self.labels();
         ui.heading(l.settings_heading);
+        let phase = self.settings_apply_phase();
+        match phase {
+            crate::settings_apply::SettingsApplyPhase::Applied => {
+                ui.colored_label(
+                    egui::Color32::from_rgb(40, 140, 70),
+                    l.settings_phase_applied,
+                );
+            }
+            crate::settings_apply::SettingsApplyPhase::RestartNeeded => {
+                ui.colored_label(
+                    egui::Color32::from_rgb(180, 120, 40),
+                    l.settings_phase_restart,
+                );
+                ui.small(l.settings_restart_action);
+            }
+        }
+        ui.label(l.settings_close_not_stop);
+
+        ui.separator();
+        ui.strong(l.settings_group_general);
         ui.horizontal(|ui| {
             ui.strong(l.language);
             if ui
@@ -739,8 +759,6 @@ impl AiraDesktopApp {
                 self.set_ui_lang(UiLang::En, ctx);
             }
         });
-        ui.label(l.not_llm);
-        ui.separator();
         let mut dirty = false;
         dirty |= ui
             .checkbox(&mut self.settings.open_ui_on_start, l.open_window_on_login)
@@ -749,8 +767,6 @@ impl AiraDesktopApp {
         dirty |= ui
             .checkbox(&mut self.settings.autostart_on_login, l.autostart)
             .changed();
-        ui.label(format!("HTTP: {}", self.settings.http_listen));
-        ui.label(format!("instance: {}", self.settings.instance_id));
         if dirty {
             if let Err(e) = self.persist_settings() {
                 self.set_problem(
@@ -759,5 +775,61 @@ impl AiraDesktopApp {
                 );
             }
         }
+
+        ui.separator();
+        ui.strong(l.settings_group_models);
+        ui.label(l.settings_models_placeholder);
+        egui::CollapsingHeader::new(l.sys_tech_details)
+            .id_source("settings-models-tech")
+            .default_open(false)
+            .show(ui, |ui| {
+                ui.label(l.not_llm);
+            });
+
+        ui.separator();
+        ui.strong(l.settings_group_connection);
+        let saved_profile = format!("{:?}", self.settings.network_profile);
+        let applied_profile = format!("{:?}", self.applied_runtime.network_profile);
+        ui.horizontal(|ui| {
+            ui.strong(l.settings_saved);
+            ui.label(&saved_profile);
+        });
+        ui.horizontal(|ui| {
+            ui.strong(l.settings_applied);
+            ui.label(&applied_profile);
+        });
+        let saved_listen = self
+            .settings
+            .peer_listen
+            .as_deref()
+            .unwrap_or(l.peer_off_p0);
+        let applied_listen = self
+            .applied_runtime
+            .peer_listen
+            .as_deref()
+            .unwrap_or(l.peer_off_p0);
+        ui.horizontal(|ui| {
+            ui.label(l.peer_listen);
+            ui.strong(l.settings_saved);
+            ui.monospace(saved_listen);
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.peer_listen);
+            ui.strong(l.settings_applied);
+            ui.monospace(applied_listen);
+        });
+        ui.small(l.network_profile);
+
+        ui.separator();
+        ui.strong(l.settings_group_advanced);
+        ui.horizontal(|ui| {
+            ui.strong(l.settings_saved);
+            ui.label(format!("HTTP {}", self.settings.http_listen));
+        });
+        ui.horizontal(|ui| {
+            ui.strong(l.settings_applied);
+            ui.label(format!("HTTP {}", self.applied_runtime.http_listen));
+        });
+        ui.label(format!("instance: {}", self.settings.instance_id));
     }
 }

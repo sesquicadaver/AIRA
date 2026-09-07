@@ -73,6 +73,8 @@ pub struct AiraDesktopApp {
     pub(super) qr_camera: Option<camera::InviteQrCamera>,
     pub(super) qr_camera_status: Option<String>,
     pub(super) restart_hint: bool,
+    /// Runtime-applied network/listen subset (`#262`); differs from disk → Restart needed.
+    pub(super) applied_runtime: crate::settings_apply::AppliedRuntimeSettings,
     pub(super) async_jobs: AsyncDesktopJobs,
     /// Side help panel open (`#259` chrome; topics filled in `#263`).
     pub(super) help_open: bool,
@@ -119,6 +121,8 @@ impl AiraDesktopApp {
             .relay_ttl_days
             .map(|d| d.to_string())
             .unwrap_or_else(|| DEFAULT_RELAY_TTL_DAYS.to_string());
+        let applied_runtime =
+            crate::settings_apply::AppliedRuntimeSettings::from_settings(&settings);
         let mut app = Self {
             paths,
             node_bin,
@@ -149,6 +153,7 @@ impl AiraDesktopApp {
             qr_camera: None,
             qr_camera_status: None,
             restart_hint: false,
+            applied_runtime,
             async_jobs: AsyncDesktopJobs::new(),
             help_open: false,
             help_topic: HelpId::Start,
@@ -331,6 +336,26 @@ impl AiraDesktopApp {
         self.help_open = false;
     }
 
+    /// Settings lifecycle phase from saved disk vs runtime-applied (`#262`).
+    pub(super) fn settings_apply_phase(&self) -> crate::settings_apply::SettingsApplyPhase {
+        crate::settings_apply::settings_apply_phase(&self.settings, &self.applied_runtime)
+    }
+
+    /// True when saved network/listen differ from applied (Stop→Start needed).
+    pub(super) fn settings_need_restart(&self) -> bool {
+        matches!(
+            self.settings_apply_phase(),
+            crate::settings_apply::SettingsApplyPhase::RestartNeeded
+        ) || self.restart_hint
+    }
+
+    /// Mark current settings as applied to the running node (after Start).
+    pub(super) fn mark_settings_applied(&mut self) {
+        self.applied_runtime =
+            crate::settings_apply::AppliedRuntimeSettings::from_settings(&self.settings);
+        self.restart_hint = false;
+    }
+
     pub(super) fn do_start(&mut self) -> anyhow::Result<()> {
         let outcome = start(&self.paths, self.node_bin.clone())?;
         self.lifecycle = outcome.status;
@@ -356,7 +381,7 @@ impl AiraDesktopApp {
             }
             _ => l.peer_off_p0.into(),
         };
-        self.restart_hint = false;
+        self.mark_settings_applied();
         self.clear_problem();
         self.refresh_mesh_snapshot();
         Ok(())
