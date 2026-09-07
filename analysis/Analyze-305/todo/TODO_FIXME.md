@@ -4,4 +4,4 @@
 - [x] Signed local evidence; reject CLI transcript-alone
 - [x] Wrong-endpoint / forged evidence tests
 - [x] RFC-0160 + QUEUE `#270` DONE
-- [ ] `#271` EVM/JSON-RPC honesty (next OPEN)
+- [x] `#271` EVM/JSON-RPC honesty (DONE @ RFC-0161)

@@ -1,7 +1,10 @@
-//! Minimal JSON-RPC 2.0 HTTP client for EVM rendezvous (`#248`).
+//! Minimal JSON-RPC 2.0 HTTP(S) client for EVM rendezvous (`#248` / `#271`).
 //!
-//! Supports `http://` only (no TLS dependency / license surface). Live Amoy
-//! HTTPS may use an HTTP gateway or local reference RPC in CI.
+//! `http://` dials over plain TCP. Declared Amoy/mainnet `https://` URLs are
+//! accepted in config (`#271`); this client still requires an HTTP gateway or
+//! local reference RPC for the dial path (no TLS stack in `aira-peer`).
+//! A successful HTTP roundtrip against [`crate::evm_rendezvous_rpc`] is **not**
+//! an on-chain Polygon ledger claim.
 
 use std::io::{Read, Write};
 use std::net::TcpStream;
@@ -18,14 +21,16 @@ pub fn json_rpc_call(rpc_url: &str, method: &str, params: Value) -> Result<Value
         return Err(PeerError::Rendezvous("evm rpc_url empty".into()));
     }
     if url.starts_with("https://") {
+        // Config may store declared Amoy/mainnet HTTPS URLs (#271). Dial still
+        // needs an HTTP gateway / local reference — not an on-chain claim.
         return Err(PeerError::Rendezvous(
-            "live EVM JSON-RPC over https is not enabled in #248 (use http:// anvil/reference RPC or HTTP gateway)"
+            "https JSON-RPC dial is PARTIAL (#271): config may hold https:// Amoy/mainnet URL;              dial via http:// anvil/ReferenceEvmRendezvousRpc or HTTP→HTTPS gateway              (no TLS client in aira-peer; Mock/reference HTTP ≠ on-chain ledger)"
                 .into(),
         ));
     }
     if !url.starts_with("http://") {
         return Err(PeerError::Rendezvous(format!(
-            "live EVM RPC URL must be http://, got {url}"
+            "live EVM RPC URL must be http:// or https://, got {url}"
         )));
     }
     let (host, port, path) = parse_http_url(url)?;
@@ -168,13 +173,16 @@ mod tests {
     }
 
     #[test]
-    fn rejects_https_in_248() {
+    fn https_dial_is_partial_not_on_chain_claim() {
         let err = json_rpc_call(
             "https://rpc-amoy.polygon.technology/",
             "eth_chainId",
             json!([]),
         )
         .unwrap_err();
-        assert!(err.to_string().contains("https"));
+        let msg = err.to_string();
+        assert!(msg.contains("https"), "{msg}");
+        assert!(msg.contains("PARTIAL") || msg.contains("#271"), "{msg}");
+        assert!(msg.contains("ledger") || msg.contains("Mock"), "{msg}");
     }
 }

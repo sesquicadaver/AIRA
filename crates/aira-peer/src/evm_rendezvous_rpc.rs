@@ -1,9 +1,11 @@
-//! Reference EVM rendezvous JSON-RPC HTTP surface (QUEUE #248 / Phase N-fix).
+//! Reference EVM rendezvous JSON-RPC HTTP surface (QUEUE #248 / honesty `#271`).
 //!
-//! Not a full Ethereum node. Implements AIRA rendezvous methods over HTTP
-//! JSON-RPC so [`crate::evm_rendezvous::EvmRendezvousProvider`] with
-//! `use_local_double=false` can dial a real socket in CI (anvil-shaped stand-in).
-//! Presence authenticity remains AIRA Ed25519 — never an EVM payer.
+//! Not a full Ethereum node and **not** an on-chain Polygon ledger. Implements
+//! AIRA rendezvous methods over HTTP JSON-RPC backed by
+//! [`MockRendezvousProvider`] so [`crate::evm_rendezvous::EvmRendezvousProvider`]
+//! with `use_local_double=false` can dial a real socket in CI (anvil-shaped
+//! stand-in). Presence authenticity remains AIRA Ed25519 — never an EVM payer.
+//! A green HTTP roundtrip here is [`crate::EvmLedgerClaim::ReferenceHttpJsonRpc`].
 
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};

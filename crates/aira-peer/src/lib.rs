@@ -78,7 +78,7 @@ pub use discv::{
 pub use envelope::make_peer_ping;
 pub use error::PeerError;
 pub use evm_rendezvous::{
-    evm_identity_hash, EvmChainProfile, EvmRendezvousConfig, EvmRendezvousProvider,
+    evm_identity_hash, EvmChainProfile, EvmLedgerClaim, EvmRendezvousConfig, EvmRendezvousProvider,
     EVM_AMOY_RPC_DEFAULT, EVM_CHAIN_AMOY, EVM_CHAIN_LOCAL_DOUBLE, EVM_CHAIN_POLYGON,
     EVM_LOCAL_CONTRACT_PLACEHOLDER, EVM_POLYGON_RPC_DEFAULT, RENDEZVOUS_KIND_EVM,
 };
