@@ -39,10 +39,16 @@ impl AiraDesktopApp {
                 }
                 self.restart_hint = true;
                 if let Err(e) = self.persist_settings() {
-                    self.last_error = Some(format!("{e:#}"));
+                    self.set_problem(
+                        crate::lexicon::ErrorCode::SettingsPersistFailed,
+                        format!("{e:#}"),
+                    );
                 }
             }
-            Err(e) => self.last_error = Some(format!("{e:#}")),
+            Err(e) => self.set_problem(
+                crate::lexicon::ErrorCode::SettingsPersistFailed,
+                format!("{e:#}"),
+            ),
         }
     }
 
@@ -70,10 +76,16 @@ impl AiraDesktopApp {
             Ok(()) => {
                 self.restart_hint = true;
                 if let Err(e) = self.persist_settings() {
-                    self.last_error = Some(format!("{e:#}"));
+                    self.set_problem(
+                        crate::lexicon::ErrorCode::SettingsPersistFailed,
+                        format!("{e:#}"),
+                    );
                 }
             }
-            Err(e) => self.last_error = Some(format!("{e:#}")),
+            Err(e) => self.set_problem(
+                crate::lexicon::ErrorCode::SettingsPersistFailed,
+                format!("{e:#}"),
+            ),
         }
     }
 
@@ -95,10 +107,16 @@ impl AiraDesktopApp {
             Ok(()) => {
                 self.restart_hint = true;
                 if let Err(e) = self.persist_settings() {
-                    self.last_error = Some(format!("{e:#}"));
+                    self.set_problem(
+                        crate::lexicon::ErrorCode::SettingsPersistFailed,
+                        format!("{e:#}"),
+                    );
                 }
             }
-            Err(e) => self.last_error = Some(format!("{e:#}")),
+            Err(e) => self.set_problem(
+                crate::lexicon::ErrorCode::SettingsPersistFailed,
+                format!("{e:#}"),
+            ),
         }
     }
 

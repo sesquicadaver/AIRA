@@ -19,9 +19,9 @@ impl AiraDesktopApp {
                         .map(|a| format!(" · {a}"))
                         .unwrap_or_default()
                 ));
-                self.last_error = None;
+                self.clear_problem();
             }
-            Err(e) => self.last_error = Some(format!("{e:#}")),
+            Err(e) => self.set_problem(crate::lexicon::ErrorCode::Generic, format!("{e:#}")),
         }
     }
 
@@ -34,10 +34,10 @@ impl AiraDesktopApp {
             match actions::export_json(&self.paths, &path, None) {
                 Ok(inv) => {
                     self.invite_msg = Some(format!("exported JSON {}", path.display()));
-                    self.last_error = None;
+                    self.clear_problem();
                     let _ = inv;
                 }
-                Err(e) => self.last_error = Some(format!("{e:#}")),
+                Err(e) => self.set_problem(crate::lexicon::ErrorCode::Generic, format!("{e:#}")),
             }
         }
     }
@@ -51,10 +51,10 @@ impl AiraDesktopApp {
             match actions::export_qr(&self.paths, &path, None) {
                 Ok(_) => {
                     self.invite_msg = Some(format!("exported QR {}", path.display()));
-                    self.last_error = None;
+                    self.clear_problem();
                     self.load_qr_preview(ctx);
                 }
-                Err(e) => self.last_error = Some(format!("{e:#}")),
+                Err(e) => self.set_problem(crate::lexicon::ErrorCode::Generic, format!("{e:#}")),
             }
         }
     }
@@ -70,9 +70,9 @@ impl AiraDesktopApp {
                         "imported {} (book={})",
                         out.identity_ref, out.book_updated
                     ));
-                    self.last_error = None;
+                    self.clear_problem();
                 }
-                Err(e) => self.last_error = Some(format!("{e:#}")),
+                Err(e) => self.set_problem(crate::lexicon::ErrorCode::Generic, format!("{e:#}")),
             }
         }
     }
@@ -88,9 +88,9 @@ impl AiraDesktopApp {
                         "imported QR {} (book={})",
                         out.identity_ref, out.book_updated
                     ));
-                    self.last_error = None;
+                    self.clear_problem();
                 }
-                Err(e) => self.last_error = Some(format!("{e:#}")),
+                Err(e) => self.set_problem(crate::lexicon::ErrorCode::Generic, format!("{e:#}")),
             }
         }
     }
@@ -101,10 +101,10 @@ impl AiraDesktopApp {
             Ok(cam) => {
                 self.qr_camera = Some(cam);
                 self.qr_camera_status = Some(self.labels().scan_camera.to_string());
-                self.last_error = None;
+                self.clear_problem();
             }
             Err(e) => {
-                self.last_error = Some(format!("camera: {e:#}"));
+                self.set_problem(crate::lexicon::ErrorCode::Generic, format!("camera: {e:#}"));
             }
         }
     }
@@ -135,7 +135,7 @@ impl AiraDesktopApp {
                     "imported via camera {} (book={})",
                     out.identity_ref, out.book_updated
                 ));
-                self.last_error = None;
+                self.clear_problem();
                 self.stop_qr_camera_scan();
             }
             Err(_) => {

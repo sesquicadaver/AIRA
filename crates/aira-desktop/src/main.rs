@@ -6,6 +6,7 @@ mod actions;
 mod app;
 mod async_jobs;
 mod camera;
+mod lexicon;
 mod work_view;
 
 use std::path::PathBuf;
@@ -19,6 +20,17 @@ use aira_desktop_runtime::{
 };
 
 use crate::app::AiraDesktopApp;
+use crate::lexicon::{ActionId, HelpId};
+
+fn assert_lexicon_linked() {
+    // Keep Phase O lexicon reachable in the binary (`#258` → F1 `#263`).
+    assert_eq!(HelpId::catalog().len(), 11);
+    assert_eq!(ActionId::catalog().len(), 6);
+    assert_eq!(ActionId::Quit.as_str(), "app.quit");
+    assert_eq!(ActionId::Quit.help_id(), HelpId::NodeLifecycle);
+    assert_eq!(HelpId::parse("work.submit"), Some(HelpId::WorkSubmit));
+    assert!(HelpId::parse("missing").is_none());
+}
 
 #[derive(Parser, Debug)]
 #[command(
@@ -55,6 +67,7 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<()> {
+    assert_lexicon_linked();
     let args = Args::parse();
     let paths = match args.data_root {
         Some(r) => DesktopPaths::for_data_root(r),
