@@ -1,6 +1,7 @@
-//! Phase N `#244` mesh fields + Phase O `#256` honesty projection.
+//! Phase N `#244` mesh fields + Phase O `#256` honesty + Phase P `#267` freshness.
 
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use aira_object::Keyring;
 use aira_peer::{
@@ -8,6 +9,34 @@ use aira_peer::{
     StunReflexiveRecord, TransportClass,
 };
 use anyhow::Result;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
+
+/// Max age (seconds) of `reachability.checked_at` before network quality is [`DataQuality::Stale`].
+pub const NETWORK_OBSERVATION_STALE_SECS: u64 = 300;
+
+/// Where [`NetworkMeshSnapshot::local_bind`] came from (`#267`: config ≠ live listener).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LocalBindProvenance {
+    /// No bind string to display.
+    #[default]
+    None,
+    /// Settings / CLI `peer_listen` (operator intent) — not proof a socket is listening.
+    Configured,
+    /// Port recorded in `reachability.json` — historical local_port, not accept-loop proof.
+    ReachabilityRecord,
+}
+
+impl LocalBindProvenance {
+    /// Stable label for UI / tests.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Configured => "configured",
+            Self::ReachabilityRecord => "reachability_record",
+        }
+    }
+}
 
 /// Operator-facing top-level mesh banner (TZ §35; honesty `#256`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,7 +75,7 @@ impl MeshTopLevel {
     }
 }
 
-/// Freshness / availability of a projected field or section (`#256`).
+/// Freshness / availability of a projected field or section (`#256` / `#267`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DataQuality {
     /// Observation matches current authoritative reads for this load.
@@ -76,12 +105,20 @@ impl DataQuality {
 pub struct NetworkMeshSnapshot {
     pub identity: String,
     pub preferred_port: Option<u16>,
+    /// Display bind string (configured listen or recorded reachability port).
     pub local_bind: Option<String>,
+    /// Provenance of [`Self::local_bind`] — never implies a live accept loop.
+    pub local_bind_provenance: LocalBindProvenance,
+    /// True only when this process has proven an accept loop is listening.
+    /// Desktop projection always leaves this `false` until a live listener feed exists.
+    pub local_listener_proven: bool,
     pub external_observed: Option<String>,
     pub reachability_status: String,
     pub top_level: String,
     pub direct_reachability: String,
     pub relay_reachability: String,
+    /// Measurement time from `reachability.json` `checked_at` (RFC3339), if any.
+    pub reachability_checked_at: Option<String>,
     pub rendezvous_provider: String,
     /// Local publish metadata present (provider + sequence) — not a live global session.
     pub rendezvous_connected: bool,
@@ -100,11 +137,14 @@ impl NetworkMeshSnapshot {
             identity: String::new(),
             preferred_port: None,
             local_bind: None,
+            local_bind_provenance: LocalBindProvenance::None,
+            local_listener_proven: false,
             external_observed: None,
             reachability_status: "UNKNOWN".into(),
             top_level: MeshTopLevel::Unknown.as_str().into(),
             direct_reachability: "no".into(),
             relay_reachability: "no".into(),
+            reachability_checked_at: None,
             rendezvous_provider: String::new(),
             rendezvous_connected: false,
             rendezvous_sequence: 0,
@@ -114,13 +154,15 @@ impl NetworkMeshSnapshot {
     }
 }
 
-/// Typed Desktop projection of authoritative runtime/store facts (`#256`).
+/// Typed Desktop projection of authoritative runtime/store facts (`#256` / `#267`).
 ///
 /// Not a second source of truth: each load re-reads stores. GUI state must not invent values.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SystemSnapshot {
-    /// RFC3339 observation time for this projection load (UTC).
+    /// Measurement time for network facts (`reachability.checked_at`), or `unknown`.
     pub observed_at: String,
+    /// When this projection was loaded (not the same as measurement time).
+    pub loaded_at: String,
     pub network: NetworkMeshSnapshot,
     pub network_quality: DataQuality,
     /// Quality of live-session observation (usually [`DataQuality::Unknown`] until a live feed exists).
@@ -129,12 +171,15 @@ pub struct SystemSnapshot {
 
 impl SystemSnapshot {
     /// Build projection around an already-loaded mesh snapshot.
-    pub fn from_network(network: NetworkMeshSnapshot, observed_at: String) -> Self {
-        let network_quality = if network.identity.is_empty() {
-            DataQuality::Unavailable
-        } else {
-            DataQuality::Current
-        };
+    ///
+    /// `loaded_at` is the projection load clock (RFC3339 preferred; `unix:<secs>` accepted).
+    /// [`Self::observed_at`] comes from mesh measurement time, not from `loaded_at`.
+    pub fn from_network(network: NetworkMeshSnapshot, loaded_at: String) -> Self {
+        let observed_at = network
+            .reachability_checked_at
+            .clone()
+            .unwrap_or_else(|| "unknown".into());
+        let network_quality = classify_network_quality(&network, &loaded_at);
         let live_sessions_quality = match network.live_session_count {
             Some(_) => DataQuality::Current,
             None if network.identity.is_empty() => DataQuality::Unavailable,
@@ -142,6 +187,7 @@ impl SystemSnapshot {
         };
         Self {
             observed_at,
+            loaded_at,
             network,
             network_quality,
             live_sessions_quality,
@@ -150,10 +196,7 @@ impl SystemSnapshot {
 
     /// Empty projection when identity / root is unavailable.
     pub fn unavailable() -> Self {
-        Self::from_network(
-            NetworkMeshSnapshot::unavailable(),
-            chrono_like_now_fallback(),
-        )
+        Self::from_network(NetworkMeshSnapshot::unavailable(), projection_now_label())
     }
 }
 
@@ -168,14 +211,53 @@ fn status_label(status: ReachabilityStatus) -> String {
     }
 }
 
-fn chrono_like_now_fallback() -> String {
-    // Prefer std-only timestamp when chrono is unavailable in this crate.
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    format!("unix:{secs}")
+fn projection_now_label() -> String {
+    match OffsetDateTime::now_utc().format(&Rfc3339) {
+        Ok(s) => s,
+        Err(_) => {
+            let secs = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            format!("unix:{secs}")
+        }
+    }
+}
+
+fn parse_clock_label(label: &str) -> Option<OffsetDateTime> {
+    let label = label.trim();
+    if label.is_empty() || label == "unknown" {
+        return None;
+    }
+    if let Some(secs) = label.strip_prefix("unix:") {
+        let secs: i64 = secs.parse().ok()?;
+        return OffsetDateTime::from_unix_timestamp(secs).ok();
+    }
+    OffsetDateTime::parse(label, &Rfc3339).ok()
+}
+
+/// Classify network section quality from measurement age vs projection load clock (`#267`).
+pub fn classify_network_quality(network: &NetworkMeshSnapshot, loaded_at: &str) -> DataQuality {
+    if network.identity.is_empty() {
+        return DataQuality::Unavailable;
+    }
+    let Some(checked) = network.reachability_checked_at.as_deref() else {
+        return DataQuality::Unknown;
+    };
+    let Some(measured) = parse_clock_label(checked) else {
+        return DataQuality::Unknown;
+    };
+    let reference = parse_clock_label(loaded_at).unwrap_or_else(OffsetDateTime::now_utc);
+    let age_secs = (reference - measured).whole_seconds();
+    if age_secs < 0 {
+        // Mild clock skew: treat as current rather than inventing Stale.
+        return DataQuality::Current;
+    }
+    if age_secs as u64 > NETWORK_OBSERVATION_STALE_SECS {
+        DataQuality::Stale
+    } else {
+        DataQuality::Current
+    }
 }
 
 /// Load Network mesh fields from node root + optional configured peer listen.
@@ -195,11 +277,22 @@ pub fn load_network_mesh_snapshot(
     let reach = ReachabilityLocalState::load(root)?;
     let top = MeshTopLevel::from_reachability(reach.status);
 
-    let local_bind = peer_listen
+    let configured = peer_listen
         .map(str::trim)
         .filter(|s| !s.is_empty())
-        .map(str::to_string)
-        .or_else(|| reach.local_port.map(|p| format!("127.0.0.1:{p}")));
+        .map(str::to_string);
+    let (local_bind, local_bind_provenance) = if let Some(bind) = configured {
+        (Some(bind), LocalBindProvenance::Configured)
+    } else if let Some(port) = reach.local_port {
+        (
+            Some(format!("127.0.0.1:{port}")),
+            LocalBindProvenance::ReachabilityRecord,
+        )
+    } else {
+        (None, LocalBindProvenance::None)
+    };
+    // Desktop runtime has no in-process peer accept loop — bind display ≠ listener proof.
+    let local_listener_proven = false;
 
     let external_observed = reach
         .observed_endpoint
@@ -230,11 +323,14 @@ pub fn load_network_mesh_snapshot(
         identity,
         preferred_port: Some(preferred),
         local_bind,
+        local_bind_provenance,
+        local_listener_proven,
         external_observed,
         reachability_status: status_label(reach.status),
         top_level: top.as_str().into(),
         direct_reachability: direct_reachability.into(),
         relay_reachability: relay_reachability.into(),
+        reachability_checked_at: reach.checked_at.clone(),
         rendezvous_provider: rv.provider,
         rendezvous_connected,
         rendezvous_sequence: rv.local_sequence,
@@ -249,10 +345,7 @@ pub fn load_system_snapshot(
     peer_listen: Option<&str>,
 ) -> Result<SystemSnapshot> {
     let network = load_network_mesh_snapshot(root, peer_listen)?;
-    Ok(SystemSnapshot::from_network(
-        network,
-        chrono_like_now_fallback(),
-    ))
+    Ok(SystemSnapshot::from_network(network, projection_now_label()))
 }
 
 #[cfg(test)]
@@ -319,12 +412,38 @@ mod tests {
             Some(preferred_port(id.as_str(), TransportClass::TcpPeer))
         );
         assert_eq!(snap.local_bind.as_deref(), Some("127.0.0.1:49157"));
+        assert_eq!(snap.local_bind_provenance, LocalBindProvenance::Configured);
+        assert!(!snap.local_listener_proven);
+        assert_eq!(
+            snap.reachability_checked_at.as_deref(),
+            Some("2026-09-05T12:00:00Z")
+        );
         assert_eq!(snap.reachability_status, "LOCAL_ONLY");
         assert_eq!(snap.top_level, "LOCAL ONLY");
         assert_ne!(snap.top_level, "OFFLINE");
         assert_eq!(snap.direct_reachability, "no");
         assert_eq!(snap.address_book_count, 1);
         assert_eq!(snap.live_session_count, None);
+    }
+
+    #[test]
+    fn reachability_port_without_config_is_not_listener_proof() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let _ = write_node(root, "mesh-bind", [65u8; 32]);
+        let mut reach = ReachabilityLocalState::default();
+        reach
+            .mark_local_bind(49157, "2026-09-07T12:00:00Z")
+            .unwrap();
+        reach.save(root).unwrap();
+
+        let snap = load_network_mesh_snapshot(root, None).unwrap();
+        assert_eq!(snap.local_bind.as_deref(), Some("127.0.0.1:49157"));
+        assert_eq!(
+            snap.local_bind_provenance,
+            LocalBindProvenance::ReachabilityRecord
+        );
+        assert!(!snap.local_listener_proven);
     }
 
     #[test]
@@ -363,8 +482,11 @@ mod tests {
         assert_eq!(sys.network.address_book_count, 2);
         assert_eq!(sys.network.live_session_count, None);
         assert_eq!(sys.live_sessions_quality, DataQuality::Unknown);
-        assert_eq!(sys.network_quality, DataQuality::Current);
-        assert!(!sys.observed_at.is_empty());
+        // Identity present but no reachability measurement → Unknown, not Current.
+        assert_eq!(sys.network_quality, DataQuality::Unknown);
+        assert_eq!(sys.observed_at, "unknown");
+        assert!(!sys.loaded_at.is_empty());
+        assert_ne!(sys.observed_at, sys.loaded_at);
     }
 
     #[test]
@@ -377,6 +499,42 @@ mod tests {
         let sys = SystemSnapshot::from_network(snap, "unix:0".into());
         assert_eq!(sys.network_quality, DataQuality::Unavailable);
         assert_eq!(sys.live_sessions_quality, DataQuality::Unavailable);
+        assert_eq!(sys.observed_at, "unknown");
+        assert_eq!(sys.loaded_at, "unix:0");
+    }
+
+    #[test]
+    fn fresh_checked_at_is_current_and_differs_from_loaded_at() {
+        let mut mesh = NetworkMeshSnapshot::unavailable();
+        mesh.identity = "aira:identity:fresh".into();
+        mesh.reachability_checked_at = Some("2026-09-07T12:00:00Z".into());
+        mesh.top_level = "LOCAL ONLY".into();
+        let sys = SystemSnapshot::from_network(mesh, "2026-09-07T12:02:00Z".into());
+        assert_eq!(sys.network_quality, DataQuality::Current);
+        assert_eq!(sys.observed_at, "2026-09-07T12:00:00Z");
+        assert_eq!(sys.loaded_at, "2026-09-07T12:02:00Z");
+        assert_ne!(sys.observed_at, sys.loaded_at);
+    }
+
+    #[test]
+    fn old_checked_at_is_stale() {
+        let mut mesh = NetworkMeshSnapshot::unavailable();
+        mesh.identity = "aira:identity:stale".into();
+        mesh.reachability_checked_at = Some("2026-09-07T10:00:00Z".into());
+        mesh.top_level = "DIRECT".into();
+        let sys = SystemSnapshot::from_network(mesh, "2026-09-07T12:00:00Z".into());
+        assert_eq!(sys.network_quality, DataQuality::Stale);
+        assert_eq!(sys.observed_at, "2026-09-07T10:00:00Z");
+        assert_ne!(sys.loaded_at, sys.observed_at);
+    }
+
+    #[test]
+    fn missing_checked_at_is_unknown_not_current() {
+        let mut mesh = NetworkMeshSnapshot::unavailable();
+        mesh.identity = "aira:identity:nocheck".into();
+        mesh.top_level = "DIRECT".into();
+        let q = classify_network_quality(&mesh, "2026-09-07T12:00:00Z");
+        assert_eq!(q, DataQuality::Unknown);
     }
 
     #[test]
@@ -401,5 +559,9 @@ mod tests {
         assert_eq!(snap.top_level, "RELAYED");
         assert_eq!(snap.relay_reachability, "yes");
         assert_eq!(snap.reachability_status, "RELAY_ONLY");
+        assert_eq!(
+            snap.reachability_checked_at.as_deref(),
+            Some("2026-09-05T12:00:00Z")
+        );
     }
 }

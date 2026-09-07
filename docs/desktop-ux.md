@@ -1,7 +1,7 @@
 # AIRA Desktop UX — канон рішень
 
 **Статус:** Phase E `#75`–`#106` **DONE** (2026-08-22); Phase F `#107`–`#119` **DONE** (2026-08-24).  
-**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) `#266`–`#274` (**runtime-honest**; `#266` DONE; first OPEN `#267`; RFC-0156 reserved).  
+**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) `#266`–`#274` (**runtime-honest**; `#266`–`#267` DONE @ RFC-0157; first OPEN `#268`; RFC-0156 reserved).  
 **Provenance:** [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED** → E); UX/Help draft 2026-09-06 (`aira-gui.md` + `aira-desktop-ux-help-draft.md`, поза git).  
 **Не змінює** Book 0–IV / C0–C1 / Core / `aira-core` ledger.  
 **Posture:** Linux E1 = **Developer Preview** над local reference plane.
@@ -110,7 +110,7 @@ O7 (`#262` **DONE** @ [`AIRA-RFC-0153`](../specs/rfc/AIRA-RFC-0153-settings-appl
 
 Три межі (без універсального GUI framework / monitoring daemon):
 
-1. **Стан:** типізований `SystemSnapshot` — read-only проєкція authoritative runtime/store. Якість даних: актуальні / застарілі / невідомі / недоступні. `request_repaint_after` **не** є оновленням даних; `refresh_status` (або еквівалент) — окремий канал.
+1. **Стан:** типізований `SystemSnapshot` — read-only проєкція authoritative runtime/store. Якість даних: актуальні / застарілі / невідомі / недоступні (`DataQuality`; **DONE** @ RFC-0157 / `#267`: `observed_at` = measurement, `loaded_at` = projection load; bind ≠ listener proof). `request_repaint_after` **не** є оновленням даних; `refresh_status` (або еквівалент) — окремий канал.
 2. **Дія:** стабільний ID, доступність, причина недоступності; runtime повторно перевіряє policy перед ефектом.
 3. **Проблема:** стабільний код → локалізоване повідомлення → опційна команда → `help_id` (**DONE** @ RFC-0149 / `#258`; модуль `lexicon`).
 
