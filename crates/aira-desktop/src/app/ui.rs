@@ -490,23 +490,13 @@ impl AiraDesktopApp {
                 crate::system_view::ProgramConclusion::Stopped
                 | crate::system_view::ProgramConclusion::Failed => {
                     if ui.button(l.start).clicked() {
-                        if let Err(e) = self.do_start() {
-                            self.set_problem(
-                                crate::lexicon::ErrorCode::NodeStartFailed,
-                                format!("{e:#}"),
-                            );
-                        }
+                        self.request_lifecycle(crate::async_jobs::LifecycleJobKind::Start, ctx);
                     }
                 }
                 crate::system_view::ProgramConclusion::Running
                 | crate::system_view::ProgramConclusion::Unhealthy => {
                     if ui.button(l.stop).clicked() {
-                        if let Err(e) = self.do_stop() {
-                            self.set_problem(
-                                crate::lexicon::ErrorCode::NodeStopFailed,
-                                format!("{e:#}"),
-                            );
-                        }
+                        self.request_lifecycle(crate::async_jobs::LifecycleJobKind::Stop, ctx);
                     }
                 }
                 crate::system_view::ProgramConclusion::Starting
@@ -517,8 +507,7 @@ impl AiraDesktopApp {
                 self.refresh_federation_detail();
             }
             if ui.button(l.quit).clicked() {
-                let _ = self.do_stop();
-                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                self.request_quit(ctx);
             }
         });
         if self.restart_hint || self.settings_need_restart() {

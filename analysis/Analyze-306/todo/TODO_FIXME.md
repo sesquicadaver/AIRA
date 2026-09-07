@@ -4,4 +4,4 @@
 - [x] EvmLedgerClaim; Mock/reference ≠ on-chain
 - [x] docs PARTIAL + RFC-0161
 - [x] QUEUE `#271` DONE
-- [ ] `#272` Lifecycle non-blocking (next OPEN)
+- [x] `#272` Lifecycle non-blocking (DONE @ RFC-0162)

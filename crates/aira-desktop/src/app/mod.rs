@@ -12,14 +12,14 @@ mod work;
 use std::path::PathBuf;
 
 use aira_desktop_runtime::{
-    load_or_create_settings, load_or_create_ui_prefs, load_system_snapshot, start, stop,
+    load_or_create_settings, load_or_create_ui_prefs, load_system_snapshot,
     sync_autostart_from_settings, write_ui_prefs, DesktopPaths, DesktopSettings, LifecycleStatus,
     ModelFact, ModelTripleSnapshot, NetworkMeshSnapshot, SystemSnapshot, UiLang, UiPrefs,
     DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
-use crate::async_jobs::{AsyncDesktopJobs, StatusSnapshot};
+use crate::async_jobs::{AsyncDesktopJobs, LifecycleJobKind, LifecycleJobResult, StatusSnapshot};
 use crate::camera;
 use crate::lexicon::{ErrorCode, HelpId, UiProblem};
 
@@ -79,6 +79,8 @@ pub struct AiraDesktopApp {
     /// `None` = Explicitly Undefined (no Running confirmation yet).
     pub(super) applied_runtime: Option<crate::settings_apply::AppliedRuntimeSettings>,
     pub(super) async_jobs: AsyncDesktopJobs,
+    /// Close viewport after an in-flight Stop completes (`#272`).
+    pub(super) quit_after_stop: bool,
     /// Side help panel open (`#259` chrome; offline articles `#263`).
     pub(super) help_open: bool,
     /// Active help topic key for the panel.
@@ -160,6 +162,7 @@ impl AiraDesktopApp {
             restart_hint: false,
             applied_runtime,
             async_jobs: AsyncDesktopJobs::new(),
+            quit_after_stop: false,
             help_open: false,
             help_topic: HelpId::Start,
             help_search: String::new(),
@@ -170,9 +173,7 @@ impl AiraDesktopApp {
         let _ = app.refresh_status();
         app.refresh_federation_detail();
         if auto_start {
-            if let Err(e) = app.do_start() {
-                app.set_problem(ErrorCode::NodeStartFailed, format!("{e:#}"));
-            }
+            app.request_lifecycle(LifecycleJobKind::Start, &cc.egui_ctx);
         }
         if let Err(e) = sync_autostart_from_settings(app.settings.autostart_on_login) {
             app.set_problem(ErrorCode::AutostartSyncFailed, format!("{e:#}"));
@@ -290,6 +291,33 @@ impl AiraDesktopApp {
 
     /// Poll background jobs and schedule periodic data refresh (`#257`).
     pub(super) fn pump_async_jobs(&mut self, ctx: &egui::Context) {
+        if let Some((kind, outcome)) = self.async_jobs.poll_lifecycle() {
+            match outcome {
+                Ok(LifecycleJobResult::Started(outcome)) => {
+                    self.apply_start_outcome(outcome);
+                }
+                Ok(LifecycleJobResult::Stopped(st)) => {
+                    self.apply_stop_status(st);
+                    if self.quit_after_stop {
+                        self.quit_after_stop = false;
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                }
+                Err(e) => {
+                    let code = match kind {
+                        LifecycleJobKind::Start => ErrorCode::NodeStartFailed,
+                        LifecycleJobKind::Stop => ErrorCode::NodeStopFailed,
+                    };
+                    self.set_problem(code, e);
+                    if kind == LifecycleJobKind::Stop && self.quit_after_stop {
+                        self.quit_after_stop = false;
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                    // Refresh to resync honest lifecycle after failure.
+                    self.request_status_refresh(ctx);
+                }
+            }
+        }
         if let Some(outcome) = self.async_jobs.poll_submit() {
             match outcome {
                 Ok(view) => {
@@ -404,8 +432,37 @@ impl AiraDesktopApp {
         self.applied_runtime = None;
     }
 
-    pub(super) fn do_start(&mut self) -> anyhow::Result<()> {
-        let outcome = start(&self.paths, self.node_bin.clone())?;
+    /// Queue Start/Stop off the UI thread (`#272`). Invalidates in-flight refresh.
+    pub(super) fn request_lifecycle(&mut self, kind: LifecycleJobKind, ctx: &egui::Context) {
+        if self.async_jobs.lifecycle_inflight() {
+            return;
+        }
+        match kind {
+            LifecycleJobKind::Start => {
+                self.lifecycle = LifecycleStatus::Starting;
+                self.status_label =
+                    labels::status_label(LifecycleStatus::Starting, self.ui_lang()).to_string();
+            }
+            LifecycleJobKind::Stop => {
+                self.lifecycle = LifecycleStatus::Stopping;
+                self.status_label =
+                    labels::status_label(LifecycleStatus::Stopping, self.ui_lang()).to_string();
+            }
+        }
+        let ctx = ctx.clone();
+        let started = self.async_jobs.try_spawn_lifecycle(
+            kind,
+            self.paths.clone(),
+            self.node_bin.clone(),
+            move || ctx.request_repaint(),
+        );
+        if !started {
+            let _ = self.refresh_status();
+        }
+    }
+
+    /// Apply a completed Start outcome on the UI thread.
+    pub(super) fn apply_start_outcome(&mut self, outcome: aira_desktop_runtime::StartOutcome) {
         self.lifecycle = outcome.status;
         self.node_running = matches!(outcome.status, LifecycleStatus::Running);
         self.status_label = labels::status_label(outcome.status, self.ui_lang()).to_string();
@@ -432,11 +489,10 @@ impl AiraDesktopApp {
         self.mark_settings_applied_from_outcome(&outcome);
         self.clear_problem();
         self.refresh_mesh_snapshot();
-        Ok(())
     }
 
-    pub(super) fn do_stop(&mut self) -> anyhow::Result<()> {
-        let st = stop(&self.paths)?;
+    /// Apply a completed Stop status on the UI thread.
+    pub(super) fn apply_stop_status(&mut self, st: LifecycleStatus) {
         self.lifecycle = st;
         self.node_running = false;
         self.status_label = labels::status_label(st, self.ui_lang()).to_string();
@@ -445,7 +501,15 @@ impl AiraDesktopApp {
         self.clear_applied_runtime();
         self.clear_problem();
         self.refresh_mesh_snapshot();
-        Ok(())
+    }
+
+    /// Quit: Stop off-thread, then close (`#272`).
+    pub(super) fn request_quit(&mut self, ctx: &egui::Context) {
+        self.quit_after_stop = true;
+        if self.async_jobs.lifecycle_inflight() {
+            return;
+        }
+        self.request_lifecycle(LifecycleJobKind::Stop, ctx);
     }
 
     pub(super) fn persist_settings(&mut self) -> anyhow::Result<()> {
