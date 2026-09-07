@@ -53,7 +53,10 @@ pub use launcher::{
     validate_gui_desktop_file, AIRA_DESKTOP_ENTRY, AIRA_DESKTOP_FILENAME, AIRA_GUI_DESKTOP_ENTRY,
     AIRA_GUI_DESKTOP_FILENAME,
 };
-pub use network_mesh::{load_network_mesh_snapshot, MeshTopLevel, NetworkMeshSnapshot};
+pub use network_mesh::{
+    load_network_mesh_snapshot, load_system_snapshot, DataQuality, MeshTopLevel,
+    NetworkMeshSnapshot, SystemSnapshot,
+};
 pub use node_http::{submit_desktop_problem, submit_problem_http};
 pub use paths::DesktopPaths;
 pub use peer::PeerPidRecordView;
