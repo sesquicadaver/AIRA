@@ -128,9 +128,10 @@ impl AiraDesktopApp {
         });
     }
 
-    /// Placeholder Help panel — Markdown topics land in `#263`/`#264`.
+    /// Offline F1 panel: search, topic list, embedded Markdown (`#263`).
     fn ui_help_panel(&mut self, ui: &mut egui::Ui) {
         let l = self.labels();
+        let lang = self.ui_lang();
         ui.horizontal(|ui| {
             ui.heading(l.help_panel_title);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -139,18 +140,45 @@ impl AiraDesktopApp {
                 }
             });
         });
+        ui.small(l.help_offline_note);
         ui.separator();
         ui.horizontal(|ui| {
-            ui.strong(l.help_topic_label);
-            ui.monospace(self.help_topic.as_str());
+            ui.label(l.help_search);
+            ui.add(
+                egui::TextEdit::singleline(&mut self.help_search)
+                    .desired_width(180.0)
+                    .hint_text(l.help_search),
+            );
         });
-        ui.label(l.help_placeholder);
+        let hits = crate::help::search_help_ids(lang, &self.help_search);
+        ui.strong(l.help_topics);
+        ui.horizontal_wrapped(|ui| {
+            for id in &hits {
+                let selected = self.help_topic == *id;
+                if ui.selectable_label(selected, id.as_str()).clicked() {
+                    self.help_topic = *id;
+                }
+            }
+        });
+        if hits.is_empty() {
+            ui.label(l.help_placeholder);
+            return;
+        }
+        if !hits.contains(&self.help_topic) {
+            self.help_topic = hits[0];
+        }
         ui.separator();
-        ui.small(format!(
-            "catalog:{} · section:{}",
-            HelpId::catalog().len(),
-            self.help_topic_for_tab().as_str()
-        ));
+        let article = crate::help::load_article(lang, self.help_topic);
+        ui.heading(&article.title);
+        ui.horizontal(|ui| {
+            ui.strong(l.help_topic_label);
+            ui.monospace(article.id.as_str());
+        });
+        ui.separator();
+        let body = crate::help::render_markdown_plain(article.markdown);
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            ui.label(body);
+        });
     }
 
     fn ui_mesh_status(&self, ui: &mut egui::Ui) {

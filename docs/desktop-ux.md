@@ -38,7 +38,7 @@
 
 **Довідка · F1** — постійно доступна команда оболонки (не вкладка). Розташування не змінюється між розділами.
 
-Оболонка O4 (`#259` **DONE** @ [`AIRA-RFC-0150`](../specs/rfc/AIRA-RFC-0150-shell-ia-help-f1.md)): три розділи + **Довідка · F1** у chrome; Esc закриває лише довідку. Тіла екранів глибшають у `#260`–`#262`; офлайн-статті — `#263`/`#264`. Історичний E1 layout **Work / Node / Network / Settings** більше не є primary nav.
+Оболонка O4 (`#259` **DONE** @ [`AIRA-RFC-0150`](../specs/rfc/AIRA-RFC-0150-shell-ia-help-f1.md)): три розділи + **Довідка · F1** у chrome; Esc закриває лише довідку. Тіла екранів — `#260`–`#262`. Офлайн-shell F1 — `#263` **DONE** @ [`AIRA-RFC-0154`](../specs/rfc/AIRA-RFC-0154-offline-f1-shell.md); поглиблення статей + link check — `#264`. Історичний E1 layout **Work / Node / Network / Settings** більше не є primary nav.
 
 ### 2.2. Рядок стану (усі основні екрани)
 
@@ -126,9 +126,10 @@ GUI-state зберігає лише вкладку/фокус/чернетку/�
 - Формат теми: **Що це? Що зробити? Що має відбутися? Що робити, якщо не вдалося?**
 - Спільний словник з `Labels`: `код → повідомлення → help_id`.
 - Відкриття Help не очищає чернетку, не змінює налаштування, не скасовує завдання.
-- Джерела (ціль): `docs/help/{uk,en}/`, вбудовані у збірку; мінімальний Markdown renderer без remote HTML/скриптів.
+- Джерела: `docs/help/{uk,en}/`, вбудовані у збірку (`include_str!`); мінімальний plain Markdown renderer без remote HTML/скриптів (**DONE** @ RFC-0154 / `#263`).
+- Пошук за id/title/body; контекст: `last_problem.help_id` → default розділу.
 
-Початковий каталог ID (реалізація в O8–O9): `start`, `work.submit`, `work.result`, `work.waiting`, `model.select`, `model.unavailable`, `network.connect`, `network.reachability`, `network.trust`, `settings.apply`, `node.lifecycle`.
+Початковий каталог ID (shell `#263`; seed/link-check `#264`): `start`, `work.submit`, `work.result`, `work.waiting`, `model.select`, `model.unavailable`, `network.connect`, `network.reachability`, `network.trust`, `settings.apply`, `node.lifecycle`.
 
 ## 8. Network profiles (E1–E4, без змін семантики)
 
