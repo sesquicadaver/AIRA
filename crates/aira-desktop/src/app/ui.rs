@@ -4,6 +4,9 @@ use super::{AiraDesktopApp, MainTab};
 
 impl eframe::App for AiraDesktopApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Data refresh is independent of this repaint timer (`#257`).
+        self.pump_async_jobs(ctx);
+
         let l = self.labels();
         egui::TopBottomPanel::top("tabs").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -20,7 +23,7 @@ impl eframe::App for AiraDesktopApp {
                 ui.label(l.subtitle);
                 ui.separator();
                 match self.tab {
-                    MainTab::Work => self.ui_work(ui),
+                    MainTab::Work => self.ui_work(ui, ctx),
                     MainTab::Node => self.ui_node(ui, ctx),
                     MainTab::Network => self.ui_network(ui, ctx),
                     MainTab::Settings => self.ui_settings(ui, ctx),
@@ -32,7 +35,8 @@ impl eframe::App for AiraDesktopApp {
             });
         });
 
-        ctx.request_repaint_after(std::time::Duration::from_secs(2));
+        // Repaint schedule only — does not load status/mesh by itself.
+        ctx.request_repaint_after(crate::async_jobs::STATUS_REFRESH_INTERVAL);
     }
 }
 
@@ -126,7 +130,7 @@ impl AiraDesktopApp {
         });
     }
 
-    fn ui_work(&mut self, ui: &mut egui::Ui) {
+    fn ui_work(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let l = self.labels();
         ui.heading(l.work_heading);
         ui.label(l.work_hint);
@@ -135,8 +139,14 @@ impl AiraDesktopApp {
                 .desired_rows(4)
                 .desired_width(f32::INFINITY),
         );
-        if ui.button(l.work_submit).clicked() {
-            self.submit_work();
+        let submitting = self.async_jobs.work_inflight();
+        ui.add_enabled_ui(!submitting, |ui| {
+            if ui.button(l.work_submit).clicked() {
+                self.submit_work(ctx);
+            }
+        });
+        if submitting {
+            ui.label(l.work_submitting);
         }
         ui.label(l.work_not_llm);
         if let Some(view) = &self.work_result {
@@ -235,9 +245,7 @@ impl AiraDesktopApp {
                 }
             }
             if ui.button(l.refresh).clicked() {
-                if let Err(e) = self.refresh_status() {
-                    self.last_error = Some(format!("{e:#}"));
-                }
+                self.request_status_refresh(ctx);
                 self.refresh_federation_detail();
             }
             if ui.button(l.quit).clicked() {

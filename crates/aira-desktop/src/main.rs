@@ -4,6 +4,7 @@
 
 mod actions;
 mod app;
+mod async_jobs;
 mod camera;
 mod work_view;
 

@@ -1,6 +1,6 @@
 # AIRA Desktop GUI (QUEUE #78 / #85)
 
-**Status:** Phase E **DONE**. Phase G G4: peer lifecycle CI stable (`#131`–`#132`); invite QR camera (`#133`). UX: Work tab + uk/en chrome; `open_ui_on_start` cannot lock out Settings. **Phase O** target IA (Work / System status / Settings + Help·F1): [`desktop-ux.md`](desktop-ux.md) + [`phase-o-plan.md`](phase-o-plan.md) (`#255`–`#256` DONE @ RFC-0147; first OPEN `#257`). Mesh banner: UNKNOWN/LOCAL ONLY ≠ OFFLINE; AddressBook ≠ live sessions.
+**Status:** Phase E **DONE**. Phase G G4: peer lifecycle CI stable (`#131`–`#132`); invite QR camera (`#133`). UX: Work tab + uk/en chrome; `open_ui_on_start` cannot lock out Settings. **Phase O** target IA (Work / System status / Settings + Help·F1): [`desktop-ux.md`](desktop-ux.md) + [`phase-o-plan.md`](phase-o-plan.md) (`#255`–`#257` DONE @ RFC-0147/0148; first OPEN `#258`). Mesh banner: UNKNOWN/LOCAL ONLY ≠ OFFLINE; AddressBook ≠ live sessions.
 
 **Binary:** `aira-desktop`  
 **CLI:** `aira desktop gui`  
@@ -11,7 +11,7 @@
 | Control | Behavior |
 |---------|----------|
 | Tabs | **Work** / **Node** / **Network** / **Settings** (default: Work) |
-| Work | submit problem text → local `POST /v1/problems` (same path as `aira problem submit`); **Answer** = `result.result` plus `status` / `verification_status`; identifiers and full VRA JSON are collapsed Details |
+| Work | submit problem text → local `POST /v1/problems` (background thread; `#257`) (same path as `aira problem submit`); **Answer** = `result.result` plus `status` / `verification_status`; identifiers and full VRA JSON are collapsed Details |
 | Language | Українська / English; sidecar `ui-prefs.json` next to settings (not settings schema) |
 | Status | lifecycle label + pid/listen/instance |
 | Peer status | P1/P2 supervised `peer listen` pid/addr; P2 dht+apply-book; P3 relay+TTL; P4 gossip in Advanced |
