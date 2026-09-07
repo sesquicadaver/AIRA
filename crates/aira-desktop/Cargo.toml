@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "AIRA Desktop GUI (Developer Preview) — Work / Node / Network / Settings"
+description = "AIRA Desktop GUI (Developer Preview) — Work / System / Settings + Help·F1"
 
 [[bin]]
 name = "aira-desktop"

@@ -1,5 +1,7 @@
 use aira_desktop_runtime::{NetworkProfile, UiLang, DEFAULT_RELAY_TTL_DAYS};
 
+use crate::lexicon::HelpId;
+
 use super::{AiraDesktopApp, MainTab};
 
 impl eframe::App for AiraDesktopApp {
@@ -7,15 +9,46 @@ impl eframe::App for AiraDesktopApp {
         // Data refresh is independent of this repaint timer (`#257`).
         self.pump_async_jobs(ctx);
 
+        let mut open_help = false;
+        let mut close_help = false;
+        ctx.input(|i| {
+            if i.key_pressed(egui::Key::F1) {
+                open_help = true;
+            }
+            if i.key_pressed(egui::Key::Escape) {
+                close_help = true;
+            }
+        });
+        if open_help {
+            self.open_help_contextual();
+        } else if close_help && self.help_open {
+            // Esc closes Help only — never cancels in-flight work (`#259`).
+            self.close_help();
+        }
+
         let l = self.labels();
-        egui::TopBottomPanel::top("tabs").show(ctx, |ui| {
+        egui::TopBottomPanel::top("shell-chrome").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.selectable_value(&mut self.tab, MainTab::Work, l.tab_work);
-                ui.selectable_value(&mut self.tab, MainTab::Node, l.tab_node);
-                ui.selectable_value(&mut self.tab, MainTab::Network, l.tab_network);
+                ui.selectable_value(&mut self.tab, MainTab::System, l.tab_system);
                 ui.selectable_value(&mut self.tab, MainTab::Settings, l.tab_settings);
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button(l.help_f1).clicked() {
+                        self.open_help_contextual();
+                    }
+                });
             });
+            ui.separator();
+            self.ui_status_strip(ui);
         });
+
+        if self.help_open {
+            egui::SidePanel::right("help-panel")
+                .default_width(320.0)
+                .show(ctx, |ui| {
+                    self.ui_help_panel(ui);
+                });
+        }
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
@@ -24,10 +57,10 @@ impl eframe::App for AiraDesktopApp {
                 ui.separator();
                 match self.tab {
                     MainTab::Work => self.ui_work(ui, ctx),
-                    MainTab::Node => self.ui_node(ui, ctx),
-                    MainTab::Network => self.ui_network(ui, ctx),
+                    MainTab::System => self.ui_system(ui, ctx),
                     MainTab::Settings => self.ui_settings(ui, ctx),
                 }
+                let mut open_problem_help: Option<HelpId> = None;
                 if let Some(problem) = &self.last_problem {
                     ui.separator();
                     ui.colored_label(egui::Color32::from_rgb(200, 60, 60), &problem.message);
@@ -45,6 +78,9 @@ impl eframe::App for AiraDesktopApp {
                     }
                     // Keep action catalog reachable for F1 wiring (#263).
                     let _ = crate::lexicon::ActionId::catalog().len();
+                    if ui.small_button(l.help_open_topic).clicked() {
+                        open_problem_help = Some(problem.help_id);
+                    }
                     if let Some(detail) = &problem.detail {
                         egui::CollapsingHeader::new(l.work_details)
                             .id_source("problem-detail")
@@ -53,6 +89,9 @@ impl eframe::App for AiraDesktopApp {
                                 ui.monospace(detail);
                             });
                     }
+                }
+                if let Some(topic) = open_problem_help {
+                    self.open_help(topic);
                 }
             });
         });
@@ -63,6 +102,57 @@ impl eframe::App for AiraDesktopApp {
 }
 
 impl AiraDesktopApp {
+    /// Compact status strip on every main screen (`desktop-ux` §2.2 / `#259`).
+    fn ui_status_strip(&self, ui: &mut egui::Ui) {
+        let l = self.labels();
+        let work = if self.async_jobs.work_inflight() {
+            l.strip_work_busy
+        } else if self.last_problem.is_some() {
+            l.strip_work_action
+        } else {
+            l.strip_work_ready
+        };
+        let model = l.strip_model_unknown;
+        let network = match self.mesh_snapshot.top_level.as_str() {
+            "DIRECT" | "RELAYED" => l.strip_net_connected,
+            "OUTBOUND ONLY" | "LOCAL ONLY" => l.strip_net_local,
+            "UNKNOWN" => l.strip_net_unknown,
+            _ => l.strip_net_offline,
+        };
+        ui.horizontal(|ui| {
+            ui.small(format!("{} {}", l.strip_work, work));
+            ui.separator();
+            ui.small(format!("{} {}", l.strip_model, model));
+            ui.separator();
+            ui.small(format!("{} {}", l.strip_network, network));
+        });
+    }
+
+    /// Placeholder Help panel — Markdown topics land in `#263`/`#264`.
+    fn ui_help_panel(&mut self, ui: &mut egui::Ui) {
+        let l = self.labels();
+        ui.horizontal(|ui| {
+            ui.heading(l.help_panel_title);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.button(l.help_close).clicked() {
+                    self.close_help();
+                }
+            });
+        });
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.strong(l.help_topic_label);
+            ui.monospace(self.help_topic.as_str());
+        });
+        ui.label(l.help_placeholder);
+        ui.separator();
+        ui.small(format!(
+            "catalog:{} · section:{}",
+            HelpId::catalog().len(),
+            self.help_topic_for_tab().as_str()
+        ));
+    }
+
     fn ui_mesh_status(&self, ui: &mut egui::Ui) {
         let l = self.labels();
         let snap = &self.mesh_snapshot;
@@ -239,8 +329,16 @@ impl AiraDesktopApp {
         }
     }
 
-    fn ui_node(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+    /// System section: lifecycle + mesh/network (deeper IA in `#261`).
+    fn ui_system(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+        self.ui_lifecycle(ui, ctx);
+        ui.separator();
+        self.ui_network(ui, ctx);
+    }
+
+    fn ui_lifecycle(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let l = self.labels();
+        ui.heading(l.system_heading);
         ui.horizontal(|ui| {
             ui.strong(l.status);
             ui.label(&self.status_label);

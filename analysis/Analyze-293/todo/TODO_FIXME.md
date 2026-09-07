@@ -1,5 +1,5 @@
 # TODO_FIXME — Analyze-293
 
-- [x] lexicon module + UiProblem wiring
-- [x] RFC-0149 + QUEUE `#258` DONE
-- [ ] `#259` Shell IA (next OPEN)
+- [x] `#258` Action/error/help IDs
+- [x] `#259` Shell IA (closed by Analyze-294)
+- [ ] `#260` Work screen (next OPEN)
