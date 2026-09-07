@@ -42,6 +42,10 @@ pub struct PeerPidRecordView {
     pub instance_id: String,
     pub root: String,
     pub listen: String,
+    /// Profile recorded when the peer was spawned (`#268` applied confirmation).
+    pub network_profile: NetworkProfile,
+    /// P3 relay TTL at spawn, when applicable.
+    pub relay_ttl_days: Option<u32>,
 }
 
 /// Ensure peer is running when `network_profile` requires peer listen (P1–P4); no-op on P0.
@@ -178,6 +182,8 @@ pub(crate) fn peer_status(
         instance_id: rec.instance_id.clone(),
         root: rec.root.clone(),
         listen: rec.listen.clone(),
+        network_profile: rec.network_profile,
+        relay_ttl_days: rec.relay_ttl_days,
     };
     if !pid_alive(rec.pid) {
         clear_peer_runtime_files(paths);

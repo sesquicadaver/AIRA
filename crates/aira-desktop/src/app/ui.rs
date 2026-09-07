@@ -789,6 +789,12 @@ impl AiraDesktopApp {
         ui.heading(l.settings_heading);
         let phase = self.settings_apply_phase();
         match phase {
+            crate::settings_apply::SettingsApplyPhase::Undefined => {
+                ui.colored_label(
+                    egui::Color32::from_rgb(120, 120, 120),
+                    l.settings_phase_undefined,
+                );
+            }
             crate::settings_apply::SettingsApplyPhase::Applied => {
                 ui.colored_label(
                     egui::Color32::from_rgb(40, 140, 70),
@@ -852,7 +858,11 @@ impl AiraDesktopApp {
         ui.separator();
         ui.strong(l.settings_group_connection);
         let saved_profile = format!("{:?}", self.settings.network_profile);
-        let applied_profile = format!("{:?}", self.applied_runtime.network_profile);
+        let applied_profile = self
+            .applied_runtime
+            .as_ref()
+            .map(|a| format!("{:?}", a.network_profile))
+            .unwrap_or_else(|| l.settings_applied_undefined.to_string());
         ui.horizontal(|ui| {
             ui.strong(l.settings_saved);
             ui.label(&saved_profile);
@@ -868,9 +878,9 @@ impl AiraDesktopApp {
             .unwrap_or(l.peer_off_p0);
         let applied_listen = self
             .applied_runtime
-            .peer_listen
-            .as_deref()
-            .unwrap_or(l.peer_off_p0);
+            .as_ref()
+            .map(|a| a.peer_listen.as_deref().unwrap_or(l.peer_off_p0))
+            .unwrap_or(l.settings_applied_undefined);
         ui.horizontal(|ui| {
             ui.label(l.peer_listen);
             ui.strong(l.settings_saved);
@@ -891,7 +901,10 @@ impl AiraDesktopApp {
         });
         ui.horizontal(|ui| {
             ui.strong(l.settings_applied);
-            ui.label(format!("HTTP {}", self.applied_runtime.http_listen));
+            ui.label(match self.applied_runtime.as_ref() {
+                Some(a) => format!("HTTP {}", a.http_listen),
+                None => l.settings_applied_undefined.to_string(),
+            });
         });
         ui.label(format!("instance: {}", self.settings.instance_id));
     }

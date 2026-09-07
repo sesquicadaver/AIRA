@@ -205,6 +205,8 @@ pub fn status(paths: &DesktopPaths) -> Result<(LifecycleStatus, Option<PidRecord
         listen: rec.listen.clone(),
         peer_pid: peer.as_ref().map(|p| p.pid),
         peer_listen: peer.as_ref().map(|p| p.listen.clone()),
+        peer_network_profile: peer.as_ref().map(|p| p.network_profile),
+        peer_relay_ttl_days: peer.as_ref().and_then(|p| p.relay_ttl_days),
     };
 
     if !pid_alive(rec.pid) {
@@ -226,6 +228,9 @@ pub struct PidRecordView {
     pub listen: String,
     pub peer_pid: Option<u32>,
     pub peer_listen: Option<String>,
+    /// Confirmed peer profile from peer pid record (`#268`).
+    pub peer_network_profile: Option<crate::settings::NetworkProfile>,
+    pub peer_relay_ttl_days: Option<u32>,
 }
 
 fn try_attach(paths: &DesktopPaths, settings: &DesktopSettings) -> Result<Option<StartOutcome>> {

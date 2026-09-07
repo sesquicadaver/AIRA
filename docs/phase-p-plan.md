@@ -1,6 +1,6 @@
 # Phase P — Runtime-honest Desktop (post-O)
 
-**Статус:** складено 2026-09-07; **IN PROGRESS** — QUEUE `#266`–`#267` **DONE** @ RFC-0157; first OPEN `#268`.  
+**Статус:** складено 2026-09-07; **IN PROGRESS** — QUEUE `#266`–`#268` **DONE** @ RFC-0158; first OPEN `#269`.  
 **Джерела:** post-O audit `aira-current.md` @ `700ffd5` (2026-09-07); Phase O [`phase-o-plan.md`](phase-o-plan.md) **DONE** @ RFC-0146; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase P `#266`–`#274`.  
 **Closure:** consolidating **RFC-0156** (id **confirmed free** at `#266`; file-free until `#274`).  
@@ -73,7 +73,7 @@ P0 Wiring
 |----|---------|------|-----------|------------------|
 | `#266` | P0 | Phase P wiring | **DONE**: цей план IN PROGRESS; QUEUE `#266`–`#274`; `phase_p_doc`; `desktop-ux` tip; RFC-0156 reserved file-free | freshness (#267) |
 | `#267` | P1 | Snapshot freshness | **DONE** @ RFC-0157: `DataQuality::Stale`; measurement≠load; bind≠listener proof | applied (#268) |
-| `#268` | P1 | Applied from runtime | applied values from confirmed runtime/attach; Undefined when unconfirmed; reopen/submit-start sync; tests + RFC-D | model (#269) |
+| `#268` | P1 | Applied from runtime | **DONE** @ RFC-0158: confirmed runtime/attach; Undefined when unconfirmed; status sync | model (#269) |
 | `#269` | P1 | Model triple UX | selected / ready / used-in-result separate; strip+System; Settings not placeholder-as-done; tests + RFC-D | reachability (#270) |
 | `#270` | P1 | Reachability endpoint bind | attestation binds endpoint+direction; CLI transcript-alone ≠ verified; tests + RFC-D | EVM honesty (#271) |
 | `#271` | P1 | EVM/JSON-RPC honesty | https config path for declared Amoy/mainnet; Mock HTTP ≠ ledger claim; docs PARTIAL; tests + RFC-D | lifecycle (#272) |
@@ -84,8 +84,8 @@ P0 Wiring
 ```text
 #266 P0 wiring DONE
   → #267 P1 freshness DONE @ RFC-0157
-    → #268 P1 applied-runtime OPEN
-      → #269 P1 model triple
+    → #268 P1 applied-runtime DONE @ RFC-0158
+      → #269 P1 model triple OPEN
         → #270 P1 reachability endpoint
           → #271 P1 EVM honesty
             → #272 P2 lifecycle jobs
@@ -112,12 +112,12 @@ aira-core still has no ledger/GUI deps.
 ## 7. RFC
 
 - Consolidating (`#274`): **AIRA-RFC-0156** — id **confirmed free** at `#266` (file-free until close).
-- Per-atom RFC-D: `#267`→**0157** (DONE) … `#273`→0163 (assigned at each atom PR).
+- Per-atom RFC-D: `#267`→**0157**, `#268`→**0158** (DONE) … `#273`→0163 (assigned at each atom PR).
 
 ## 8. Activation rule
 
 ```text
 QUEUE O closed @ RFC-0146 + developer «скласти Phase P» 2026-09-07
   → цей план активовано атомом `#266`.
-`#266`–`#267` DONE @ RFC-0157; first OPEN `#268`.
+`#266`–`#268` DONE @ RFC-0158; first OPEN `#269`.
 ```
