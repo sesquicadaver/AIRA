@@ -158,6 +158,17 @@ pub struct Labels {
     pub find_to: &'static str,
     pub discv_find: &'static str,
     pub settings_heading: &'static str,
+    pub settings_phase_applied: &'static str,
+    pub settings_phase_restart: &'static str,
+    pub settings_group_general: &'static str,
+    pub settings_group_models: &'static str,
+    pub settings_group_connection: &'static str,
+    pub settings_group_advanced: &'static str,
+    pub settings_models_placeholder: &'static str,
+    pub settings_saved: &'static str,
+    pub settings_applied: &'static str,
+    pub settings_close_not_stop: &'static str,
+    pub settings_restart_action: &'static str,
     pub language: &'static str,
     pub lang_uk: &'static str,
     pub lang_en: &'static str,
@@ -317,6 +328,17 @@ static EN: Labels = Labels {
     find_to: "seed to:",
     discv_find: "discv FIND",
     settings_heading: "Settings",
+    settings_phase_applied: "Saved values are applied.",
+    settings_phase_restart: "Saved on disk — restart needed (Stop, then Start) to apply network/listen.",
+    settings_group_general: "General",
+    settings_group_models: "Models",
+    settings_group_connection: "Connection",
+    settings_group_advanced: "Advanced",
+    settings_models_placeholder: "Model inventory is not edited here. Missing a model does not block built-in calculation.",
+    settings_saved: "Saved:",
+    settings_applied: "Applied:",
+    settings_close_not_stop: "Closing this window does not stop AIRA. Use Stop on System → Program.",
+    settings_restart_action: "To apply: open System → Program, Stop, then Start.",
     language: "Language",
     lang_uk: "Українська",
     lang_en: "English",
@@ -467,6 +489,17 @@ static UK: Labels = Labels {
     find_to: "seed to:",
     discv_find: "discv FIND",
     settings_heading: "Параметри",
+    settings_phase_applied: "Збережені значення застосовано.",
+    settings_phase_restart: "Збережено на диск — потрібен перезапуск (Стоп, потім Старт), щоб застосувати мережу/listen.",
+    settings_group_general: "Загальні",
+    settings_group_models: "Моделі",
+    settings_group_connection: "З’єднання",
+    settings_group_advanced: "Додатково",
+    settings_models_placeholder: "Інвентар моделей тут не редагується. Відсутність моделі не блокує вбудовані обчислення.",
+    settings_saved: "Збережено:",
+    settings_applied: "Застосовано:",
+    settings_close_not_stop: "Закриття вікна не зупиняє AIRA. Використовуйте Стоп у «Стан системи → Програма».",
+    settings_restart_action: "Щоб застосувати: «Стан системи → Програма» — Стоп, потім Старт.",
     language: "Мова",
     lang_uk: "Українська",
     lang_en: "English",
@@ -563,5 +596,12 @@ mod tests {
         assert!(Labels::get(UiLang::Uk)
             .sys_conn_unknown
             .contains("не те саме, що офлайн"));
+        assert!(Labels::get(UiLang::En)
+            .settings_phase_restart
+            .contains("restart needed"));
+        assert!(Labels::get(UiLang::Uk)
+            .settings_close_not_stop
+            .contains("не зупиняє"));
+        assert_eq!(Labels::get(UiLang::Uk).settings_group_general, "Загальні");
     }
 }

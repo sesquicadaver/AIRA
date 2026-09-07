@@ -1,6 +1,6 @@
 # AIRA Desktop GUI (QUEUE #78 / #85)
 
-**Status:** Phase E **DONE**. Phase G G4: peer lifecycle CI stable (`#131`–`#132`); invite QR camera (`#133`). UX: Work / System / Settings + Help·F1 chrome (`#259` @ RFC-0150); uk/en; `open_ui_on_start` cannot lock out Settings. Canon: [`desktop-ux.md`](desktop-ux.md) + [`phase-o-plan.md`](phase-o-plan.md) (`#255`–`#261` DONE @ RFC-0147…0152; first OPEN `#262`). Mesh banner: UNKNOWN/LOCAL ONLY ≠ OFFLINE; AddressBook ≠ live sessions.
+**Status:** Phase E **DONE**. Phase G G4: peer lifecycle CI stable (`#131`–`#132`); invite QR camera (`#133`). UX: Work / System / Settings + Help·F1 chrome (`#259` @ RFC-0150); uk/en; `open_ui_on_start` cannot lock out Settings. Canon: [`desktop-ux.md`](desktop-ux.md) + [`phase-o-plan.md`](phase-o-plan.md) (`#255`–`#262` DONE @ RFC-0147…0153; first OPEN `#263`). Mesh banner: UNKNOWN/LOCAL ONLY ≠ OFFLINE; AddressBook ≠ live sessions.
 
 **Binary:** `aira-desktop`  
 **CLI:** `aira desktop gui`  

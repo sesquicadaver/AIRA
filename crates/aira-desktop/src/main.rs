@@ -7,6 +7,7 @@ mod app;
 mod async_jobs;
 mod camera;
 mod lexicon;
+mod settings_apply;
 mod system_view;
 mod work_view;
 
