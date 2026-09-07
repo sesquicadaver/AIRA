@@ -474,7 +474,7 @@ Plan: [`phase-n-plan.md`](phase-n-plan.md). Consolidating RFC: `AIRA-RFC-0123` (
 
 **Phase P `#266`–`#274` DONE** @ RFC-0156; QUEUE P closed (living smoke `phase_p_doc.rs`):
 
-## Phase P gates (**IN PROGRESS**; RFC-0156 at `#274`)
+## Phase P gates (**DONE** @ RFC-0156; QUEUE P closed)
 
 | ID | Scope | Evidence | Status |
 |----|-------|----------|--------|
