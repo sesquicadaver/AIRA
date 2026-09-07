@@ -10,9 +10,9 @@ impl AiraDesktopApp {
                     "STUN reflexive {} via {}",
                     out.reflexive_addr, out.stun_server
                 ));
-                self.last_error = None;
+                self.clear_problem();
             }
-            Err(e) => self.last_error = Some(format!("{e:#}")),
+            Err(e) => self.set_problem(crate::lexicon::ErrorCode::Generic, format!("{e:#}")),
         }
     }
 
@@ -24,9 +24,9 @@ impl AiraDesktopApp {
         ) {
             Ok(msg) => {
                 self.discovery_msg = Some(msg);
-                self.last_error = None;
+                self.clear_problem();
             }
-            Err(e) => self.last_error = Some(format!("{e:#}")),
+            Err(e) => self.set_problem(crate::lexicon::ErrorCode::Generic, format!("{e:#}")),
         }
     }
 
@@ -45,9 +45,9 @@ impl AiraDesktopApp {
                         .map(|(id, addr)| format!(" exact {id} @ {addr}"))
                         .unwrap_or_default()
                 ));
-                self.last_error = None;
+                self.clear_problem();
             }
-            Err(e) => self.last_error = Some(format!("{e:#}")),
+            Err(e) => self.set_problem(crate::lexicon::ErrorCode::Generic, format!("{e:#}")),
         }
     }
 }

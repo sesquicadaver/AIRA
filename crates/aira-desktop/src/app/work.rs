@@ -1,14 +1,23 @@
 use super::AiraDesktopApp;
+use crate::lexicon::{work_submit_gate, ErrorCode, UiProblem};
 
 impl AiraDesktopApp {
     /// Queue a background submit (`#257`). Does not block the egui thread.
     pub(super) fn submit_work(&mut self, ctx: &egui::Context) {
-        if self.async_jobs.work_inflight() {
+        let gate = work_submit_gate(self.async_jobs.work_inflight());
+        if !gate.available {
+            if let Some(code) = gate.reason {
+                self.last_problem = Some(UiProblem::new(code, self.ui_lang(), None));
+            }
             return;
         }
         let text = self.problem_text.clone();
         if text.trim().is_empty() {
-            self.last_error = Some("problem text must be non-empty".into());
+            self.last_problem = Some(UiProblem::new(
+                ErrorCode::WorkEmptyText,
+                self.ui_lang(),
+                None,
+            ));
             return;
         }
         let ensure_started = !self.node_running;
@@ -22,8 +31,13 @@ impl AiraDesktopApp {
             move || ctx.request_repaint(),
         );
         if !started {
+            self.last_problem = Some(UiProblem::new(
+                ErrorCode::WorkSubmitInFlight,
+                self.ui_lang(),
+                None,
+            ));
             return;
         }
-        self.last_error = None;
+        self.clear_problem();
     }
 }

@@ -28,9 +28,31 @@ impl eframe::App for AiraDesktopApp {
                     MainTab::Network => self.ui_network(ui, ctx),
                     MainTab::Settings => self.ui_settings(ui, ctx),
                 }
-                if let Some(err) = &self.last_error {
+                if let Some(problem) = &self.last_problem {
                     ui.separator();
-                    ui.colored_label(egui::Color32::from_rgb(200, 60, 60), err);
+                    ui.colored_label(egui::Color32::from_rgb(200, 60, 60), &problem.message);
+                    ui.small(format!(
+                        "{} · help:{}",
+                        problem.code.as_str(),
+                        problem.help_id.as_str()
+                    ));
+                    if let Some(action) = problem.corrective {
+                        ui.small(format!(
+                            "try:{} · help:{}",
+                            action.as_str(),
+                            action.help_id().as_str()
+                        ));
+                    }
+                    // Keep action catalog reachable for F1 wiring (#263).
+                    let _ = crate::lexicon::ActionId::catalog().len();
+                    if let Some(detail) = &problem.detail {
+                        egui::CollapsingHeader::new(l.work_details)
+                            .id_source("problem-detail")
+                            .default_open(false)
+                            .show(ui, |ui| {
+                                ui.monospace(detail);
+                            });
+                    }
                 }
             });
         });
@@ -236,12 +258,12 @@ impl AiraDesktopApp {
         ui.horizontal(|ui| {
             if ui.button(l.start).clicked() {
                 if let Err(e) = self.do_start() {
-                    self.last_error = Some(format!("{e:#}"));
+                    self.set_problem(crate::lexicon::ErrorCode::NodeStartFailed, format!("{e:#}"));
                 }
             }
             if ui.button(l.stop).clicked() {
                 if let Err(e) = self.do_stop() {
-                    self.last_error = Some(format!("{e:#}"));
+                    self.set_problem(crate::lexicon::ErrorCode::NodeStopFailed, format!("{e:#}"));
                 }
             }
             if ui.button(l.refresh).clicked() {
@@ -440,7 +462,10 @@ impl AiraDesktopApp {
         ui.label(format!("instance: {}", self.settings.instance_id));
         if dirty {
             if let Err(e) = self.persist_settings() {
-                self.last_error = Some(format!("{e:#}"));
+                self.set_problem(
+                    crate::lexicon::ErrorCode::SettingsPersistFailed,
+                    format!("{e:#}"),
+                );
             }
         }
     }

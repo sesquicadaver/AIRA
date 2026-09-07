@@ -37,10 +37,10 @@ impl AiraDesktopApp {
                             out.membership.federation_id, out.membership.identity_ref
                         )
                     });
-                    self.last_error = None;
+                    self.clear_problem();
                     self.refresh_federation_detail();
                 }
-                Err(e) => self.last_error = Some(format!("{e:#}")),
+                Err(e) => self.set_problem(crate::lexicon::ErrorCode::Generic, format!("{e:#}")),
             }
         }
     }

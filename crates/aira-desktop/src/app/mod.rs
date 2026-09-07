@@ -20,6 +20,7 @@ use aira_desktop_runtime::{
 use crate::actions;
 use crate::async_jobs::{AsyncDesktopJobs, StatusSnapshot};
 use crate::camera;
+use crate::lexicon::{ErrorCode, UiProblem};
 
 use self::i18n::Labels;
 
@@ -54,7 +55,7 @@ pub struct AiraDesktopApp {
     pub(super) discv_addr_edit: String,
     pub(super) find_key_edit: String,
     pub(super) find_to_edit: String,
-    pub(super) last_error: Option<String>,
+    pub(super) last_problem: Option<UiProblem>,
     pub(super) qr_texture: Option<egui::TextureHandle>,
     pub(super) qr_camera: Option<camera::InviteQrCamera>,
     pub(super) qr_camera_status: Option<String>,
@@ -70,18 +71,26 @@ impl AiraDesktopApp {
         auto_start: bool,
     ) -> Self {
         i18n::install_cyrillic_font(&cc.egui_ctx);
-        let mut last_error = None;
+        let mut last_problem = None;
         let settings = match load_or_create_settings(&paths) {
             Ok(s) => s,
             Err(e) => {
-                last_error = Some(format!("{e:#}"));
+                last_problem = Some(UiProblem::from_code_err(
+                    ErrorCode::Generic,
+                    UiLang::En,
+                    format!("{e:#}"),
+                ));
                 DesktopSettings::default_p0(&paths)
             }
         };
         let ui_prefs = match load_or_create_ui_prefs(&paths) {
             Ok(p) => p,
             Err(e) => {
-                last_error = Some(format!("ui prefs: {e:#}"));
+                last_problem = Some(UiProblem::from_code_err(
+                    ErrorCode::Generic,
+                    UiLang::En,
+                    format!("ui prefs: {e:#}"),
+                ));
                 UiPrefs::new(UiLang::En)
             }
         };
@@ -116,7 +125,7 @@ impl AiraDesktopApp {
             discv_addr_edit: String::new(),
             find_key_edit: String::new(),
             find_to_edit: String::new(),
-            last_error,
+            last_problem,
             qr_texture: None,
             qr_camera: None,
             qr_camera_status: None,
@@ -130,11 +139,11 @@ impl AiraDesktopApp {
         app.refresh_federation_detail();
         if auto_start {
             if let Err(e) = app.do_start() {
-                app.last_error = Some(format!("{e:#}"));
+                app.set_problem(ErrorCode::NodeStartFailed, format!("{e:#}"));
             }
         }
         if let Err(e) = sync_autostart_from_settings(app.settings.autostart_on_login) {
-            app.last_error = Some(format!("autostart sync: {e:#}"));
+            app.set_problem(ErrorCode::AutostartSyncFailed, format!("{e:#}"));
         }
         app
     }
@@ -153,7 +162,7 @@ impl AiraDesktopApp {
         }
         self.ui_prefs.ui_lang = lang;
         if let Err(e) = write_ui_prefs(&self.paths, &self.ui_prefs) {
-            self.last_error = Some(format!("{e:#}"));
+            self.set_problem(ErrorCode::SettingsPersistFailed, format!("{e:#}"));
             return;
         }
         ctx.send_viewport_cmd(egui::ViewportCommand::Title(
@@ -225,11 +234,13 @@ impl AiraDesktopApp {
             match outcome {
                 Ok(view) => {
                     self.work_result = Some(view);
-                    self.last_error = None;
+                    self.clear_problem();
                     // Lifecycle may have changed if submit started the node.
                     self.request_status_refresh(ctx);
                 }
-                Err(e) => self.last_error = Some(e),
+                Err(e) => {
+                    self.last_problem = Some(UiProblem::from_submit_err(&e, self.ui_lang()));
+                }
             }
         }
         if let Some(outcome) = self.async_jobs.poll_refresh() {
@@ -237,7 +248,7 @@ impl AiraDesktopApp {
                 Ok(snap) => {
                     self.apply_status_snapshot(snap);
                 }
-                Err(e) => self.last_error = Some(format!("status refresh: {e}")),
+                Err(e) => self.set_problem(ErrorCode::StatusRefreshFailed, e),
             }
         }
         let ctx2 = ctx.clone();
@@ -257,9 +268,17 @@ impl AiraDesktopApp {
             Ok(snap) => self.mesh_snapshot = snap,
             Err(e) => {
                 self.mesh_snapshot = NetworkMeshSnapshot::unavailable();
-                self.last_error = Some(format!("mesh snapshot: {e:#}"));
+                self.set_problem(ErrorCode::MeshSnapshotFailed, format!("{e:#}"));
             }
         }
+    }
+
+    pub(super) fn clear_problem(&mut self) {
+        self.last_problem = None;
+    }
+
+    pub(super) fn set_problem(&mut self, code: ErrorCode, detail: impl ToString) {
+        self.last_problem = Some(UiProblem::from_code_err(code, self.ui_lang(), detail));
     }
 
     pub(super) fn do_start(&mut self) -> anyhow::Result<()> {
@@ -287,7 +306,7 @@ impl AiraDesktopApp {
             _ => l.peer_off_p0.into(),
         };
         self.restart_hint = false;
-        self.last_error = None;
+        self.clear_problem();
         self.refresh_mesh_snapshot();
         Ok(())
     }
@@ -298,7 +317,7 @@ impl AiraDesktopApp {
         self.status_label = labels::status_label(st, self.ui_lang()).to_string();
         self.detail.clear();
         self.peer_detail.clear();
-        self.last_error = None;
+        self.clear_problem();
         self.refresh_mesh_snapshot();
         Ok(())
     }
@@ -306,7 +325,7 @@ impl AiraDesktopApp {
     pub(super) fn persist_settings(&mut self) -> anyhow::Result<()> {
         actions::persist_settings(&self.paths, &self.settings)?;
         sync_autostart_from_settings(self.settings.autostart_on_login)?;
-        self.last_error = None;
+        self.clear_problem();
         Ok(())
     }
 }
