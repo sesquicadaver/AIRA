@@ -58,6 +58,8 @@
 
 ## 3. Робота (цільовий контракт)
 
+O5 (`#260` **DONE** @ [`AIRA-RFC-0151`](../specs/rfc/AIRA-RFC-0151-work-screen-provenance.md)): user-language chrome, Ctrl+Enter / ⌘+Enter, draft retention, Origin/provenance line.
+
 - Заголовок орієнтир: **«Що потрібно зробити?»**; кнопка **«Виконати»**.
 - Enter = новий рядок; Ctrl+Enter (macOS: Cmd+Enter) = виконати, якщо дія доступна.
 - Чернетка не губиться при зміні розділу, F1, помилці валідації чи невдалій відправці.

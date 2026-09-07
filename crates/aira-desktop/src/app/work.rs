@@ -3,6 +3,9 @@ use crate::lexicon::{work_submit_gate, ErrorCode, UiProblem};
 
 impl AiraDesktopApp {
     /// Queue a background submit (`#257`). Does not block the egui thread.
+    ///
+    /// The draft (`problem_text`) is **not** cleared on validation errors, Help,
+    /// section switches, or failed runs (`#260`).
     pub(super) fn submit_work(&mut self, ctx: &egui::Context) {
         let gate = work_submit_gate(self.async_jobs.work_inflight());
         if !gate.available {

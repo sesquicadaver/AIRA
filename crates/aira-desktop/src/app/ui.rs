@@ -246,21 +246,48 @@ impl AiraDesktopApp {
         let l = self.labels();
         ui.heading(l.work_heading);
         ui.label(l.work_hint);
+        ui.small(l.work_shortcut_hint);
         ui.add(
             egui::TextEdit::multiline(&mut self.problem_text)
                 .desired_rows(4)
                 .desired_width(f32::INFINITY),
         );
+
+        // Ctrl+Enter / ⌘+Enter — Enter alone stays newline (`#260`).
+        let shortcut_run = ui.input_mut(|i| {
+            i.consume_shortcut(&egui::KeyboardShortcut::new(
+                egui::Modifiers::COMMAND,
+                egui::Key::Enter,
+            )) || i.consume_shortcut(&egui::KeyboardShortcut::new(
+                egui::Modifiers::CTRL,
+                egui::Key::Enter,
+            ))
+        });
+
         let submitting = self.async_jobs.work_inflight();
+        let mut do_submit = false;
         ui.add_enabled_ui(!submitting, |ui| {
             if ui.button(l.work_submit).clicked() {
-                self.submit_work(ctx);
+                do_submit = true;
             }
         });
+        if !submitting && shortcut_run {
+            do_submit = true;
+        }
+        if do_submit {
+            // Draft (`problem_text`) is never cleared here — only cloned for submit.
+            self.submit_work(ctx);
+        }
         if submitting {
             ui.label(l.work_submitting);
         }
-        ui.label(l.work_not_llm);
+        ui.label(l.work_user_note);
+        egui::CollapsingHeader::new(l.work_how_it_works)
+            .id_source("work-tech-note")
+            .default_open(false)
+            .show(ui, |ui| {
+                ui.label(l.work_tech_details);
+            });
         if let Some(view) = &self.work_result {
             ui.separator();
             ui.strong(l.work_answer);
@@ -270,9 +297,18 @@ impl AiraDesktopApp {
                 view.answer.as_str()
             };
             ui.heading(answer);
+            let status_human = if view.status.eq_ignore_ascii_case("completed") {
+                l.work_status_completed
+            } else if view.status.eq_ignore_ascii_case("executed") {
+                l.work_status_executed
+            } else if view.status.eq_ignore_ascii_case("needs_human_collapse") {
+                l.work_status_needs_human
+            } else {
+                view.status.as_str()
+            };
             ui.horizontal(|ui| {
-                ui.strong(l.status);
-                ui.label(&view.status);
+                ui.strong(l.work_run_status);
+                ui.label(status_human);
             });
             if let Some(vs) = &view.verification_status {
                 ui.horizontal(|ui| {
@@ -285,6 +321,10 @@ impl AiraDesktopApp {
                     ui.colored_label(color, vs);
                 });
             }
+            ui.horizontal(|ui| {
+                ui.strong(l.work_provenance);
+                ui.label(self.work_provenance_label(view.provenance));
+            });
             let has_ids = view.problem_id.is_some()
                 || view.verified_artifact_id.is_some()
                 || view.execution_artifact_id.is_some()
@@ -326,6 +366,17 @@ impl AiraDesktopApp {
                 .show(ui, |ui| {
                     ui.monospace(&view.details_json);
                 });
+        }
+    }
+
+    fn work_provenance_label(&self, kind: crate::work_view::ProvenanceKind) -> &'static str {
+        let l = self.labels();
+        match kind {
+            crate::work_view::ProvenanceKind::VerifiedLocalCompute => l.work_prov_verified,
+            crate::work_view::ProvenanceKind::MockGenerate => l.work_prov_mock,
+            crate::work_view::ProvenanceKind::LocalGenerateExecuted => l.work_prov_generate,
+            crate::work_view::ProvenanceKind::ModelUndefined => l.work_prov_model_unknown,
+            crate::work_view::ProvenanceKind::NeedsAttention => l.work_prov_attention,
         }
     }
 
