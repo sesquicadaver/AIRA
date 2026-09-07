@@ -44,6 +44,10 @@ pub struct AuthenticatedPeer {
     pub local_id: AiraRef,
     /// Noise XX handshake hash (first 32 bytes) for reachability session bind (`#250`).
     pub(crate) noise_handshake_hash: [u8; 32],
+    /// Dial vs accept — required for reachability endpoint bind (`#270`).
+    pub(crate) session_direction: crate::reachability::SessionDirection,
+    /// Socket endpoint bound into reachability proof (`#270`): peer addr on dial, local addr on accept.
+    pub(crate) bound_endpoint: String,
 }
 
 impl AuthenticatedPeer {
@@ -52,9 +56,19 @@ impl AuthenticatedPeer {
         hex::encode(self.noise_handshake_hash)
     }
 
-    /// Canonical reachability session transcript for a challenge (`#250`).
+    /// Socket endpoint used for reachability endpoint bind (`#270`).
+    pub fn bound_endpoint(&self) -> &str {
+        &self.bound_endpoint
+    }
+
+    /// Whether this session was accepted (inbound) or dialed (outbound).
+    pub fn session_direction(&self) -> crate::reachability::SessionDirection {
+        self.session_direction
+    }
+
+    /// Canonical reachability session transcript for a challenge (`#250`/`#270`).
     ///
-    /// Both ends of the same Noise session produce the same value.
+    /// Both ends of the same Noise session produce the same value (endpoint + INBOUND property).
     pub fn reachability_session_transcript(
         &self,
         challenge: &crate::reachability::ReachabilityChallenge,
@@ -64,6 +78,22 @@ impl AuthenticatedPeer {
             self.local_id.as_str(),
             self.peer_id.as_str(),
             &self.noise_handshake_hash_hex(),
+            &challenge.endpoint,
+            crate::reachability::SessionDirection::Inbound,
+        )
+    }
+
+    /// Export signed local evidence for applying DIRECT (`#270`).
+    ///
+    /// Only inbound (accept) sessions may export evidence used by
+    /// [`crate::ReachabilityLocalState::apply_successful_probe`].
+    pub fn export_reachability_evidence(
+        &self,
+        challenge: &crate::reachability::ReachabilityChallenge,
+        created_at: impl Into<String>,
+    ) -> Result<crate::reachability::ReachabilityLocalEvidence, PeerError> {
+        crate::reachability::ReachabilityLocalEvidence::export_from_session(
+            challenge, self, created_at,
         )
     }
 
@@ -200,6 +230,7 @@ async fn finish_initiator(
     stream: TcpStream,
     local_root: PathBuf,
     hello: crate::handshake::HelloResult,
+    bound_endpoint: String,
 ) -> Result<AuthenticatedPeer, PeerError> {
     let static_priv = load_or_create_noise_static(&local_root)?;
     let mut stream = stream;
@@ -214,6 +245,8 @@ async fn finish_initiator(
         peer_id: hello.peer_id,
         local_id,
         noise_handshake_hash,
+        session_direction: crate::reachability::SessionDirection::Outbound,
+        bound_endpoint,
     })
 }
 
@@ -221,6 +254,7 @@ async fn finish_responder(
     stream: TcpStream,
     local_root: PathBuf,
     hello: crate::handshake::HelloResult,
+    bound_endpoint: String,
 ) -> Result<AuthenticatedPeer, PeerError> {
     let static_priv = load_or_create_noise_static(&local_root)?;
     let mut stream = stream;
@@ -235,6 +269,8 @@ async fn finish_responder(
         peer_id: hello.peer_id,
         local_id,
         noise_handshake_hash,
+        session_direction: crate::reachability::SessionDirection::Inbound,
+        bound_endpoint,
     })
 }
 
@@ -261,13 +297,14 @@ pub async fn dial(
     let book = AddressBook::load(&local_root)?;
     let addr = book.resolve(peer_identity_id)?;
     crate::prime_port::validate_aira_port(addr.port())?;
+    let bound_endpoint = crate::reachability::format_socket_endpoint(addr);
     let mut stream =
         with_timeout(async { TcpStream::connect(addr).await.map_err(PeerError::from) }).await?;
     let hello = with_timeout(handshake_as_initiator(&mut stream, &local_root)).await?;
     if hello.peer_id.as_str() != peer_identity_id {
         return Err(PeerError::IdentityMismatch);
     }
-    with_timeout(finish_initiator(stream, local_root, hello)).await
+    with_timeout(finish_initiator(stream, local_root, hello, bound_endpoint)).await
 }
 
 /// Accept the next TCP connection only (no hello / Noise).
@@ -289,8 +326,10 @@ pub async fn complete_accept(
 ) -> Result<AuthenticatedPeer, PeerError> {
     let local_root = local_root.as_ref().to_path_buf();
     let mut stream = stream;
+    let local_addr = stream.local_addr().map_err(PeerError::from)?;
+    let bound_endpoint = crate::reachability::format_socket_endpoint(local_addr);
     let hello = with_timeout(handshake_as_responder(&mut stream, &local_root)).await?;
-    with_timeout(finish_responder(stream, local_root, hello)).await
+    with_timeout(finish_responder(stream, local_root, hello, bound_endpoint)).await
 }
 
 /// Accept one inbound connection and complete hello + Noise XX.

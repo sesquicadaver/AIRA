@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::PeerError;
 use crate::presence::PresenceReachability;
 use crate::prime_port::{is_valid_aira_port, parse_bind_port, validate_aira_bind};
-use crate::reachability::ReachabilityResult;
+use crate::reachability::{ReachabilityLocalEvidence, ReachabilityResult};
 
 /// Schema tag for local reachability state file.
 pub const REACHABILITY_STATE_SCHEMA: &str = "aira:peer:reachability-state:0.1";
@@ -207,14 +207,15 @@ impl ReachabilityLocalState {
 
     /// Apply a verified successful peer-assisted probe → DIRECT_REACHABLE.
     ///
-    /// `local_session_transcript_hex` must come from the target's inbound
-    /// `AuthenticatedPeer::reachability_session_transcript` (`#250`).
+    /// `evidence` must be signed inbound local evidence from the target's accept
+    /// session bound to the challenge endpoint (`#250`/`#270`). A bare CLI
+    /// transcript string is not accepted.
     pub fn apply_successful_probe(
         &mut self,
         result: &ReachabilityResult,
-        local_session_transcript_hex: &str,
+        evidence: &ReachabilityLocalEvidence,
     ) -> Result<(), PeerError> {
-        result.verify_with_local_session(local_session_transcript_hex, None)?;
+        result.verify_with_local_evidence(evidence, None)?;
         if !result.attestation.success {
             return Err(PeerError::Reachability(
                 "cannot apply unsuccessful probe as DIRECT".into(),
@@ -364,17 +365,18 @@ mod tests {
         .unwrap()
         .sign_for_node_root(target.path())
         .unwrap();
-        let local_tx = target_session.reachability_session_transcript(&ch).unwrap();
+        let evidence = target_session
+            .export_reachability_evidence(&ch, "2026-09-05T12:30:00Z")
+            .unwrap();
         let att = ReachabilityAttestation::issue_for_authenticated_session(
             &ch,
             &probe_session,
-            endpoint,
             "2026-09-05T12:30:00Z",
         )
         .unwrap();
         let result = ReachabilityResult::new(ch, att);
         let mut st = ReachabilityLocalState::default();
-        st.apply_successful_probe(&result, &local_tx).unwrap();
+        st.apply_successful_probe(&result, &evidence).unwrap();
         assert_eq!(st.status, ReachabilityStatus::DirectReachable);
         assert!(st.status.may_advertise_direct());
         assert_eq!(st.to_presence_hint(), PresenceReachability::Direct);
@@ -383,8 +385,10 @@ mod tests {
         assert_eq!(loaded.status, ReachabilityStatus::DirectReachable);
         assert!(ReachabilityLocalState::path(root.path()).is_file());
 
-        // no-connect / wrong transcript cannot set DIRECT
-        assert!(st.apply_successful_probe(&result, "sha256:00").is_err());
+        // forged / transcript-alone style evidence cannot set DIRECT
+        let mut forged = evidence.clone();
+        forged.session_transcript_hex = "sha256:00".into();
+        assert!(st.apply_successful_probe(&result, &forged).is_err());
     }
 
     #[test]
