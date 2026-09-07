@@ -31,6 +31,8 @@ pub struct WorkResultView {
     pub verification_status: Option<String>,
     /// Honest origin label for the result (`#260`).
     pub provenance: ProvenanceKind,
+    /// Model identity used in this result only (`#269`) — never copied from selected.
+    pub used_model: Option<String>,
     pub problem_id: Option<String>,
     pub verified_artifact_id: Option<String>,
     pub execution_artifact_id: Option<String>,
@@ -67,17 +69,37 @@ pub fn format_work_result(v: &Value) -> WorkResultView {
     let verification_status = verification_status_of(v);
     let answer = extract_answer(v).map(summarize_value).unwrap_or_default();
     let provenance = classify_provenance(v, &status, verification_status.as_deref(), &answer);
+    let used_model = extract_used_model(v, provenance);
     let details_json = serde_json::to_string_pretty(v).unwrap_or_else(|_| v.to_string());
     WorkResultView {
         answer,
         status,
         verification_status,
         provenance,
+        used_model,
         problem_id,
         verified_artifact_id,
         execution_artifact_id,
         field_artifact_id,
         details_json,
+    }
+}
+
+/// Model identity from this execution payload only (`#269`).
+fn extract_used_model(v: &Value, provenance: ProvenanceKind) -> Option<String> {
+    let result = v.get("result")?;
+    if let Some(m) = opt_str(result, "model_ref").or_else(|| opt_str(result, "model_artifact_ref"))
+    {
+        return Some(m);
+    }
+    if let Some(b) = opt_str(result, "backend") {
+        // Mock / named backend is what ran for this result — not the selected activate pointer.
+        return Some(format!("backend:{b}"));
+    }
+    match provenance {
+        ProvenanceKind::VerifiedLocalCompute => Some("execution-basic".into()),
+        ProvenanceKind::MockGenerate => Some("backend:mock".into()),
+        _ => None,
     }
 }
 

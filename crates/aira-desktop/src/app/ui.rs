@@ -112,7 +112,6 @@ impl AiraDesktopApp {
         } else {
             l.strip_work_ready
         };
-        let model = l.strip_model_unknown;
         let quality = self.system_snapshot.network_quality;
         let network = match quality {
             aira_desktop_runtime::DataQuality::Stale => l.strip_net_stale,
@@ -127,6 +126,15 @@ impl AiraDesktopApp {
                 }
             }
         };
+        let model =
+            match aira_desktop_runtime::ModelTripleConclusion::from_triple(&self.model_triple) {
+                aira_desktop_runtime::ModelTripleConclusion::NoneSelected => l.strip_model_none,
+                aira_desktop_runtime::ModelTripleConclusion::SelectedNotReady => {
+                    l.strip_model_not_ready
+                }
+                aira_desktop_runtime::ModelTripleConclusion::Ready => l.strip_model_ready,
+                aira_desktop_runtime::ModelTripleConclusion::UsedInResult => l.strip_model_used,
+            };
         ui.horizontal(|ui| {
             ui.small(format!("{} {}", l.strip_work, work));
             ui.separator();
@@ -446,8 +454,11 @@ impl AiraDesktopApp {
     fn ui_system(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let l = self.labels();
         ui.heading(l.system_heading);
-        let view =
-            crate::system_view::SystemStatusView::from_parts(self.lifecycle, &self.system_snapshot);
+        let view = crate::system_view::SystemStatusView::from_parts(
+            self.lifecycle,
+            &self.system_snapshot,
+            &self.model_triple,
+        );
 
         self.ui_sys_program(ui, ctx, &view);
         ui.separator();
@@ -535,13 +546,30 @@ impl AiraDesktopApp {
     fn ui_sys_model(&self, ui: &mut egui::Ui, view: &crate::system_view::SystemStatusView) {
         let l = self.labels();
         ui.strong(l.sys_model);
-        let _ = view.model;
-        ui.label(l.sys_model_not_checked);
+        ui.horizontal(|ui| {
+            ui.label(l.sys_model_selected);
+            ui.monospace(view.model.selected.as_display());
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.sys_model_ready);
+            ui.label(if view.model.ready {
+                l.mesh_yes
+            } else {
+                l.mesh_no
+            });
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.sys_model_used);
+            ui.monospace(view.model.used.as_display());
+        });
+        ui.small(l.sys_model_triple_hint);
         egui::CollapsingHeader::new(l.sys_tech_details)
             .id_source("sys-model-tech")
             .default_open(false)
             .show(ui, |ui| {
                 ui.label(l.not_llm);
+                ui.label(format!("ready_detail: {}", view.model.ready_detail));
+                ui.label(format!("summary: {}", view.model.summary.as_str()));
             });
     }
 
@@ -847,12 +875,29 @@ impl AiraDesktopApp {
 
         ui.separator();
         ui.strong(l.settings_group_models);
-        ui.label(l.settings_models_placeholder);
+        ui.horizontal(|ui| {
+            ui.label(l.sys_model_selected);
+            ui.monospace(self.model_triple.selected.as_display());
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.sys_model_ready);
+            ui.label(if self.model_triple.ready {
+                l.mesh_yes
+            } else {
+                l.mesh_no
+            });
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.sys_model_used);
+            ui.monospace(self.model_triple.used.as_display());
+        });
+        ui.small(l.settings_models_observe_only);
         egui::CollapsingHeader::new(l.sys_tech_details)
             .id_source("settings-models-tech")
             .default_open(false)
             .show(ui, |ui| {
                 ui.label(l.not_llm);
+                ui.label(format!("ready_detail: {}", self.model_triple.ready_detail));
             });
 
         ui.separator();

@@ -13,6 +13,7 @@ mod health;
 mod invite;
 mod invite_qr;
 mod launcher;
+mod model_status;
 mod network_mesh;
 mod node_http;
 mod paths;
@@ -53,6 +54,7 @@ pub use launcher::{
     validate_gui_desktop_file, AIRA_DESKTOP_ENTRY, AIRA_DESKTOP_FILENAME, AIRA_GUI_DESKTOP_ENTRY,
     AIRA_GUI_DESKTOP_FILENAME,
 };
+pub use model_status::{load_model_triple, ModelFact, ModelTripleConclusion, ModelTripleSnapshot};
 pub use network_mesh::{
     classify_network_quality, load_network_mesh_snapshot, load_system_snapshot, DataQuality,
     LocalBindProvenance, MeshTopLevel, NetworkMeshSnapshot, SystemSnapshot,
