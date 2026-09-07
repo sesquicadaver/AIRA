@@ -6,6 +6,7 @@ mod actions;
 mod app;
 mod async_jobs;
 mod camera;
+mod help;
 mod lexicon;
 mod settings_apply;
 mod system_view;

@@ -76,10 +76,12 @@ pub struct AiraDesktopApp {
     /// Runtime-applied network/listen subset (`#262`); differs from disk → Restart needed.
     pub(super) applied_runtime: crate::settings_apply::AppliedRuntimeSettings,
     pub(super) async_jobs: AsyncDesktopJobs,
-    /// Side help panel open (`#259` chrome; topics filled in `#263`).
+    /// Side help panel open (`#259` chrome; offline articles `#263`).
     pub(super) help_open: bool,
     /// Active help topic key for the panel.
     pub(super) help_topic: HelpId,
+    /// Offline Help search query (`#263`).
+    pub(super) help_search: String,
 }
 
 impl AiraDesktopApp {
@@ -157,6 +159,7 @@ impl AiraDesktopApp {
             async_jobs: AsyncDesktopJobs::new(),
             help_open: false,
             help_topic: HelpId::Start,
+            help_search: String::new(),
         };
         cc.egui_ctx.send_viewport_cmd(egui::ViewportCommand::Title(
             Labels::get(app.ui_lang()).window_title.to_string(),
