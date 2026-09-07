@@ -17,6 +17,7 @@
 //! QUEUE #237: publish/query product layer (TTL/sequence) + rendezvous.json.
 //! QUEUE #248: live EVM JSON-RPC publish/query (`use_local_double=false`).
 //! QUEUE #238: peer-assisted Reachability Probe (no hairpin proof).
+//! QUEUE #270: reachability endpoint+direction bind; CLI evidence ≠ bare transcript.
 //! QUEUE #239: Reachability states + peers/reachability.json.
 //! QUEUE #240: Presence → AddressBook promotion (trust-gated).
 //! QUEUE #241: Relay integration (direct→NAT→relay; prime ads; dual reservation).
@@ -131,10 +132,11 @@ pub use prime_port::{
     P_AIRA_RANGE_MIN,
 };
 pub use reachability::{
-    session_transcript_hex, ChallengeDraft, ReachabilityAttestation, ReachabilityChallenge,
-    ReachabilityReplayLog, ReachabilityResult, REACHABILITY_ATTESTATION_SCHEMA,
-    REACHABILITY_CHALLENGE_SCHEMA, REACHABILITY_REPLAY_CAP, REACHABILITY_RESULT_SCHEMA,
-    REACHABILITY_SESSION_DOMAIN,
+    endpoints_equivalent, format_socket_endpoint, session_transcript_hex, ChallengeDraft,
+    ReachabilityAttestation, ReachabilityChallenge, ReachabilityLocalEvidence,
+    ReachabilityReplayLog, ReachabilityResult, SessionDirection, REACHABILITY_ATTESTATION_SCHEMA,
+    REACHABILITY_CHALLENGE_SCHEMA, REACHABILITY_LOCAL_EVIDENCE_SCHEMA, REACHABILITY_REPLAY_CAP,
+    REACHABILITY_RESULT_SCHEMA, REACHABILITY_SESSION_DOMAIN,
 };
 pub use reachability_state::{
     ReachabilityLocalState, ReachabilityStatus, RelayRouteRecord, REACHABILITY_STATE_SCHEMA,

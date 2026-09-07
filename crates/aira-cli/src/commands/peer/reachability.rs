@@ -1,4 +1,4 @@
-//! Phase N `#243` / N-fix `#250`: `aira peer reachability …`
+//! Phase N `#243` / N-fix `#250` / Phase P `#270`: `aira peer reachability …`
 
 use std::fs;
 use std::net::TcpListener;
@@ -43,6 +43,7 @@ pub(super) async fn run(root: &Path, command: PeerReachabilityCommands) -> Resul
             host,
             port,
             result_json,
+            session_evidence,
             session_transcript,
             mark_direct_failed,
             outbound_ok,
@@ -52,29 +53,40 @@ pub(super) async fn run(root: &Path, command: PeerReachabilityCommands) -> Resul
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
             let now = aira_peer::presence_now().map_err(|e| anyhow::anyhow!("{e}"))?;
 
+            if session_transcript.is_some() {
+                bail!(
+                    "--session-transcript alone is not local verification (#270);                      export ReachabilityLocalEvidence from an inbound session and pass                      --session-evidence <file> with --result-json"
+                );
+            }
+
             if let Some(path) = result_json {
-                let transcript = session_transcript.ok_or_else(|| {
+                let evidence_path = session_evidence.ok_or_else(|| {
                     anyhow::anyhow!(
-                        "--session-transcript required with --result-json (inbound Noise bind #250)"
+                        "--session-evidence required with --result-json (endpoint+direction bind #270)"
                     )
                 })?;
                 let raw = fs::read_to_string(&path)
                     .with_context(|| format!("read result_json {path}"))?;
                 let result: aira_peer::ReachabilityResult =
                     serde_json::from_str(&raw).context("parse ReachabilityResult JSON")?;
-                st.apply_successful_probe(&result, &transcript)
+                let ev_raw = fs::read_to_string(&evidence_path)
+                    .with_context(|| format!("read session_evidence {evidence_path}"))?;
+                let evidence: aira_peer::ReachabilityLocalEvidence = serde_json::from_str(&ev_raw)
+                    .context("parse ReachabilityLocalEvidence JSON")?;
+                st.apply_successful_probe(&result, &evidence)
                     .map_err(|e| anyhow::anyhow!("{e}"))?;
                 st.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
                 println!("status {:?}", st.status);
                 println!("applied_probe {}", path);
+                println!("session_evidence {}", evidence_path);
                 println!(
                     "reachability {}",
                     aira_peer::ReachabilityLocalState::path(root).display()
                 );
                 return Ok(ExitCode::SUCCESS);
             }
-            if session_transcript.is_some() {
-                bail!("--session-transcript requires --result-json");
+            if session_evidence.is_some() {
+                bail!("--session-evidence requires --result-json");
             }
 
             if mark_direct_failed {

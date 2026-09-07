@@ -194,7 +194,11 @@ Network tab mesh banner + Identity / preferred port / bind / external / reachabi
 
 ## Phase N-fix reachability session bind (`#250`)
 
-Successful attestation binds Noise handshake hash + session transcript; `apply_successful_probe` requires matching local inbound transcript; CLI `--session-transcript` (RFC-0142). Signed claim without connect ≠ `DIRECT_REACHABLE`.
+Successful attestation binds Noise handshake hash + session transcript; `apply_successful_probe` requires matching local inbound transcript; CLI historically `--session-transcript` (RFC-0142). Signed claim without connect ≠ `DIRECT_REACHABLE`.
+
+## Phase P reachability endpoint bind (`#270`)
+
+Transcript domain v2 binds **endpoint + INBOUND** proof direction; probe must be OUTBOUND on that socket; apply uses signed `ReachabilityLocalEvidence` / CLI `--session-evidence` (RFC-0160). Bare `--session-transcript` is rejected.
 
 ## Phase N-fix expiry before promote (`#251`)
 

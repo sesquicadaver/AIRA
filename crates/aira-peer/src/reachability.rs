@@ -1,11 +1,15 @@
-//! Peer-assisted Reachability Probe (QUEUE #238 / Phase N; session bind `#250`).
+//! Peer-assisted Reachability Probe (QUEUE #238 / Phase N; session bind `#250`;
+//! endpoint+direction bind `#270`).
 //!
 //! Signed challenge + external probe attestation. Hairpin/self-connect
 //! (`probe_identity == target_identity`) is never proof. Successful DIRECT
-//! proof requires an authenticated inbound Noise session transcript (`#250`).
+//! proof requires an authenticated inbound Noise session transcript bound to
+//! the challenge endpoint and INBOUND direction (`#250`/`#270`). CLI must
+//! supply signed [`ReachabilityLocalEvidence`], not a bare transcript string.
 //! State persistence: [`crate::reachability_state`].
 
 use std::collections::HashSet;
+use std::net::SocketAddr;
 use std::path::Path;
 
 use aira_object::{
@@ -22,8 +26,47 @@ use crate::error::PeerError;
 use crate::prime_port::validate_aira_bind;
 use crate::session::AuthenticatedPeer;
 
-/// Domain for reachability session transcript (`#250`).
-pub const REACHABILITY_SESSION_DOMAIN: &str = "aira:reachability:session:v1";
+/// Domain for reachability session transcript (`#250`/`#270` endpoint+direction).
+pub const REACHABILITY_SESSION_DOMAIN: &str = "aira:reachability:session:v2";
+
+/// Schema for signed local inbound evidence (`#270`).
+pub const REACHABILITY_LOCAL_EVIDENCE_SCHEMA: &str = "aira:peer:reachability-local-evidence:0.1";
+
+/// Dial vs accept direction for reachability bind (`#270`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SessionDirection {
+    /// Accepted connection (target side for DIRECT proof).
+    Inbound,
+    /// Dialed connection (probe side).
+    Outbound,
+}
+
+impl SessionDirection {
+    /// Wire / transcript token.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Inbound => "INBOUND",
+            Self::Outbound => "OUTBOUND",
+        }
+    }
+}
+
+/// Format a socket address for reachability endpoint comparison (`#270`).
+pub fn format_socket_endpoint(addr: SocketAddr) -> String {
+    match addr {
+        SocketAddr::V4(v4) => format!("{}:{}", v4.ip(), v4.port()),
+        SocketAddr::V6(v6) => format!("[{}]:{}", v6.ip(), v6.port()),
+    }
+}
+
+/// True when two bind strings refer to the same socket address.
+pub fn endpoints_equivalent(a: &str, b: &str) -> bool {
+    match (a.parse::<SocketAddr>(), b.parse::<SocketAddr>()) {
+        (Ok(sa), Ok(sb)) => sa == sb,
+        _ => a.trim() == b.trim(),
+    }
+}
 
 /// Challenge schema `$id`.
 pub const REACHABILITY_CHALLENGE_SCHEMA: &str = "aira:schema:peer:reachability-challenge:0.1";
@@ -79,12 +122,18 @@ pub struct ReachabilityAttestation {
     pub signature: Signature,
 }
 
-/// Compute canonical session transcript for challenge + Noise handshake hash.
+/// Compute canonical session transcript for challenge + Noise + endpoint bind (`#270`).
+///
+/// `proof_direction` is the property being proven (DIRECT ⇒ [`SessionDirection::Inbound`]).
+/// Both ends of the same Noise session produce the same value when using the challenge
+/// endpoint and INBOUND proof direction.
 pub fn session_transcript_hex(
     challenge: &ReachabilityChallenge,
     local_identity: &str,
     peer_identity: &str,
     noise_handshake_hash_hex: &str,
+    endpoint: &str,
+    proof_direction: SessionDirection,
 ) -> Result<String, PeerError> {
     let (target, probe) = if local_identity == challenge.target_identity_ref {
         (local_identity, peer_identity)
@@ -106,13 +155,138 @@ pub fn session_transcript_hex(
             "noise_handshake_hash_hex must be 64 hex chars".into(),
         ));
     }
+    validate_aira_bind(endpoint)?;
+    if !endpoints_equivalent(endpoint, &challenge.endpoint) {
+        return Err(PeerError::Reachability(
+            "session transcript endpoint does not match challenge endpoint (#270)".into(),
+        ));
+    }
+    let dir = proof_direction.as_str();
     let preimage = format!(
-        "{REACHABILITY_SESSION_DOMAIN}|{}|{}|{target}|{probe}|{hs}",
+        "{REACHABILITY_SESSION_DOMAIN}|{}|{}|{target}|{probe}|{endpoint}|{dir}|{hs}",
         challenge.challenge_id, challenge.nonce_hex
     );
     Ok(ContentHash::sha256_bytes(preimage.as_bytes())
         .as_str()
         .to_string())
+}
+
+/// Signed local record that an inbound session hit the challenge endpoint (`#270`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReachabilityLocalEvidence {
+    pub schema: String,
+    pub challenge_id: String,
+    pub nonce_hex: String,
+    pub endpoint: String,
+    pub direction: SessionDirection,
+    pub noise_handshake_hash_hex: String,
+    pub session_transcript_hex: String,
+    pub created_at: String,
+    pub signature: Signature,
+}
+
+impl ReachabilityLocalEvidence {
+    /// Build and sign evidence from a live session (target accept path).
+    pub fn export_from_session(
+        challenge: &ReachabilityChallenge,
+        session: &AuthenticatedPeer,
+        created_at: impl Into<String>,
+    ) -> Result<Self, PeerError> {
+        challenge.verify_canonical_signature()?;
+        if session.session_direction() != SessionDirection::Inbound {
+            return Err(PeerError::Reachability(
+                "local evidence requires INBOUND (accept) session (#270)".into(),
+            ));
+        }
+        if session.local_id.as_str() != challenge.target_identity_ref {
+            return Err(PeerError::Reachability(
+                "local evidence must be exported by challenge target (#270)".into(),
+            ));
+        }
+        if !endpoints_equivalent(session.bound_endpoint(), &challenge.endpoint) {
+            return Err(PeerError::Reachability(
+                "session bound_endpoint does not match challenge endpoint (#270)".into(),
+            ));
+        }
+        let created_at = created_at.into();
+        Timestamp::parse(&created_at).map_err(|e| PeerError::Protocol(e.to_string()))?;
+        let transcript = session.reachability_session_transcript(challenge)?;
+        let (local_id, ring) = Keyring::load_node_identity(session.local_root())?;
+        if local_id.as_str() != challenge.target_identity_ref {
+            return Err(PeerError::IdentityMismatch);
+        }
+        let mut ev = Self {
+            schema: REACHABILITY_LOCAL_EVIDENCE_SCHEMA.into(),
+            challenge_id: challenge.challenge_id.clone(),
+            nonce_hex: challenge.nonce_hex.clone(),
+            endpoint: challenge.endpoint.clone(),
+            direction: SessionDirection::Inbound,
+            noise_handshake_hash_hex: session.noise_handshake_hash_hex(),
+            session_transcript_hex: transcript,
+            created_at,
+            signature: Signature {
+                algorithm: "ed25519".into(),
+                key_ref: local_id.clone(),
+                signature_value: String::new(),
+            },
+        };
+        ev.validate_shape()?;
+        let value = serde_json::to_value(&ev)?;
+        let msg = descriptor_signing_message(&value)?;
+        ev.signature = ring.sign(&local_id, &msg)?;
+        Ok(ev)
+    }
+
+    /// Structural checks (no crypto).
+    pub fn validate_shape(&self) -> Result<(), PeerError> {
+        if self.schema != REACHABILITY_LOCAL_EVIDENCE_SCHEMA {
+            return Err(PeerError::Reachability(format!(
+                "local evidence schema mismatch: {}",
+                self.schema
+            )));
+        }
+        if self.direction != SessionDirection::Inbound {
+            return Err(PeerError::Reachability(
+                "local evidence direction must be INBOUND (#270)".into(),
+            ));
+        }
+        validate_aira_bind(&self.endpoint)?;
+        Timestamp::parse(&self.created_at).map_err(|e| PeerError::Protocol(e.to_string()))?;
+        let hs = self.noise_handshake_hash_hex.trim();
+        if hs.len() != 64 || !hs.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(PeerError::Reachability(
+                "local evidence noise_handshake_hash_hex must be 64 hex chars".into(),
+            ));
+        }
+        if self.session_transcript_hex.trim().is_empty() {
+            return Err(PeerError::Reachability(
+                "local evidence session_transcript_hex empty".into(),
+            ));
+        }
+        if self.signature.key_ref.as_str().is_empty() {
+            return Err(PeerError::IdentityMismatch);
+        }
+        Ok(())
+    }
+
+    /// Verify target signature on evidence.
+    pub fn verify_canonical_signature(
+        &self,
+        target_identity_ref: &str,
+        target_public_key: &str,
+    ) -> Result<(), PeerError> {
+        self.validate_shape()?;
+        if self.signature.key_ref.as_str() != target_identity_ref {
+            return Err(PeerError::IdentityMismatch);
+        }
+        let value = serde_json::to_value(self)?;
+        verify_with_embedded_key(
+            target_identity_ref,
+            target_public_key,
+            &self.signature,
+            &value,
+        )
+    }
 }
 
 /// Combined challenge + external attestation (verified as a unit).
@@ -327,14 +501,14 @@ impl ReachabilityAttestation {
         )
     }
 
-    /// Issue successful attestation bound to an authenticated peer session (`#250`).
+    /// Issue successful attestation bound to an authenticated outbound probe session
+    /// (`#250`/`#270`).
     ///
-    /// `session` must be the probe's dial (or the target's accept) for the
-    /// challenge endpoint; transcript is derived from the Noise handshake hash.
+    /// `observed_endpoint` is taken from the session's dialed socket (not caller-supplied).
+    /// Session must be OUTBOUND and bound to the challenge endpoint.
     pub fn issue_for_authenticated_session(
         challenge: &ReachabilityChallenge,
         session: &AuthenticatedPeer,
-        observed_endpoint: impl Into<String>,
         probed_at: impl Into<String>,
     ) -> Result<Self, PeerError> {
         let probe_root = session.local_root();
@@ -347,6 +521,16 @@ impl ReachabilityAttestation {
         if probe_id.as_str() == challenge.target_identity_ref {
             return Err(PeerError::Reachability(
                 "hairpin forbidden: probe_identity must differ from target_identity".into(),
+            ));
+        }
+        if session.session_direction() != SessionDirection::Outbound {
+            return Err(PeerError::Reachability(
+                "successful attestation requires OUTBOUND (dial) session (#270)".into(),
+            ));
+        }
+        if !endpoints_equivalent(session.bound_endpoint(), &challenge.endpoint) {
+            return Err(PeerError::Reachability(
+                "session bound_endpoint does not match challenge endpoint (#270)".into(),
             ));
         }
         if session.peer_id.as_str() != challenge.target_identity_ref
@@ -372,7 +556,7 @@ impl ReachabilityAttestation {
         Self::issue_inner(
             challenge,
             probe_root,
-            observed_endpoint,
+            challenge.endpoint.clone(),
             probed_at,
             true,
             hs_hex,
@@ -525,16 +709,19 @@ impl ReachabilityResult {
                 "attestation success=false is not a proof".into(),
             ));
         }
-        // #250: recompute session transcript from claimed Noise hash + challenge binding.
+        // #250/#270: recompute transcript (endpoint + INBOUND proof direction).
         let expected = session_transcript_hex(
             &self.challenge,
             self.challenge.target_identity_ref.as_str(),
             self.attestation.probe_identity_ref.as_str(),
             &self.attestation.noise_handshake_hash_hex,
+            &self.challenge.endpoint,
+            SessionDirection::Inbound,
         )?;
         if expected != self.attestation.session_transcript_hex {
             return Err(PeerError::Reachability(
-                "session_transcript_hex does not match challenge/Noise binding (#250)".into(),
+                "session_transcript_hex does not match challenge/Noise/endpoint binding (#270)"
+                    .into(),
             ));
         }
         if let Some(log) = replay {
@@ -543,16 +730,50 @@ impl ReachabilityResult {
         Ok(())
     }
 
-    /// Verify plus require a locally observed inbound session transcript (`#250`).
-    pub fn verify_with_local_session(
+    /// Verify plus require signed local inbound evidence bound to endpoint (`#270`).
+    ///
+    /// A bare transcript string is not accepted — use [`ReachabilityLocalEvidence`].
+    pub fn verify_with_local_evidence(
         &self,
-        local_session_transcript_hex: &str,
+        evidence: &ReachabilityLocalEvidence,
         replay: Option<&mut ReachabilityReplayLog>,
     ) -> Result<(), PeerError> {
         self.verify(replay)?;
-        if local_session_transcript_hex.trim() != self.attestation.session_transcript_hex.trim() {
+        evidence.verify_canonical_signature(
+            &self.challenge.target_identity_ref,
+            &self.challenge.target_public_key,
+        )?;
+        if evidence.challenge_id != self.challenge.challenge_id {
             return Err(PeerError::Reachability(
-                "local inbound session transcript does not match attestation (#250)".into(),
+                "local evidence challenge_id mismatch (#270)".into(),
+            ));
+        }
+        if evidence.nonce_hex != self.challenge.nonce_hex {
+            return Err(PeerError::Reachability(
+                "local evidence nonce mismatch (#270)".into(),
+            ));
+        }
+        if evidence.direction != SessionDirection::Inbound {
+            return Err(PeerError::Reachability(
+                "local evidence must be INBOUND (#270)".into(),
+            ));
+        }
+        if !endpoints_equivalent(&evidence.endpoint, &self.challenge.endpoint) {
+            return Err(PeerError::Reachability(
+                "local evidence endpoint does not match challenge (#270)".into(),
+            ));
+        }
+        if evidence.noise_handshake_hash_hex.trim()
+            != self.attestation.noise_handshake_hash_hex.trim()
+        {
+            return Err(PeerError::Reachability(
+                "local evidence Noise hash does not match attestation (#270)".into(),
+            ));
+        }
+        if evidence.session_transcript_hex.trim() != self.attestation.session_transcript_hex.trim()
+        {
+            return Err(PeerError::Reachability(
+                "local evidence transcript does not match attestation (#270)".into(),
             ));
         }
         Ok(())
@@ -692,30 +913,97 @@ mod tests {
             "2026-09-05T12:00:00Z",
             "2026-09-05T13:00:00Z",
         );
-        let local_tx = target_session.reachability_session_transcript(&ch).unwrap();
+        let evidence = target_session
+            .export_reachability_evidence(&ch, "2026-09-05T12:30:00Z")
+            .unwrap();
+        assert_eq!(evidence.direction, SessionDirection::Inbound);
         let att = ReachabilityAttestation::issue_for_authenticated_session(
             &ch,
             &probe_session,
-            endpoint.clone(),
             "2026-09-05T12:30:00Z",
         )
         .unwrap();
         assert!(att.success);
         assert!(!att.session_transcript_hex.is_empty());
-        let result = ReachabilityResult::new(ch, att);
-        result.verify_with_local_session(&local_tx, None).unwrap();
+        let result = ReachabilityResult::new(ch.clone(), att);
+        result.verify_with_local_evidence(&evidence, None).unwrap();
 
         let mut st = crate::reachability_state::ReachabilityLocalState::default();
-        st.apply_successful_probe(&result, &local_tx).unwrap();
+        st.apply_successful_probe(&result, &evidence).unwrap();
         assert_eq!(
             st.status,
             crate::reachability_state::ReachabilityStatus::DirectReachable
         );
 
-        // Signed claim without matching local inbound transcript ≠ DIRECT.
-        assert!(st
-            .apply_successful_probe(&result, "sha256:deadbeef")
+        // Forged transcript (unsigned mutation) cannot set DIRECT.
+        let mut forged = evidence.clone();
+        forged.session_transcript_hex = "sha256:deadbeef".into();
+        assert!(st.apply_successful_probe(&result, &forged).is_err());
+    }
+
+    #[tokio::test]
+    async fn endpoint_mismatch_rejects_issue_and_evidence() {
+        use crate::{accept, admit_peer_trust, dial, listen_available_loopback, AddressBook};
+
+        let target_dir = tempdir().unwrap();
+        let probe_dir = tempdir().unwrap();
+        let (tid, tpk) = write_node(target_dir.path(), "tgt-ep", [91u8; 32]);
+        let (pid, ppk) = write_node(probe_dir.path(), "prb-ep", [92u8; 32]);
+        admit_peer_trust(target_dir.path(), pid.as_str(), &ppk).unwrap();
+        admit_peer_trust(probe_dir.path(), tid.as_str(), &tpk).unwrap();
+
+        let (listener, addr) = listen_available_loopback().await.unwrap();
+        let endpoint = format!("127.0.0.1:{}", addr.port());
+        let mut book = AddressBook::default();
+        book.upsert(tid.as_str(), endpoint.clone()).unwrap();
+        book.save(probe_dir.path()).unwrap();
+
+        let root_t = target_dir.path().to_path_buf();
+        let accept_task = tokio::spawn(async move { accept(&listener, root_t).await });
+        let probe_session = dial(probe_dir.path(), tid.as_str()).await.unwrap();
+        let target_session = accept_task.await.unwrap().unwrap();
+
+        // Pick a different valid prime port than the live session.
+        let other_port = crate::prime_port::p_aira_ports()
+            .iter()
+            .copied()
+            .find(|p| *p != addr.port())
+            .expect("another prime port");
+        let other = format!("127.0.0.1:{other_port}");
+        assert!(!endpoints_equivalent(&other, &endpoint));
+        let ch = signed_challenge(
+            target_dir.path(),
+            &tid,
+            &tpk,
+            &other,
+            "2026-09-05T12:00:00Z",
+            "2026-09-05T13:00:00Z",
+        );
+        let issue_err = ReachabilityAttestation::issue_for_authenticated_session(
+            &ch,
+            &probe_session,
+            "2026-09-05T12:30:00Z",
+        )
+        .unwrap_err();
+        assert!(
+            matches!(issue_err, PeerError::Reachability(_)),
+            "expected endpoint mismatch, got {issue_err:?}"
+        );
+        assert!(target_session
+            .export_reachability_evidence(&ch, "2026-09-05T12:30:00Z")
             .is_err());
+        assert_eq!(
+            probe_session.session_direction(),
+            SessionDirection::Outbound
+        );
+        assert_eq!(
+            target_session.session_direction(),
+            SessionDirection::Inbound
+        );
+        assert!(endpoints_equivalent(
+            probe_session.bound_endpoint(),
+            &endpoint
+        ));
     }
 
     #[test]

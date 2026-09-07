@@ -24,44 +24,44 @@ fn phase_p_plan_present() {
         "QUEUE O closed",
         "GPU marketplace",
         "Calculate 2 + 2",
-        "first OPEN `#270`",
-        "#269",
+        "first OPEN `#271`",
+        "#270",
+        "RFC-0160",
         "RFC-0159",
-        "RFC-0158",
     ] {
         assert!(text.contains(needle), "phase-p-plan missing: {needle}");
     }
 }
 
 #[test]
-fn phase_p_queue_269_done_270_open() {
+fn phase_p_queue_270_done_271_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-p-plan.md"));
-    for n in 266..=269 {
+    for n in 266..=270 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
     }
     assert!(
-        !text.contains("| 269 | **OPEN**"),
-        "QUEUE #269 must not stay OPEN"
+        !text.contains("| 270 | **OPEN**"),
+        "QUEUE #270 must not stay OPEN"
     );
     assert!(
-        text.contains("| 270 | **OPEN**"),
-        "QUEUE #270 must be first OPEN"
+        text.contains("| 271 | **OPEN**"),
+        "QUEUE #271 must be first OPEN"
     );
-    for n in 271..=274 {
+    for n in 272..=274 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-304",
-        "RFC-0159",
+        "Analyze-305",
+        "RFC-0160",
         "RFC-0156",
-        "first OPEN `#270`",
+        "first OPEN `#271`",
         "QUEUE O closed",
         "desktop-ux.md",
         "aira-current.md",
@@ -75,8 +75,8 @@ fn phase_p_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-p-plan.md",
-        "#269",
-        "RFC-0159",
+        "#270",
+        "RFC-0160",
         "RFC-0156",
         "runtime-honest",
     ] {
@@ -100,11 +100,11 @@ fn phase_p_rfc_0156_file_free() {
 }
 
 #[test]
-fn phase_p_rfc_0159_present() {
-    let path = repo_root().join("specs/rfc/AIRA-RFC-0159-model-triple-ux.md");
-    let text = std::fs::read_to_string(&path).expect("RFC-0159 missing");
-    for needle in ["#269", "selected", "ready", "used"] {
-        assert!(text.contains(needle), "RFC-0159 missing: {needle}");
+fn phase_p_rfc_0160_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0160-reachability-endpoint-bind.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0160 missing");
+    for needle in ["#270", "endpoint", "direction", "session-evidence"] {
+        assert!(text.contains(needle), "RFC-0160 missing: {needle}");
     }
 }
 
@@ -112,7 +112,7 @@ fn phase_p_rfc_0159_present() {
 fn phase_p_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-p-plan.md"));
-    assert!(readme.contains("#270") || readme.contains("first OPEN"));
+    assert!(readme.contains("#271") || readme.contains("first OPEN"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-p-plan.md"));
 }
@@ -127,7 +127,7 @@ fn phase_o_points_to_phase_p() {
 fn phase_p_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-p-plan.md") || text.contains("Phase P"));
-    assert!(text.contains("#270") || text.contains("перший OPEN"));
+    assert!(text.contains("#271") || text.contains("перший OPEN"));
     assert!(
         !text.contains("немає OPEN") || text.contains("Phase P"),
         "NEXT_PROBLEM must point at Phase P backlog"
@@ -138,8 +138,8 @@ fn phase_p_next_problem() {
 fn phase_p_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #269 |") || status.contains("#269"));
-    assert!(status.contains("RFC-0159") || status.contains("0159"));
+    assert!(status.contains("| #270 |") || status.contains("#270"));
+    assert!(status.contains("RFC-0160") || status.contains("0160"));
     assert!(status.contains("phase_p_doc.rs"));
     assert!(status.contains("phase-p-plan.md"));
 }
