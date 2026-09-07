@@ -54,8 +54,9 @@ pub use launcher::{
     AIRA_GUI_DESKTOP_FILENAME,
 };
 pub use network_mesh::{
-    load_network_mesh_snapshot, load_system_snapshot, DataQuality, MeshTopLevel,
-    NetworkMeshSnapshot, SystemSnapshot,
+    classify_network_quality, load_network_mesh_snapshot, load_system_snapshot, DataQuality,
+    LocalBindProvenance, MeshTopLevel, NetworkMeshSnapshot, SystemSnapshot,
+    NETWORK_OBSERVATION_STALE_SECS,
 };
 pub use node_http::{submit_desktop_problem, submit_problem_http};
 pub use paths::DesktopPaths;

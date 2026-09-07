@@ -113,11 +113,19 @@ impl AiraDesktopApp {
             l.strip_work_ready
         };
         let model = l.strip_model_unknown;
-        let network = match self.mesh_snapshot.top_level.as_str() {
-            "DIRECT" | "RELAYED" => l.strip_net_connected,
-            "OUTBOUND ONLY" | "LOCAL ONLY" => l.strip_net_local,
-            "UNKNOWN" => l.strip_net_unknown,
-            _ => l.strip_net_offline,
+        let quality = self.system_snapshot.network_quality;
+        let network = match quality {
+            aira_desktop_runtime::DataQuality::Stale => l.strip_net_stale,
+            aira_desktop_runtime::DataQuality::Unknown
+            | aira_desktop_runtime::DataQuality::Unavailable => l.strip_net_unknown,
+            aira_desktop_runtime::DataQuality::Current => {
+                match self.mesh_snapshot.top_level.as_str() {
+                    "DIRECT" | "RELAYED" => l.strip_net_connected,
+                    "OUTBOUND ONLY" | "LOCAL ONLY" => l.strip_net_local,
+                    "UNKNOWN" => l.strip_net_unknown,
+                    _ => l.strip_net_offline,
+                }
+            }
         };
         ui.horizontal(|ui| {
             ui.small(format!("{} {}", l.strip_work, work));
@@ -232,6 +240,16 @@ impl AiraDesktopApp {
         ui.horizontal(|ui| {
             ui.strong(l.mesh_local_bind);
             ui.monospace(snap.local_bind.as_deref().unwrap_or(na));
+            if snap.local_bind.is_some() {
+                ui.small(format!(
+                    "({} {})",
+                    l.mesh_bind_provenance,
+                    snap.local_bind_provenance.as_str()
+                ));
+            }
+            if !snap.local_listener_proven {
+                ui.small(l.mesh_listener_unproven);
+            }
         });
         ui.horizontal(|ui| {
             ui.strong(l.mesh_external);
@@ -262,7 +280,11 @@ impl AiraDesktopApp {
                 "{} · seq {} · {}",
                 snap.rendezvous_provider,
                 snap.rendezvous_sequence,
-                if snap.rendezvous_connected { yes } else { no }
+                if snap.rendezvous_connected {
+                    l.mesh_rendezvous_local_meta
+                } else {
+                    no
+                }
             )
         };
         ui.horizontal(|ui| {
@@ -541,6 +563,7 @@ impl AiraDesktopApp {
         });
         ui.horizontal(|ui| {
             ui.small(format!("{} {}", l.sys_observed, view.observed_at));
+            ui.small(format!("{} {}", l.sys_loaded, view.loaded_at));
             ui.small(format!(
                 "{} {}",
                 l.sys_quality,

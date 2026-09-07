@@ -1,6 +1,7 @@
 //! Human-first System status conclusions (`#261` / `desktop-ux` §4).
 //!
 //! Honesty: UNKNOWN ≠ OFFLINE; AddressBook count ≠ live sessions; no invented model.
+//! Freshness (`#267`): measurement time ≠ load time; Stale/Unknown cannot paint as Current.
 
 use aira_desktop_runtime::{DataQuality, LifecycleStatus, SystemSnapshot};
 
@@ -57,6 +58,7 @@ pub struct SystemStatusView {
     pub model: ModelConclusion,
     pub connection: ConnectionConclusion,
     pub observed_at: String,
+    pub loaded_at: String,
     pub network_quality: DataQuality,
     pub live_sessions_quality: DataQuality,
     pub address_book_count: usize,
@@ -81,6 +83,7 @@ impl SystemStatusView {
             model: ModelConclusion::NotChecked,
             connection: ConnectionConclusion::from_top_level(&net.top_level),
             observed_at: system.observed_at.clone(),
+            loaded_at: system.loaded_at.clone(),
             network_quality: system.network_quality,
             live_sessions_quality: system.live_sessions_quality,
             address_book_count: net.address_book_count,
@@ -93,11 +96,11 @@ impl SystemStatusView {
     pub fn from_mesh(
         lifecycle: LifecycleStatus,
         mesh: &NetworkMeshSnapshot,
-        observed_at: String,
+        loaded_at: String,
     ) -> Self {
         Self::from_parts(
             lifecycle,
-            &SystemSnapshot::from_network(mesh.clone(), observed_at),
+            &SystemSnapshot::from_network(mesh.clone(), loaded_at),
         )
     }
 }
@@ -136,6 +139,26 @@ mod tests {
         assert_eq!(view.live_sessions_quality, DataQuality::Unknown);
         assert_eq!(view.connection, ConnectionConclusion::LocalOnly);
         assert_eq!(view.model, ModelConclusion::NotChecked);
+        assert_eq!(view.network_quality, DataQuality::Unknown);
+        assert_eq!(view.observed_at, "unknown");
+        assert_eq!(view.loaded_at, "unix:1");
+    }
+
+    #[test]
+    fn stale_measurement_surfaces_on_view() {
+        let mut mesh = NetworkMeshSnapshot::unavailable();
+        mesh.identity = "aira:id:stale".into();
+        mesh.top_level = "DIRECT".into();
+        mesh.reachability_checked_at = Some("2026-09-07T10:00:00Z".into());
+        let view = SystemStatusView::from_mesh(
+            LifecycleStatus::Running,
+            &mesh,
+            "2026-09-07T12:00:00Z".into(),
+        );
+        assert_eq!(view.network_quality, DataQuality::Stale);
+        assert_eq!(view.observed_at, "2026-09-07T10:00:00Z");
+        assert_eq!(view.loaded_at, "2026-09-07T12:00:00Z");
+        assert_eq!(view.connection, ConnectionConclusion::Direct);
     }
 
     #[test]
