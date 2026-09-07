@@ -43,6 +43,32 @@ impl MainTab {
     }
 }
 
+/// Pure F1 topic resolution: focus → section → screen (`#273`).
+///
+/// Does **not** consult `last_problem` (explicit problem Help uses `open_help`).
+pub(super) fn resolve_help_routing(
+    focus: Option<HelpId>,
+    tab: MainTab,
+    has_work_result: bool,
+    work_inflight: bool,
+) -> HelpId {
+    if let Some(id) = focus {
+        return id;
+    }
+    match tab {
+        MainTab::Work => {
+            if has_work_result {
+                HelpId::WorkResult
+            } else if work_inflight {
+                HelpId::WorkWaiting
+            } else {
+                HelpId::WorkSubmit
+            }
+        }
+        MainTab::System | MainTab::Settings => tab.default_help(),
+    }
+}
+
 pub struct AiraDesktopApp {
     pub(super) paths: DesktopPaths,
     pub(super) node_bin: Option<PathBuf>,
@@ -87,6 +113,8 @@ pub struct AiraDesktopApp {
     pub(super) help_topic: HelpId,
     /// Offline Help search query (`#263`).
     pub(super) help_search: String,
+    /// Last UI element / section that claimed F1 context (`#273`).
+    pub(super) help_focus: Option<HelpId>,
 }
 
 impl AiraDesktopApp {
@@ -166,6 +194,7 @@ impl AiraDesktopApp {
             help_open: false,
             help_topic: HelpId::Start,
             help_search: String::new(),
+            help_focus: None,
         };
         cc.egui_ctx.send_viewport_cmd(egui::ViewportCommand::Title(
             Labels::get(app.ui_lang()).window_title.to_string(),
@@ -374,30 +403,47 @@ impl AiraDesktopApp {
         self.last_problem = Some(UiProblem::from_code_err(code, self.ui_lang(), detail));
     }
 
-    /// Default Help topic for the current shell section (`#259`).
-    pub(super) fn help_topic_for_tab(&self) -> HelpId {
-        self.tab.default_help()
+    /// F1 routing: focused element → section → screen (never stale `last_problem`).
+    pub(super) fn resolve_contextual_help(&self) -> HelpId {
+        resolve_help_routing(
+            self.help_focus,
+            self.tab,
+            self.work_result.is_some(),
+            self.async_jobs.work_inflight(),
+        )
     }
 
-    /// Open Help·F1 for an explicit topic (does not clear draft / settings).
+    /// Remember the active control/section for the next F1 (`#273`).
+    pub(super) fn note_help_focus(&mut self, id: HelpId) {
+        self.help_focus = Some(id);
+    }
+
+    /// Open Help·F1 for an explicit topic; clears stale search (`#273`).
+    ///
+    /// Does not clear draft / settings / in-flight work.
     pub(super) fn open_help(&mut self, topic: HelpId) {
         self.help_topic = topic;
+        self.help_search.clear();
         self.help_open = true;
     }
 
-    /// Open Help for the current context: last problem → section default.
+    /// Open Help from F1 / chrome: focus → section → screen (`#273`).
     pub(super) fn open_help_contextual(&mut self) {
-        let topic = self
-            .last_problem
-            .as_ref()
-            .map(|p| p.help_id)
-            .unwrap_or_else(|| self.help_topic_for_tab());
+        let topic = self.resolve_contextual_help();
         self.open_help(topic);
     }
 
     /// Close only the help panel (Esc); never cancels work.
     pub(super) fn close_help(&mut self) {
         self.help_open = false;
+    }
+
+    /// Tab change drops element focus so F1 falls back to section/screen (`#273`).
+    pub(super) fn set_tab(&mut self, tab: MainTab) {
+        if self.tab != tab {
+            self.tab = tab;
+            self.help_focus = None;
+        }
     }
 
     /// Settings lifecycle phase from saved disk vs runtime-applied (`#262`).
@@ -529,5 +575,38 @@ mod tests {
         assert_eq!(MainTab::Work.default_help(), HelpId::WorkSubmit);
         assert_eq!(MainTab::System.default_help(), HelpId::NetworkReachability);
         assert_eq!(MainTab::Settings.default_help(), HelpId::SettingsApply);
+    }
+
+    #[test]
+    fn help_routing_prefers_focus_over_section() {
+        assert_eq!(
+            resolve_help_routing(Some(HelpId::ModelSelect), MainTab::Work, false, false),
+            HelpId::ModelSelect
+        );
+        assert_eq!(
+            resolve_help_routing(None, MainTab::Work, true, false),
+            HelpId::WorkResult
+        );
+        assert_eq!(
+            resolve_help_routing(None, MainTab::Work, false, true),
+            HelpId::WorkWaiting
+        );
+        assert_eq!(
+            resolve_help_routing(None, MainTab::System, false, false),
+            HelpId::NetworkReachability
+        );
+        assert_eq!(
+            resolve_help_routing(None, MainTab::Settings, false, false),
+            HelpId::SettingsApply
+        );
+    }
+
+    #[test]
+    fn help_routing_ignores_last_problem_by_design() {
+        // Pure resolver has no last_problem parameter — F1 never takes it.
+        assert_eq!(
+            resolve_help_routing(None, MainTab::System, false, false),
+            HelpId::NetworkReachability
+        );
     }
 }

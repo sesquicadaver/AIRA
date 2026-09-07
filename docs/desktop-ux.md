@@ -1,7 +1,7 @@
 # AIRA Desktop UX — канон рішень
 
 **Статус:** Phase E `#75`–`#106` **DONE** (2026-08-22); Phase F `#107`–`#119` **DONE** (2026-08-24).  
-**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) `#266`–`#274` (**runtime-honest**; `#266`–`#272` DONE @ RFC-0162; first OPEN `#273`; RFC-0156 reserved).  
+**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) `#266`–`#274` (**runtime-honest**; `#266`–`#273` DONE @ RFC-0163; first OPEN `#274`; RFC-0156 reserved).  
 **Provenance:** [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED** → E); UX/Help draft 2026-09-06 (`aira-gui.md` + `aira-desktop-ux-help-draft.md`, поза git).  
 **Не змінює** Book 0–IV / C0–C1 / Core / `aira-core` ledger.  
 **Posture:** Linux E1 = **Developer Preview** над local reference plane.
@@ -127,7 +127,10 @@ GUI-state зберігає лише вкладку/фокус/чернетку/�
 - Спільний словник з `Labels`: `код → повідомлення → help_id`.
 - Відкриття Help не очищає чернетку, не змінює налаштування, не скасовує завдання.
 - Джерела: `docs/help/{uk,en}/`, вбудовані у збірку (`include_str!`); мінімальний plain Markdown renderer без remote HTML/скриптів (**DONE** @ RFC-0154 / `#263`).
-- Пошук за id/title/body; контекст: `last_problem.help_id` → default розділу.
+- Пошук за id/title/body; **не** підміняє відкриту тему першим hit (`#273` @ RFC-0163).
+- Контекст F1: **фокус елемента → секція → екран** (не stale `last_problem`); явна кнопка проблеми лишається `open_help(problem.help_id)`.
+- Список тем / Related показує локалізовані заголовки статей; `HelpId` — внутрішній monospace.
+- Contextual/`open_help` очищає `help_search`, щоб старий пошук не перебивав тему.
 - Cross-links: `help:<id>` у Related; EN/UK parity (**DONE** @ RFC-0155 / `#264`).
 
 Каталог ID (shell `#263`; seed/link-check `#264` **DONE**): `start`, `work.submit`, `work.result`, `work.waiting`, `model.select`, `model.unavailable`, `network.connect`, `network.reachability`, `network.trust`, `settings.apply`, `node.lifecycle`.

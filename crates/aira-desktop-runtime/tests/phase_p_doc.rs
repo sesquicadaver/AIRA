@@ -24,9 +24,9 @@ fn phase_p_plan_present() {
         "QUEUE O closed",
         "GPU marketplace",
         "Calculate 2 + 2",
-        "first OPEN `#273`",
-        "#272",
-        "RFC-0162",
+        "first OPEN `#274`",
+        "#273",
+        "RFC-0163",
         "RFC-0161",
     ] {
         assert!(text.contains(needle), "phase-p-plan missing: {needle}");
@@ -34,29 +34,28 @@ fn phase_p_plan_present() {
 }
 
 #[test]
-fn phase_p_queue_272_done_273_open() {
+fn phase_p_queue_273_done_274_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-p-plan.md"));
-    for n in 266..=272 {
+    for n in 266..=273 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
     }
     assert!(
-        !text.contains("| 272 | **OPEN**"),
-        "QUEUE #272 must not stay OPEN"
+        !text.contains("| 273 | **OPEN**"),
+        "QUEUE #273 must not stay OPEN"
     );
     assert!(
-        text.contains("| 273 | **OPEN**"),
-        "QUEUE #273 must be first OPEN"
+        text.contains("| 274 | **OPEN**"),
+        "QUEUE #274 must be first OPEN"
     );
-    assert!(text.contains("| 274 | **OPEN**"), "QUEUE #274 must be OPEN");
     for needle in [
-        "Analyze-307",
-        "RFC-0162",
+        "Analyze-308",
+        "RFC-0163",
         "RFC-0156",
-        "first OPEN `#273`",
+        "first OPEN `#274`",
         "QUEUE O closed",
         "desktop-ux.md",
         "aira-current.md",
@@ -70,8 +69,8 @@ fn phase_p_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-p-plan.md",
-        "#272",
-        "RFC-0162",
+        "#273",
+        "RFC-0163",
         "RFC-0156",
         "runtime-honest",
     ] {
@@ -104,10 +103,19 @@ fn phase_p_rfc_0162_present() {
 }
 
 #[test]
+fn phase_p_rfc_0163_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0163-help-f1-routing.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0163 missing");
+    for needle in ["#273", "help_search", "focus", "last_problem"] {
+        assert!(text.contains(needle), "RFC-0163 missing: {needle}");
+    }
+}
+
+#[test]
 fn phase_p_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-p-plan.md"));
-    assert!(readme.contains("#273") || readme.contains("first OPEN"));
+    assert!(readme.contains("#274") || readme.contains("first OPEN"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-p-plan.md"));
 }
@@ -122,7 +130,7 @@ fn phase_o_points_to_phase_p() {
 fn phase_p_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-p-plan.md") || text.contains("Phase P"));
-    assert!(text.contains("#273") || text.contains("перший OPEN"));
+    assert!(text.contains("#274") || text.contains("перший OPEN"));
     assert!(
         !text.contains("немає OPEN") || text.contains("Phase P"),
         "NEXT_PROBLEM must point at Phase P backlog"
@@ -133,8 +141,8 @@ fn phase_p_next_problem() {
 fn phase_p_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #272 |") || status.contains("#272"));
-    assert!(status.contains("RFC-0162") || status.contains("0162"));
+    assert!(status.contains("| #273 |") || status.contains("#273"));
+    assert!(status.contains("RFC-0163") || status.contains("0163"));
     assert!(status.contains("phase_p_doc.rs"));
     assert!(status.contains("phase-p-plan.md"));
 }

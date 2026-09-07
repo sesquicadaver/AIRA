@@ -29,9 +29,13 @@ impl eframe::App for AiraDesktopApp {
         let l = self.labels();
         egui::TopBottomPanel::top("shell-chrome").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.selectable_value(&mut self.tab, MainTab::Work, l.tab_work);
-                ui.selectable_value(&mut self.tab, MainTab::System, l.tab_system);
-                ui.selectable_value(&mut self.tab, MainTab::Settings, l.tab_settings);
+                let mut tab = self.tab;
+                ui.selectable_value(&mut tab, MainTab::Work, l.tab_work);
+                ui.selectable_value(&mut tab, MainTab::System, l.tab_system);
+                ui.selectable_value(&mut tab, MainTab::Settings, l.tab_settings);
+                if tab != self.tab {
+                    self.set_tab(tab);
+                }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.button(l.help_f1).clicked() {
                         self.open_help_contextual();
@@ -144,7 +148,7 @@ impl AiraDesktopApp {
         });
     }
 
-    /// Offline F1 panel: search, topics, related links, embedded Markdown (`#263`/`#264`).
+    /// Offline F1 panel: search, topics, related links, embedded Markdown (`#263`/`#273`).
     fn ui_help_panel(&mut self, ui: &mut egui::Ui) {
         let l = self.labels();
         let lang = self.ui_lang();
@@ -170,18 +174,18 @@ impl AiraDesktopApp {
         ui.strong(l.help_topics);
         ui.horizontal_wrapped(|ui| {
             for id in &hits {
+                let title = crate::help::load_article(lang, *id).title;
                 let selected = self.help_topic == *id;
-                if ui.selectable_label(selected, id.as_str()).clicked() {
+                if ui.selectable_label(selected, title).clicked() {
                     self.help_topic = *id;
                 }
             }
         });
         if hits.is_empty() {
             ui.label(l.help_placeholder);
-            return;
-        }
-        if !hits.contains(&self.help_topic) {
-            self.help_topic = hits[0];
+        } else if !hits.contains(&self.help_topic) {
+            // Keep pinned topic; search filters the list only (`#273`).
+            ui.small(l.help_search_miss);
         }
         ui.separator();
         let article = crate::help::load_article(lang, self.help_topic);
@@ -195,7 +199,8 @@ impl AiraDesktopApp {
             ui.horizontal_wrapped(|ui| {
                 ui.strong(l.help_related);
                 for id in &related {
-                    if ui.selectable_label(false, id.as_str()).clicked() {
+                    let title = crate::help::load_article(lang, *id).title;
+                    if ui.selectable_label(false, title).clicked() {
                         self.help_topic = *id;
                         self.help_search.clear();
                     }
@@ -317,11 +322,14 @@ impl AiraDesktopApp {
         ui.heading(l.work_heading);
         ui.label(l.work_hint);
         ui.small(l.work_shortcut_hint);
-        ui.add(
+        let editor = ui.add(
             egui::TextEdit::multiline(&mut self.problem_text)
                 .desired_rows(4)
                 .desired_width(f32::INFINITY),
         );
+        if editor.gained_focus() || editor.changed() {
+            self.note_help_focus(HelpId::WorkSubmit);
+        }
 
         // Ctrl+Enter / ⌘+Enter — Enter alone stays newline (`#260`).
         let shortcut_run = ui.input_mut(|i| {
@@ -337,7 +345,11 @@ impl AiraDesktopApp {
         let submitting = self.async_jobs.work_inflight();
         let mut do_submit = false;
         ui.add_enabled_ui(!submitting, |ui| {
-            if ui.button(l.work_submit).clicked() {
+            let btn = ui.button(l.work_submit);
+            if btn.hovered() {
+                self.note_help_focus(HelpId::WorkSubmit);
+            }
+            if btn.clicked() {
                 do_submit = true;
             }
         });
@@ -358,9 +370,14 @@ impl AiraDesktopApp {
             .show(ui, |ui| {
                 ui.label(l.work_tech_details);
             });
-        if let Some(view) = &self.work_result {
+        if self.work_result.is_some() {
             ui.separator();
-            ui.strong(l.work_answer);
+            let ans = ui.strong(l.work_answer);
+            if ans.hovered() {
+                self.note_help_focus(HelpId::WorkResult);
+            }
+        }
+        if let Some(view) = &self.work_result {
             let answer = if view.answer.is_empty() {
                 l.work_no_answer
             } else {
@@ -489,13 +506,23 @@ impl AiraDesktopApp {
             match view.program {
                 crate::system_view::ProgramConclusion::Stopped
                 | crate::system_view::ProgramConclusion::Failed => {
-                    if ui.button(l.start).clicked() {
+                    let btn = ui.button(l.start);
+                    if btn.hovered() {
+                        self.note_help_focus(HelpId::NodeLifecycle);
+                    }
+                    if btn.clicked() {
+                        self.note_help_focus(HelpId::NodeLifecycle);
                         self.request_lifecycle(crate::async_jobs::LifecycleJobKind::Start, ctx);
                     }
                 }
                 crate::system_view::ProgramConclusion::Running
                 | crate::system_view::ProgramConclusion::Unhealthy => {
-                    if ui.button(l.stop).clicked() {
+                    let btn = ui.button(l.stop);
+                    if btn.hovered() {
+                        self.note_help_focus(HelpId::NodeLifecycle);
+                    }
+                    if btn.clicked() {
+                        self.note_help_focus(HelpId::NodeLifecycle);
                         self.request_lifecycle(crate::async_jobs::LifecycleJobKind::Stop, ctx);
                     }
                 }
@@ -532,9 +559,12 @@ impl AiraDesktopApp {
             });
     }
 
-    fn ui_sys_model(&self, ui: &mut egui::Ui, view: &crate::system_view::SystemStatusView) {
+    fn ui_sys_model(&mut self, ui: &mut egui::Ui, view: &crate::system_view::SystemStatusView) {
         let l = self.labels();
-        ui.strong(l.sys_model);
+        let heading = ui.strong(l.sys_model);
+        if heading.hovered() {
+            self.note_help_focus(HelpId::ModelSelect);
+        }
         ui.horizontal(|ui| {
             ui.label(l.sys_model_selected);
             ui.monospace(view.model.selected.as_display());
@@ -569,7 +599,10 @@ impl AiraDesktopApp {
         view: &crate::system_view::SystemStatusView,
     ) {
         let l = self.labels();
-        ui.strong(l.sys_connection);
+        let heading = ui.strong(l.sys_connection);
+        if heading.hovered() {
+            self.note_help_focus(HelpId::NetworkReachability);
+        }
         ui.label(match view.connection {
             crate::system_view::ConnectionConclusion::Direct => l.sys_conn_direct,
             crate::system_view::ConnectionConclusion::Relayed => l.sys_conn_relayed,
@@ -602,10 +635,16 @@ impl AiraDesktopApp {
             view.connection,
             crate::system_view::ConnectionConclusion::Unknown
                 | crate::system_view::ConnectionConclusion::LocalOnly
-        ) && ui.button(l.refresh).clicked()
-        {
-            self.request_status_refresh(ctx);
-            self.refresh_federation_detail();
+        ) {
+            let btn = ui.button(l.refresh);
+            if btn.hovered() {
+                self.note_help_focus(HelpId::NetworkReachability);
+            }
+            if btn.clicked() {
+                self.note_help_focus(HelpId::NetworkReachability);
+                self.request_status_refresh(ctx);
+                self.refresh_federation_detail();
+            }
         }
         egui::CollapsingHeader::new(l.sys_tech_details)
             .id_source("sys-connection-tech")
@@ -829,7 +868,10 @@ impl AiraDesktopApp {
         ui.label(l.settings_close_not_stop);
 
         ui.separator();
-        ui.strong(l.settings_group_general);
+        let g = ui.strong(l.settings_group_general);
+        if g.hovered() {
+            self.note_help_focus(HelpId::SettingsApply);
+        }
         ui.horizontal(|ui| {
             ui.strong(l.language);
             if ui
@@ -863,7 +905,10 @@ impl AiraDesktopApp {
         }
 
         ui.separator();
-        ui.strong(l.settings_group_models);
+        let g = ui.strong(l.settings_group_models);
+        if g.hovered() {
+            self.note_help_focus(HelpId::ModelSelect);
+        }
         ui.horizontal(|ui| {
             ui.label(l.sys_model_selected);
             ui.monospace(self.model_triple.selected.as_display());
@@ -890,7 +935,10 @@ impl AiraDesktopApp {
             });
 
         ui.separator();
-        ui.strong(l.settings_group_connection);
+        let g = ui.strong(l.settings_group_connection);
+        if g.hovered() {
+            self.note_help_focus(HelpId::SettingsApply);
+        }
         let saved_profile = format!("{:?}", self.settings.network_profile);
         let applied_profile = self
             .applied_runtime
@@ -928,7 +976,10 @@ impl AiraDesktopApp {
         ui.small(l.network_profile);
 
         ui.separator();
-        ui.strong(l.settings_group_advanced);
+        let g = ui.strong(l.settings_group_advanced);
+        if g.hovered() {
+            self.note_help_focus(HelpId::SettingsApply);
+        }
         ui.horizontal(|ui| {
             ui.strong(l.settings_saved);
             ui.label(format!("HTTP {}", self.settings.http_listen));
