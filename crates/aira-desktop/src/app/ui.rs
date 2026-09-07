@@ -45,6 +45,8 @@ impl AiraDesktopApp {
             "DIRECT" => egui::Color32::from_rgb(40, 140, 70),
             "RELAYED" => egui::Color32::from_rgb(40, 100, 180),
             "OUTBOUND ONLY" => egui::Color32::from_rgb(180, 120, 40),
+            "LOCAL ONLY" => egui::Color32::from_rgb(100, 100, 140),
+            "UNKNOWN" => egui::Color32::from_rgb(120, 120, 120),
             _ => egui::Color32::from_rgb(140, 60, 60),
         };
         ui.horizontal(|ui| {
@@ -112,8 +114,15 @@ impl AiraDesktopApp {
             ui.label(rv);
         });
         ui.horizontal(|ui| {
-            ui.strong(l.mesh_peer_count);
-            ui.label(snap.peer_count.to_string());
+            ui.strong(l.mesh_address_book_count);
+            ui.label(snap.address_book_count.to_string());
+        });
+        ui.horizontal(|ui| {
+            ui.strong(l.mesh_live_sessions);
+            ui.label(match snap.live_session_count {
+                Some(n) => n.to_string(),
+                None => na.to_string(),
+            });
         });
     }
 

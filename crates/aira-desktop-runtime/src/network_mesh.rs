@@ -1,4 +1,4 @@
-//! Phase N `#244`: Network mesh snapshot for Desktop (orchestrates peer APIs only).
+//! Phase N `#244` mesh fields + Phase O `#256` honesty projection.
 
 use std::path::Path;
 
@@ -9,12 +9,14 @@ use aira_peer::{
 };
 use anyhow::Result;
 
-/// Operator-facing top-level mesh banner (TZ §35).
+/// Operator-facing top-level mesh banner (TZ §35; honesty `#256`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MeshTopLevel {
     Direct,
     Relayed,
     OutboundOnly,
+    LocalOnly,
+    Unknown,
     Offline,
 }
 
@@ -25,19 +27,46 @@ impl MeshTopLevel {
             Self::Direct => "DIRECT",
             Self::Relayed => "RELAYED",
             Self::OutboundOnly => "OUTBOUND ONLY",
+            Self::LocalOnly => "LOCAL ONLY",
+            Self::Unknown => "UNKNOWN",
             Self::Offline => "OFFLINE",
         }
     }
 
-    /// Map local reachability status to the coarse banner.
+    /// Map local reachability status to the coarse banner without collapsing unknowns.
     pub fn from_reachability(status: ReachabilityStatus) -> Self {
         match status {
             ReachabilityStatus::DirectReachable => Self::Direct,
             ReachabilityStatus::RelayOnly => Self::Relayed,
             ReachabilityStatus::OutboundOnly => Self::OutboundOnly,
-            ReachabilityStatus::Unknown
-            | ReachabilityStatus::LocalOnly
-            | ReachabilityStatus::Offline => Self::Offline,
+            ReachabilityStatus::LocalOnly => Self::LocalOnly,
+            ReachabilityStatus::Unknown => Self::Unknown,
+            ReachabilityStatus::Offline => Self::Offline,
+        }
+    }
+}
+
+/// Freshness / availability of a projected field or section (`#256`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DataQuality {
+    /// Observation matches current authoritative reads for this load.
+    Current,
+    /// Last known value may be older than the section's freshness threshold.
+    Stale,
+    /// Value is intentionally unknown (not the same as zero / offline).
+    Unknown,
+    /// Source could not be read (e.g. no identity yet).
+    Unavailable,
+}
+
+impl DataQuality {
+    /// Stable label for tests / technical details.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Current => "current",
+            Self::Stale => "stale",
+            Self::Unknown => "unknown",
+            Self::Unavailable => "unavailable",
         }
     }
 }
@@ -54,9 +83,14 @@ pub struct NetworkMeshSnapshot {
     pub direct_reachability: String,
     pub relay_reachability: String,
     pub rendezvous_provider: String,
+    /// Local publish metadata present (provider + sequence) — not a live global session.
     pub rendezvous_connected: bool,
     pub rendezvous_sequence: u64,
-    pub peer_count: usize,
+    /// Entries in AddressBook (dial authority). Never treat as live sessions.
+    pub address_book_count: usize,
+    /// Authenticated live sessions known to this process.
+    /// `None` = not observed from Desktop runtime (do not display as `0` or book size).
+    pub live_session_count: Option<usize>,
 }
 
 impl NetworkMeshSnapshot {
@@ -68,14 +102,58 @@ impl NetworkMeshSnapshot {
             local_bind: None,
             external_observed: None,
             reachability_status: "UNKNOWN".into(),
-            top_level: MeshTopLevel::Offline.as_str().into(),
+            top_level: MeshTopLevel::Unknown.as_str().into(),
             direct_reachability: "no".into(),
             relay_reachability: "no".into(),
             rendezvous_provider: String::new(),
             rendezvous_connected: false,
             rendezvous_sequence: 0,
-            peer_count: 0,
+            address_book_count: 0,
+            live_session_count: None,
         }
+    }
+}
+
+/// Typed Desktop projection of authoritative runtime/store facts (`#256`).
+///
+/// Not a second source of truth: each load re-reads stores. GUI state must not invent values.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SystemSnapshot {
+    /// RFC3339 observation time for this projection load (UTC).
+    pub observed_at: String,
+    pub network: NetworkMeshSnapshot,
+    pub network_quality: DataQuality,
+    /// Quality of live-session observation (usually [`DataQuality::Unknown`] until a live feed exists).
+    pub live_sessions_quality: DataQuality,
+}
+
+impl SystemSnapshot {
+    /// Build projection around an already-loaded mesh snapshot.
+    pub fn from_network(network: NetworkMeshSnapshot, observed_at: String) -> Self {
+        let network_quality = if network.identity.is_empty() {
+            DataQuality::Unavailable
+        } else {
+            DataQuality::Current
+        };
+        let live_sessions_quality = match network.live_session_count {
+            Some(_) => DataQuality::Current,
+            None if network.identity.is_empty() => DataQuality::Unavailable,
+            None => DataQuality::Unknown,
+        };
+        Self {
+            observed_at,
+            network,
+            network_quality,
+            live_sessions_quality,
+        }
+    }
+
+    /// Empty projection when identity / root is unavailable.
+    pub fn unavailable() -> Self {
+        Self::from_network(
+            NetworkMeshSnapshot::unavailable(),
+            chrono_like_now_fallback(),
+        )
     }
 }
 
@@ -88,6 +166,16 @@ fn status_label(status: ReachabilityStatus) -> String {
         ReachabilityStatus::OutboundOnly => "OUTBOUND_ONLY".into(),
         ReachabilityStatus::Offline => "OFFLINE".into(),
     }
+}
+
+fn chrono_like_now_fallback() -> String {
+    // Prefer std-only timestamp when chrono is unavailable in this crate.
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    format!("unix:{secs}")
 }
 
 /// Load Network mesh fields from node root + optional configured peer listen.
@@ -122,7 +210,9 @@ pub fn load_network_mesh_snapshot(
     let rendezvous_connected = !rv.provider.is_empty() && rv.local_sequence > 0;
 
     let book = AddressBook::load(root)?;
-    let peer_count = book.peers.len();
+    let address_book_count = book.peers.len();
+    // Desktop runtime has no in-process peer accept loop; live sessions are unknown here.
+    let live_session_count = None;
 
     let direct_reachability = if reach.status == ReachabilityStatus::DirectReachable {
         "yes"
@@ -148,8 +238,21 @@ pub fn load_network_mesh_snapshot(
         rendezvous_provider: rv.provider,
         rendezvous_connected,
         rendezvous_sequence: rv.local_sequence,
-        peer_count,
+        address_book_count,
+        live_session_count,
     })
+}
+
+/// Load [`SystemSnapshot`] projection (mesh + quality markers).
+pub fn load_system_snapshot(
+    root: impl AsRef<Path>,
+    peer_listen: Option<&str>,
+) -> Result<SystemSnapshot> {
+    let network = load_network_mesh_snapshot(root, peer_listen)?;
+    Ok(SystemSnapshot::from_network(
+        network,
+        chrono_like_now_fallback(),
+    ))
 }
 
 #[cfg(test)]
@@ -217,9 +320,63 @@ mod tests {
         );
         assert_eq!(snap.local_bind.as_deref(), Some("127.0.0.1:49157"));
         assert_eq!(snap.reachability_status, "LOCAL_ONLY");
-        assert_eq!(snap.top_level, "OFFLINE");
+        assert_eq!(snap.top_level, "LOCAL ONLY");
+        assert_ne!(snap.top_level, "OFFLINE");
         assert_eq!(snap.direct_reachability, "no");
-        assert_eq!(snap.peer_count, 1);
+        assert_eq!(snap.address_book_count, 1);
+        assert_eq!(snap.live_session_count, None);
+    }
+
+    #[test]
+    fn unknown_reachability_is_not_offline_banner() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let _ = write_node(root, "mesh-u", [63u8; 32]);
+        // Default reachability state is UNKNOWN with no bind.
+        let snap = load_network_mesh_snapshot(root, None).unwrap();
+        assert_eq!(snap.reachability_status, "UNKNOWN");
+        assert_eq!(snap.top_level, "UNKNOWN");
+        assert_ne!(snap.top_level, "OFFLINE");
+        assert_eq!(
+            MeshTopLevel::from_reachability(ReachabilityStatus::Unknown),
+            MeshTopLevel::Unknown
+        );
+        assert_eq!(
+            MeshTopLevel::from_reachability(ReachabilityStatus::Offline),
+            MeshTopLevel::Offline
+        );
+    }
+
+    #[test]
+    fn address_book_peers_are_not_live_sessions() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let _ = write_node(root, "mesh-book", [64u8; 32]);
+        let mut book = AddressBook::default();
+        book.upsert("aira:identity:peer-c", "127.0.0.1:49157")
+            .unwrap();
+        book.upsert("aira:identity:peer-d", "127.0.0.1:49169")
+            .unwrap();
+        book.save(root).unwrap();
+
+        let sys = load_system_snapshot(root, None).unwrap();
+        assert_eq!(sys.network.address_book_count, 2);
+        assert_eq!(sys.network.live_session_count, None);
+        assert_eq!(sys.live_sessions_quality, DataQuality::Unknown);
+        assert_eq!(sys.network_quality, DataQuality::Current);
+        assert!(!sys.observed_at.is_empty());
+    }
+
+    #[test]
+    fn unavailable_identity_projects_unknown_not_offline() {
+        let dir = tempdir().unwrap();
+        let snap = load_network_mesh_snapshot(dir.path(), None).unwrap();
+        assert!(snap.identity.is_empty());
+        assert_eq!(snap.top_level, "UNKNOWN");
+        assert_eq!(snap.live_session_count, None);
+        let sys = SystemSnapshot::from_network(snap, "unix:0".into());
+        assert_eq!(sys.network_quality, DataQuality::Unavailable);
+        assert_eq!(sys.live_sessions_quality, DataQuality::Unavailable);
     }
 
     #[test]
