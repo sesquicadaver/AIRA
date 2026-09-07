@@ -1,6 +1,6 @@
 # Phase P — Runtime-honest Desktop (post-O)
 
-**Статус:** складено 2026-09-07; **IN PROGRESS** — QUEUE `#266`–`#272` **DONE** @ RFC-0162; first OPEN `#273`.  
+**Статус:** складено 2026-09-07; **IN PROGRESS** — QUEUE `#266`–`#273` **DONE** @ RFC-0163; first OPEN `#274`.  
 **Джерела:** post-O audit `aira-current.md` @ `700ffd5` (2026-09-07); Phase O [`phase-o-plan.md`](phase-o-plan.md) **DONE** @ RFC-0146; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase P `#266`–`#274`.  
 **Closure:** consolidating **RFC-0156** (id **confirmed free** at `#266`; file-free until `#274`).  
@@ -78,7 +78,7 @@ P0 Wiring
 | `#270` | P1 | Reachability endpoint bind | **DONE** @ RFC-0160: endpoint+direction; CLI evidence ≠ transcript-alone | EVM honesty (#271) |
 | `#271` | P1 | EVM/JSON-RPC honesty | **DONE** @ RFC-0161: https config; Mock≠ledger; PARTIAL | lifecycle (#272) |
 | `#272` | P2 | Lifecycle non-blocking | **DONE** @ RFC-0162: Start/Stop/Quit off update(); refresh invalidate | Help (#273) |
-| `#273` | P2 | Help F1 routing | clear search on contextual open; focus→section→screen; localized titles; tests + RFC-D | RFC close (#274) |
+| `#273` | P2 | Help F1 routing | **DONE** @ RFC-0163: clear search; focus→section→screen; localized titles | RFC close (#274) |
 | `#274` | P | RFC-0156 + close | consolidating RFC-0156; QUEUE P closed | — |
 
 ```text
@@ -89,8 +89,8 @@ P0 Wiring
         → #270 P1 reachability endpoint DONE @ RFC-0160
           → #271 P1 EVM honesty DONE @ RFC-0161
             → #272 P2 lifecycle jobs DONE @ RFC-0162
-              → #273 P2 Help routing OPEN
-                → #274 RFC-0156 close
+              → #273 P2 Help routing DONE @ RFC-0163
+              → #274 RFC-0156 close OPEN
 ```
 
 ## 6. Acceptance Phase P
@@ -112,12 +112,12 @@ aira-core still has no ledger/GUI deps.
 ## 7. RFC
 
 - Consolidating (`#274`): **AIRA-RFC-0156** — id **confirmed free** at `#266` (file-free until close).
-- Per-atom RFC-D: `#267`→**0157** … `#272`→**0162** (DONE) … `#273`→0163 (assigned at each atom PR).
+- Per-atom RFC-D: `#267`→**0157** … `#272`→**0162** (DONE) … `#273`→**0163** (DONE) … `#274`→0156 consolidating.
 
 ## 8. Activation rule
 
 ```text
 QUEUE O closed @ RFC-0146 + developer «скласти Phase P» 2026-09-07
   → цей план активовано атомом `#266`.
-`#266`–`#272` DONE @ RFC-0162; first OPEN `#273`.
+`#266`–`#273` DONE @ RFC-0163; first OPEN `#274`.
 ```

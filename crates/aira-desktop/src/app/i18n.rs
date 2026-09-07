@@ -51,6 +51,7 @@ pub struct Labels {
     pub help_offline_note: &'static str,
     pub help_topics: &'static str,
     pub help_related: &'static str,
+    pub help_search_miss: &'static str,
     pub system_heading: &'static str,
     pub sys_program: &'static str,
     pub sys_model: &'static str,
@@ -238,6 +239,7 @@ static EN: Labels = Labels {
     help_offline_note: "Offline Help · no network · no LLM",
     help_topics: "Topics",
     help_related: "Related",
+    help_search_miss: "Current topic is outside this search — article stays open below.",
     system_heading: "System status",
     sys_program: "Program",
     sys_model: "Model",
@@ -416,6 +418,7 @@ static UK: Labels = Labels {
     help_offline_note: "Офлайн-довідка · без мережі · без LLM",
     help_topics: "Теми",
     help_related: "Пов'язані",
+    help_search_miss: "Поточна тема поза цим пошуком — стаття лишається відкритою нижче.",
     system_heading: "Стан системи",
     sys_program: "Програма",
     sys_model: "Модель",
@@ -654,5 +657,11 @@ mod tests {
             .settings_close_not_stop
             .contains("не зупиняє"));
         assert_eq!(Labels::get(UiLang::Uk).settings_group_general, "Загальні");
+        assert!(Labels::get(UiLang::En)
+            .help_search_miss
+            .contains("outside this search"));
+        assert!(Labels::get(UiLang::Uk)
+            .help_search_miss
+            .contains("поза цим пошуком"));
     }
 }
