@@ -149,9 +149,7 @@ impl AsyncDesktopJobs {
 
     /// Non-blocking poll for a finished submit.
     pub fn poll_submit(&mut self) -> Option<Result<WorkResultView, String>> {
-        let Some(rx) = self.work_rx.as_ref() else {
-            return None;
-        };
+        let rx = self.work_rx.as_ref()?;
         match rx.try_recv() {
             Ok(v) => {
                 self.work_rx = None;
@@ -167,9 +165,7 @@ impl AsyncDesktopJobs {
 
     /// Non-blocking poll for a finished refresh (drops stale generations).
     pub fn poll_refresh(&mut self) -> Option<Result<StatusSnapshot, String>> {
-        let Some(rx) = self.refresh_rx.as_ref() else {
-            return None;
-        };
+        let rx = self.refresh_rx.as_ref()?;
         match rx.try_recv() {
             Ok((gen, outcome)) => {
                 self.refresh_rx = None;
