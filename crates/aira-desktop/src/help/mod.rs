@@ -1,8 +1,10 @@
-//! Offline contextual Help (`#263`): embedded Markdown, search, context routing.
+//! Offline contextual Help (`#263` shell, `#264` seed + link check).
 //!
 //! Articles live under `docs/help/{en,uk}/` and are compiled into the binary.
 //! No network, no LLM, no dependency on a running node.
+//! Cross-links use plain `help:<id>` tokens validated by [`links`].
 
+mod links;
 mod render;
 mod search;
 
@@ -10,6 +12,7 @@ use aira_desktop_runtime::UiLang;
 
 use crate::lexicon::HelpId;
 
+pub use links::extract_help_links;
 pub use render::render_markdown_plain;
 pub use search::search_help_ids;
 

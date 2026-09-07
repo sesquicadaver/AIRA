@@ -128,7 +128,7 @@ impl AiraDesktopApp {
         });
     }
 
-    /// Offline F1 panel: search, topic list, embedded Markdown (`#263`).
+    /// Offline F1 panel: search, topics, related links, embedded Markdown (`#263`/`#264`).
     fn ui_help_panel(&mut self, ui: &mut egui::Ui) {
         let l = self.labels();
         let lang = self.ui_lang();
@@ -174,6 +174,18 @@ impl AiraDesktopApp {
             ui.strong(l.help_topic_label);
             ui.monospace(article.id.as_str());
         });
+        let related = crate::help::extract_help_links(article.markdown);
+        if !related.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                ui.strong(l.help_related);
+                for id in &related {
+                    if ui.selectable_label(false, id.as_str()).clicked() {
+                        self.help_topic = *id;
+                        self.help_search.clear();
+                    }
+                }
+            });
+        }
         ui.separator();
         let body = crate::help::render_markdown_plain(article.markdown);
         egui::ScrollArea::vertical().show(ui, |ui| {

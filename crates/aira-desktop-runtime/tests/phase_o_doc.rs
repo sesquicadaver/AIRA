@@ -20,22 +20,23 @@ fn phase_o_plan_present() {
         "AIRA-RFC-0152",
         "AIRA-RFC-0153",
         "AIRA-RFC-0154",
+        "AIRA-RFC-0155",
         "confirmed free",
         "desktop-ux.md",
         "QUEUE N-fix closed",
         "GPU marketplace",
         "Calculate 2 + 2",
-        "first OPEN `#264`",
+        "first OPEN `#265`",
     ] {
         assert!(text.contains(needle), "phase-o-plan missing: {needle}");
     }
 }
 
 #[test]
-fn phase_o_queue_263_done_264_open() {
+fn phase_o_queue_264_done_265_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-o-plan.md"));
-    for n in 255..=263 {
+    for n in 255..=264 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
@@ -46,16 +47,15 @@ fn phase_o_queue_263_done_264_open() {
         );
     }
     assert!(
-        text.contains("| 264 | **OPEN**"),
-        "QUEUE #264 must be first OPEN"
+        text.contains("| 265 | **OPEN**"),
+        "QUEUE #265 must be first OPEN"
     );
-    assert!(text.contains("| 265 | **OPEN**"), "QUEUE #265 must be OPEN");
     for needle in [
-        "Analyze-298",
+        "Analyze-299",
+        "RFC-0155",
         "RFC-0154",
-        "RFC-0153",
         "RFC-0146",
-        "first OPEN `#264`",
+        "first OPEN `#265`",
         "desktop-ux.md",
         "QUEUE N-fix closed",
     ] {
@@ -78,9 +78,9 @@ fn phase_o_desktop_ux_canon() {
         "AddressBook",
         "help_id",
         "lexicon",
-        "#263",
-        "RFC-0154",
-        "include_str",
+        "#264",
+        "RFC-0155",
+        "help:",
         "Restart",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
@@ -121,6 +121,16 @@ fn phase_o_rfc_0154_present() {
 }
 
 #[test]
+fn phase_o_rfc_0155_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0155-seed-help-topics.md");
+    assert!(path.is_file(), "RFC-0155 missing");
+    let text = std::fs::read_to_string(&path).unwrap();
+    assert!(text.contains("#264"));
+    assert!(text.contains("help:"));
+    assert!(text.contains("link"));
+}
+
+#[test]
 fn phase_o_rfc_0146_file_free() {
     let rfc_dir = repo_root().join("specs/rfc");
     let hits: Vec<_> = std::fs::read_dir(&rfc_dir)
@@ -139,7 +149,7 @@ fn phase_o_rfc_0146_file_free() {
 fn phase_o_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-o-plan.md"));
-    assert!(readme.contains("#264") || readme.contains("first OPEN"));
+    assert!(readme.contains("#265") || readme.contains("first OPEN"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-o-plan.md"));
 }
@@ -155,10 +165,10 @@ fn phase_o_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-o-plan.md") || text.contains("Phase O"));
     assert!(text.contains("QUEUE N-fix closed") || text.contains("no OPEN N-fix"));
-    assert!(text.contains("#264") || text.contains("перший OPEN"));
+    assert!(text.contains("#265") || text.contains("перший OPEN"));
     assert!(
-        !text.contains("перший OPEN `#263`") && !text.contains("first OPEN `#263`"),
-        "NEXT_PROBLEM must not keep #263 as first-OPEN"
+        !text.contains("перший OPEN `#264`") && !text.contains("first OPEN `#264`"),
+        "NEXT_PROBLEM must not keep #264 as first-OPEN"
     );
 }
 
@@ -166,14 +176,18 @@ fn phase_o_next_problem() {
 fn phase_o_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #263 |") || status.contains("#263"));
-    assert!(status.contains("RFC-0154") || status.contains("0154"));
+    assert!(status.contains("| #264 |") || status.contains("#264"));
+    assert!(status.contains("RFC-0155") || status.contains("0155"));
     assert!(status.contains("phase_o_doc.rs"));
 }
 
 #[test]
-fn phase_o_help_stub_catalog_present() {
+fn phase_o_help_seed_catalog_and_readme() {
     let root = repo_root().join("docs/help");
+    assert!(
+        root.join("README.md").is_file(),
+        "docs/help/README.md missing"
+    );
     for lang in ["en", "uk"] {
         for name in [
             "start.md",
@@ -189,7 +203,19 @@ fn phase_o_help_stub_catalog_present() {
             "node.lifecycle.md",
         ] {
             let path = root.join(lang).join(name);
-            assert!(path.is_file(), "missing help stub {}", path.display());
+            let text = std::fs::read_to_string(&path)
+                .unwrap_or_else(|e| panic!("missing {}: {e}", path.display()));
+            assert!(
+                text.contains("help:"),
+                "{} must contain help: related links",
+                path.display()
+            );
+            assert!(
+                text.len() >= 500,
+                "{} seed too short ({})",
+                path.display(),
+                text.len()
+            );
         }
     }
 }
