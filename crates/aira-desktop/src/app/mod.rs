@@ -12,9 +12,10 @@ mod work;
 use std::path::PathBuf;
 
 use aira_desktop_runtime::{
-    load_network_mesh_snapshot, load_or_create_settings, load_or_create_ui_prefs, start, stop,
+    load_or_create_settings, load_or_create_ui_prefs, load_system_snapshot, start, stop,
     sync_autostart_from_settings, write_ui_prefs, DesktopPaths, DesktopSettings, LifecycleStatus,
-    NetworkMeshSnapshot, UiLang, UiPrefs, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    NetworkMeshSnapshot, SystemSnapshot, UiLang, UiPrefs, DEFAULT_PEER_LISTEN,
+    DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
@@ -49,12 +50,14 @@ pub struct AiraDesktopApp {
     pub(super) ui_prefs: UiPrefs,
     pub(super) tab: MainTab,
     pub(super) node_running: bool,
+    pub(super) lifecycle: LifecycleStatus,
     pub(super) problem_text: String,
     pub(super) work_result: Option<crate::work_view::WorkResultView>,
     pub(super) status_label: String,
     pub(super) detail: String,
     pub(super) peer_detail: String,
     pub(super) mesh_snapshot: NetworkMeshSnapshot,
+    pub(super) system_snapshot: SystemSnapshot,
     pub(super) peer_listen_edit: String,
     pub(super) relay_ttl_edit: String,
     pub(super) invite_msg: Option<String>,
@@ -123,12 +126,14 @@ impl AiraDesktopApp {
             ui_prefs,
             tab: MainTab::Work,
             node_running: false,
+            lifecycle: LifecycleStatus::Stopped,
             problem_text: String::new(),
             work_result: None,
             status_label: Labels::get(UiLang::En).st_stopped.into(),
             detail: String::new(),
             peer_detail: String::new(),
             mesh_snapshot: NetworkMeshSnapshot::unavailable(),
+            system_snapshot: SystemSnapshot::unavailable(),
             peer_listen_edit,
             relay_ttl_edit,
             invite_msg: None,
@@ -199,6 +204,7 @@ impl AiraDesktopApp {
 
     /// Apply a status snapshot collected off the UI thread (`#257`).
     pub(super) fn apply_status_snapshot(&mut self, snap: StatusSnapshot) {
+        self.lifecycle = snap.lifecycle;
         self.node_running = matches!(snap.lifecycle, LifecycleStatus::Running);
         self.status_label = labels::status_label(snap.lifecycle, self.ui_lang()).to_string();
         let l = self.labels();
@@ -232,6 +238,7 @@ impl AiraDesktopApp {
             }
         }
         self.mesh_snapshot = snap.mesh;
+        self.system_snapshot = snap.system;
     }
 
     /// Request a background status refresh (no-op if one is already running).
@@ -277,13 +284,14 @@ impl AiraDesktopApp {
 
     /// Reload Network tab mesh fields from node root (orchestrates peer APIs only).
     pub(super) fn refresh_mesh_snapshot(&mut self) {
-        match load_network_mesh_snapshot(
-            &self.paths.data_root,
-            self.settings.peer_listen.as_deref(),
-        ) {
-            Ok(snap) => self.mesh_snapshot = snap,
+        match load_system_snapshot(&self.paths.data_root, self.settings.peer_listen.as_deref()) {
+            Ok(sys) => {
+                self.mesh_snapshot = sys.network.clone();
+                self.system_snapshot = sys;
+            }
             Err(e) => {
                 self.mesh_snapshot = NetworkMeshSnapshot::unavailable();
+                self.system_snapshot = SystemSnapshot::unavailable();
                 self.set_problem(ErrorCode::MeshSnapshotFailed, format!("{e:#}"));
             }
         }
@@ -325,6 +333,7 @@ impl AiraDesktopApp {
 
     pub(super) fn do_start(&mut self) -> anyhow::Result<()> {
         let outcome = start(&self.paths, self.node_bin.clone())?;
+        self.lifecycle = outcome.status;
         self.node_running = matches!(outcome.status, LifecycleStatus::Running);
         self.status_label = labels::status_label(outcome.status, self.ui_lang()).to_string();
         let l = self.labels();
@@ -355,6 +364,7 @@ impl AiraDesktopApp {
 
     pub(super) fn do_stop(&mut self) -> anyhow::Result<()> {
         let st = stop(&self.paths)?;
+        self.lifecycle = st;
         self.node_running = false;
         self.status_label = labels::status_label(st, self.ui_lang()).to_string();
         self.detail.clear();
