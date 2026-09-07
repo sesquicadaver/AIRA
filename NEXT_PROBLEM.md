@@ -3,7 +3,7 @@
 **Status:** RESOLVED / provenance  
 **Resolved by:** [`docs/desktop-ux.md`](docs/desktop-ux.md) + [`docs/phase-e-plan.md`](docs/phase-e-plan.md) (`#75`–`#106` **DONE**, 2026-08-22)  
 **Post-resolution stabilization:** [`docs/phase-f-plan.md`](docs/phase-f-plan.md) (`#107`–`#119` **DONE**, 2026-08-24)  
-**Active backlog:** [`QUEUE.md`](QUEUE.md) — Phase O [`docs/phase-o-plan.md`](docs/phase-o-plan.md) `#255`–`#265` (**`#255`–`#258` DONE**; перший OPEN `#259`); **QUEUE N-fix closed** @ RFC-0139 (`#248`–`#254` **DONE**); no OPEN N-fix atoms — [`docs/phase-n-fix-plan.md`](docs/phase-n-fix-plan.md); QUEUE N closed @ RFC-0123; QUEUE M closed @ RFC-0117; QUEUE L closed @ RFC-0111  
+**Active backlog:** [`QUEUE.md`](QUEUE.md) — Phase O [`docs/phase-o-plan.md`](docs/phase-o-plan.md) `#255`–`#265` (**`#255`–`#259` DONE**; перший OPEN `#260`); **QUEUE N-fix closed** @ RFC-0139 (`#248`–`#254` **DONE**); no OPEN N-fix atoms — [`docs/phase-n-fix-plan.md`](docs/phase-n-fix-plan.md); QUEUE N closed @ RFC-0123; QUEUE M closed @ RFC-0117; QUEUE L closed @ RFC-0111  
 **Не канон:** цей файл не конкурує з `desktop-ux.md` / `phase-e-plan.md` / `QUEUE.md`. Далі — лише історичний problem statement.
 
 ## Problem statement (вхід)

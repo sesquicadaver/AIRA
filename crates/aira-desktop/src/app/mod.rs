@@ -20,16 +20,26 @@ use aira_desktop_runtime::{
 use crate::actions;
 use crate::async_jobs::{AsyncDesktopJobs, StatusSnapshot};
 use crate::camera;
-use crate::lexicon::{ErrorCode, UiProblem};
+use crate::lexicon::{ErrorCode, HelpId, UiProblem};
 
 use self::i18n::Labels;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum MainTab {
     Work,
-    Node,
-    Network,
+    System,
     Settings,
+}
+
+impl MainTab {
+    /// Default Help topic for this shell section (`#259`).
+    pub(super) fn default_help(self) -> HelpId {
+        match self {
+            Self::Work => HelpId::WorkSubmit,
+            Self::System => HelpId::NetworkReachability,
+            Self::Settings => HelpId::SettingsApply,
+        }
+    }
 }
 
 pub struct AiraDesktopApp {
@@ -61,6 +71,10 @@ pub struct AiraDesktopApp {
     pub(super) qr_camera_status: Option<String>,
     pub(super) restart_hint: bool,
     pub(super) async_jobs: AsyncDesktopJobs,
+    /// Side help panel open (`#259` chrome; topics filled in `#263`).
+    pub(super) help_open: bool,
+    /// Active help topic key for the panel.
+    pub(super) help_topic: HelpId,
 }
 
 impl AiraDesktopApp {
@@ -131,6 +145,8 @@ impl AiraDesktopApp {
             qr_camera_status: None,
             restart_hint: false,
             async_jobs: AsyncDesktopJobs::new(),
+            help_open: false,
+            help_topic: HelpId::Start,
         };
         cc.egui_ctx.send_viewport_cmd(egui::ViewportCommand::Title(
             Labels::get(app.ui_lang()).window_title.to_string(),
@@ -281,6 +297,32 @@ impl AiraDesktopApp {
         self.last_problem = Some(UiProblem::from_code_err(code, self.ui_lang(), detail));
     }
 
+    /// Default Help topic for the current shell section (`#259`).
+    pub(super) fn help_topic_for_tab(&self) -> HelpId {
+        self.tab.default_help()
+    }
+
+    /// Open Help·F1 for an explicit topic (does not clear draft / settings).
+    pub(super) fn open_help(&mut self, topic: HelpId) {
+        self.help_topic = topic;
+        self.help_open = true;
+    }
+
+    /// Open Help for the current context: last problem → section default.
+    pub(super) fn open_help_contextual(&mut self) {
+        let topic = self
+            .last_problem
+            .as_ref()
+            .map(|p| p.help_id)
+            .unwrap_or_else(|| self.help_topic_for_tab());
+        self.open_help(topic);
+    }
+
+    /// Close only the help panel (Esc); never cancels work.
+    pub(super) fn close_help(&mut self) {
+        self.help_open = false;
+    }
+
     pub(super) fn do_start(&mut self) -> anyhow::Result<()> {
         let outcome = start(&self.paths, self.node_bin.clone())?;
         self.node_running = matches!(outcome.status, LifecycleStatus::Running);
@@ -327,5 +369,17 @@ impl AiraDesktopApp {
         sync_autostart_from_settings(self.settings.autostart_on_login)?;
         self.clear_problem();
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shell_sections_bind_default_help_topics() {
+        assert_eq!(MainTab::Work.default_help(), HelpId::WorkSubmit);
+        assert_eq!(MainTab::System.default_help(), HelpId::NetworkReachability);
+        assert_eq!(MainTab::Settings.default_help(), HelpId::SettingsApply);
     }
 }
