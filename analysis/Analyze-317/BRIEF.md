@@ -1,0 +1,1 @@
+QUEUE `#282`: Lifecycle revision races — one revision per Start/Stop; refresh must not overwrite post-transition; Quit-during-Start → Stop; Applied from worker settings snapshot; RFC-0171. Do not start Backend≠model (`#283`).

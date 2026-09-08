@@ -242,10 +242,38 @@ mod tests {
             peer_pid: Some(10),
             peer_listen: Some("127.0.0.1:4001".into()),
             peer_attached: false,
+            used_settings: used.clone(),
         };
         let applied = AppliedRuntimeSettings::from_start_outcome(&outcome, &used);
         assert_eq!(applied.http_listen, "127.0.0.1:9999");
         assert_eq!(applied.peer_listen.as_deref(), Some("127.0.0.1:4001"));
         assert_eq!(applied.network_profile, NetworkProfile::P1);
+    }
+
+    #[test]
+    fn applied_uses_worker_snapshot_not_later_ui_settings() {
+        let worker = sample_settings(NetworkProfile::P0);
+        let mut ui_later = worker.clone();
+        ui_later.network_profile = NetworkProfile::P1;
+        ui_later.peer_listen = Some("127.0.0.1:4001".into());
+        let outcome = StartOutcome {
+            status: LifecycleStatus::Running,
+            attached: false,
+            pid: Some(1),
+            listen: "127.0.0.1:8787".into(),
+            instance_id: worker.instance_id.clone(),
+            data_root: std::env::temp_dir(),
+            peer_pid: None,
+            peer_listen: None,
+            peer_attached: false,
+            used_settings: worker.clone(),
+        };
+        let applied = AppliedRuntimeSettings::from_start_outcome(&outcome, &outcome.used_settings);
+        assert_eq!(applied.network_profile, NetworkProfile::P0);
+        assert_ne!(applied.network_profile, ui_later.network_profile);
+        assert_eq!(
+            settings_apply_phase(&ui_later, Some(&applied)),
+            SettingsApplyPhase::RestartNeeded
+        );
     }
 }

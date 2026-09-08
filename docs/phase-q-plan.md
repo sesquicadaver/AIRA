@@ -1,6 +1,6 @@
 # Phase Q — Cross-install integrity & light monitoring (post-P)
 
-**Статус:** складено 2026-09-07; **IN PROGRESS** — QUEUE `#275`–`#281` **DONE** @ RFC-0170; first OPEN `#282`.  
+**Статус:** складено 2026-09-07; **IN PROGRESS** — QUEUE `#275`–`#282` **DONE** @ RFC-0171; first OPEN `#283`.  
 **Джерела:** post-P audit `aira-current.md` @ `00f19cf` (2026-09-07); Phase P [`phase-p-plan.md`](phase-p-plan.md) **DONE** @ RFC-0156; QUEUE P closed; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase Q `#275`–`#285`.  
 **Closure:** consolidating **RFC-0164** (id **confirmed free** at `#275`; file-free until `#285`).  
@@ -81,7 +81,7 @@ Q0 Wiring (+ CI fmt)
 | `#279` | Q1 | Reachability observation independence | **DONE** @ RFC-0168: окремі clocks; bind ≠ external freshness; skew bound | NAT (#280) |
 | `#280` | Q1 | Reachability NAT endpoints | **DONE** @ RFC-0169: dial≠accept local_addr; inbound NAT not fail-closed | evidence (#281) |
 | `#281` | Q1 | Reachability evidence admission | **DONE** @ RFC-0170: root-bound apply; durable replay; apply-time freshness | lifecycle (#282) |
-| `#282` | Q2 | Lifecycle revision races | одна revision на Start/Stop; refresh під час lifecycle не перезаписує post-transition; Quit-during-Start → Stop; Applied з worker settings snapshot | provenance (#283) |
+| `#282` | Q2 | Lifecycle revision races | **DONE** @ RFC-0171: one revision; refresh gate; Quit→Stop; Applied from worker snapshot | provenance (#283) |
 | `#283` | Q2 | Backend≠model used | `used` model id/hash окремо від backend; без model evidence → undefined model (не `backend:*` у model field) | invite (#284) |
 | `#284` | Q2 | Invite import atomicity | усі перевірки (вкл. port invariant) до TrustStore/AddressBook writes; commit/rollback або явний partial | RFC close (#285) |
 | `#285` | Q | RFC-0164 + close | consolidating RFC-0164; QUEUE Q closed; no OPEN Q atoms; doc tip drift cleared | — |
@@ -94,7 +94,7 @@ Q0 Wiring (+ CI fmt)
         → #279 Q1 reach observation independence DONE @ RFC-0168
           → #280 Q1 reach NAT endpoints DONE @ RFC-0169
             → #281 Q1 reach evidence admission DONE @ RFC-0170
-              → #282 Q2 lifecycle revision
+              → #282 Q2 lifecycle revision DONE @ RFC-0171
                 → #283 Q2 backend≠model
                   → #284 Q2 invite atomicity
                     → #285 RFC-0164 close
@@ -122,12 +122,12 @@ aira-core still has no ledger/GUI deps.
 ## 7. RFC
 
 - Consolidating (`#285`): **AIRA-RFC-0164** — id **confirmed free** at `#275` (file-free until close).
-- Per-atom RFC-D: `#276`→**0165** (DONE); `#277`→**0166** (DONE); `#278`→**0167** (DONE); `#279`→**0168** (DONE); `#280`→**0169** (DONE); `#281`→**0170** (DONE) … `#284`→**0173** (assigned at each atom PR); `#285`→0164 consolidating.
+- Per-atom RFC-D: `#276`→**0165** (DONE); `#277`→**0166** (DONE); `#278`→**0167** (DONE); `#279`→**0168** (DONE); `#280`→**0169** (DONE); `#281`→**0170** (DONE); `#282`→**0171** (DONE) … `#284`→**0173** (assigned at each atom PR); `#285`→0164 consolidating.
 
 ## 8. Activation rule
 
 ```text
 QUEUE P closed @ RFC-0156 + developer «скласти Phase Q» 2026-09-07
   → цей план активовано атомом `#275`.
-`#275`–`#281` DONE @ RFC-0170; first OPEN `#282`.
+`#275`–`#282` DONE @ RFC-0171; first OPEN `#283`.
 ```

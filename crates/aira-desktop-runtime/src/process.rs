@@ -49,6 +49,8 @@ pub struct StartOutcome {
     pub peer_pid: Option<u32>,
     pub peer_listen: Option<String>,
     pub peer_attached: bool,
+    /// Settings snapshot actually loaded for this start/attach (`#282`).
+    pub used_settings: DesktopSettings,
 }
 
 /// Start or attach to a compatible Desktop node; on P1/P2 also supervise peer listen.
@@ -71,6 +73,7 @@ pub fn start(paths: &DesktopPaths, node_bin: Option<PathBuf>) -> Result<StartOut
         outcome.peer_pid = peer_pid;
         outcome.peer_listen = peer_listen;
         outcome.peer_attached = peer_attached;
+        outcome.used_settings = settings;
         return Ok(outcome);
     }
 
@@ -134,6 +137,7 @@ pub fn start(paths: &DesktopPaths, node_bin: Option<PathBuf>) -> Result<StartOut
                     peer_pid,
                     peer_listen,
                     peer_attached,
+                    used_settings: settings,
                 }),
                 Err(e) => {
                     let _ = stop(paths);
@@ -251,6 +255,7 @@ fn try_attach(paths: &DesktopPaths, settings: &DesktopSettings) -> Result<Option
                     peer_pid: None,
                     peer_listen: None,
                     peer_attached: false,
+                    used_settings: settings.clone(),
                 }));
             }
             // Stale unhealthy — stop and continue to fresh start.
