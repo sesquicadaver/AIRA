@@ -1,0 +1,1 @@
+QUEUE `#287`: Connection next-step CTA matrix — exactly one primary action on System → Connection (not Refresh-only). Pure `connection_cta` + UI wire + RFC-0175. Do not promote controls out of tech collapse (`#288`).

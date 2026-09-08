@@ -631,19 +631,54 @@ impl AiraDesktopApp {
                 None => l.sys_live_unobserved.to_string(),
             });
         });
-        if matches!(
-            view.connection,
-            crate::system_view::ConnectionConclusion::Unknown
-                | crate::system_view::ConnectionConclusion::LocalOnly
-        ) {
-            let btn = ui.button(l.refresh);
+        // Phase R `#287`: exactly one primary Connection CTA (not Refresh-only).
+        let cta = crate::connection_cta::primary_connection_cta(
+            crate::connection_cta::ConnectionCtaInput {
+                profile: self.settings.network_profile,
+                connection: view.connection,
+                address_book_count: view.address_book_count,
+                apply_phase: self.settings_apply_phase(),
+                program: view.program,
+                restart_hint: self.restart_hint,
+            },
+        );
+        if cta.is_button() {
+            let label = match cta {
+                crate::connection_cta::ConnectionPrimaryCta::EnablePrivateNetwork => {
+                    l.cta_enable_private_network
+                }
+                crate::connection_cta::ConnectionPrimaryCta::ImportInvite => l.cta_import_invite,
+                crate::connection_cta::ConnectionPrimaryCta::StopToApply => l.cta_stop_to_apply,
+                crate::connection_cta::ConnectionPrimaryCta::StartToApply => l.cta_start_to_apply,
+                crate::connection_cta::ConnectionPrimaryCta::RefreshStatus => l.refresh,
+                crate::connection_cta::ConnectionPrimaryCta::NoneOk => l.refresh,
+            };
+            let help = cta.help_id();
+            let btn = ui.button(label);
             if btn.hovered() {
-                self.note_help_focus(HelpId::NetworkReachability);
+                self.note_help_focus(help);
             }
             if btn.clicked() {
-                self.note_help_focus(HelpId::NetworkReachability);
-                self.request_status_refresh(ctx);
-                self.refresh_federation_detail();
+                self.note_help_focus(help);
+                match cta {
+                    crate::connection_cta::ConnectionPrimaryCta::EnablePrivateNetwork => {
+                        self.apply_profile(NetworkProfile::P1);
+                    }
+                    crate::connection_cta::ConnectionPrimaryCta::ImportInvite => {
+                        self.import_json_dialog();
+                    }
+                    crate::connection_cta::ConnectionPrimaryCta::StopToApply => {
+                        self.request_lifecycle(crate::async_jobs::LifecycleJobKind::Stop, ctx);
+                    }
+                    crate::connection_cta::ConnectionPrimaryCta::StartToApply => {
+                        self.request_lifecycle(crate::async_jobs::LifecycleJobKind::Start, ctx);
+                    }
+                    crate::connection_cta::ConnectionPrimaryCta::RefreshStatus => {
+                        self.request_status_refresh(ctx);
+                        self.refresh_federation_detail();
+                    }
+                    crate::connection_cta::ConnectionPrimaryCta::NoneOk => {}
+                }
             }
         }
         egui::CollapsingHeader::new(l.sys_tech_details)

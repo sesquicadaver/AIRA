@@ -1,6 +1,6 @@
 # Phase R — Actionable Desktop Connection UX (post-Q)
 
-**Статус:** складено 2026-09-09; **IN PROGRESS** — QUEUE `#286` **DONE**; first OPEN `#287`; RFC-0174 reserved file-free.  
+**Статус:** складено 2026-09-09; **IN PROGRESS** — QUEUE `#286`–`#287` **DONE**; first OPEN `#288`; RFC-0174 reserved file-free.  
 **Джерела:** post-Q UX review 2026-09-08…09 (Developer Preview cold-start / Connection / Help); канон [`desktop-ux.md`](desktop-ux.md); Phase O [`phase-o-plan.md`](phase-o-plan.md) **DONE** @ RFC-0146; Phase P [`phase-p-plan.md`](phase-p-plan.md) **DONE** @ RFC-0156; Phase Q [`phase-q-plan.md`](phase-q-plan.md) **DONE** @ RFC-0164; QUEUE Q closed.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase R `#286`–`#294`.  
 **Closure:** consolidating **RFC-0174** (id **confirmed free** 2026-09-09; file-free until `#294`).  
@@ -115,7 +115,7 @@ R0 Wiring (план у QUEUE + living smoke; RFC-0174 reserved)
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
 | `#286` | R0 | Phase R wiring | **DONE**: план IN PROGRESS; QUEUE `#286`–`#294`; `phase_r_doc`; tips; RFC-0174 reserved file-free; fmt tip | CTA matrix (#287) |
-| `#287` | R1 | Connection next-step CTA | стан → рівно один primary CTA (не лише Refresh); тести | promote controls (#288) |
+| `#287` | R1 | Connection next-step CTA | **DONE**: стан → рівно один primary CTA (`connection_cta` + UI); RFC-0175 | promote controls (#288) |
 | `#288` | R2 | Promote connect controls | профіль P0–P2 + invite/QR видимі на Connection без обов’язкового collapse; tech лишається для advanced | language (#289) |
 | `#289` | R3 | Human-primary mesh/strip | людський conclusion primary; `UNKNOWN`/… secondary/tech; strip не суперечить | footer (#290) |
 | `#290` | R4 | Actionable problem/strip | user-facing next action; wire `help:`/`try:` не єдиний copy | Help (#291) |
@@ -126,8 +126,8 @@ R0 Wiring (план у QUEUE + living smoke; RFC-0174 reserved)
 
 ```text
 #286 R0 wiring DONE
-  → #287 R1 CTA matrix OPEN
-    → #288 R2 promote connect controls
+  → #287 R1 CTA matrix DONE
+    → #288 R2 promote connect controls OPEN
       → #289 R3 human-primary language
         → #290 R4 problem/strip actions
           → #291 R5 Help scenario
@@ -171,7 +171,7 @@ QUEUE Q closed @ RFC-0164
 
 ---
 
-## 9. Матриця CTA (ціль для `#287`)
+## 9. Матриця CTA (`#287` **DONE** @ RFC-0175)
 
 | Стан Connection | Primary CTA (приклад) | Не primary |
 |-----------------|------------------------|------------|

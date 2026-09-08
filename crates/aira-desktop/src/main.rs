@@ -6,6 +6,7 @@ mod actions;
 mod app;
 mod async_jobs;
 mod camera;
+mod connection_cta;
 mod help;
 mod lexicon;
 mod settings_apply;
@@ -23,6 +24,7 @@ use aira_desktop_runtime::{
 };
 
 use crate::app::AiraDesktopApp;
+use crate::connection_cta::ConnectionPrimaryCta;
 use crate::lexicon::{ActionId, HelpId};
 
 fn assert_lexicon_linked() {
@@ -33,6 +35,15 @@ fn assert_lexicon_linked() {
     assert_eq!(ActionId::Quit.help_id(), HelpId::NodeLifecycle);
     assert_eq!(HelpId::parse("work.submit"), Some(HelpId::WorkSubmit));
     assert!(HelpId::parse("missing").is_none());
+    // Phase R `#287` Connection CTA wire ids stay linked.
+    assert_eq!(
+        ConnectionPrimaryCta::RefreshStatus.as_str(),
+        "connection.refresh_status"
+    );
+    assert_eq!(
+        ConnectionPrimaryCta::EnablePrivateNetwork.help_id(),
+        HelpId::NetworkConnect
+    );
 }
 
 #[derive(Parser, Debug)]
