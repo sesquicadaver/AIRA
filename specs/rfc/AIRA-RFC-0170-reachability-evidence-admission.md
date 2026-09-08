@@ -23,7 +23,7 @@ Phase Q `#281`: applying peer-assisted DIRECT evidence requires the challenge ta
 ## 5. Non-Goals
 
 ```text
-Lifecycle revision races (#282)
+Lifecycle revision races (#282) — DONE @ RFC-0171
 Transcript domain / schema bump beyond replay file
 CGNAT netns CI
 ```

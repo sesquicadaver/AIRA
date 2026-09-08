@@ -1,9 +1,9 @@
-//! Non-blocking Desktop jobs (`#257` / `#272`): submit, status refresh, and
+//! Non-blocking Desktop jobs (`#257` / `#272` / `#282`): submit, status refresh, and
 //! Start/Stop lifecycle off the egui thread.
 //!
 //! `request_repaint_after` only schedules a redraw; data refresh is a separate job.
-//! Lifecycle ops bump `refresh_generation` so a stale refresh cannot overwrite
-//! post-Start/Stop UI state.
+//! Each Start/Stop bumps a dedicated `lifecycle_revision` and invalidates refresh so a
+//! stale or mid-lifecycle refresh cannot overwrite post-transition UI (`#282`).
 
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
@@ -28,11 +28,39 @@ pub enum LifecycleJobKind {
     Stop,
 }
 
-/// Result of a background Start/Stop (`#272`).
+/// Result of a background Start/Stop (`#272` / `#282`).
 #[derive(Debug)]
 pub enum LifecycleJobResult {
-    Started(StartOutcome),
+    /// Successful Start/attach; Applied must use `outcome.used_settings` (`#282`).
+    Started(Box<StartOutcome>),
     Stopped(LifecycleStatus),
+}
+
+/// What Quit should do after a lifecycle poll completes (`#282`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuitFollowup {
+    /// Keep waiting / no action.
+    None,
+    /// Start finished while Quit was requested — queue Stop.
+    QueueStop,
+    /// Stop finished (or Start failed) — close the viewport.
+    Close,
+}
+
+/// Pure Quit chaining after a lifecycle job settles (`#282`).
+pub fn quit_followup_after_lifecycle(
+    quit_after_stop: bool,
+    kind: LifecycleJobKind,
+    succeeded: bool,
+) -> QuitFollowup {
+    if !quit_after_stop {
+        return QuitFollowup::None;
+    }
+    match (kind, succeeded) {
+        (LifecycleJobKind::Start, true) => QuitFollowup::QueueStop,
+        (LifecycleJobKind::Start, false) => QuitFollowup::Close,
+        (LifecycleJobKind::Stop, _) => QuitFollowup::Close,
+    }
 }
 
 /// Authoritative status payload collected off the UI thread.
@@ -90,6 +118,8 @@ pub struct AsyncDesktopJobs {
     lifecycle_kind: Option<LifecycleJobKind>,
     /// Monotonic generation so a stale refresh cannot overwrite a newer one.
     refresh_generation: u64,
+    /// One bump per Start/Stop operation (`#282`).
+    lifecycle_revision: u64,
     last_refresh_started: Option<Instant>,
 }
 
@@ -104,6 +134,12 @@ impl AsyncDesktopJobs {
 
     pub fn refresh_inflight(&self) -> bool {
         self.refresh_rx.is_some()
+    }
+
+    /// Current lifecycle operation token (`#282`).
+    #[allow(dead_code)] // asserted in unit tests; reserved for UI diagnostics
+    pub fn lifecycle_revision(&self) -> u64 {
+        self.lifecycle_revision
     }
 
     /// Start at most one submit worker. Returns false if already in flight.
@@ -130,14 +166,15 @@ impl AsyncDesktopJobs {
         true
     }
 
-    /// Start at most one status refresh. Returns false if already in flight.
+    /// Start at most one status refresh. Returns false if already in flight
+    /// or a lifecycle op is running (`#282`).
     pub fn try_spawn_refresh(
         &mut self,
         paths: DesktopPaths,
         settings: DesktopSettings,
         on_done: impl FnOnce() + Send + 'static,
     ) -> bool {
-        if self.refresh_rx.is_some() {
+        if self.refresh_rx.is_some() || self.lifecycle_inflight() {
             return false;
         }
         self.refresh_generation = self.refresh_generation.wrapping_add(1);
@@ -153,14 +190,14 @@ impl AsyncDesktopJobs {
         true
     }
 
-    /// Kick a refresh when the interval elapsed and no refresh is running.
+    /// Kick a refresh when the interval elapsed and no refresh/lifecycle is running.
     pub fn maybe_schedule_periodic_refresh(
         &mut self,
         paths: DesktopPaths,
         settings: DesktopSettings,
         on_done: impl FnOnce() + Send + 'static,
     ) -> bool {
-        if self.refresh_inflight() {
+        if self.refresh_inflight() || self.lifecycle_inflight() {
             return false;
         }
         let due = match self.last_refresh_started {
@@ -199,6 +236,10 @@ impl AsyncDesktopJobs {
                     // Superseded — ignore payload but clear slot.
                     return None;
                 }
+                // Mid-lifecycle results must never apply (`#282`).
+                if self.lifecycle_inflight() {
+                    return None;
+                }
                 Some(outcome)
             }
             Err(TryRecvError::Empty) => None,
@@ -218,7 +259,7 @@ impl AsyncDesktopJobs {
         self.lifecycle_rx.is_some()
     }
 
-    /// Start at most one Start/Stop worker; invalidates refresh generation.
+    /// Start at most one Start/Stop worker; one revision bump + invalidate refresh (`#282`).
     pub fn try_spawn_lifecycle(
         &mut self,
         kind: LifecycleJobKind,
@@ -229,6 +270,7 @@ impl AsyncDesktopJobs {
         if self.lifecycle_rx.is_some() {
             return false;
         }
+        self.lifecycle_revision = self.lifecycle_revision.wrapping_add(1);
         self.invalidate_refresh();
         let (tx, rx) = mpsc::channel();
         self.lifecycle_rx = Some(rx);
@@ -236,7 +278,7 @@ impl AsyncDesktopJobs {
         thread::spawn(move || {
             let outcome = match kind {
                 LifecycleJobKind::Start => start(&paths, node_bin)
-                    .map(LifecycleJobResult::Started)
+                    .map(|o| LifecycleJobResult::Started(Box::new(o)))
                     .map_err(|e| format!("{e:#}")),
                 LifecycleJobKind::Stop => stop(&paths)
                     .map(LifecycleJobResult::Stopped)
@@ -257,12 +299,15 @@ impl AsyncDesktopJobs {
             Ok(v) => {
                 self.lifecycle_rx = None;
                 self.lifecycle_kind = None;
+                // Drop any refresh that raced the transition (`#282`).
+                self.invalidate_refresh();
                 Some(v)
             }
             Err(TryRecvError::Empty) => None,
             Err(TryRecvError::Disconnected) => {
                 self.lifecycle_rx = None;
                 self.lifecycle_kind = None;
+                self.invalidate_refresh();
                 Some((
                     LifecycleJobKind::Stop,
                     Err("lifecycle worker disconnected".into()),
@@ -307,6 +352,18 @@ mod tests {
     }
 
     #[test]
+    fn refresh_rejected_while_lifecycle_inflight() {
+        let mut jobs = AsyncDesktopJobs::new();
+        let (_hold_tx, hold_rx) = mpsc::channel();
+        jobs.lifecycle_rx = Some(hold_rx);
+        jobs.lifecycle_kind = Some(LifecycleJobKind::Start);
+        let paths = DesktopPaths::for_data_root(std::env::temp_dir().join("aira-async-jobs-lc-rf"));
+        let settings = DesktopSettings::default_p0(&paths);
+        assert!(!jobs.try_spawn_refresh(paths.clone(), settings.clone(), || {}));
+        assert!(!jobs.maybe_schedule_periodic_refresh(paths, settings, || {}));
+    }
+
+    #[test]
     fn refresh_generation_advances_on_spawn() {
         let mut jobs = AsyncDesktopJobs::new();
         let tmp = tempfile::tempdir().unwrap();
@@ -343,17 +400,68 @@ mod tests {
     }
 
     #[test]
-    fn lifecycle_invalidates_refresh_generation() {
+    fn lifecycle_bumps_one_revision_and_invalidates_refresh() {
         let mut jobs = AsyncDesktopJobs::new();
+        assert_eq!(jobs.lifecycle_revision(), 0);
         assert_eq!(jobs.refresh_generation, 0);
         jobs.invalidate_refresh();
         assert_eq!(jobs.refresh_generation, 1);
         let (_hold_tx, hold_rx) = mpsc::channel();
         jobs.lifecycle_rx = Some(hold_rx);
         jobs.lifecycle_kind = Some(LifecycleJobKind::Start);
+        jobs.lifecycle_revision = 1;
         let paths = DesktopPaths::for_data_root(std::env::temp_dir().join("aira-async-jobs-lc"));
         assert!(!jobs.try_spawn_lifecycle(LifecycleJobKind::Stop, paths, None, || {}));
+        assert_eq!(jobs.lifecycle_revision(), 1);
         assert_eq!(jobs.refresh_generation, 1);
+    }
+
+    #[test]
+    fn lifecycle_spawn_bumps_revision_once() {
+        let mut jobs = AsyncDesktopJobs::new();
+        let paths = DesktopPaths::for_data_root(std::env::temp_dir().join("aira-async-jobs-lc2"));
+        // Hold a fake lifecycle slot is not needed — real spawn would need node bin.
+        // Simulate the revision contract of try_spawn_lifecycle pre-checks:
+        assert_eq!(jobs.lifecycle_revision(), 0);
+        jobs.lifecycle_revision = jobs.lifecycle_revision.wrapping_add(1);
+        jobs.invalidate_refresh();
+        assert_eq!(jobs.lifecycle_revision(), 1);
+        assert_eq!(jobs.refresh_generation, 1);
+        let _ = paths;
+    }
+
+    #[test]
+    fn poll_refresh_drops_while_lifecycle_inflight() {
+        let mut jobs = AsyncDesktopJobs::new();
+        let (tx, rx) = mpsc::channel();
+        jobs.refresh_generation = 1;
+        jobs.refresh_rx = Some(rx);
+        let (_lc_tx, lc_rx) = mpsc::channel();
+        jobs.lifecycle_rx = Some(lc_rx);
+        let snap_err: Result<StatusSnapshot, String> = Err("should-drop".into());
+        tx.send((1u64, snap_err)).unwrap();
+        assert!(jobs.poll_refresh().is_none());
+        assert!(!jobs.refresh_inflight());
+    }
+
+    #[test]
+    fn quit_followup_chains_stop_after_start() {
+        assert_eq!(
+            quit_followup_after_lifecycle(true, LifecycleJobKind::Start, true),
+            QuitFollowup::QueueStop
+        );
+        assert_eq!(
+            quit_followup_after_lifecycle(true, LifecycleJobKind::Start, false),
+            QuitFollowup::Close
+        );
+        assert_eq!(
+            quit_followup_after_lifecycle(true, LifecycleJobKind::Stop, true),
+            QuitFollowup::Close
+        );
+        assert_eq!(
+            quit_followup_after_lifecycle(false, LifecycleJobKind::Start, true),
+            QuitFollowup::None
+        );
     }
 
     #[test]

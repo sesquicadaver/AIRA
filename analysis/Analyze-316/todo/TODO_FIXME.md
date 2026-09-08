@@ -3,4 +3,5 @@
 - [x] Root-bound evidence apply
 - [x] Durable reachability challenge replay
 - [x] Apply-time freshness (skew + challenge expiry at apply)
-- [ ] `#282` Lifecycle revision races (next OPEN)
+- [x] `#282` Lifecycle revision races (DONE @ RFC-0171)
+- [ ] `#283` Backend≠model used (next OPEN)
