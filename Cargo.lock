@@ -514,6 +514,7 @@ dependencies = [
  "aira-schema",
  "ed25519-dalek",
  "hex",
+ "rand",
  "serde",
  "serde_json",
  "serde_norway",

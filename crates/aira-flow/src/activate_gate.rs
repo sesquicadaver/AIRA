@@ -7,6 +7,9 @@
 //! `#277` light monitoring reuses a versioned metadata cache so status refresh does
 //! not `fs::read` + sha256 full weights every tick; admission (`check_activated`)
 //! always re-hashes weights.
+//! `#278` verifies activate evidence against a **root-scoped** keyring
+//! (`Keyring::load_node_identity`), not the process-global ring — so Desktop
+//! reopen shows ready without test keyring priming.
 
 #[cfg(test)]
 use std::cell::Cell;
@@ -18,8 +21,8 @@ use aira_artifact::{ArtifactStore, CasArtifactStore};
 use aira_csu::support::{json_bytes, make_artifact};
 use aira_csu_execution_llm::{GenerateLocalPayload, ModelActivateGate, ACTIVATE_DENIED};
 use aira_object::{
-    active_signature, is_cryptographic_signature, utc_now_rfc3339, verify_ed25519, AiraRef,
-    ContentHash, Signature,
+    active_signature, is_cryptographic_signature, utc_now_rfc3339, AiraRef, ContentHash, Keyring,
+    Signature,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -246,7 +249,12 @@ impl ActivatedPointerGate {
         let (_desc, ev_bytes) = store.resolve(&evidence_id).map_err(|_| {
             "activated evidence artifact missing (fail-closed; not VERIFIED)".to_string()
         })?;
-        verify_activate_evidence(&ev_bytes, &pointer.model_ref, claimed.as_str())?;
+        verify_activate_evidence(
+            &self.aira_root,
+            &ev_bytes,
+            &pointer.model_ref,
+            claimed.as_str(),
+        )?;
 
         // Persist light-observe binding after a successful full hash (or refresh after admit).
         if !skip_weight_hash {
@@ -381,7 +389,19 @@ fn signing_bytes_without_signature(artifact: &Value) -> Result<Vec<u8>, String> 
     serde_json::to_vec(&Value::Object(body)).map_err(|_| ACTIVATE_DENIED.to_string())
 }
 
+/// Keyring used to verify activate evidence for this `.aira` root (`#278`).
+///
+/// Prefer on-disk node identity; fall back to local-test-only ring for fixtures
+/// that never wrote `identity/`. Does **not** mutate the process-global keyring.
+fn verification_keyring(aira_root: &Path) -> Keyring {
+    match Keyring::load_node_identity(aira_root) {
+        Ok((_, ring)) => ring,
+        Err(_) => Keyring::with_local_test(),
+    }
+}
+
 fn verify_activate_evidence(
+    aira_root: &Path,
     bytes: &[u8],
     model_ref: &str,
     content_hash: &str,
@@ -407,7 +427,8 @@ fn verify_activate_evidence(
         );
     }
     let msg = signing_bytes_without_signature(&body)?;
-    verify_ed25519(&sig, &msg).map_err(|_| {
+    let ring = verification_keyring(aira_root);
+    ring.verify(&sig, &msg).map_err(|_| {
         "activated evidence signature verify failed (fail-closed; not VERIFIED)".to_string()
     })?;
     Ok(())
@@ -420,6 +441,19 @@ fn publish_activate_evidence(
     cache_path: &str,
     content_hash: &str,
 ) -> Result<String, String> {
+    let raw_body = activate_evidence_body(model_ref, verified_path, cache_path, content_hash);
+    let for_sign = Value::Object(raw_body.clone());
+    let raw = serde_json::to_vec(&for_sign).map_err(|e| e.to_string())?;
+    let sig: Signature = active_signature(&raw).map_err(|e| e.to_string())?;
+    publish_activate_evidence_signed(root, raw_body, sig)
+}
+
+fn activate_evidence_body(
+    model_ref: &str,
+    verified_path: &str,
+    cache_path: &str,
+    content_hash: &str,
+) -> Map<String, Value> {
     let mut body = Map::new();
     body.insert("kind".into(), json!("model-installed-evidence"));
     body.insert("model_ref".into(), json!(model_ref));
@@ -430,9 +464,14 @@ fn publish_activate_evidence(
     body.insert("cache_path".into(), json!(cache_path));
     body.insert("content_hash".into(), json!(content_hash));
     body.insert("reason_refs".into(), json!(["aira:reason:model-activated"]));
-    let for_sign = Value::Object(body.clone());
-    let raw = serde_json::to_vec(&for_sign).map_err(|e| e.to_string())?;
-    let sig: Signature = active_signature(&raw).map_err(|e| e.to_string())?;
+    body
+}
+
+fn publish_activate_evidence_signed(
+    root: &Path,
+    mut body: Map<String, Value>,
+    sig: Signature,
+) -> Result<String, String> {
     body.insert(
         "signature".into(),
         serde_json::to_value(&sig).map_err(|e| e.to_string())?,
@@ -657,5 +696,132 @@ mod tests {
         // Third pass hits the refreshed cache again.
         assert!(gate.observe().ready);
         assert_eq!(take_full_weight_hash_count(), 0);
+    }
+
+    /// Write install-scoped identity on disk and activate fixture signed by that
+    /// key **without** registering it into the process keyring (`#278`).
+    fn install_disk_identity_activate_fixture(root: &Path) -> (ActivatedPointerGate, String) {
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+
+        let mut rng = OsRng;
+        let signing = SigningKey::generate(&mut rng);
+        let verifying = signing.verifying_key();
+        let secret_hex = hex::encode(signing.to_bytes());
+        let public_hex = hex::encode(verifying.to_bytes());
+        let identity_id = format!("aira:identity:desktop.{}", uuid::Uuid::now_v7().as_simple());
+        let id_ref = AiraRef::parse(&identity_id).unwrap();
+        let id_dir = root.join("identity");
+        fs::create_dir_all(&id_dir).unwrap();
+        fs::write(id_dir.join("local.ed25519"), format!("{secret_hex}\n")).unwrap();
+        let id_sig = aira_object::sign_with_key(id_ref.clone(), &signing, identity_id.as_bytes());
+        let desc = json!({
+            "identity_id": identity_id,
+            "identity_type": "local",
+            "display_name": "desktop",
+            "public_key": { "algorithm": "ed25519", "key_hex": public_hex },
+            "created_at": "2026-09-08T00:00:00Z",
+            "key_path": "identity/local.ed25519",
+            "signature": id_sig,
+        });
+        fs::write(
+            id_dir.join("local.identity.json"),
+            serde_json::to_string_pretty(&desc).unwrap(),
+        )
+        .unwrap();
+
+        let cache_rel = PathBuf::from("models/cache/l218/weights.bin");
+        let cache_abs = root.join(&cache_rel);
+        fs::create_dir_all(cache_abs.parent().unwrap()).unwrap();
+        let bytes = b"aira-l278-disk-identity-fixture";
+        fs::write(&cache_abs, bytes).unwrap();
+        let content_hash = ContentHash::sha256_bytes(bytes);
+        let model_ref = "aira:model:test-activated";
+        let verified_rel = "models/verified/l218/weights.bin";
+        let body = activate_evidence_body(
+            model_ref,
+            verified_rel,
+            &cache_abs.display().to_string(),
+            content_hash.as_str(),
+        );
+        let raw = serde_json::to_vec(&Value::Object(body.clone())).unwrap();
+        // Sign from disk ring only — never register_keyring / set_primary_signer.
+        let (loaded_id, ring) = Keyring::load_node_identity(root).unwrap();
+        assert_eq!(loaded_id.as_str(), identity_id.as_str());
+        let sig = ring.sign(&loaded_id, &raw).unwrap();
+        let evidence_id = publish_activate_evidence_signed(root, body, sig).unwrap();
+        let pointer = json!({
+            "updated_at": "2026-09-08T00:00:00Z",
+            "model_ref": model_ref,
+            "cache_path": cache_rel.to_string_lossy(),
+            "verified_path": verified_rel,
+            "content_hash": content_hash.as_str(),
+            "evidence_artifact_id": evidence_id,
+        });
+        let apath = root.join("models/activated.latest.json");
+        fs::write(apath, serde_json::to_string_pretty(&pointer).unwrap()).unwrap();
+        (ActivatedPointerGate::from_aira_root(root), identity_id)
+    }
+
+    #[test]
+    fn observe_ready_with_disk_identity_without_process_keyring_priming() {
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let (gate, identity_id) = install_disk_identity_activate_fixture(dir.path());
+        // Process ring must not hold the install identity (no priming).
+        assert!(
+            aira_object::process_keyring_snapshot()
+                .verifying_keys(&identity_id)
+                .is_empty(),
+            "process keyring must not contain {identity_id}"
+        );
+        assert_eq!(
+            aira_object::primary_signer().as_str(),
+            aira_object::LOCAL_TEST_KEY_REF
+        );
+        let obs = gate.observe();
+        assert!(obs.ready, "detail={}", obs.detail);
+        assert!(obs.detail.contains("confirmed"));
+        gate.check_activated(&dummy_payload()).unwrap();
+    }
+
+    #[test]
+    fn observe_ready_after_reopen_without_process_keyring_priming() {
+        // Child process: fresh process keyring (local-test only) + on-disk identity.
+        if std::env::var_os("AIRA_278_REOPEN_CHILD").is_some() {
+            let root = std::env::var("AIRA_278_REOPEN_ROOT").expect("AIRA_278_REOPEN_ROOT");
+            // Deliberately do not call reset_primary_signer / register_node_identity.
+            assert_eq!(
+                aira_object::primary_signer().as_str(),
+                aira_object::LOCAL_TEST_KEY_REF
+            );
+            let obs = ActivatedPointerGate::from_aira_root(&root).observe();
+            assert!(obs.ready, "child observe detail={}", obs.detail);
+            return;
+        }
+
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let (gate, identity_id) = install_disk_identity_activate_fixture(dir.path());
+        assert!(gate.observe().ready);
+        let root = dir.path().to_path_buf();
+        // Keep tempdir alive across child by leaking path under owned dir — child
+        // reads before parent drops `dir`.
+        let exe = std::env::current_exe().expect("current_exe");
+        let status = std::process::Command::new(&exe)
+            .env("AIRA_278_REOPEN_CHILD", "1")
+            .env("AIRA_278_REOPEN_ROOT", &root)
+            .env("RUST_TEST_THREADS", "1")
+            .args([
+                "--exact",
+                "activate_gate::tests::observe_ready_after_reopen_without_process_keyring_priming",
+                "--nocapture",
+            ])
+            .status()
+            .expect("spawn reopen child");
+        assert!(
+            status.success(),
+            "reopen child failed for identity {identity_id}: {status}"
+        );
     }
 }
