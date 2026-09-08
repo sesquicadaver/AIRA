@@ -1,12 +1,14 @@
 //! Peer-assisted Reachability Probe (QUEUE #238 / Phase N; session bind `#250`;
-//! endpoint+direction bind `#270`).
+//! endpoint+direction bind `#270`; NAT dial≠accept local `#280`).
 //!
 //! Signed challenge + external probe attestation. Hairpin/self-connect
 //! (`probe_identity == target_identity`) is never proof. Successful DIRECT
 //! proof requires an authenticated inbound Noise session transcript bound to
 //! the challenge endpoint and INBOUND direction (`#250`/`#270`). CLI must
 //! supply signed [`ReachabilityLocalEvidence`], not a bare transcript string.
-//! State persistence: [`crate::reachability_state`].
+//! Under NAT, accept `local_addr` may differ from the advertised challenge
+//! endpoint; inbound evidence binds via Noise/transcript, not socket equality
+//! (`#280`). State persistence: [`crate::reachability_state`].
 
 use std::collections::HashSet;
 use std::net::SocketAddr;
@@ -203,11 +205,8 @@ impl ReachabilityLocalEvidence {
                 "local evidence must be exported by challenge target (#270)".into(),
             ));
         }
-        if !endpoints_equivalent(session.bound_endpoint(), &challenge.endpoint) {
-            return Err(PeerError::Reachability(
-                "session bound_endpoint does not match challenge endpoint (#270)".into(),
-            ));
-        }
+        // `#280`: do not require accept `local_addr` == advertised challenge.endpoint.
+        // Binding is Noise handshake + transcript (uses challenge.endpoint) + INBOUND.
         let created_at = created_at.into();
         Timestamp::parse(&created_at).map_err(|e| PeerError::Protocol(e.to_string()))?;
         let transcript = session.reachability_session_transcript(challenge)?;
@@ -987,11 +986,13 @@ mod tests {
         .unwrap_err();
         assert!(
             matches!(issue_err, PeerError::Reachability(_)),
-            "expected endpoint mismatch, got {issue_err:?}"
+            "expected outbound endpoint mismatch, got {issue_err:?}"
         );
+        // `#280`: inbound export is not fail-closed on accept local_addr ≠ challenge;
+        // wrong advertised endpoint is rejected on the probe (outbound) side.
         assert!(target_session
             .export_reachability_evidence(&ch, "2026-09-05T12:30:00Z")
-            .is_err());
+            .is_ok());
         assert_eq!(
             probe_session.session_direction(),
             SessionDirection::Outbound
@@ -1004,6 +1005,67 @@ mod tests {
             probe_session.bound_endpoint(),
             &endpoint
         ));
+    }
+
+    #[tokio::test]
+    async fn nat_accept_local_addr_differs_from_challenge_still_proves_direct() {
+        use crate::{accept, admit_peer_trust, dial, listen_available_loopback, AddressBook};
+
+        let target_dir = tempdir().unwrap();
+        let probe_dir = tempdir().unwrap();
+        let (tid, tpk) = write_node(target_dir.path(), "tgt-nat", [93u8; 32]);
+        let (pid, ppk) = write_node(probe_dir.path(), "prb-nat", [94u8; 32]);
+        admit_peer_trust(target_dir.path(), pid.as_str(), &ppk).unwrap();
+        admit_peer_trust(probe_dir.path(), tid.as_str(), &tpk).unwrap();
+
+        let (listener, addr) = listen_available_loopback().await.unwrap();
+        let port = addr.port();
+        let advertised = format!("127.0.0.1:{port}");
+        let mut book = AddressBook::default();
+        book.upsert(tid.as_str(), advertised.clone()).unwrap();
+        book.save(probe_dir.path()).unwrap();
+
+        let root_t = target_dir.path().to_path_buf();
+        let accept_task = tokio::spawn(async move { accept(&listener, root_t).await });
+        let probe_session = dial(probe_dir.path(), tid.as_str()).await.unwrap();
+        let mut target_session = accept_task.await.unwrap().unwrap();
+
+        // Simulate NAT: accept socket local_addr is private, challenge stays advertised.
+        let private_local = format!("10.0.0.5:{port}");
+        assert!(!endpoints_equivalent(&private_local, &advertised));
+        target_session.override_bound_endpoint_for_test(private_local.clone());
+        assert_eq!(target_session.bound_endpoint(), private_local);
+        assert!(endpoints_equivalent(
+            probe_session.bound_endpoint(),
+            &advertised
+        ));
+
+        let ch = signed_challenge(
+            target_dir.path(),
+            &tid,
+            &tpk,
+            &advertised,
+            "2026-09-05T12:00:00Z",
+            "2026-09-05T13:00:00Z",
+        );
+        let evidence = target_session
+            .export_reachability_evidence(&ch, "2026-09-05T12:30:00Z")
+            .expect("inbound NAT local_addr must not fail-closed (#280)");
+        assert_eq!(evidence.endpoint, advertised);
+        let att = ReachabilityAttestation::issue_for_authenticated_session(
+            &ch,
+            &probe_session,
+            "2026-09-05T12:30:00Z",
+        )
+        .unwrap();
+        let result = ReachabilityResult::new(ch, att);
+        result.verify_with_local_evidence(&evidence, None).unwrap();
+        let mut st = crate::reachability_state::ReachabilityLocalState::default();
+        st.apply_successful_probe(&result, &evidence).unwrap();
+        assert_eq!(
+            st.status,
+            crate::reachability_state::ReachabilityStatus::DirectReachable
+        );
     }
 
     #[test]

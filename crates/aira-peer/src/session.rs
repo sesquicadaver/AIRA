@@ -56,9 +56,19 @@ impl AuthenticatedPeer {
         hex::encode(self.noise_handshake_hash)
     }
 
-    /// Socket endpoint used for reachability endpoint bind (`#270`).
+    /// Socket endpoint used for reachability endpoint bind (`#270`/`#280`).
+    ///
+    /// Dial: AddressBook / dialed peer addr. Accept: TCP `local_addr` (may differ
+    /// from advertised challenge endpoint under NAT — inbound evidence does not
+    /// require equality, `#280`).
     pub fn bound_endpoint(&self) -> &str {
         &self.bound_endpoint
+    }
+
+    /// Test helper: simulate NAT where accept `local_addr` ≠ advertised endpoint.
+    #[cfg(test)]
+    pub(crate) fn override_bound_endpoint_for_test(&mut self, endpoint: impl Into<String>) {
+        self.bound_endpoint = endpoint.into();
     }
 
     /// Whether this session was accepted (inbound) or dialed (outbound).
