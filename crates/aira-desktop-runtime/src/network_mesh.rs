@@ -12,8 +12,12 @@ use anyhow::Result;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
-/// Max age (seconds) of `reachability.checked_at` before network quality is [`DataQuality::Stale`].
+/// Max age (seconds) of reachability status observation before network quality is [`DataQuality::Stale`].
 pub const NETWORK_OBSERVATION_STALE_SECS: u64 = 300;
+
+/// Max future skew (seconds) still treated as [`DataQuality::Current`] (`#279`).
+/// Beyond this, future clocks are [`DataQuality::Unknown`] — not Current.
+pub const NETWORK_OBSERVATION_MAX_SKEW_SECS: i64 = 300;
 
 /// Where [`NetworkMeshSnapshot::local_bind`] came from (`#267`: config ≠ live listener).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -117,7 +121,7 @@ pub struct NetworkMeshSnapshot {
     pub top_level: String,
     pub direct_reachability: String,
     pub relay_reachability: String,
-    /// Measurement time from `reachability.json` `checked_at` (RFC3339), if any.
+    /// Measurement time from status-relevant reachability observation (RFC3339), if any.
     pub reachability_checked_at: Option<String>,
     pub rendezvous_provider: String,
     /// Local publish metadata present (provider + sequence) — not a live global session.
@@ -159,7 +163,7 @@ impl NetworkMeshSnapshot {
 /// Not a second source of truth: each load re-reads stores. GUI state must not invent values.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SystemSnapshot {
-    /// Measurement time for network facts (`reachability.checked_at`), or `unknown`.
+    /// Measurement time for network facts (status-relevant observation), or `unknown`.
     pub observed_at: String,
     /// When this projection was loaded (not the same as measurement time).
     pub loaded_at: String,
@@ -250,8 +254,11 @@ pub fn classify_network_quality(network: &NetworkMeshSnapshot, loaded_at: &str) 
     let reference = parse_clock_label(loaded_at).unwrap_or_else(OffsetDateTime::now_utc);
     let age_secs = (reference - measured).whole_seconds();
     if age_secs < 0 {
-        // Mild clock skew: treat as current rather than inventing Stale.
-        return DataQuality::Current;
+        // Mild clock skew within bound → Current; beyond skew → Unknown (#279).
+        if age_secs >= -NETWORK_OBSERVATION_MAX_SKEW_SECS {
+            return DataQuality::Current;
+        }
+        return DataQuality::Unknown;
     }
     if age_secs as u64 > NETWORK_OBSERVATION_STALE_SECS {
         DataQuality::Stale
@@ -330,7 +337,7 @@ pub fn load_network_mesh_snapshot(
         top_level: top.as_str().into(),
         direct_reachability: direct_reachability.into(),
         relay_reachability: relay_reachability.into(),
-        reachability_checked_at: reach.checked_at.clone(),
+        reachability_checked_at: reach.status_observation_at().map(str::to_string),
         rendezvous_provider: rv.provider,
         rendezvous_connected,
         rendezvous_sequence: rv.local_sequence,
@@ -538,6 +545,56 @@ mod tests {
         mesh.top_level = "DIRECT".into();
         let q = classify_network_quality(&mesh, "2026-09-07T12:00:00Z");
         assert_eq!(q, DataQuality::Unknown);
+    }
+
+    #[test]
+    fn future_clock_within_skew_is_current() {
+        let mut mesh = NetworkMeshSnapshot::unavailable();
+        mesh.identity = "aira:identity:skew".into();
+        // 60s ahead of reference — within NETWORK_OBSERVATION_MAX_SKEW_SECS.
+        mesh.reachability_checked_at = Some("2026-09-07T12:01:00Z".into());
+        let q = classify_network_quality(&mesh, "2026-09-07T12:00:00Z");
+        assert_eq!(q, DataQuality::Current);
+    }
+
+    #[test]
+    fn future_clock_beyond_skew_is_unknown_not_current() {
+        let mut mesh = NetworkMeshSnapshot::unavailable();
+        mesh.identity = "aira:identity:far-future".into();
+        // 10 minutes ahead — beyond 300s skew.
+        mesh.reachability_checked_at = Some("2026-09-07T12:10:00Z".into());
+        let q = classify_network_quality(&mesh, "2026-09-07T12:00:00Z");
+        assert_eq!(q, DataQuality::Unknown);
+    }
+
+    #[test]
+    fn local_bind_does_not_make_stale_direct_current() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let _ = write_node(root, "mesh-bind-direct", [66u8; 32]);
+        let mut reach = ReachabilityLocalState {
+            status: ReachabilityStatus::DirectReachable,
+            verified_endpoint: Some("127.0.0.1:49157".into()),
+            probe_evidence: Some("ch-1".into()),
+            external_checked_at: Some("2026-09-07T10:00:00Z".into()),
+            checked_at: Some("2026-09-07T10:00:00Z".into()),
+            local_port: Some(49157),
+            ..Default::default()
+        };
+        reach
+            .mark_local_bind(49157, "2026-09-07T12:00:00Z")
+            .unwrap();
+        reach.save(root).unwrap();
+
+        let snap = load_network_mesh_snapshot(root, None).unwrap();
+        assert_eq!(snap.top_level, "DIRECT");
+        assert_eq!(
+            snap.reachability_checked_at.as_deref(),
+            Some("2026-09-07T10:00:00Z"),
+            "status observation must stay external, not local bind time"
+        );
+        let sys = SystemSnapshot::from_network(snap, "2026-09-07T12:00:00Z".into());
+        assert_eq!(sys.network_quality, DataQuality::Stale);
     }
 
     #[test]
