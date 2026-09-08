@@ -1,0 +1,1 @@
+QUEUE `#284`: Invite import atomicity — all checks (incl. port invariant) before TrustStore/AddressBook writes; commit/rollback; no silent trust mutation on invite failure; RFC-0173. Do not start RFC-0164 close (`#285`).

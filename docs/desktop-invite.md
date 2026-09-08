@@ -1,6 +1,8 @@
-# Desktop PeerInvite file + QR (QUEUE #83 / #84)
+# Desktop PeerInvite file + QR (QUEUE #83 / #84; atomicity `#284` / RFC-0173)
 
 **Phase G `#133`:** GUI **Scan QR (camera)** — live webcam decode → same import path as PNG. File paths below remain the contract.
+
+**Phase Q `#284`:** Import validates schema + AIRA-bind (prime port) **before** TrustStore / AddressBook durable writes. Address-book save failure rolls trust back. Camera surfaces decode/import errors (only “no QR” keeps scanning).
 
 ## File export / import
 
@@ -23,6 +25,6 @@ aira desktop invite-export-qr --out ~/alice.invite.png --addr 127.0.0.1:49157
 aira desktop invite-import-qr --file ~/alice.invite.png
 ```
 
-Import applies `trust add` (identity_ref + public_key_hex). If `addr` is set, also upserts `peers/address_book.json`.
+Import applies `trust add` (identity_ref + public_key_hex). If `addr` is set, also upserts `peers/address_book.json` — only after bind checks succeed. Non-prime `addr` fails closed with **no** silent trust mutation.
 
-Schema: [`aira:schema:desktop:peer-invite:0.1`](../schemas/desktop/peer-invite.schema.json). RFCs: RFC-0032 (file), RFC-0033 (QR). GUI: [`desktop-gui.md`](desktop-gui.md) / `#85`.
+Schema: [`aira:schema:desktop:peer-invite:0.1`](../schemas/desktop/peer-invite.schema.json). RFCs: RFC-0032 (file), RFC-0033 (QR), [RFC-0173](../specs/rfc/AIRA-RFC-0173-invite-import-atomicity.md). GUI: [`desktop-gui.md`](desktop-gui.md) / `#85`.

@@ -1,7 +1,8 @@
 //! PeerInvite file export/import (QUEUE #83 / Analyze-118).
 //!
 //! Export local identity as `aira:schema:desktop:peer-invite:0.1`.
-//! Import → trust upsert, then optional address-book upsert.
+//! Import → all checks (incl. prime-port bind) before TrustStore / AddressBook
+//! durable writes; book failure rolls trust back (QUEUE #284 / RFC-0173).
 
 use std::fs;
 use std::net::SocketAddr;
@@ -13,7 +14,7 @@ use time::OffsetDateTime;
 
 use aira_flow::NodePaths;
 use aira_object::{register_trust_store, TrustStore};
-use aira_peer::AddressBook;
+use aira_peer::{validate_aira_bind, AddressBook};
 
 use crate::bootstrap::ensure_bootstrap;
 use crate::paths::DesktopPaths;
@@ -66,6 +67,9 @@ pub fn validate_peer_invite(invite: &PeerInvite) -> Result<()> {
         }
         addr.parse::<SocketAddr>()
             .with_context(|| format!("invalid invite addr `{addr}`"))?;
+        // Prime Port / AIRA-bind invariant before any import mutator runs.
+        validate_aira_bind(addr)
+            .with_context(|| format!("invite addr not AIRA-bindable `{addr}`"))?;
     }
     Ok(())
 }
@@ -151,29 +155,62 @@ pub fn load_invite_file(path: &Path) -> Result<PeerInvite> {
     Ok(invite)
 }
 
-/// Import invite: trust add, then address-book upsert when `addr` is set.
+/// Import invite: validate fully, then commit trust (+ optional book) atomically.
+///
+/// Order: schema/bind checks → in-memory trust (+ book) upsert → durable saves.
+/// If address-book save fails after trust was written, trust is rolled back to the
+/// pre-import snapshot so invite failure never leaves a silent TrustStore mutation.
 pub fn import_invite(paths: &DesktopPaths, invite: &PeerInvite) -> Result<ImportInviteOutcome> {
     validate_peer_invite(invite)?;
+
+    let addr = invite
+        .addr
+        .as_ref()
+        .map(|a| a.trim().to_string())
+        .filter(|a| !a.is_empty());
+    // Defense in depth: bind check again immediately before any write path.
+    if let Some(ref a) = addr {
+        validate_aira_bind(a)
+            .with_context(|| format!("invite addr rejected before trust/book write: {a}"))?;
+    }
+
     paths.ensure_dirs()?;
     let mut settings = load_or_create_settings(paths)?;
     ensure_bootstrap(paths, &mut settings)?;
 
     let root = &paths.data_root;
     let mut store = TrustStore::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let trust_before = store.clone();
     store
         .upsert(&invite.identity_ref, invite.public_key_hex.trim())
         .map_err(|e| anyhow::anyhow!("trust upsert: {e}"))?;
-    store.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
-    register_trust_store(root).map_err(|e| anyhow::anyhow!("{e}"))?;
 
     let mut book_updated = false;
-    let addr = invite.addr.as_ref().map(|a| a.trim().to_string());
-    if let Some(ref a) = addr {
+    let book_to_save = if let Some(ref a) = addr {
         let mut book = AddressBook::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
         book.upsert(&invite.identity_ref, a)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        book.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
         book_updated = true;
+        Some(book)
+    } else {
+        None
+    };
+
+    store.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+    register_trust_store(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+
+    if let Some(book) = book_to_save {
+        if let Err(e) = book.save(root) {
+            if let Err(rb) = trust_before.save(root) {
+                return Err(anyhow::anyhow!(
+                    "address book save failed ({e}); trust rollback also failed ({rb})"
+                ));
+            }
+            let _ = register_trust_store(root);
+            return Err(anyhow::anyhow!(
+                "address book save failed after trust write; trust rolled back: {e}"
+            ));
+        }
     }
 
     Ok(ImportInviteOutcome {
