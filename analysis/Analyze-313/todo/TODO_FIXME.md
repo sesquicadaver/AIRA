@@ -4,4 +4,4 @@
 - [x] Reopen ready without process keyring priming
 - [x] Separate process reopen test
 - [x] RFC-0167 + QUEUE `#278` DONE
-- [ ] `#279` Reachability observation independence (next OPEN)
+- [x] `#279` Reachability observation independence (DONE @ RFC-0168)

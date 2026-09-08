@@ -1,6 +1,6 @@
 # Phase Q — Cross-install integrity & light monitoring (post-P)
 
-**Статус:** складено 2026-09-07; **IN PROGRESS** — QUEUE `#275`–`#278` **DONE** @ RFC-0167; first OPEN `#279`.  
+**Статус:** складено 2026-09-07; **IN PROGRESS** — QUEUE `#275`–`#279` **DONE** @ RFC-0168; first OPEN `#280`.  
 **Джерела:** post-P audit `aira-current.md` @ `00f19cf` (2026-09-07); Phase P [`phase-p-plan.md`](phase-p-plan.md) **DONE** @ RFC-0156; QUEUE P closed; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase Q `#275`–`#285`.  
 **Closure:** consolidating **RFC-0164** (id **confirmed free** at `#275`; file-free until `#285`).  
@@ -78,7 +78,7 @@ Q0 Wiring (+ CI fmt)
 | `#276` | Q1 | Unique Desktop identity | **DONE** @ RFC-0165: install-scoped ID; TrustStore KeyCollision; two-root bootstrap | model observe (#277) |
 | `#277` | Q1 | Model light observe | **DONE** @ RFC-0166: light observe + observe-ready cache; admit full-hash | verify context (#278) |
 | `#278` | Q1 | Model verify context | **DONE** @ RFC-0167: root-scoped verify; reopen without test keyring | reach obs (#279) |
-| `#279` | Q1 | Reachability observation independence | local bind / external / relay — окремі observations; bind не оновлює external `checked_at` чинність; future clock ≠ Current без skew bound | NAT (#280) |
+| `#279` | Q1 | Reachability observation independence | **DONE** @ RFC-0168: окремі clocks; bind ≠ external freshness; skew bound | NAT (#280) |
 | `#280` | Q1 | Reachability NAT endpoints | dial endpoint ≠ accepted `local_addr` пов’язані одним challenge/session; NAT path не fail-closed хибно | evidence (#281) |
 | `#281` | Q1 | Reachability evidence admission | apply вимагає target = current root identity; replay log; apply-time freshness (не лише signed probed_at) | lifecycle (#282) |
 | `#282` | Q2 | Lifecycle revision races | одна revision на Start/Stop; refresh під час lifecycle не перезаписує post-transition; Quit-during-Start → Stop; Applied з worker settings snapshot | provenance (#283) |
@@ -91,7 +91,7 @@ Q0 Wiring (+ CI fmt)
   → #276 Q1 unique identity DONE @ RFC-0165
     → #277 Q1 model light observe DONE @ RFC-0166
       → #278 Q1 model verify context DONE @ RFC-0167
-        → #279 Q1 reach observation independence
+        → #279 Q1 reach observation independence DONE @ RFC-0168
           → #280 Q1 reach NAT endpoints
             → #281 Q1 reach evidence admission
               → #282 Q2 lifecycle revision
@@ -122,12 +122,12 @@ aira-core still has no ledger/GUI deps.
 ## 7. RFC
 
 - Consolidating (`#285`): **AIRA-RFC-0164** — id **confirmed free** at `#275` (file-free until close).
-- Per-atom RFC-D: `#276`→**0165** (DONE); `#277`→**0166** (DONE); `#278`→**0167** (DONE) … `#284`→**0173** (assigned at each atom PR); `#285`→0164 consolidating.
+- Per-atom RFC-D: `#276`→**0165** (DONE); `#277`→**0166** (DONE); `#278`→**0167** (DONE); `#279`→**0168** (DONE) … `#284`→**0173** (assigned at each atom PR); `#285`→0164 consolidating.
 
 ## 8. Activation rule
 
 ```text
 QUEUE P closed @ RFC-0156 + developer «скласти Phase Q» 2026-09-07
   → цей план активовано атомом `#275`.
-`#275`–`#278` DONE @ RFC-0167; first OPEN `#279`.
+`#275`–`#279` DONE @ RFC-0168; first OPEN `#280`.
 ```

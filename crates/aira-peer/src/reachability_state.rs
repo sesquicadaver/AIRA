@@ -1,6 +1,8 @@
 //! Reachability state machine + `peers/reachability.json` (QUEUE #239 / Phase N).
 //!
 //! Persists local status (UNKNOWN…OFFLINE). AddressBook promotion remains `#240`.
+//! `#279`: local bind / external DIRECT / relay keep independent observation times —
+//! `mark_local_bind` must not refresh external/relay freshness.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -67,8 +69,18 @@ pub struct RelayRouteRecord {
 pub struct ReachabilityLocalState {
     pub schema: String,
     pub status: ReachabilityStatus,
+    /// Status-facing observation time (legacy + CLI). Prefer [`Self::status_observation_at`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub checked_at: Option<String>,
+    /// Last local bind observation (`#279`) — never proves external DIRECT.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_checked_at: Option<String>,
+    /// Last successful external DIRECT probe (`#279`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub external_checked_at: Option<String>,
+    /// Last relay-confirmed observation (`#279`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relay_checked_at: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub local_port: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -88,6 +100,9 @@ impl Default for ReachabilityLocalState {
             schema: REACHABILITY_STATE_SCHEMA.into(),
             status: ReachabilityStatus::Unknown,
             checked_at: None,
+            local_checked_at: None,
+            external_checked_at: None,
+            relay_checked_at: None,
             local_port: None,
             observed_endpoint: None,
             verified_endpoint: None,
@@ -128,6 +143,21 @@ impl ReachabilityLocalState {
         Ok(())
     }
 
+    /// Observation time that governs status freshness for the current banner (`#279`).
+    ///
+    /// Falls back to legacy `checked_at` for pre-`#279` files.
+    pub fn status_observation_at(&self) -> Option<&str> {
+        let primary = match self.status {
+            ReachabilityStatus::DirectReachable => self.external_checked_at.as_deref(),
+            ReachabilityStatus::RelayOnly => self.relay_checked_at.as_deref(),
+            ReachabilityStatus::LocalOnly => self.local_checked_at.as_deref(),
+            ReachabilityStatus::Unknown
+            | ReachabilityStatus::OutboundOnly
+            | ReachabilityStatus::Offline => None,
+        };
+        primary.or(self.checked_at.as_deref())
+    }
+
     /// Structural checks.
     pub fn validate(&self) -> Result<(), PeerError> {
         if self.schema != REACHABILITY_STATE_SCHEMA {
@@ -149,7 +179,15 @@ impl ReachabilityLocalState {
         if let Some(ep) = &self.verified_endpoint {
             validate_aira_bind(ep)?;
         }
-        if let Some(ts) = &self.checked_at {
+        for ts in [
+            self.checked_at.as_deref(),
+            self.local_checked_at.as_deref(),
+            self.external_checked_at.as_deref(),
+            self.relay_checked_at.as_deref(),
+        ]
+        .into_iter()
+        .flatten()
+        {
             Timestamp::parse(ts).map_err(|e| PeerError::Protocol(e.to_string()))?;
         }
         for r in &self.relay_routes {
@@ -182,6 +220,9 @@ impl ReachabilityLocalState {
     }
 
     /// Record local prime bind without external proof → LOCAL_ONLY (never DIRECT).
+    ///
+    /// When status already is DIRECT/RELAY, only updates `local_port` /
+    /// `local_checked_at` — does **not** refresh external/relay freshness (`#279`).
     pub fn mark_local_bind(
         &mut self,
         local_port: u16,
@@ -195,12 +236,15 @@ impl ReachabilityLocalState {
         let checked_at = checked_at.into();
         Timestamp::parse(&checked_at).map_err(|e| PeerError::Protocol(e.to_string()))?;
         self.local_port = Some(local_port);
-        self.checked_at = Some(checked_at);
-        if !matches!(
+        self.local_checked_at = Some(checked_at.clone());
+        if matches!(
             self.status,
             ReachabilityStatus::DirectReachable | ReachabilityStatus::RelayOnly
         ) {
+            // Preserve external/relay observation clocks and legacy status checked_at.
+        } else {
             self.status = ReachabilityStatus::LocalOnly;
+            self.checked_at = Some(checked_at);
         }
         self.validate()
     }
@@ -223,11 +267,13 @@ impl ReachabilityLocalState {
         }
         let endpoint = result.challenge.endpoint.clone();
         let port = parse_bind_port(&endpoint)?;
+        let probed_at = result.attestation.probed_at.clone();
         self.status = ReachabilityStatus::DirectReachable;
         self.local_port = Some(port);
         self.observed_endpoint = Some(result.attestation.observed_endpoint.clone());
         self.verified_endpoint = Some(endpoint);
-        self.checked_at = Some(result.attestation.probed_at.clone());
+        self.external_checked_at = Some(probed_at.clone());
+        self.checked_at = Some(probed_at);
         self.probe_evidence = Some(result.challenge.challenge_id.clone());
         self.validate()
     }
@@ -246,11 +292,12 @@ impl ReachabilityLocalState {
                 .map_err(|e| PeerError::Protocol(e.to_string()))?;
             validate_aira_bind(&r.relay_endpoint)?;
         }
-        self.checked_at = Some(checked_at);
+        self.checked_at = Some(checked_at.clone());
         self.verified_endpoint = None;
         self.probe_evidence = None;
         self.relay_routes = relay_routes;
         self.status = if !self.relay_routes.is_empty() {
+            self.relay_checked_at = Some(checked_at);
             ReachabilityStatus::RelayOnly
         } else if outbound_ok {
             ReachabilityStatus::OutboundOnly
@@ -330,6 +377,50 @@ mod tests {
         assert_eq!(st.status, ReachabilityStatus::LocalOnly);
         assert!(!st.status.may_advertise_direct());
         assert_eq!(st.to_presence_hint(), PresenceReachability::Unknown);
+        assert_eq!(st.local_checked_at.as_deref(), Some("2026-09-05T12:00:00Z"));
+        assert_eq!(st.status_observation_at(), Some("2026-09-05T12:00:00Z"));
+    }
+
+    #[test]
+    fn local_bind_does_not_refresh_external_direct_freshness() {
+        let mut st = ReachabilityLocalState::default();
+        st.status = ReachabilityStatus::DirectReachable;
+        st.verified_endpoint = Some("127.0.0.1:49157".into());
+        st.probe_evidence = Some("ch-1".into());
+        st.external_checked_at = Some("2026-09-05T10:00:00Z".into());
+        st.checked_at = Some("2026-09-05T10:00:00Z".into());
+        st.local_port = Some(49157);
+        st.mark_local_bind(49157, "2026-09-05T12:00:00Z").unwrap();
+        assert_eq!(st.status, ReachabilityStatus::DirectReachable);
+        assert_eq!(
+            st.external_checked_at.as_deref(),
+            Some("2026-09-05T10:00:00Z")
+        );
+        assert_eq!(st.checked_at.as_deref(), Some("2026-09-05T10:00:00Z"));
+        assert_eq!(st.local_checked_at.as_deref(), Some("2026-09-05T12:00:00Z"));
+        assert_eq!(st.status_observation_at(), Some("2026-09-05T10:00:00Z"));
+    }
+
+    #[test]
+    fn local_bind_does_not_refresh_relay_freshness() {
+        let mut st = ReachabilityLocalState::default();
+        st.apply_direct_failed(
+            "2026-09-05T10:00:00Z",
+            vec![RelayRouteRecord {
+                relay_identity_ref: "aira:identity:relay".into(),
+                relay_endpoint: "127.0.0.1:49157".into(),
+                reservation_id: Some("r1".into()),
+            }],
+            true,
+        )
+        .unwrap();
+        assert_eq!(st.status, ReachabilityStatus::RelayOnly);
+        st.mark_local_bind(49157, "2026-09-05T12:00:00Z").unwrap();
+        assert_eq!(st.status, ReachabilityStatus::RelayOnly);
+        assert_eq!(st.relay_checked_at.as_deref(), Some("2026-09-05T10:00:00Z"));
+        assert_eq!(st.checked_at.as_deref(), Some("2026-09-05T10:00:00Z"));
+        assert_eq!(st.local_checked_at.as_deref(), Some("2026-09-05T12:00:00Z"));
+        assert_eq!(st.status_observation_at(), Some("2026-09-05T10:00:00Z"));
     }
 
     #[tokio::test]
@@ -380,6 +471,10 @@ mod tests {
         assert_eq!(st.status, ReachabilityStatus::DirectReachable);
         assert!(st.status.may_advertise_direct());
         assert_eq!(st.to_presence_hint(), PresenceReachability::Direct);
+        assert_eq!(
+            st.external_checked_at.as_deref(),
+            Some("2026-09-05T12:30:00Z")
+        );
         st.save(root.path()).unwrap();
         let loaded = ReachabilityLocalState::load(root.path()).unwrap();
         assert_eq!(loaded.status, ReachabilityStatus::DirectReachable);
@@ -432,6 +527,7 @@ mod tests {
         .unwrap();
         assert_eq!(st.status, ReachabilityStatus::RelayOnly);
         assert!(!st.status.may_advertise_direct());
+        assert_eq!(st.relay_checked_at.as_deref(), Some("2026-09-05T12:00:00Z"));
 
         st.apply_direct_failed("2026-09-05T12:01:00Z", vec![], true)
             .unwrap();

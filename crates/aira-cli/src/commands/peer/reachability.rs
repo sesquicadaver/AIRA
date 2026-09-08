@@ -25,8 +25,17 @@ pub(super) async fn run(root: &Path, command: PeerReachabilityCommands) -> Resul
             if let Some(ep) = &st.verified_endpoint {
                 println!("verified_endpoint {ep}");
             }
-            if let Some(at) = &st.checked_at {
+            if let Some(at) = st.status_observation_at() {
                 println!("checked_at {at}");
+            }
+            if let Some(at) = &st.local_checked_at {
+                println!("local_checked_at {at}");
+            }
+            if let Some(at) = &st.external_checked_at {
+                println!("external_checked_at {at}");
+            }
+            if let Some(at) = &st.relay_checked_at {
+                println!("relay_checked_at {at}");
             }
             if let Some(ev) = &st.probe_evidence {
                 println!("probe_evidence {ev}");
