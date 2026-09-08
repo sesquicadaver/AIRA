@@ -4,4 +4,4 @@
 - [x] Bind does not refresh external/relay freshness
 - [x] Future clock skew bound in mesh quality
 - [x] RFC-0168 + QUEUE `#279` DONE
-- [ ] `#280` Reachability NAT endpoints (next OPEN)
+- [x] `#280` Reachability NAT endpoints (DONE @ RFC-0169)
