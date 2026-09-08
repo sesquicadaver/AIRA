@@ -1,5 +1,6 @@
 //! Peer-assisted Reachability Probe (QUEUE #238 / Phase N; session bind `#250`;
-//! endpoint+direction bind `#270`; NAT dial≠accept local `#280`).
+//! endpoint+direction bind `#270`; NAT dial≠accept local `#280`;
+//! evidence admission `#281`).
 //!
 //! Signed challenge + external probe attestation. Hairpin/self-connect
 //! (`probe_identity == target_identity`) is never proof. Successful DIRECT
@@ -8,11 +9,13 @@
 //! supply signed [`ReachabilityLocalEvidence`], not a bare transcript string.
 //! Under NAT, accept `local_addr` may differ from the advertised challenge
 //! endpoint; inbound evidence binds via Noise/transcript, not socket equality
-//! (`#280`). State persistence: [`crate::reachability_state`].
+//! (`#280`). Apply to local state is root-bound, durable-replayed, and
+//! apply-time fresh (`#281`). State persistence: [`crate::reachability_state`].
 
 use std::collections::HashSet;
+use std::fs;
 use std::net::SocketAddr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use aira_object::{
     descriptor_signing_message, AiraRef, ContentHash, Keyring, Signature, Timestamp, TrustStore,
@@ -79,6 +82,12 @@ pub const REACHABILITY_RESULT_SCHEMA: &str = "aira:schema:peer:reachability-resu
 
 /// Cap on remembered challenge ids (anti-replay).
 pub const REACHABILITY_REPLAY_CAP: usize = 4096;
+
+/// Schema for durable challenge-id replay under `peers/reachability_replay.json` (`#281`).
+pub const REACHABILITY_REPLAY_SCHEMA: &str = "aira:peer:reachability-replay:0.1";
+
+/// Max `|applied_at − probed_at|` (and evidence `created_at`) at apply (`#281`).
+pub const REACHABILITY_APPLY_MAX_SKEW_SECS: i64 = 300;
 
 /// Target-issued signed challenge for an advertised endpoint.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -296,41 +305,142 @@ pub struct ReachabilityResult {
     pub attestation: ReachabilityAttestation,
 }
 
-/// In-memory anti-replay set for challenge ids.
-#[derive(Debug, Default, Clone)]
+/// Anti-replay set for challenge ids (in-memory + durable under node root, `#281`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReachabilityReplayLog {
+    #[serde(default = "default_replay_schema")]
+    pub schema: String,
+    #[serde(default)]
+    challenge_ids: Vec<String>,
+    #[serde(skip)]
     seen: HashSet<String>,
-    order: Vec<String>,
+}
+
+fn default_replay_schema() -> String {
+    REACHABILITY_REPLAY_SCHEMA.into()
+}
+
+impl Default for ReachabilityReplayLog {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ReachabilityReplayLog {
     /// Empty log.
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            schema: REACHABILITY_REPLAY_SCHEMA.into(),
+            challenge_ids: Vec::new(),
+            seen: HashSet::new(),
+        }
+    }
+
+    /// Rebuild `seen` after deserialize.
+    pub fn reindex(&mut self) {
+        self.seen = self.challenge_ids.iter().cloned().collect();
+        if self.schema.is_empty() {
+            self.schema = REACHABILITY_REPLAY_SCHEMA.into();
+        }
     }
 
     /// True if `challenge_id` was already admitted.
     pub fn contains(&self, challenge_id: &str) -> bool {
-        self.seen.contains(challenge_id)
+        self.seen.contains(challenge_id) || self.challenge_ids.iter().any(|id| id == challenge_id)
     }
 
     /// Record id; returns Err on replay.
     pub fn admit(&mut self, challenge_id: &str) -> Result<(), PeerError> {
-        if self.seen.contains(challenge_id) {
+        if self.contains(challenge_id) {
             return Err(PeerError::Reachability(format!(
                 "replayed reachability challenge: {challenge_id}"
             )));
         }
-        if self.order.len() >= REACHABILITY_REPLAY_CAP {
-            if let Some(old) = self.order.first().cloned() {
+        if self.challenge_ids.len() >= REACHABILITY_REPLAY_CAP {
+            if let Some(old) = self.challenge_ids.first().cloned() {
                 self.seen.remove(&old);
-                self.order.remove(0);
+                self.challenge_ids.remove(0);
             }
         }
         self.seen.insert(challenge_id.to_string());
-        self.order.push(challenge_id.to_string());
+        self.challenge_ids.push(challenge_id.to_string());
         Ok(())
     }
+}
+
+/// Path: `<root>/peers/reachability_replay.json` (`#281`).
+pub fn reachability_replay_path(root: impl AsRef<Path>) -> PathBuf {
+    root.as_ref().join("peers").join("reachability_replay.json")
+}
+
+/// Load durable challenge-id replay log (empty if missing).
+pub fn load_reachability_replay(
+    root: impl AsRef<Path>,
+) -> Result<ReachabilityReplayLog, PeerError> {
+    let path = reachability_replay_path(&root);
+    if !path.exists() {
+        return Ok(ReachabilityReplayLog::new());
+    }
+    let raw = fs::read_to_string(&path).map_err(|e| PeerError::Io(e.to_string()))?;
+    let mut log: ReachabilityReplayLog =
+        serde_json::from_str(&raw).map_err(|e| PeerError::Protocol(e.to_string()))?;
+    if log.schema != REACHABILITY_REPLAY_SCHEMA {
+        return Err(PeerError::Reachability(format!(
+            "reachability replay schema mismatch: {}",
+            log.schema
+        )));
+    }
+    log.reindex();
+    Ok(log)
+}
+
+/// Persist challenge-id replay log.
+pub fn save_reachability_replay(
+    root: impl AsRef<Path>,
+    log: &ReachabilityReplayLog,
+) -> Result<(), PeerError> {
+    if log.schema != REACHABILITY_REPLAY_SCHEMA {
+        return Err(PeerError::Reachability(format!(
+            "reachability replay schema mismatch: {}",
+            log.schema
+        )));
+    }
+    let path = reachability_replay_path(&root);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| PeerError::Io(e.to_string()))?;
+    }
+    let json = serde_json::to_string_pretty(log)?;
+    fs::write(&path, format!("{json}\n")).map_err(|e| PeerError::Io(e.to_string()))?;
+    Ok(())
+}
+
+/// Apply-time freshness: challenge not expired at `applied_at`, and signed
+/// `probed_at` / evidence `created_at` within skew of apply (`#281`).
+pub fn check_apply_time_freshness(
+    challenge: &ReachabilityChallenge,
+    attestation: &ReachabilityAttestation,
+    evidence: &ReachabilityLocalEvidence,
+    applied_at: &str,
+) -> Result<(), PeerError> {
+    Timestamp::parse(applied_at).map_err(|e| PeerError::Protocol(e.to_string()))?;
+    if challenge.is_expired_at(applied_at)? {
+        return Err(PeerError::Reachability(
+            "reachability evidence expired at apply time (#281)".into(),
+        ));
+    }
+    let applied_unix = aira_object::unix_seconds_str(applied_at)
+        .map_err(|e| PeerError::Protocol(e.to_string()))?;
+    let probed_unix = aira_object::unix_seconds_str(&attestation.probed_at)
+        .map_err(|e| PeerError::Protocol(e.to_string()))?;
+    if (applied_unix - probed_unix).abs() > REACHABILITY_APPLY_MAX_SKEW_SECS {
+        return Err(PeerError::ClockSkew);
+    }
+    let evidence_unix = aira_object::unix_seconds_str(&evidence.created_at)
+        .map_err(|e| PeerError::Protocol(e.to_string()))?;
+    if (applied_unix - evidence_unix).abs() > REACHABILITY_APPLY_MAX_SKEW_SECS {
+        return Err(PeerError::ClockSkew);
+    }
+    Ok(())
 }
 
 fn parse_odt(s: &str) -> Result<OffsetDateTime, PeerError> {
@@ -928,7 +1038,13 @@ mod tests {
         result.verify_with_local_evidence(&evidence, None).unwrap();
 
         let mut st = crate::reachability_state::ReachabilityLocalState::default();
-        st.apply_successful_probe(&result, &evidence).unwrap();
+        st.apply_successful_probe(
+            target_dir.path(),
+            &result,
+            &evidence,
+            "2026-09-05T12:30:00Z",
+        )
+        .unwrap();
         assert_eq!(
             st.status,
             crate::reachability_state::ReachabilityStatus::DirectReachable
@@ -937,7 +1053,9 @@ mod tests {
         // Forged transcript (unsigned mutation) cannot set DIRECT.
         let mut forged = evidence.clone();
         forged.session_transcript_hex = "sha256:deadbeef".into();
-        assert!(st.apply_successful_probe(&result, &forged).is_err());
+        assert!(st
+            .apply_successful_probe(target_dir.path(), &result, &forged, "2026-09-05T12:30:00Z",)
+            .is_err());
     }
 
     #[tokio::test]
@@ -1061,7 +1179,13 @@ mod tests {
         let result = ReachabilityResult::new(ch, att);
         result.verify_with_local_evidence(&evidence, None).unwrap();
         let mut st = crate::reachability_state::ReachabilityLocalState::default();
-        st.apply_successful_probe(&result, &evidence).unwrap();
+        st.apply_successful_probe(
+            target_dir.path(),
+            &result,
+            &evidence,
+            "2026-09-05T12:30:00Z",
+        )
+        .unwrap();
         assert_eq!(
             st.status,
             crate::reachability_state::ReachabilityStatus::DirectReachable

@@ -3,17 +3,21 @@
 //! Persists local status (UNKNOWN…OFFLINE). AddressBook promotion remains `#240`.
 //! `#279`: local bind / external DIRECT / relay keep independent observation times —
 //! `mark_local_bind` must not refresh external/relay freshness.
+//! `#281`: DIRECT apply is root-bound, durable-replayed, and apply-time fresh.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use aira_object::Timestamp;
+use aira_object::{Keyring, Timestamp};
 use serde::{Deserialize, Serialize};
 
 use crate::error::PeerError;
 use crate::presence::PresenceReachability;
 use crate::prime_port::{is_valid_aira_port, parse_bind_port, validate_aira_bind};
-use crate::reachability::{ReachabilityLocalEvidence, ReachabilityResult};
+use crate::reachability::{
+    check_apply_time_freshness, load_reachability_replay, save_reachability_replay,
+    ReachabilityLocalEvidence, ReachabilityResult,
+};
 
 /// Schema tag for local reachability state file.
 pub const REACHABILITY_STATE_SCHEMA: &str = "aira:peer:reachability-state:0.1";
@@ -249,22 +253,47 @@ impl ReachabilityLocalState {
         self.validate()
     }
 
-    /// Apply a verified successful peer-assisted probe → DIRECT_REACHABLE.
+    /// Apply a verified successful peer-assisted probe → DIRECT_REACHABLE (`#281`).
     ///
-    /// `evidence` must be signed inbound local evidence from the target's accept
-    /// session bound to the challenge endpoint (`#250`/`#270`). A bare CLI
-    /// transcript string is not accepted.
+    /// Admission requires:
+    /// - `result.challenge.target_identity_ref` == current root node identity
+    /// - apply-time freshness (challenge not expired at `applied_at`;
+    ///   `|applied_at − probed_at|` and evidence `created_at` within skew —
+    ///   not only the signed `probed_at` window)
+    /// - durable challenge-id replay under `peers/reachability_replay.json`
+    /// - signed inbound [`ReachabilityLocalEvidence`] bound to the challenge
+    ///
+    /// A bare CLI transcript string is not accepted.
     pub fn apply_successful_probe(
         &mut self,
+        root: impl AsRef<Path>,
         result: &ReachabilityResult,
         evidence: &ReachabilityLocalEvidence,
+        applied_at: impl Into<String>,
     ) -> Result<(), PeerError> {
-        result.verify_with_local_evidence(evidence, None)?;
+        let root = root.as_ref();
+        let applied_at = applied_at.into();
+        let (local_id, _) = Keyring::load_node_identity(root)?;
+        if local_id.as_str() != result.challenge.target_identity_ref {
+            return Err(PeerError::Reachability(
+                "reachability evidence apply requires challenge target = current root identity (#281)"
+                    .into(),
+            ));
+        }
+        check_apply_time_freshness(
+            &result.challenge,
+            &result.attestation,
+            evidence,
+            &applied_at,
+        )?;
+        let mut replay = load_reachability_replay(root)?;
+        result.verify_with_local_evidence(evidence, Some(&mut replay))?;
         if !result.attestation.success {
             return Err(PeerError::Reachability(
                 "cannot apply unsuccessful probe as DIRECT".into(),
             ));
         }
+        save_reachability_replay(root, &replay)?;
         let endpoint = result.challenge.endpoint.clone();
         let port = parse_bind_port(&endpoint)?;
         let probed_at = result.attestation.probed_at.clone();
@@ -431,7 +460,6 @@ mod tests {
 
         let target = tempdir().unwrap();
         let probe = tempdir().unwrap();
-        let root = tempdir().unwrap();
         let (tid, tpk) = write_node(target.path(), "st-tgt", [81u8; 32]);
         let (pid, ppk) = write_node(probe.path(), "st-prb", [82u8; 32]);
         admit_peer_trust(target.path(), pid.as_str(), &ppk).unwrap();
@@ -469,7 +497,8 @@ mod tests {
         .unwrap();
         let result = ReachabilityResult::new(ch, att);
         let mut st = ReachabilityLocalState::default();
-        st.apply_successful_probe(&result, &evidence).unwrap();
+        st.apply_successful_probe(target.path(), &result, &evidence, "2026-09-05T12:30:00Z")
+            .unwrap();
         assert_eq!(st.status, ReachabilityStatus::DirectReachable);
         assert!(st.status.may_advertise_direct());
         assert_eq!(st.to_presence_hint(), PresenceReachability::Direct);
@@ -477,15 +506,101 @@ mod tests {
             st.external_checked_at.as_deref(),
             Some("2026-09-05T12:30:00Z")
         );
-        st.save(root.path()).unwrap();
-        let loaded = ReachabilityLocalState::load(root.path()).unwrap();
+        st.save(target.path()).unwrap();
+        let loaded = ReachabilityLocalState::load(target.path()).unwrap();
         assert_eq!(loaded.status, ReachabilityStatus::DirectReachable);
-        assert!(ReachabilityLocalState::path(root.path()).is_file());
+        assert!(ReachabilityLocalState::path(target.path()).is_file());
+        assert!(crate::reachability::reachability_replay_path(target.path()).is_file());
 
         // forged / transcript-alone style evidence cannot set DIRECT
         let mut forged = evidence.clone();
         forged.session_transcript_hex = "sha256:00".into();
-        assert!(st.apply_successful_probe(&result, &forged).is_err());
+        assert!(st
+            .apply_successful_probe(target.path(), &result, &forged, "2026-09-05T12:30:00Z")
+            .is_err());
+    }
+
+    #[tokio::test]
+    async fn apply_rejects_wrong_root_replay_and_stale_apply_time() {
+        use crate::{accept, admit_peer_trust, dial, listen_available_loopback, AddressBook};
+
+        let target = tempdir().unwrap();
+        let probe = tempdir().unwrap();
+        let other = tempdir().unwrap();
+        let (tid, tpk) = write_node(target.path(), "adm-tgt", [85u8; 32]);
+        let (pid, ppk) = write_node(probe.path(), "adm-prb", [86u8; 32]);
+        let (_oid, _) = write_node(other.path(), "adm-oth", [87u8; 32]);
+        admit_peer_trust(target.path(), pid.as_str(), &ppk).unwrap();
+        admit_peer_trust(probe.path(), tid.as_str(), &tpk).unwrap();
+
+        let (listener, addr) = listen_available_loopback().await.unwrap();
+        let endpoint = format!("127.0.0.1:{}", addr.port());
+        let mut book = AddressBook::default();
+        book.upsert(tid.as_str(), &endpoint).unwrap();
+        book.save(probe.path()).unwrap();
+
+        let root_t = target.path().to_path_buf();
+        let accept_task = tokio::spawn(async move { accept(&listener, root_t).await });
+        let probe_session = dial(probe.path(), tid.as_str()).await.unwrap();
+        let target_session = accept_task.await.unwrap().unwrap();
+
+        let ch = ReachabilityChallenge::draft(ChallengeDraft {
+            target_identity_ref: tid.as_str().into(),
+            target_public_key: tpk,
+            endpoint: endpoint.clone(),
+            created_at: "2026-09-05T12:00:00Z".into(),
+            expires_at: "2026-09-05T13:00:00Z".into(),
+        })
+        .unwrap()
+        .sign_for_node_root(target.path())
+        .unwrap();
+        let evidence = target_session
+            .export_reachability_evidence(&ch, "2026-09-05T12:30:00Z")
+            .unwrap();
+        let att = ReachabilityAttestation::issue_for_authenticated_session(
+            &ch,
+            &probe_session,
+            "2026-09-05T12:30:00Z",
+        )
+        .unwrap();
+        let result = ReachabilityResult::new(ch, att);
+
+        let mut foreign = ReachabilityLocalState::default();
+        let wrong_root = foreign
+            .apply_successful_probe(other.path(), &result, &evidence, "2026-09-05T12:30:00Z")
+            .unwrap_err();
+        assert!(
+            matches!(&wrong_root, PeerError::Reachability(msg) if msg.contains("#281")),
+            "{wrong_root:?}"
+        );
+
+        let mut st = ReachabilityLocalState::default();
+        st.apply_successful_probe(target.path(), &result, &evidence, "2026-09-05T12:30:00Z")
+            .unwrap();
+        let replay_err = st
+            .apply_successful_probe(target.path(), &result, &evidence, "2026-09-05T12:30:05Z")
+            .unwrap_err();
+        assert!(
+            matches!(&replay_err, PeerError::Reachability(msg) if msg.contains("replayed")),
+            "{replay_err:?}"
+        );
+
+        // Stale apply-time / expiry after clearing durable replay (`#281`).
+        fs::remove_file(crate::reachability::reachability_replay_path(target.path())).unwrap();
+        let mut st2 = ReachabilityLocalState::default();
+        let skew = st2
+            .apply_successful_probe(target.path(), &result, &evidence, "2026-09-05T12:40:00Z")
+            .unwrap_err();
+        assert!(matches!(skew, PeerError::ClockSkew), "{skew:?}");
+
+        let mut st3 = ReachabilityLocalState::default();
+        let expired = st3
+            .apply_successful_probe(target.path(), &result, &evidence, "2026-09-05T14:00:00Z")
+            .unwrap_err();
+        assert!(
+            matches!(&expired, PeerError::Reachability(msg) if msg.contains("apply time")),
+            "{expired:?}"
+        );
     }
 
     #[test]

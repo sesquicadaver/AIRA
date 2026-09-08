@@ -22,7 +22,7 @@ Phase Q `#280`: dial (advertised) endpoint and accept TCP `local_addr` may diffe
 ## 5. Non-Goals
 
 ```text
-Reachability evidence admission (#281)
+Reachability evidence admission (#281) — DONE @ RFC-0170
 Transcript domain / schema bump
 CGNAT netns CI
 ```

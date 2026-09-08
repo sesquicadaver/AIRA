@@ -82,7 +82,7 @@ pub(super) async fn run(root: &Path, command: PeerReachabilityCommands) -> Resul
                     .with_context(|| format!("read session_evidence {evidence_path}"))?;
                 let evidence: aira_peer::ReachabilityLocalEvidence = serde_json::from_str(&ev_raw)
                     .context("parse ReachabilityLocalEvidence JSON")?;
-                st.apply_successful_probe(&result, &evidence)
+                st.apply_successful_probe(root, &result, &evidence, &now)
                     .map_err(|e| anyhow::anyhow!("{e}"))?;
                 st.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
                 println!("status {:?}", st.status);
@@ -91,6 +91,10 @@ pub(super) async fn run(root: &Path, command: PeerReachabilityCommands) -> Resul
                 println!(
                     "reachability {}",
                     aira_peer::ReachabilityLocalState::path(root).display()
+                );
+                println!(
+                    "reachability_replay {}",
+                    aira_peer::reachability_replay_path(root).display()
                 );
                 return Ok(ExitCode::SUCCESS);
             }

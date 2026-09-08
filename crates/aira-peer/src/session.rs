@@ -93,10 +93,11 @@ impl AuthenticatedPeer {
         )
     }
 
-    /// Export signed local evidence for applying DIRECT (`#270`).
+    /// Export signed local evidence for applying DIRECT (`#270`/`#281`).
     ///
     /// Only inbound (accept) sessions may export evidence used by
-    /// [`crate::ReachabilityLocalState::apply_successful_probe`].
+    /// [`crate::ReachabilityLocalState::apply_successful_probe`] (root-bound
+    /// admission on the target install).
     pub fn export_reachability_evidence(
         &self,
         challenge: &crate::reachability::ReachabilityChallenge,

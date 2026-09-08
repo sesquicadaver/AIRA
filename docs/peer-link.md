@@ -200,6 +200,10 @@ Successful attestation binds Noise handshake hash + session transcript; `apply_s
 
 Transcript domain v2 binds **endpoint + INBOUND** proof direction; probe must be OUTBOUND on that socket; apply uses signed `ReachabilityLocalEvidence` / CLI `--session-evidence` (RFC-0160). Bare `--session-transcript` is rejected.
 
+## Phase Q reachability evidence admission (`#281`)
+
+`apply_successful_probe` requires challenge target = current root identity, durable `peers/reachability_replay.json`, and apply-time freshness (`REACHABILITY_APPLY_MAX_SKEW_SECS`; challenge not expired at apply) — RFC-0170.
+
 ## Phase N-fix expiry before promote (`#251`)
 
 Expired Presence cannot enter AddressBook via promote / `discover_admit_promote`, even when `query_identity` still returns the row (RFC-0143).
