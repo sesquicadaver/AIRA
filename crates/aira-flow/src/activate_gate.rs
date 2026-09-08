@@ -4,9 +4,15 @@
 //! `model-acquisition`. Presence of `models/activated.latest.json` is not enough;
 //! cache bytes, `content_hash`, and a signed activate Evidence artifact must match.
 //! Desktop `#269` observes selected vs ready via [`ActivatedPointerGate::observe`].
+//! `#277` light monitoring reuses a versioned metadata cache so status refresh does
+//! not `fs::read` + sha256 full weights every tick; admission (`check_activated`)
+//! always re-hashes weights.
 
+#[cfg(test)]
+use std::cell::Cell;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use aira_artifact::{ArtifactStore, CasArtifactStore};
 use aira_csu::support::{json_bytes, make_artifact};
@@ -15,7 +21,7 @@ use aira_object::{
     active_signature, is_cryptographic_signature, utc_now_rfc3339, verify_ed25519, AiraRef,
     ContentHash, Signature,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
 /// Pointer written by Phase D `activate_verified` (`models/activated.latest.json`).
@@ -29,10 +35,25 @@ struct ActivatedPointer {
     evidence_artifact_id: String,
 }
 
+/// Versioned ready cache for light observe (`#277`).
+///
+/// Bound to pointer fingerprint + cache file length/mtime. Admission never trusts
+/// this alone: [`ActivatedPointerGate::check_activated`] always full-hashes weights.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct ObserveReadyCache {
+    pointer_fp: String,
+    cache_path: String,
+    cache_len: u64,
+    /// Nanoseconds since UNIX_EPOCH (mtime).
+    cache_mtime_ns: u128,
+    content_hash: String,
+}
+
 /// Read-only activation observation for Desktop model triple (`#269`).
 ///
-/// `selected_model_ref` comes from the pointer file; `ready` requires full Phase D
-/// evidence/hash confirmation (pointer presence alone is never enough).
+/// `selected_model_ref` comes from the pointer file; `ready` requires Phase D
+/// evidence/hash confirmation (pointer presence alone is never enough). Light
+/// observe (`#277`) may reuse [`ObserveReadyCache`] for the weights hash step.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActivationObservation {
     pub pointer_present: bool,
@@ -59,7 +80,14 @@ impl ActivatedPointerGate {
         }
     }
 
+    fn observe_cache_path(&self) -> PathBuf {
+        self.aira_root.join("models/activated.observe-ready.json")
+    }
+
     /// Observe selected vs ready without inventing a used-in-result model (`#269`).
+    ///
+    /// Uses light verification (`#277`): full weights hash only on cache miss or
+    /// metadata/pointer change. Evidence artifact is always checked.
     pub fn observe(&self) -> ActivationObservation {
         if !self.pointer_path.is_file() {
             return ActivationObservation {
@@ -100,7 +128,7 @@ impl ActivatedPointerGate {
             };
         }
         let selected = pointer.model_ref.clone();
-        match self.verify_pointer_ready(&pointer) {
+        match self.verify_pointer_ready(&pointer, VerifyMode::ObserveLight) {
             Ok(()) => ActivationObservation {
                 pointer_present: true,
                 selected_model_ref: Some(selected),
@@ -159,7 +187,11 @@ impl ActivatedPointerGate {
         Ok(Self::from_aira_root(root))
     }
 
-    fn verify_pointer_ready(&self, pointer: &ActivatedPointer) -> Result<(), String> {
+    fn verify_pointer_ready(
+        &self,
+        pointer: &ActivatedPointer,
+        mode: VerifyMode,
+    ) -> Result<(), String> {
         if pointer.model_ref.is_empty()
             || pointer.cache_path.is_empty()
             || pointer.verified_path.is_empty()
@@ -176,11 +208,34 @@ impl ActivatedPointerGate {
         if !cache.is_file() {
             return Err("activated cache file missing (fail-closed; not VERIFIED)".into());
         }
-        let cache_bytes = fs::read(&cache).map_err(|_| ACTIVATE_DENIED.to_string())?;
-        let observed = ContentHash::sha256_bytes(&cache_bytes);
-        if observed != claimed {
-            return Err("activated cache content_hash mismatch (fail-closed; not VERIFIED)".into());
+        let meta = fs::metadata(&cache).map_err(|_| ACTIVATE_DENIED.to_string())?;
+        let cache_len = meta.len();
+        let cache_mtime_ns = mtime_ns(&meta).map_err(|_| ACTIVATE_DENIED.to_string())?;
+        let pointer_fp = pointer_fingerprint(pointer);
+
+        let skip_weight_hash = matches!(mode, VerifyMode::ObserveLight)
+            && observe_cache_hit(
+                &self.observe_cache_path(),
+                &pointer_fp,
+                &pointer.cache_path,
+                cache_len,
+                cache_mtime_ns,
+                claimed.as_str(),
+            );
+
+        if !skip_weight_hash {
+            let cache_bytes = fs::read(&cache).map_err(|_| ACTIVATE_DENIED.to_string())?;
+            #[cfg(test)]
+            note_full_weight_hash();
+            let observed = ContentHash::sha256_bytes(&cache_bytes);
+            if observed != claimed {
+                let _ = fs::remove_file(self.observe_cache_path());
+                return Err(
+                    "activated cache content_hash mismatch (fail-closed; not VERIFIED)".into(),
+                );
+            }
         }
+
         let evidence_id = AiraRef::parse(&pointer.evidence_artifact_id).map_err(|_| {
             "activated evidence_artifact_id is not an aira ref (fail-closed; not VERIFIED)"
                 .to_string()
@@ -192,8 +247,28 @@ impl ActivatedPointerGate {
             "activated evidence artifact missing (fail-closed; not VERIFIED)".to_string()
         })?;
         verify_activate_evidence(&ev_bytes, &pointer.model_ref, claimed.as_str())?;
+
+        // Persist light-observe binding after a successful full hash (or refresh after admit).
+        if !skip_weight_hash {
+            let rec = ObserveReadyCache {
+                pointer_fp,
+                cache_path: pointer.cache_path.clone(),
+                cache_len,
+                cache_mtime_ns,
+                content_hash: claimed.as_str().to_string(),
+            };
+            let _ = write_observe_cache(&self.observe_cache_path(), &rec);
+        }
         Ok(())
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum VerifyMode {
+    /// Status / UI monitoring: may skip weights sha256 when observe-ready cache hits.
+    ObserveLight,
+    /// Generate-local admission: always full-hash weights.
+    AdmitFull,
 }
 
 impl ModelActivateGate for ActivatedPointerGate {
@@ -216,8 +291,64 @@ impl ModelActivateGate for ActivatedPointerGate {
                 ));
             }
         }
-        self.verify_pointer_ready(&pointer)
+        self.verify_pointer_ready(&pointer, VerifyMode::AdmitFull)
     }
+}
+
+fn pointer_fingerprint(pointer: &ActivatedPointer) -> String {
+    let raw = format!(
+        "{}\n{}\n{}\n{}\n{}\n{}",
+        pointer.updated_at,
+        pointer.model_ref,
+        pointer.cache_path,
+        pointer.verified_path,
+        pointer.content_hash,
+        pointer.evidence_artifact_id
+    );
+    ContentHash::sha256_bytes(raw.as_bytes())
+        .as_str()
+        .to_string()
+}
+
+fn mtime_ns(meta: &fs::Metadata) -> Result<u128, ()> {
+    let modified = meta.modified().map_err(|_| ())?;
+    Ok(system_time_ns(modified))
+}
+
+fn system_time_ns(t: SystemTime) -> u128 {
+    t.duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos()
+}
+
+fn observe_cache_hit(
+    path: &Path,
+    pointer_fp: &str,
+    cache_path: &str,
+    cache_len: u64,
+    cache_mtime_ns: u128,
+    content_hash: &str,
+) -> bool {
+    let Ok(raw) = fs::read_to_string(path) else {
+        return false;
+    };
+    let Ok(rec) = serde_json::from_str::<ObserveReadyCache>(&raw) else {
+        return false;
+    };
+    rec.pointer_fp == pointer_fp
+        && rec.cache_path == cache_path
+        && rec.cache_len == cache_len
+        && rec.cache_mtime_ns == cache_mtime_ns
+        && rec.content_hash == content_hash
+}
+
+fn write_observe_cache(path: &Path, rec: &ObserveReadyCache) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(
+        path,
+        serde_json::to_string_pretty(rec).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())
 }
 
 fn resolve_cache_path(aira_root: &Path, cache_path: &str) -> Result<PathBuf, String> {
@@ -327,12 +458,33 @@ fn publish_activate_evidence(
 }
 
 #[cfg(test)]
+thread_local! {
+    static FULL_WEIGHT_HASHES: Cell<u64> = const { Cell::new(0) };
+}
+
+#[cfg(test)]
+fn note_full_weight_hash() {
+    FULL_WEIGHT_HASHES.with(|c| c.set(c.get().saturating_add(1)));
+}
+
+#[cfg(test)]
+fn take_full_weight_hash_count() -> u64 {
+    FULL_WEIGHT_HASHES.with(|c| {
+        let n = c.get();
+        c.set(0);
+        n
+    })
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use aira_csu_execution_llm::{
         GenerateLocalConstraints, ACTION_GENERATE_LOCAL, PAYLOAD_SCHEMA_ID,
     };
     use aira_object::local_test_signature;
+    use std::thread;
+    use std::time::Duration;
 
     fn dummy_payload() -> GenerateLocalPayload {
         GenerateLocalPayload {
@@ -428,5 +580,82 @@ mod tests {
             Some("aira:model:test-activated")
         );
         assert!(!obs.ready);
+    }
+
+    #[test]
+    fn observe_second_pass_skips_full_weight_hash() {
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        let _ = take_full_weight_hash_count();
+        assert!(gate.observe().ready);
+        assert_eq!(take_full_weight_hash_count(), 1);
+        assert!(gate.observe().ready);
+        assert_eq!(
+            take_full_weight_hash_count(),
+            0,
+            "second observe must not re-hash full weights"
+        );
+        assert!(
+            gate.observe_cache_path().is_file(),
+            "observe-ready cache should be written"
+        );
+    }
+
+    #[test]
+    fn admit_always_full_hashes_even_after_observe_cache() {
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        assert!(gate.observe().ready);
+        let _ = take_full_weight_hash_count();
+        gate.check_activated(&dummy_payload()).unwrap();
+        assert_eq!(
+            take_full_weight_hash_count(),
+            1,
+            "admission must not trust observe-ready cache for weights"
+        );
+    }
+
+    #[test]
+    fn observe_rehashes_when_cache_len_changes() {
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        assert!(gate.observe().ready);
+        let _ = take_full_weight_hash_count();
+        let weights = dir.path().join("models/cache/l218/weights.bin");
+        // Same prefix + extra byte → len change → light cache miss → rehash → mismatch.
+        fs::write(&weights, b"aira-l218-activate-fixtureX").unwrap();
+        let obs = gate.observe();
+        assert!(!obs.ready);
+        assert!(
+            obs.detail.contains("content_hash mismatch"),
+            "{}",
+            obs.detail
+        );
+        assert_eq!(take_full_weight_hash_count(), 1);
+    }
+
+    #[test]
+    fn observe_rehashes_when_mtime_changes_same_bytes() {
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        assert!(gate.observe().ready);
+        let _ = take_full_weight_hash_count();
+        let weights = dir.path().join("models/cache/l218/weights.bin");
+        let bytes = fs::read(&weights).unwrap();
+        thread::sleep(Duration::from_millis(20));
+        fs::write(&weights, &bytes).unwrap();
+        assert!(gate.observe().ready);
+        assert_eq!(
+            take_full_weight_hash_count(),
+            1,
+            "mtime change must invalidate observe-ready cache"
+        );
+        // Third pass hits the refreshed cache again.
+        assert!(gate.observe().ready);
+        assert_eq!(take_full_weight_hash_count(), 0);
     }
 }

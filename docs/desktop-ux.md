@@ -1,7 +1,7 @@
 # AIRA Desktop UX — канон рішень
 
 **Статус:** Phase E `#75`–`#106` **DONE** (2026-08-22); Phase F `#107`–`#119` **DONE** (2026-08-24).  
-**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) (runtime-honest) `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed. Phase Q [`phase-q-plan.md`](phase-q-plan.md) `#275`–`#285` (**IN PROGRESS**; `#275`–`#276` DONE @ RFC-0165; first OPEN `#277`; RFC-0164 reserved).
+**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) (runtime-honest) `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed. Phase Q [`phase-q-plan.md`](phase-q-plan.md) `#275`–`#285` (**IN PROGRESS**; `#275`–`#277` DONE @ RFC-0166; first OPEN `#278`; RFC-0164 reserved).
 **Provenance:** [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED** → E); UX/Help draft 2026-09-06 (`aira-gui.md` + `aira-desktop-ux-help-draft.md`, поза git).  
 **Не змінює** Book 0–IV / C0–C1 / Core / `aira-core` ledger.  
 **Posture:** Linux E1 = **Developer Preview** над local reference plane.
