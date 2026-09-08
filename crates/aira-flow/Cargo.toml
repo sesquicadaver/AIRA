@@ -31,3 +31,4 @@ tempfile = "3"
 aira-schema = { path = "../aira-schema" }
 ed25519-dalek = { workspace = true }
 hex = { workspace = true }
+rand = { workspace = true }

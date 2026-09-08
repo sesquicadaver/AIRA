@@ -4,4 +4,4 @@
 - [x] Admission always full-hashes weights
 - [x] Invalidation on len/mtime/pointer change
 - [x] RFC-0166 + QUEUE `#277` DONE
-- [ ] `#278` Model verify context (next OPEN)
+- [x] `#278` Model verify context (DONE @ RFC-0167)
