@@ -383,13 +383,15 @@ mod tests {
 
     #[test]
     fn local_bind_does_not_refresh_external_direct_freshness() {
-        let mut st = ReachabilityLocalState::default();
-        st.status = ReachabilityStatus::DirectReachable;
-        st.verified_endpoint = Some("127.0.0.1:49157".into());
-        st.probe_evidence = Some("ch-1".into());
-        st.external_checked_at = Some("2026-09-05T10:00:00Z".into());
-        st.checked_at = Some("2026-09-05T10:00:00Z".into());
-        st.local_port = Some(49157);
+        let mut st = ReachabilityLocalState {
+            status: ReachabilityStatus::DirectReachable,
+            verified_endpoint: Some("127.0.0.1:49157".into()),
+            probe_evidence: Some("ch-1".into()),
+            external_checked_at: Some("2026-09-05T10:00:00Z".into()),
+            checked_at: Some("2026-09-05T10:00:00Z".into()),
+            local_port: Some(49157),
+            ..Default::default()
+        };
         st.mark_local_bind(49157, "2026-09-05T12:00:00Z").unwrap();
         assert_eq!(st.status, ReachabilityStatus::DirectReachable);
         assert_eq!(
