@@ -1,9 +1,9 @@
 # Phase Q — Cross-install integrity & light monitoring (post-P)
 
-**Статус:** складено 2026-09-07; **IN PROGRESS** — QUEUE `#275`–`#284` **DONE** @ RFC-0173; first OPEN `#285`.  
+**Статус:** складено 2026-09-07; **DONE** @ [`AIRA-RFC-0164`](../specs/rfc/AIRA-RFC-0164-phase-q-cross-install-integrity.md) — QUEUE `#275`–`#285` **DONE**; **QUEUE Q closed**; no OPEN Q atoms.  
 **Джерела:** post-P audit `aira-current.md` @ `00f19cf` (2026-09-07); Phase P [`phase-p-plan.md`](phase-p-plan.md) **DONE** @ RFC-0156; QUEUE P closed; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase Q `#275`–`#285`.  
-**Closure:** consolidating **RFC-0164** (id **confirmed free** at `#275`; file-free until `#285`).  
+**Closure:** consolidating **RFC-0164** (id **confirmed free** at `#275`; file at `#285`).  
 **Не змінює:** анти-місію README; C0/C1 `Calculate 2 + 2`; `aira-core` ledger / LLM-in-Core; GUI stack (egui); IA Work/System/Settings + Help·F1; Claiming Polygon ledger DONE; Claiming global live mesh DONE; QUEUE P історію як never-DONE.
 
 > Примітка: `aira-current.md` поза git-каноном. Канон у репо = цей план + `desktop-ux.md` + QUEUE + RFC-D.
@@ -84,7 +84,7 @@ Q0 Wiring (+ CI fmt)
 | `#282` | Q2 | Lifecycle revision races | **DONE** @ RFC-0171: one revision; refresh gate; Quit→Stop; Applied from worker snapshot | provenance (#283) |
 | `#283` | Q2 | Backend≠model used | **DONE** @ RFC-0172: used = model id/hash only; no `backend:*` without evidence | invite (#284) |
 | `#284` | Q2 | Invite import atomicity | **DONE** @ RFC-0173: checks before writes; trust rollback on book fail | RFC close (#285) |
-| `#285` | Q | RFC-0164 + close | consolidating RFC-0164; QUEUE Q closed; no OPEN Q atoms; doc tip drift cleared | — |
+| `#285` | Q | RFC-0164 + close | **DONE** @ RFC-0164; QUEUE Q closed; no OPEN Q atoms | — |
 
 ```text
 #275 Q0 wiring (+ fmt)
@@ -97,13 +97,14 @@ Q0 Wiring (+ CI fmt)
               → #282 Q2 lifecycle revision DONE @ RFC-0171
                 → #283 Q2 backend≠model DONE @ RFC-0172
                   → #284 Q2 invite atomicity DONE @ RFC-0173
-                    → #285 RFC-0164 close
+                    → #285 RFC-0164 close DONE
 ```
 
 ## 6. Acceptance Phase Q
 
 ```text
 QUEUE `#275`–`#285` DONE; no OPEN Q atoms.
+QUEUE Q closed.
 CI fmt+required checks green on tip.
 Two clean Desktop roots → distinct identity IDs; no silent TrustStore key clobber.
 Status refresh does not fully hash model weights every interval.
@@ -121,13 +122,13 @@ aira-core still has no ledger/GUI deps.
 
 ## 7. RFC
 
-- Consolidating (`#285`): **AIRA-RFC-0164** — id **confirmed free** at `#275` (file-free until close).
-- Per-atom RFC-D: `#276`→**0165** (DONE); `#277`→**0166** (DONE); `#278`→**0167** (DONE); `#279`→**0168** (DONE); `#280`→**0169** (DONE); `#281`→**0170** (DONE); `#282`→**0171** (DONE); `#283`→**0172** (DONE); `#284`→**0173** (DONE); `#285`→0164 consolidating.
+- Consolidating (`#285`): **AIRA-RFC-0164** — id **confirmed free** at `#275`; file written at close.
+- Per-atom RFC-D: `#276`→**0165** (DONE); `#277`→**0166** (DONE); `#278`→**0167** (DONE); `#279`→**0168** (DONE); `#280`→**0169** (DONE); `#281`→**0170** (DONE); `#282`→**0171** (DONE); `#283`→**0172** (DONE); `#284`→**0173** (DONE); `#285`→**0164** consolidating (DONE).
 
 ## 8. Activation rule
 
 ```text
 QUEUE P closed @ RFC-0156 + developer «скласти Phase Q» 2026-09-07
   → цей план активовано атомом `#275`.
-`#275`–`#284` DONE @ RFC-0173; first OPEN `#285`.
+`#275`–`#285` DONE @ RFC-0164; **QUEUE Q closed**; no OPEN Q atoms.
 ```
