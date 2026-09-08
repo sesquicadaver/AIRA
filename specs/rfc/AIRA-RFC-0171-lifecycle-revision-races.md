@@ -22,7 +22,7 @@ Phase Q `#282`: each Desktop Start/Stop bumps one `lifecycle_revision` and inval
 ## 5. Non-Goals
 
 ```text
-Backend≠model used (#283)
+Backend≠model used (#283) — DONE @ RFC-0172
 New job framework / Core changes
 Consolidating RFC-0164
 ```
