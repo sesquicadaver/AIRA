@@ -132,11 +132,13 @@ pub use prime_port::{
     P_AIRA_RANGE_MIN,
 };
 pub use reachability::{
-    endpoints_equivalent, format_socket_endpoint, session_transcript_hex, ChallengeDraft,
-    ReachabilityAttestation, ReachabilityChallenge, ReachabilityLocalEvidence,
-    ReachabilityReplayLog, ReachabilityResult, SessionDirection, REACHABILITY_ATTESTATION_SCHEMA,
+    check_apply_time_freshness, endpoints_equivalent, format_socket_endpoint,
+    load_reachability_replay, reachability_replay_path, save_reachability_replay,
+    session_transcript_hex, ChallengeDraft, ReachabilityAttestation, ReachabilityChallenge,
+    ReachabilityLocalEvidence, ReachabilityReplayLog, ReachabilityResult, SessionDirection,
+    REACHABILITY_APPLY_MAX_SKEW_SECS, REACHABILITY_ATTESTATION_SCHEMA,
     REACHABILITY_CHALLENGE_SCHEMA, REACHABILITY_LOCAL_EVIDENCE_SCHEMA, REACHABILITY_REPLAY_CAP,
-    REACHABILITY_RESULT_SCHEMA, REACHABILITY_SESSION_DOMAIN,
+    REACHABILITY_REPLAY_SCHEMA, REACHABILITY_RESULT_SCHEMA, REACHABILITY_SESSION_DOMAIN,
 };
 pub use reachability_state::{
     ReachabilityLocalState, ReachabilityStatus, RelayRouteRecord, REACHABILITY_STATE_SCHEMA,

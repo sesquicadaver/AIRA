@@ -1,0 +1,1 @@
+QUEUE `#281`: Reachability evidence admission — apply requires target = current root identity; durable replay; apply-time freshness (not only signed probed_at); RFC-0170. Do not start lifecycle revision races (`#282`).

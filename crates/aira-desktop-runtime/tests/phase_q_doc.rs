@@ -20,15 +20,16 @@ fn phase_q_plan_present() {
         "Model verify context",
         "Reachability observation independence",
         "Reachability NAT endpoints",
+        "Reachability evidence admission",
         "AIRA-RFC-0164",
         "confirmed free",
         "desktop-ux.md",
         "QUEUE P closed",
         "GPU marketplace",
         "Calculate 2 + 2",
-        "first OPEN `#281`",
-        "#280",
-        "RFC-0169",
+        "first OPEN `#282`",
+        "#281",
+        "RFC-0170",
         "00f19cf",
     ] {
         assert!(text.contains(needle), "phase-q-plan missing: {needle}");
@@ -36,10 +37,10 @@ fn phase_q_plan_present() {
 }
 
 #[test]
-fn phase_q_queue_280_done_281_open() {
+fn phase_q_queue_281_done_282_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-q-plan.md"));
-    for n in 275..=280 {
+    for n in 275..=281 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
@@ -50,21 +51,21 @@ fn phase_q_queue_280_done_281_open() {
         );
     }
     assert!(
-        text.contains("| 281 | **OPEN**"),
-        "QUEUE #281 must be first OPEN"
+        text.contains("| 282 | **OPEN**"),
+        "QUEUE #282 must be first OPEN"
     );
-    for n in 282..=285 {
+    for n in 283..=285 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-315",
+        "Analyze-316",
         "RFC-0164",
-        "first OPEN `#281`",
-        "#280",
-        "RFC-0169",
+        "first OPEN `#282`",
+        "#281",
+        "RFC-0170",
         "QUEUE P closed",
         "desktop-ux.md",
         "aira-current.md",
@@ -77,8 +78,23 @@ fn phase_q_queue_280_done_281_open() {
 #[test]
 fn phase_q_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
-    for needle in ["phase-q-plan.md", "#280", "RFC-0169", "first OPEN `#281`"] {
+    for needle in ["phase-q-plan.md", "#281", "RFC-0170", "first OPEN `#282`"] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
+    }
+}
+
+#[test]
+fn phase_q_rfc_0170_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0170-reachability-evidence-admission.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0170 missing");
+    for needle in [
+        "#281",
+        "root",
+        "replay",
+        "apply-time",
+        "REACHABILITY_APPLY_MAX_SKEW_SECS",
+    ] {
+        assert!(text.contains(needle), "RFC-0170 missing: {needle}");
     }
 }
 
@@ -182,7 +198,7 @@ fn phase_q_readme_and_docs_index() {
 fn phase_q_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-q-plan.md") || text.contains("Phase Q"));
-    assert!(text.contains("#281") || text.contains("перший OPEN"));
+    assert!(text.contains("#282") || text.contains("перший OPEN"));
     assert!(
         !text.contains("немає OPEN") || text.contains("Phase Q"),
         "NEXT_PROBLEM must point at Phase Q backlog"
@@ -193,10 +209,10 @@ fn phase_q_next_problem() {
 fn phase_q_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #280 |") || status.contains("#280"));
+    assert!(status.contains("| #281 |") || status.contains("#281"));
     assert!(status.contains("phase_q_doc.rs"));
     assert!(status.contains("phase-q-plan.md"));
-    assert!(status.contains("RFC-0169") || status.contains("0169"));
+    assert!(status.contains("RFC-0170") || status.contains("0170"));
 }
 
 #[test]
