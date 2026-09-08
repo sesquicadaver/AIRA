@@ -76,6 +76,11 @@ pub struct Labels {
     pub sys_conn_local: &'static str,
     pub sys_conn_unknown: &'static str,
     pub sys_conn_offline: &'static str,
+    /// Phase R `#287` Connection primary CTA labels.
+    pub cta_enable_private_network: &'static str,
+    pub cta_import_invite: &'static str,
+    pub cta_stop_to_apply: &'static str,
+    pub cta_start_to_apply: &'static str,
     pub sys_saved_participants: &'static str,
     pub sys_live_sessions: &'static str,
     pub sys_live_unobserved: &'static str,
@@ -264,6 +269,10 @@ static EN: Labels = Labels {
     sys_conn_local: "Only local networking is known — not a global connection.",
     sys_conn_unknown: "Connection has not been verified yet (not the same as offline).",
     sys_conn_offline: "No mesh path is available.",
+    cta_enable_private_network: "Enable private network",
+    cta_import_invite: "Import invite…",
+    cta_stop_to_apply: "Stop to apply network",
+    cta_start_to_apply: "Start to apply network",
     sys_saved_participants: "Saved participants (address book):",
     sys_live_sessions: "Live sessions:",
     sys_live_unobserved: "not observed",
@@ -443,6 +452,10 @@ static UK: Labels = Labels {
     sys_conn_local: "Відома лише локальна мережа — це не глобальне з’єднання.",
     sys_conn_unknown: "З’єднання ще не перевірено (це не те саме, що офлайн).",
     sys_conn_offline: "Немає доступного шляху mesh.",
+    cta_enable_private_network: "Увімкнути приватну мережу",
+    cta_import_invite: "Імпортувати запрошення…",
+    cta_stop_to_apply: "Стоп, щоб застосувати мережу",
+    cta_start_to_apply: "Старт, щоб застосувати мережу",
     sys_saved_participants: "Збережені учасники (адресна книга):",
     sys_live_sessions: "Живі сесії:",
     sys_live_unobserved: "не спостерігалося",
@@ -650,6 +663,15 @@ mod tests {
         assert!(Labels::get(UiLang::Uk)
             .sys_conn_unknown
             .contains("не те саме, що офлайн"));
+        assert_eq!(
+            Labels::get(UiLang::En).cta_enable_private_network,
+            "Enable private network"
+        );
+        assert!(Labels::get(UiLang::Uk)
+            .cta_import_invite
+            .contains("запрошення"));
+        assert!(Labels::get(UiLang::En).cta_stop_to_apply.contains("Stop"));
+        assert!(Labels::get(UiLang::Uk).cta_start_to_apply.contains("Старт"));
         assert!(Labels::get(UiLang::En)
             .settings_phase_restart
             .contains("restart needed"));

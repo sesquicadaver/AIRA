@@ -23,8 +23,8 @@ fn phase_r_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE Q closed",
-        "first OPEN `#287`",
-        "#286",
+        "first OPEN `#288`",
+        "#287",
         "GPU marketplace",
         "Calculate 2 + 2",
         "UNKNOWN≠OFFLINE",
@@ -42,32 +42,35 @@ fn phase_r_plan_present() {
 }
 
 #[test]
-fn phase_r_queue_286_done_287_open() {
+fn phase_r_queue_287_done_288_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-r-plan.md"));
     assert!(text.contains("| 286 | **DONE**"), "QUEUE #286 must be DONE");
+    assert!(text.contains("| 287 | **DONE**"), "QUEUE #287 must be DONE");
     assert!(
-        !text.contains("| 286 | **OPEN**"),
-        "QUEUE #286 must not stay OPEN"
+        !text.contains("| 287 | **OPEN**"),
+        "QUEUE #287 must not stay OPEN"
     );
     assert!(
-        text.contains("| 287 | **OPEN**"),
-        "QUEUE #287 must be first OPEN"
+        text.contains("| 288 | **OPEN**"),
+        "QUEUE #288 must be first OPEN"
     );
-    for n in 288..=294 {
+    for n in 289..=294 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-322",
+        "Analyze-323",
+        "RFC-0175",
         "RFC-0174",
-        "first OPEN `#287`",
-        "#286",
+        "first OPEN `#288`",
+        "#287",
         "QUEUE Q closed",
         "desktop-ux.md",
         "Actionable Desktop Connection",
+        "connection_cta",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
@@ -76,7 +79,14 @@ fn phase_r_queue_286_done_287_open() {
 #[test]
 fn phase_r_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
-    for needle in ["phase-r-plan.md", "#286", "first OPEN `#287`", "RFC-0174"] {
+    for needle in [
+        "phase-r-plan.md",
+        "#287",
+        "first OPEN `#288`",
+        "RFC-0174",
+        "RFC-0175",
+        "connection_cta",
+    ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
 }
@@ -97,28 +107,39 @@ fn phase_r_rfc_0174_file_free() {
 }
 
 #[test]
+fn phase_r_rfc_0175_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0175-connection-next-step-cta.md");
+    let text = std::fs::read_to_string(&path).unwrap();
+    for needle in ["#287", "primary CTA", "connection_cta", "UNKNOWN"] {
+        assert!(text.contains(needle), "RFC-0175 missing: {needle}");
+    }
+}
+
+#[test]
 fn phase_r_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-r-plan.md") || readme.contains("Phase R"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-r-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
+    assert!(docs.contains("#288") || docs.contains("`#288`"));
 }
 
 #[test]
 fn phase_r_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-r-plan.md") || text.contains("Phase R"));
-    assert!(text.contains("#287") || text.contains("перший OPEN"));
+    assert!(text.contains("#288") || text.contains("перший OPEN"));
 }
 
 #[test]
 fn phase_r_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #286 |") || status.contains("#286"));
+    assert!(status.contains("| #287 |") || status.contains("#287"));
     assert!(status.contains("phase_r_doc.rs"));
     assert!(status.contains("phase-r-plan.md"));
+    assert!(status.contains("RFC-0175") || status.contains("0175"));
     assert!(status.contains("RFC-0174") || status.contains("0174"));
 }
 
@@ -129,4 +150,22 @@ fn phase_q_points_to_phase_r_or_closed() {
         text.contains("QUEUE Q closed") || text.contains("RFC-0164"),
         "phase-q-plan should remain closed canon"
     );
+}
+
+#[test]
+fn phase_r_connection_cta_module_present() {
+    let text =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/connection_cta.rs"))
+            .unwrap();
+    for needle in [
+        "primary_connection_cta",
+        "EnablePrivateNetwork",
+        "ImportInvite",
+        "StopToApply",
+        "RefreshStatus",
+        "NoneOk",
+        "#287",
+    ] {
+        assert!(text.contains(needle), "connection_cta missing: {needle}");
+    }
 }
