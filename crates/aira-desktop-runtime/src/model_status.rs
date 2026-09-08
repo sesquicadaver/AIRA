@@ -11,7 +11,7 @@ pub enum ModelFact {
     Undefined,
     /// Confirmed absence (e.g. no activated pointer).
     None,
-    /// Observed identity (model_ref, backend id, …).
+    /// Observed model identity (model_ref / artifact ref / content hash — never a backend id; `#283`).
     Value(String),
 }
 

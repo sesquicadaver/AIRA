@@ -1,6 +1,6 @@
 # AIRA Desktop GUI (QUEUE #78 / #85)
 
-**Status:** Phase E **DONE**. Phase G G4: peer lifecycle CI stable (`#131`–`#132`); invite QR camera (`#133`). UX: Work / System / Settings + Help·F1 chrome (`#259` @ RFC-0150); uk/en; `open_ui_on_start` cannot lock out Settings. Canon: [`desktop-ux.md`](desktop-ux.md) + [`phase-o-plan.md`](phase-o-plan.md) (`#255`–`#265` DONE @ RFC-0146; QUEUE O closed; Phase P `#266`–`#274` IN PROGRESS, QUEUE P closed; Phase Q [`phase-q-plan.md`](phase-q-plan.md) `#275`–`#282` DONE @ RFC-0171; first OPEN `#283`; `#272` DONE @ RFC-0162). Mesh banner: UNKNOWN/LOCAL ONLY ≠ OFFLINE; AddressBook ≠ live sessions.
+**Status:** Phase E **DONE**. Phase G G4: peer lifecycle CI stable (`#131`–`#132`); invite QR camera (`#133`). UX: Work / System / Settings + Help·F1 chrome (`#259` @ RFC-0150); uk/en; `open_ui_on_start` cannot lock out Settings. Canon: [`desktop-ux.md`](desktop-ux.md) + [`phase-o-plan.md`](phase-o-plan.md) (`#255`–`#265` DONE @ RFC-0146; QUEUE O closed; Phase P `#266`–`#274` IN PROGRESS, QUEUE P closed; Phase Q [`phase-q-plan.md`](phase-q-plan.md) `#275`–`#283` DONE @ RFC-0172; first OPEN `#284`; `#272` DONE @ RFC-0162). Mesh banner: UNKNOWN/LOCAL ONLY ≠ OFFLINE; AddressBook ≠ live sessions.
 
 **Binary:** `aira-desktop`  
 **CLI:** `aira desktop gui`  

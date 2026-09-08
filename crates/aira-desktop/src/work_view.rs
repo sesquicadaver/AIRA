@@ -31,7 +31,7 @@ pub struct WorkResultView {
     pub verification_status: Option<String>,
     /// Honest origin label for the result (`#260`).
     pub provenance: ProvenanceKind,
-    /// Model identity used in this result only (`#269`) — never copied from selected.
+    /// Model identity used in this result only (`#269` / `#283`) — never a backend id.
     pub used_model: Option<String>,
     pub problem_id: Option<String>,
     pub verified_artifact_id: Option<String>,
@@ -85,22 +85,23 @@ pub fn format_work_result(v: &Value) -> WorkResultView {
     }
 }
 
-/// Model identity from this execution payload only (`#269`).
-fn extract_used_model(v: &Value, provenance: ProvenanceKind) -> Option<String> {
+/// Model identity from this execution payload only (`#269` / `#283`).
+///
+/// Accepts model id/hash evidence (`model_ref`, `model_artifact_ref`, optional
+/// `model_content_hash`). Never maps `backend` / provenance into the model field —
+/// without model evidence returns `None` (GUI → used = none / undefined, not `backend:*`).
+fn extract_used_model(v: &Value, _provenance: ProvenanceKind) -> Option<String> {
     let result = v.get("result")?;
-    if let Some(m) = opt_str(result, "model_ref").or_else(|| opt_str(result, "model_artifact_ref"))
-    {
-        return Some(m);
+    for key in ["model_ref", "model_artifact_ref", "model_content_hash"] {
+        if let Some(m) = opt_str(result, key) {
+            if m.starts_with("backend:") {
+                continue;
+            }
+            return Some(m);
+        }
     }
-    if let Some(b) = opt_str(result, "backend") {
-        // Mock / named backend is what ran for this result — not the selected activate pointer.
-        return Some(format!("backend:{b}"));
-    }
-    match provenance {
-        ProvenanceKind::VerifiedLocalCompute => Some("execution-basic".into()),
-        ProvenanceKind::MockGenerate => Some("backend:mock".into()),
-        _ => None,
-    }
+    // Backend / provenance stay in ProvenanceKind + details JSON — not model identity.
+    None
 }
 
 /// Classify provenance without inventing a model or VERIFIED claim.
@@ -349,6 +350,11 @@ mod tests {
         assert_eq!(view.status, "executed");
         assert_eq!(view.provenance, ProvenanceKind::MockGenerate);
         assert!(
+            view.used_model.is_none(),
+            "mock backend must not fill used model (#283), got {:?}",
+            view.used_model
+        );
+        assert!(
             view.verification_status.is_none(),
             "generate-local must not fake VERIFIED, got {:?}",
             view.verification_status
@@ -373,6 +379,71 @@ mod tests {
             Some("aira:artifact:sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
         );
         assert!(view.verified_artifact_id.is_none());
+    }
+
+    #[test]
+    fn used_model_never_takes_backend_id() {
+        let mock = format_work_result(&executed_generate_local_like_http());
+        assert!(mock.used_model.is_none());
+        assert_eq!(mock.provenance, ProvenanceKind::MockGenerate);
+
+        let process_only = format_work_result(&json!({
+            "status": "executed",
+            "result": {
+                "result": "hi",
+                "action": "text.generate.local",
+                "backend": "process"
+            }
+        }));
+        assert!(
+            process_only.used_model.is_none(),
+            "backend:process must not become used model, got {:?}",
+            process_only.used_model
+        );
+        assert_eq!(
+            process_only.provenance,
+            ProvenanceKind::LocalGenerateExecuted
+        );
+
+        let with_ref = format_work_result(&json!({
+            "status": "executed",
+            "result": {
+                "result": "hi",
+                "action": "text.generate.local",
+                "backend": "process",
+                "model_ref": "aira:model:fixture"
+            }
+        }));
+        assert_eq!(with_ref.used_model.as_deref(), Some("aira:model:fixture"));
+        assert!(
+            !with_ref
+                .used_model
+                .as_deref()
+                .unwrap_or("")
+                .starts_with("backend:"),
+            "used model must not be a backend id"
+        );
+
+        let forged_backend_as_ref = format_work_result(&json!({
+            "status": "executed",
+            "result": {
+                "result": "hi",
+                "action": "text.generate.local",
+                "model_ref": "backend:sneaky"
+            }
+        }));
+        assert!(
+            forged_backend_as_ref.used_model.is_none(),
+            "model_ref starting with backend: is rejected (#283)"
+        );
+
+        let verified = format_work_result(&completed_vra_like_user_paste());
+        assert!(
+            verified.used_model.is_none(),
+            "C1 VERIFIED without model evidence → no used model, got {:?}",
+            verified.used_model
+        );
+        assert_eq!(verified.provenance, ProvenanceKind::VerifiedLocalCompute);
     }
 
     #[test]

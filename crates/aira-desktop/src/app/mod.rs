@@ -302,11 +302,14 @@ impl AiraDesktopApp {
         self.model_triple = snap.model.with_used(self.used_model_fact());
     }
 
-    /// Used-in-result fact from the last Work payload only (`#269`).
+    /// Used-in-result fact from the last Work payload only (`#269` / `#283`).
+    ///
+    /// `None` used_model → [`ModelFact::None`] (no model evidence); never invent `backend:*`.
     pub(super) fn used_model_fact(&self) -> ModelFact {
         match &self.work_result {
             Some(w) => match &w.used_model {
-                Some(m) => ModelFact::Value(m.clone()),
+                Some(m) if !m.starts_with("backend:") => ModelFact::Value(m.clone()),
+                Some(_) => ModelFact::None,
                 None => ModelFact::None,
             },
             None => ModelFact::Undefined,

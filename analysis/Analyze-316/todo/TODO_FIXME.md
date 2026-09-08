@@ -4,4 +4,4 @@
 - [x] Durable reachability challenge replay
 - [x] Apply-time freshness (skew + challenge expiry at apply)
 - [x] `#282` Lifecycle revision races (DONE @ RFC-0171)
-- [ ] `#283` Backend≠model used (next OPEN)
+- [x] `#283` Backend≠model used (DONE @ RFC-0172)
