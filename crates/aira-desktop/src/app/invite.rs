@@ -129,18 +129,38 @@ impl AiraDesktopApp {
                 return;
             }
         };
-        match actions::import_qr_luma(&self.paths, luma) {
-            Ok(out) => {
-                self.invite_msg = Some(format!(
-                    "imported via camera {} (book={})",
-                    out.identity_ref, out.book_updated
-                ));
-                self.clear_problem();
-                self.stop_qr_camera_scan();
+        // Decode first: "no QR" keeps scanning; other decode/import errors surface
+        // so a failed invite never looks like a silent TrustStore success (#284).
+        match actions::decode_qr_luma(luma) {
+            Err(e) => {
+                let msg = format!("{e:#}");
+                if msg.contains("no QR code found") {
+                    ctx.request_repaint_after(std::time::Duration::from_millis(200));
+                } else {
+                    self.set_problem(
+                        crate::lexicon::ErrorCode::Generic,
+                        format!("camera QR: {msg}"),
+                    );
+                    self.stop_qr_camera_scan();
+                }
             }
-            Err(_) => {
-                ctx.request_repaint_after(std::time::Duration::from_millis(200));
-            }
+            Ok(invite) => match actions::apply_invite(&self.paths, &invite) {
+                Ok(out) => {
+                    self.invite_msg = Some(format!(
+                        "imported via camera {} (book={})",
+                        out.identity_ref, out.book_updated
+                    ));
+                    self.clear_problem();
+                    self.stop_qr_camera_scan();
+                }
+                Err(e) => {
+                    self.set_problem(
+                        crate::lexicon::ErrorCode::Generic,
+                        format!("camera import: {e:#}"),
+                    );
+                    self.stop_qr_camera_scan();
+                }
+            },
         }
     }
 }

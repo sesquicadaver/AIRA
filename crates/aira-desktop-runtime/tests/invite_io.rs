@@ -85,3 +85,57 @@ fn reject_bad_pubkey() {
     );
     let _ = PathBuf::from("keep");
 }
+
+/// QUEUE #284: non-prime invite addr must fail closed with no TrustStore mutation.
+#[test]
+fn non_prime_addr_leaves_trust_untouched() {
+    let tmp = tempfile::tempdir().unwrap();
+    let alice = DesktopPaths::for_data_root(tmp.path().join("alice"));
+    let bob = DesktopPaths::for_data_root(tmp.path().join("bob"));
+    alice.ensure_dirs().unwrap();
+    bob.ensure_dirs().unwrap();
+
+    let mut settings = load_or_create_settings(&alice).unwrap();
+    settings.network_profile = NetworkProfile::P1;
+    settings.peer_listen = Some("127.0.0.1:49157".into());
+    write_settings(&alice, &settings).unwrap();
+
+    let out = tmp.path().join("alice.invite.json");
+    let mut invite = export_invite_file(&alice, &out, None).expect("export");
+    invite.addr = Some("127.0.0.1:9797".into());
+
+    let before = TrustStore::load(&bob.data_root).unwrap();
+    let before_ids: Vec<_> = before
+        .entries
+        .iter()
+        .map(|e| e.identity_id.clone())
+        .collect();
+
+    let err = aira_desktop_runtime::import_invite(&bob, &invite)
+        .expect_err("non-prime must fail")
+        .to_string();
+    assert!(
+        err.contains("9797")
+            || err.contains("AIRA-bindable")
+            || err.contains("prime")
+            || err.contains("port")
+            || err.contains("bind"),
+        "{err}"
+    );
+
+    let after = TrustStore::load(&bob.data_root).unwrap();
+    assert!(
+        !after
+            .entries
+            .iter()
+            .any(|e| e.identity_id == invite.identity_ref),
+        "invite identity must not appear in trust after failed import"
+    );
+    let after_ids: Vec<_> = after
+        .entries
+        .iter()
+        .map(|e| e.identity_id.clone())
+        .collect();
+    assert_eq!(before_ids, after_ids, "trust entry set must be unchanged");
+    assert!(AddressBook::load(&bob.data_root).unwrap().peers.is_empty());
+}

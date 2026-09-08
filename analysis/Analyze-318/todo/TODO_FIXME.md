@@ -2,4 +2,4 @@
 
 - [x] Stop putting `backend:*` in used model field
 - [x] No model evidence → none/undefined used
-- [ ] `#284` Invite import atomicity (next OPEN)
+- [x] `#284` Invite import atomicity (next OPEN → DONE @ Analyze-319 / RFC-0173)

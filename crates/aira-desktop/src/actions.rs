@@ -5,12 +5,13 @@ use std::path::Path;
 use anyhow::Result;
 
 use aira_desktop_runtime::{
-    build_local_invite, encode_invite_rgba, ensure_bootstrap, export_invite_file,
-    export_invite_qr_png, import_invite_file, import_invite_qr_file, import_invite_qr_luma,
-    join_federation_descriptor_file, normalize_settings, read_federation_membership,
-    run_discv_announce, run_discv_find, run_stun_query, submit_desktop_problem, write_settings,
-    DesktopPaths, DesktopSettings, DiscoveryStunOutcome, ImportInviteOutcome, NetworkProfile,
-    PeerInvite, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    build_local_invite, decode_invite_luma, encode_invite_rgba, ensure_bootstrap,
+    export_invite_file, export_invite_qr_png, import_invite, import_invite_file,
+    import_invite_qr_file, import_invite_qr_luma, join_federation_descriptor_file,
+    normalize_settings, read_federation_membership, run_discv_announce, run_discv_find,
+    run_stun_query, submit_desktop_problem, write_settings, DesktopPaths, DesktopSettings,
+    DiscoveryStunOutcome, ImportInviteOutcome, NetworkProfile, PeerInvite, DEFAULT_PEER_LISTEN,
+    DEFAULT_RELAY_TTL_DAYS,
 };
 use aira_peer::DiscvFindReport;
 use aira_protocol::{FederationMembership, JoinOutcome};
@@ -126,8 +127,22 @@ pub fn import_qr(paths: &DesktopPaths, file: &Path) -> Result<ImportInviteOutcom
 }
 
 /// Import invite from a camera / in-memory luma QR frame.
+///
+/// Prefer [`decode_qr_luma`] + [`apply_invite`] in the GUI so “no QR” can be
+/// distinguished from import failures (#284).
+#[allow(dead_code)] // kept for actions unit tests + one-shot callers
 pub fn import_qr_luma(paths: &DesktopPaths, img: image::GrayImage) -> Result<ImportInviteOutcome> {
     import_invite_qr_luma(paths, img)
+}
+
+/// Decode PeerInvite from a luma QR frame (no durable writes).
+pub fn decode_qr_luma(img: image::GrayImage) -> Result<PeerInvite> {
+    decode_invite_luma(img)
+}
+
+/// Apply a validated PeerInvite (checks-before-writes; #284).
+pub fn apply_invite(paths: &DesktopPaths, invite: &PeerInvite) -> Result<ImportInviteOutcome> {
+    import_invite(paths, invite)
 }
 
 /// Submit problem text to the supervised node (`POST /v1/problems`).
