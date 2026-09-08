@@ -572,13 +572,15 @@ mod tests {
         let dir = tempdir().unwrap();
         let root = dir.path();
         let _ = write_node(root, "mesh-bind-direct", [66u8; 32]);
-        let mut reach = ReachabilityLocalState::default();
-        reach.status = ReachabilityStatus::DirectReachable;
-        reach.verified_endpoint = Some("127.0.0.1:49157".into());
-        reach.probe_evidence = Some("ch-1".into());
-        reach.external_checked_at = Some("2026-09-07T10:00:00Z".into());
-        reach.checked_at = Some("2026-09-07T10:00:00Z".into());
-        reach.local_port = Some(49157);
+        let mut reach = ReachabilityLocalState {
+            status: ReachabilityStatus::DirectReachable,
+            verified_endpoint: Some("127.0.0.1:49157".into()),
+            probe_evidence: Some("ch-1".into()),
+            external_checked_at: Some("2026-09-07T10:00:00Z".into()),
+            checked_at: Some("2026-09-07T10:00:00Z".into()),
+            local_port: Some(49157),
+            ..Default::default()
+        };
         reach
             .mark_local_bind(49157, "2026-09-07T12:00:00Z")
             .unwrap();
