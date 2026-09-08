@@ -681,6 +681,9 @@ impl AiraDesktopApp {
                 }
             }
         }
+        // Phase R `#288`: invite + P0–P2 path visible without opening Technical details.
+        ui.separator();
+        self.ui_connect_primary(ui, ctx);
         egui::CollapsingHeader::new(l.sys_tech_details)
             .id_source("sys-connection-tech")
             .default_open(false)
@@ -692,7 +695,7 @@ impl AiraDesktopApp {
                 ));
                 self.ui_mesh_status(ui);
                 ui.separator();
-                self.ui_network_ops(ui, ctx);
+                self.ui_network_advanced(ui);
             });
     }
 
@@ -726,10 +729,15 @@ impl AiraDesktopApp {
         }
     }
 
-    /// Profile / invite / discovery controls (technical Connection details).
-    fn ui_network_ops(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+    /// Primary connect path: P0–P2 profile + invite/QR (`#288`).
+    ///
+    /// Rendered on Connection outside Technical details.
+    fn ui_connect_primary(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let l = self.labels();
-        ui.heading(l.network_profile);
+        let profile_h = ui.heading(l.network_profile);
+        if profile_h.hovered() {
+            self.note_help_focus(HelpId::NetworkConnect);
+        }
         ui.horizontal(|ui| {
             if ui
                 .selectable_label(self.settings.network_profile == NetworkProfile::P0, l.p0)
@@ -763,6 +771,53 @@ impl AiraDesktopApp {
         }
 
         ui.separator();
+        let invite_h = ui.heading(l.friend_invite);
+        if invite_h.hovered() {
+            self.note_help_focus(HelpId::NetworkTrust);
+        }
+        ui.label(l.invite_hint);
+        if self.qr_camera.is_some() {
+            if let Some(msg) = &self.qr_camera_status {
+                ui.colored_label(egui::Color32::from_rgb(80, 140, 200), msg);
+            }
+            if ui.button(l.stop_camera).clicked() {
+                self.stop_qr_camera_scan();
+            }
+        }
+        ui.horizontal(|ui| {
+            if ui.button(l.export_json).clicked() {
+                self.export_json_dialog();
+            }
+            if ui.button(l.import_json).clicked() {
+                self.import_json_dialog();
+            }
+        });
+        ui.horizontal(|ui| {
+            if ui.button(l.show_qr).clicked() {
+                self.load_qr_preview(ctx);
+            }
+            if ui.button(l.export_qr).clicked() {
+                self.export_qr_dialog(ctx);
+            }
+            if ui.button(l.import_qr).clicked() {
+                self.import_qr_dialog();
+            }
+            if self.qr_camera.is_none() && ui.button(l.scan_qr).clicked() {
+                self.start_qr_camera_scan();
+            }
+        });
+        self.poll_qr_camera_scan(ctx);
+        if let Some(msg) = &self.invite_msg {
+            ui.label(msg);
+        }
+        if let Some(tex) = &self.qr_texture {
+            ui.add(egui::Image::new(tex).max_width(220.0));
+        }
+    }
+
+    /// Advanced Connection ops kept under Technical details (`#288`).
+    fn ui_network_advanced(&mut self, ui: &mut egui::Ui) {
+        let l = self.labels();
         ui.heading(l.advanced);
         ui.label(l.advanced_hint);
         let mut relay_on = self.settings.network_profile.is_relay_profile();
@@ -831,47 +886,6 @@ impl AiraDesktopApp {
         });
         if let Some(msg) = &self.discovery_msg {
             ui.label(msg);
-        }
-
-        ui.separator();
-        ui.heading(l.friend_invite);
-        ui.label(l.invite_hint);
-        if self.qr_camera.is_some() {
-            if let Some(msg) = &self.qr_camera_status {
-                ui.colored_label(egui::Color32::from_rgb(80, 140, 200), msg);
-            }
-            if ui.button(l.stop_camera).clicked() {
-                self.stop_qr_camera_scan();
-            }
-        }
-        ui.horizontal(|ui| {
-            if ui.button(l.export_json).clicked() {
-                self.export_json_dialog();
-            }
-            if ui.button(l.import_json).clicked() {
-                self.import_json_dialog();
-            }
-        });
-        ui.horizontal(|ui| {
-            if ui.button(l.show_qr).clicked() {
-                self.load_qr_preview(ctx);
-            }
-            if ui.button(l.export_qr).clicked() {
-                self.export_qr_dialog(ctx);
-            }
-            if ui.button(l.import_qr).clicked() {
-                self.import_qr_dialog();
-            }
-            if self.qr_camera.is_none() && ui.button(l.scan_qr).clicked() {
-                self.start_qr_camera_scan();
-            }
-        });
-        self.poll_qr_camera_scan(ctx);
-        if let Some(msg) = &self.invite_msg {
-            ui.label(msg);
-        }
-        if let Some(tex) = &self.qr_texture {
-            ui.add(egui::Image::new(tex).max_width(220.0));
         }
     }
 
