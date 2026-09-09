@@ -1,0 +1,6 @@
+# Analyze-348 todo
+
+- [x] Consolidating RFC-0192
+- [x] QUEUE T closed; `#306`–`#312` DONE
+- [x] `phase_t_doc` flip (file-free → present; tip → closed)
+- [x] Tips sync (plan / NEXT_PROBLEM / README / status / desktop-ux)
