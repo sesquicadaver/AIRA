@@ -1,0 +1,3 @@
+- [x] ObserveFailCache
+- [x] tests sticky fail + version change
+- [x] docs + RFC-0195 + tip #310

@@ -14,6 +14,8 @@
 //! node-signed `ArtifactDescriptor` (+ sidecar) verify without process priming.
 //! `#303` observe cache miss schedules streaming hash off the caller thread
 //! (UI-safe); never `fs::read` full weights into a buffer. Admit stays full-hash.
+//! `#309` durable observe fail for the same pointer/cache version — UI refresh
+//! must not rehash-storm after a definitive mismatch/evidence failure.
 
 #[cfg(test)]
 use std::cell::Cell;
@@ -59,6 +61,21 @@ struct ObserveReadyCache {
     content_hash: String,
 }
 
+/// Versioned fail cache for light observe (`#309`).
+///
+/// Same binding as [`ObserveReadyCache`]. When present, UI observe returns the
+/// stored detail without scheduling another streaming hash until the version
+/// changes (pointer fingerprint / cache len / mtime). Admission ignores this.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+struct ObserveFailCache {
+    pointer_fp: String,
+    cache_path: String,
+    cache_len: u64,
+    cache_mtime_ns: u128,
+    content_hash: String,
+    detail: String,
+}
+
 /// Detail when light observe defers weight hashing off the caller thread (`#303`).
 pub const OBSERVE_HASH_PENDING: &str = "observe ready pending (streaming hash off UI thread)";
 
@@ -99,13 +116,17 @@ impl ActivatedPointerGate {
         self.aira_root.join("models/activated.observe-ready.json")
     }
 
+    fn observe_fail_path(&self) -> PathBuf {
+        self.aira_root.join("models/activated.observe-fail.json")
+    }
+
     /// Observe selected vs ready without inventing a used-in-result model (`#269`).
     ///
-    /// Uses light verification (`#277` / `#303`): on observe-ready cache hit, skips
-    /// weights hash; on miss, schedules a **background streaming** hash and returns
-    /// not-ready with [`OBSERVE_HASH_PENDING`] so Desktop UI never `fs::read`s full
-    /// weights on the caller thread. Evidence is checked only after a successful
-    /// hash path (hit or [`Self::observe_verify_now`]).
+    /// Uses light verification (`#277` / `#303` / `#309`): on observe-ready cache hit,
+    /// skips weights hash; on durable fail for the same version, returns that failure
+    /// without re-scheduling hash; on miss, schedules a **background streaming** hash
+    /// and returns not-ready with [`OBSERVE_HASH_PENDING`]. Evidence is checked only
+    /// after a successful hash path (hit or [`Self::observe_verify_now`]).
     pub fn observe(&self) -> ActivationObservation {
         self.observe_with(VerifyMode::ObserveUi)
     }
@@ -273,6 +294,20 @@ impl ActivatedPointerGate {
             );
 
         if !skip_weight_hash {
+            // `#309`: sticky fail for this pointer/cache version (UI + light warm).
+            // Admission never skips work based on fail cache.
+            if !matches!(mode, VerifyMode::AdmitFull) {
+                if let Some(detail) = observe_fail_hit(
+                    &self.observe_fail_path(),
+                    &pointer_fp,
+                    &pointer.cache_path,
+                    cache_len,
+                    cache_mtime_ns,
+                    claimed.as_str(),
+                ) {
+                    return Err(detail);
+                }
+            }
             if matches!(mode, VerifyMode::ObserveUi) {
                 let warm_key = format!("{}::{pointer_fp}", self.aira_root.display());
                 self.schedule_observe_warm(warm_key);
@@ -284,16 +319,51 @@ impl ActivatedPointerGate {
             let observed =
                 ContentHash::sha256_path(&cache).map_err(|_| ACTIVATE_DENIED.to_string())?;
             if observed != claimed {
-                let _ = fs::remove_file(self.observe_cache_path());
-                return Err(
-                    "activated cache content_hash mismatch (fail-closed; not VERIFIED)".into(),
-                );
+                let detail =
+                    "activated cache content_hash mismatch (fail-closed; not VERIFIED)".to_string();
+                if matches!(mode, VerifyMode::ObserveLight) {
+                    remember_observe_fail(
+                        &self.observe_fail_path(),
+                        &self.observe_cache_path(),
+                        &ObserveFailCache {
+                            pointer_fp: pointer_fp.clone(),
+                            cache_path: pointer.cache_path.clone(),
+                            cache_len,
+                            cache_mtime_ns,
+                            content_hash: claimed.as_str().to_string(),
+                            detail: detail.clone(),
+                        },
+                    );
+                } else {
+                    let _ = fs::remove_file(self.observe_cache_path());
+                }
+                return Err(detail);
             }
         }
 
+        let sticky = |detail: String| {
+            if matches!(mode, VerifyMode::ObserveLight) {
+                remember_observe_fail(
+                    &self.observe_fail_path(),
+                    &self.observe_cache_path(),
+                    &ObserveFailCache {
+                        pointer_fp: pointer_fp.clone(),
+                        cache_path: pointer.cache_path.clone(),
+                        cache_len,
+                        cache_mtime_ns,
+                        content_hash: claimed.as_str().to_string(),
+                        detail: detail.clone(),
+                    },
+                );
+            }
+            detail
+        };
+
         let evidence_id = AiraRef::parse(&pointer.evidence_artifact_id).map_err(|_| {
-            "activated evidence_artifact_id is not an aira ref (fail-closed; not VERIFIED)"
-                .to_string()
+            sticky(
+                "activated evidence_artifact_id is not an aira ref (fail-closed; not VERIFIED)"
+                    .to_string(),
+            )
         })?;
         // `#297`: `CasArtifactStore::open` admits on-disk descriptors via process/thread
         // crypto; bind root keyring before open+resolve so cold reopen works without
@@ -301,17 +371,20 @@ impl ActivatedPointerGate {
         let (ring, primary) = verification_crypto(&self.aira_root);
         let _crypto = bind_thread_crypto(ring, primary);
         let store = CasArtifactStore::open(self.aira_root.join("artifacts")).map_err(|_| {
-            "activated evidence store missing (fail-closed; not VERIFIED)".to_string()
+            sticky("activated evidence store missing (fail-closed; not VERIFIED)".to_string())
         })?;
         let (_desc, ev_bytes) = store.resolve(&evidence_id).map_err(|_| {
-            "activated evidence artifact missing (fail-closed; not VERIFIED)".to_string()
+            sticky("activated evidence artifact missing (fail-closed; not VERIFIED)".to_string())
         })?;
-        verify_activate_evidence(
+        match verify_activate_evidence(
             &self.aira_root,
             &ev_bytes,
             &pointer.model_ref,
             claimed.as_str(),
-        )?;
+        ) {
+            Ok(()) => {}
+            Err(detail) => return Err(sticky(detail)),
+        }
 
         // Persist light-observe binding after a successful full hash (or refresh after admit).
         if !skip_weight_hash {
@@ -323,6 +396,7 @@ impl ActivatedPointerGate {
                 content_hash: claimed.as_str().to_string(),
             };
             let _ = write_observe_cache(&self.observe_cache_path(), &rec);
+            let _ = fs::remove_file(self.observe_fail_path());
         }
         Ok(())
     }
@@ -405,6 +479,49 @@ fn observe_cache_hit(
         && rec.cache_len == cache_len
         && rec.cache_mtime_ns == cache_mtime_ns
         && rec.content_hash == content_hash
+}
+
+fn observe_fail_hit(
+    path: &Path,
+    pointer_fp: &str,
+    cache_path: &str,
+    cache_len: u64,
+    cache_mtime_ns: u128,
+    content_hash: &str,
+) -> Option<String> {
+    let Ok(raw) = fs::read_to_string(path) else {
+        return None;
+    };
+    let Ok(rec) = serde_json::from_str::<ObserveFailCache>(&raw) else {
+        return None;
+    };
+    if rec.pointer_fp == pointer_fp
+        && rec.cache_path == cache_path
+        && rec.cache_len == cache_len
+        && rec.cache_mtime_ns == cache_mtime_ns
+        && rec.content_hash == content_hash
+        && !rec.detail.trim().is_empty()
+    {
+        Some(rec.detail)
+    } else {
+        None
+    }
+}
+
+fn remember_observe_fail(fail_path: &Path, ready_path: &Path, rec: &ObserveFailCache) {
+    let _ = write_observe_fail(fail_path, rec);
+    let _ = fs::remove_file(ready_path);
+}
+
+fn write_observe_fail(path: &Path, rec: &ObserveFailCache) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(
+        path,
+        serde_json::to_string_pretty(rec).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())
 }
 
 fn write_observe_cache(path: &Path, rec: &ObserveReadyCache) -> Result<(), String> {
@@ -775,6 +892,64 @@ mod tests {
             obs.detail
         );
         assert_eq!(take_full_weight_hash_count(), 1);
+    }
+
+    #[test]
+    fn observe_ui_mismatch_fail_is_sticky_without_rehash_storm() {
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        fs::write(
+            dir.path().join("models/cache/l218/weights.bin"),
+            b"tampered-bytes",
+        )
+        .unwrap();
+        let first = gate.observe_verify_now();
+        assert!(!first.ready);
+        assert!(
+            first.detail.contains("content_hash mismatch"),
+            "{}",
+            first.detail
+        );
+        assert!(
+            gate.observe_fail_path().is_file(),
+            "fail cache must persist for this version"
+        );
+        let _ = take_full_weight_hash_count();
+        for _ in 0..5 {
+            let obs = gate.observe();
+            assert!(!obs.ready);
+            assert!(
+                obs.detail.contains("content_hash mismatch"),
+                "UI observe must surface durable fail, not pending: {}",
+                obs.detail
+            );
+            assert_ne!(obs.detail, OBSERVE_HASH_PENDING);
+        }
+        assert_eq!(
+            take_full_weight_hash_count(),
+            0,
+            "sticky fail must not re-stream-hash on each UI refresh"
+        );
+        // Admission still hashes (must not trust fail cache).
+        let err = gate.check_activated(&dummy_payload()).unwrap_err();
+        assert!(err.contains("content_hash mismatch"), "{err}");
+        assert_eq!(take_full_weight_hash_count(), 1);
+    }
+
+    #[test]
+    fn observe_fail_clears_when_version_changes_and_matches() {
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        let weights = dir.path().join("models/cache/l218/weights.bin");
+        fs::write(&weights, b"tampered-bytes").unwrap();
+        assert!(!gate.observe_verify_now().ready);
+        // Restore original bytes (mtime/len change invalidates fail binding).
+        fs::write(&weights, b"aira-l218-activate-fixture").unwrap();
+        assert!(gate.observe_verify_now().ready);
+        assert!(!gate.observe_fail_path().is_file());
+        assert!(gate.observe().ready);
     }
 
     #[test]

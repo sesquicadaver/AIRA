@@ -1,6 +1,6 @@
 # Phase T — Operation lifecycle honesty (post-S)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-09; wiring `#306` **DONE**; `#307` **DONE** @ RFC-0193; `#308` **DONE** @ RFC-0194; first OPEN `#309`).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-09; wiring `#306` **DONE**; `#307` **DONE** @ RFC-0193; `#308` **DONE** @ RFC-0194; `#309` **DONE** @ RFC-0195; first OPEN `#310`).  
 **Джерела:** post-S audit `aira-current.md` @ `3301d27` (2026-09-09; merge PR #269 / RFC-0182); Phase S [`phase-s-plan.md`](phase-s-plan.md) **DONE** @ RFC-0182; **QUEUE S closed**; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase T `#306`–`#312`.  
 **Closure:** consolidating **RFC-0192** (id **confirmed free** 2026-09-09; file-free until `#312`).  
@@ -97,7 +97,7 @@ T0 Wiring (план у QUEUE + living smoke; RFC-0192 reserved)
 | `#306` | T0 | Phase T wiring | план IN PROGRESS; QUEUE `#306`–`#312`; `phase_t_doc`; tips; RFC-0192 reserved file-free | dial live (#307) |
 | `#307` | T1 | Dial evidence ≠ live session | **DONE** @ RFC-0193: evidence ≠ live count; last handshake only | dial async (#308) |
 | `#308` | T1 | Opt-in dial off UI-thread | **DONE** @ RFC-0194: dial через jobs/slot; UI не `block_on`; F1/nav | observe fail (#309) |
-| `#309` | T1 | Observe miss fail durable | Pending/Ready/Failed на версію; fail без rehash storm; admit не послаблюється | Quit∥Submit (#310) |
+| `#309` | T1 | Observe miss fail durable | **DONE** @ RFC-0195: Pending/Ready/Failed на версію; fail без rehash storm | Quit∥Submit (#310) |
 | `#310` | T2 | Quit∥Submit completion | один контракт: deferred Stop→Close **або** reject без sticky flag; тест сценарію | AddressBook (#311) |
 | `#311` | T2 | Dial AddressBook candidate honesty | невдалий dial не тихо overwrite authority; rollback **або** explicit save | RFC close (#312) |
 | `#312` | T | RFC-0192 + close | consolidating RFC-0192; QUEUE T closed; no OPEN T atoms | — |
@@ -106,8 +106,8 @@ T0 Wiring (план у QUEUE + living smoke; RFC-0192 reserved)
 #306 T0 wiring (DONE this atom)
   → #307 T1 dial evidence ≠ live DONE @ RFC-0193
     → #308 T1 dial off-UI DONE @ RFC-0194
-      → #309 T1 observe fail durable (first OPEN)
-        → #310 T2 Quit∥Submit
+      → #309 T1 observe fail durable DONE @ RFC-0195
+        → #310 T2 Quit∥Submit (first OPEN)
           → #311 T2 AddressBook candidate
             → #312 T close RFC-0192
 ```
