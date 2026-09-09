@@ -35,7 +35,7 @@ Core що «вирішує задачі» замість CSU contracts
 | Q | [`phase-q-plan.md`](phase-q-plan.md) + [`desktop-ux.md`](desktop-ux.md) | `#275`–`#285` | **DONE** @ RFC-0164; **QUEUE Q closed** |
 | R | [`phase-r-plan.md`](phase-r-plan.md) + [`desktop-ux.md`](desktop-ux.md) | `#286`–`#294` | **DONE** @ RFC-0174; QUEUE R closed |
 | S | [`phase-s-plan.md`](phase-s-plan.md) + [`desktop-ux.md`](desktop-ux.md) | `#295`–`#305` | **DONE** @ RFC-0182; **QUEUE S closed** |
-| T | [`phase-t-plan.md`](phase-t-plan.md) + [`desktop-ux.md`](desktop-ux.md) | `#306`–`#312` | **IN PROGRESS** (`#306`–`#308` DONE @ RFC-0193/#0194; first OPEN `#309`; RFC-0192 reserved) |
+| T | [`phase-t-plan.md`](phase-t-plan.md) + [`desktop-ux.md`](desktop-ux.md) | `#306`–`#312` | **IN PROGRESS** (`#306`–`#308` DONE @ RFC-0193 / RFC-0194; first OPEN `#309`; RFC-0192 reserved) |
 
 ## Core reference
 
