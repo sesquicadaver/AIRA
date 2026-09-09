@@ -1,9 +1,9 @@
 # Phase R — Actionable Desktop Connection UX (post-Q)
 
-**Статус:** складено 2026-09-09; **IN PROGRESS** — QUEUE `#286`–`#293` **DONE**; first OPEN `#294`; RFC-0174 reserved file-free.  
+**Статус:** складено 2026-09-09; **DONE** @ [`AIRA-RFC-0174`](../specs/rfc/AIRA-RFC-0174-phase-r-actionable-connection-ux.md) — QUEUE `#286`–`#294` **DONE**; **QUEUE R closed**; no OPEN R atoms.  
 **Джерела:** post-Q UX review 2026-09-08…09 (Developer Preview cold-start / Connection / Help); канон [`desktop-ux.md`](desktop-ux.md); Phase O [`phase-o-plan.md`](phase-o-plan.md) **DONE** @ RFC-0146; Phase P [`phase-p-plan.md`](phase-p-plan.md) **DONE** @ RFC-0156; Phase Q [`phase-q-plan.md`](phase-q-plan.md) **DONE** @ RFC-0164; QUEUE Q closed.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase R `#286`–`#294`.  
-**Closure:** consolidating **RFC-0174** (id **confirmed free** 2026-09-09; file-free until `#294`).  
+**Closure:** consolidating **RFC-0174** (id **confirmed free** 2026-09-09; file at `#294`).  
 **Не змінює:** анти-місію README; C0/C1 `Calculate 2 + 2`; `aira-core`; IA Work / System / Settings + Help·F1; семантику P0–P6; UNKNOWN≠OFFLINE; AddressBook≠сесії; Applied≠Saved; Phase P honesty-факти.
 
 > Примітка: канон у репо = цей план + `desktop-ux.md` + QUEUE + RFC-D.
@@ -122,7 +122,7 @@ R0 Wiring (план у QUEUE + living smoke; RFC-0174 reserved)
 | `#291` | R5 | Help connect scenario | **DONE**: `network.connect` (+ trust/reachability) = invite→profile→restart; RFC-0179 | UK parity (#292) |
 | `#292` | R6 | UK mesh/discovery parity | **DONE**: EN==UK mesh/discovery chrome; tech-only CLI fields; RFC-0180 | cold-start (#293) |
 | `#293` | R7 | Cold-start empty profile | **DONE**: P0+empty book guidance + CTA; RFC-0181 | RFC close (#294) |
-| `#294` | R | RFC-0174 + close | consolidating RFC-0174; QUEUE R closed; no OPEN R atoms | — |
+| `#294` | R | RFC-0174 + close | **DONE** @ RFC-0174; QUEUE R closed; no OPEN R atoms | — |
 
 ```text
 #286 R0 wiring DONE
@@ -133,7 +133,7 @@ R0 Wiring (план у QUEUE + living smoke; RFC-0174 reserved)
           → #291 R5 Help scenario DONE
             → #292 R6 UK parity DONE
               → #293 R7 cold-start DONE
-                → #294 R8 RFC-0174 close OPEN
+                → #294 R8 RFC-0174 close DONE
 ```
 
 ---

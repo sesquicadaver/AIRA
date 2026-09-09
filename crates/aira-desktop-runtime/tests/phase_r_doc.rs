@@ -23,8 +23,10 @@ fn phase_r_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE Q closed",
-        "first OPEN `#294`",
-        "#293",
+        "QUEUE R closed",
+        "no OPEN R atoms",
+        "**DONE** @",
+        "RFC-0181",
         "GPU marketplace",
         "Calculate 2 + 2",
         "UNKNOWN≠OFFLINE",
@@ -36,43 +38,41 @@ fn phase_r_plan_present() {
         "phase-r-plan must be activated (not НЕ АКТИВОВАНО)"
     );
     assert!(
-        text.contains("IN PROGRESS") || text.contains("**IN PROGRESS**"),
-        "phase-r-plan must be IN PROGRESS after wiring"
+        !text.contains("first OPEN `#294`"),
+        "phase-r-plan must not keep #294 as first-OPEN after close"
     );
 }
 
 #[test]
-fn phase_r_queue_293_done_294_open() {
+fn phase_r_queue_all_done() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-r-plan.md"));
-    for n in 286..=293 {
+    for n in 286..=294 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
+        assert!(
+            !text.contains(&format!("| {n} | **OPEN**")),
+            "QUEUE #{n} must not stay OPEN"
+        );
     }
-    assert!(
-        !text.contains("| 293 | **OPEN**"),
-        "QUEUE #293 must not stay OPEN"
-    );
-    assert!(
-        text.contains("| 294 | **OPEN**"),
-        "QUEUE #294 must be first OPEN"
-    );
     for needle in [
-        "Analyze-329",
-        "RFC-0181",
-        "RFC-0180",
+        "Analyze-330",
         "RFC-0174",
-        "first OPEN `#294`",
-        "#293",
-        "Cold-start empty profile",
+        "RFC-0181",
+        "QUEUE R closed",
+        "no OPEN R atoms",
         "QUEUE Q closed",
         "desktop-ux.md",
         "Actionable Desktop Connection",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
+    assert!(
+        !text.contains("first OPEN `#294`"),
+        "QUEUE must not keep #294 as first-OPEN after close"
+    );
 }
 
 #[test]
@@ -80,33 +80,36 @@ fn phase_r_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-r-plan.md",
-        "#293",
-        "first OPEN `#294`",
+        "#294",
         "RFC-0174",
-        "RFC-0181",
-        "RFC-0180",
-        "problem_action",
-        "mesh_language",
+        "QUEUE R closed",
         "connection_cta",
         "ui_connect_primary",
+        "mesh_language",
+        "problem_action",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
+    assert!(
+        !text.contains("first OPEN `#294`"),
+        "desktop-ux must not keep #294 as first-OPEN after close"
+    );
 }
 
 #[test]
-fn phase_r_rfc_0174_file_free() {
-    let rfc_dir = repo_root().join("specs/rfc");
-    let hits: Vec<_> = std::fs::read_dir(&rfc_dir)
-        .unwrap()
-        .filter_map(|e| e.ok())
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.contains("RFC-0174") || n.contains("rfc-0174"))
-        .collect();
-    assert!(
-        hits.is_empty(),
-        "RFC-0174 must stay file-free until #294; found {hits:?}"
-    );
+fn phase_r_rfc_0174_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0174-phase-r-actionable-connection-ux.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0174 missing");
+    for needle in [
+        "#294",
+        "QUEUE R closed",
+        "no OPEN R atoms",
+        "RFC-0181",
+        "RFC-0175",
+        "connection_cta",
+    ] {
+        assert!(text.contains(needle), "RFC-0174 missing: {needle}");
+    }
 }
 
 #[test]
@@ -184,28 +187,41 @@ fn phase_r_help_connect_scenario() {
 fn phase_r_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-r-plan.md") || readme.contains("Phase R"));
+    assert!(readme.contains("RFC-0174") || readme.contains("QUEUE R closed"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-r-plan.md"));
-    assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
+    assert!(docs.contains("QUEUE R closed") || docs.contains("DONE @ RFC-0174"));
     assert!(docs.contains("#294") || docs.contains("`#294`"));
+    assert!(
+        !docs.contains("first OPEN `#294`"),
+        "docs index must not keep #294 as first-OPEN after close"
+    );
 }
 
 #[test]
 fn phase_r_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-r-plan.md") || text.contains("Phase R"));
-    assert!(text.contains("#294") || text.contains("перший OPEN"));
+    assert!(text.contains("QUEUE R closed") || text.contains("RFC-0174"));
+    assert!(
+        !text.contains("перший OPEN `#294`") && !text.contains("first OPEN `#294`"),
+        "NEXT_PROBLEM must not keep #294 as first-OPEN after close"
+    );
 }
 
 #[test]
 fn phase_r_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #293 |") || status.contains("#293"));
+    assert!(status.contains("| #294 |") || status.contains("#294"));
     assert!(status.contains("phase_r_doc.rs"));
     assert!(status.contains("phase-r-plan.md"));
-    assert!(status.contains("RFC-0181") || status.contains("0181"));
     assert!(status.contains("RFC-0174") || status.contains("0174"));
+    assert!(status.contains("QUEUE R closed"));
+    assert!(
+        !status.contains("| #294 | RFC-0174 + close | consolidating; QUEUE R closed | **OPEN** |"),
+        "status #294 must be DONE"
+    );
 }
 
 #[test]
