@@ -23,8 +23,8 @@ fn phase_r_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE Q closed",
-        "first OPEN `#290`",
-        "#289",
+        "first OPEN `#291`",
+        "#290",
         "GPU marketplace",
         "Calculate 2 + 2",
         "UNKNOWN≠OFFLINE",
@@ -42,37 +42,37 @@ fn phase_r_plan_present() {
 }
 
 #[test]
-fn phase_r_queue_289_done_290_open() {
+fn phase_r_queue_290_done_291_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-r-plan.md"));
-    for n in 286..=289 {
+    for n in 286..=290 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
     }
     assert!(
-        !text.contains("| 289 | **OPEN**"),
-        "QUEUE #289 must not stay OPEN"
+        !text.contains("| 290 | **OPEN**"),
+        "QUEUE #290 must not stay OPEN"
     );
     assert!(
-        text.contains("| 290 | **OPEN**"),
-        "QUEUE #290 must be first OPEN"
+        text.contains("| 291 | **OPEN**"),
+        "QUEUE #291 must be first OPEN"
     );
-    for n in 291..=294 {
+    for n in 292..=294 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-325",
+        "Analyze-326",
+        "RFC-0178",
         "RFC-0177",
-        "RFC-0176",
         "RFC-0174",
-        "first OPEN `#290`",
-        "#289",
-        "mesh_language",
+        "first OPEN `#291`",
+        "#290",
+        "problem_action",
         "QUEUE Q closed",
         "desktop-ux.md",
         "Actionable Desktop Connection",
@@ -86,10 +86,11 @@ fn phase_r_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-r-plan.md",
-        "#289",
-        "first OPEN `#290`",
+        "#290",
+        "first OPEN `#291`",
         "RFC-0174",
-        "RFC-0177",
+        "RFC-0178",
+        "problem_action",
         "mesh_language",
         "connection_cta",
         "ui_connect_primary",
@@ -114,7 +115,7 @@ fn phase_r_rfc_0174_file_free() {
 }
 
 #[test]
-fn phase_r_rfc_0175_0176_0177_present() {
+fn phase_r_rfc_0175_through_0178_present() {
     for (name, needles) in [
         (
             "AIRA-RFC-0175-connection-next-step-cta.md",
@@ -127,6 +128,10 @@ fn phase_r_rfc_0175_0176_0177_present() {
         (
             "AIRA-RFC-0177-human-primary-mesh-strip.md",
             &["#289", "mesh_language", "UNKNOWN"][..],
+        ),
+        (
+            "AIRA-RFC-0178-actionable-problem-strip.md",
+            &["#290", "problem_action", "next-step"][..],
         ),
     ] {
         let text = std::fs::read_to_string(repo_root().join("specs/rfc").join(name)).unwrap();
@@ -143,24 +148,24 @@ fn phase_r_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-r-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
-    assert!(docs.contains("#290") || docs.contains("`#290`"));
+    assert!(docs.contains("#291") || docs.contains("`#291`"));
 }
 
 #[test]
 fn phase_r_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-r-plan.md") || text.contains("Phase R"));
-    assert!(text.contains("#290") || text.contains("перший OPEN"));
+    assert!(text.contains("#291") || text.contains("перший OPEN"));
 }
 
 #[test]
 fn phase_r_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #289 |") || status.contains("#289"));
+    assert!(status.contains("| #290 |") || status.contains("#290"));
     assert!(status.contains("phase_r_doc.rs"));
     assert!(status.contains("phase-r-plan.md"));
-    assert!(status.contains("RFC-0177") || status.contains("0177"));
+    assert!(status.contains("RFC-0178") || status.contains("0178"));
     assert!(status.contains("RFC-0174") || status.contains("0174"));
 }
 
@@ -245,5 +250,32 @@ fn phase_r_mesh_language_human_primary() {
     assert!(
         ui.contains("Phase R `#289`"),
         "mesh status must document human-primary #289"
+    );
+}
+
+#[test]
+fn phase_r_problem_action_human_primary() {
+    let text =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/problem_action.rs"))
+            .unwrap();
+    for needle in [
+        "action_next_step",
+        "ProblemActionView",
+        "strip_work_from_problem",
+        "#290",
+        "help:",
+        "try:",
+    ] {
+        assert!(text.contains(needle), "problem_action missing: {needle}");
+    }
+    let ui =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/ui.rs")).unwrap();
+    assert!(
+        ui.contains("ProblemActionView::from_problem"),
+        "problem footer/events must use ProblemActionView"
+    );
+    assert!(
+        ui.contains("strip_work_from_problem"),
+        "status strip must use actionable strip hint"
     );
 }

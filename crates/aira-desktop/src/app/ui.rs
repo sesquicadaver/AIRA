@@ -68,16 +68,28 @@ impl eframe::App for AiraDesktopApp {
                 if let Some(problem) = &self.last_problem {
                     ui.separator();
                     ui.colored_label(egui::Color32::from_rgb(200, 60, 60), &problem.message);
+                    // Phase R `#290`: human next step primary; wire ids secondary.
+                    let action_view = crate::problem_action::ProblemActionView::from_problem(
+                        problem,
+                        self.ui_lang(),
+                    );
+                    if action_view.has_human_next_step() {
+                        if let Some(next) = action_view.next_step {
+                            ui.label(next);
+                        }
+                    }
                     ui.small(format!(
                         "{} · help:{}",
-                        problem.code.as_str(),
-                        problem.help_id.as_str()
+                        action_view.code_wire, action_view.help_wire
                     ));
-                    if let Some(action) = problem.corrective {
+                    if let Some(try_wire) = action_view.try_wire {
                         ui.small(format!(
                             "try:{} · help:{}",
-                            action.as_str(),
-                            action.help_id().as_str()
+                            try_wire,
+                            problem
+                                .corrective
+                                .map(|a| a.help_id().as_str())
+                                .unwrap_or(action_view.help_wire)
                         ));
                     }
                     // Keep action catalog reachable for F1 wiring (#263).
@@ -112,8 +124,13 @@ impl AiraDesktopApp {
         let l = self.labels();
         let work = if self.async_jobs.work_inflight() {
             l.strip_work_busy
-        } else if self.last_problem.is_some() {
-            l.strip_work_action
+        } else if let Some(problem) = &self.last_problem {
+            // Phase R `#290`: actionable strip hint when corrective is known.
+            crate::problem_action::strip_work_from_problem(
+                problem,
+                self.ui_lang(),
+                l.strip_work_action,
+            )
         } else {
             l.strip_work_ready
         };
@@ -728,10 +745,14 @@ impl AiraDesktopApp {
         if let Some(problem) = &self.last_problem {
             any = true;
             ui.colored_label(egui::Color32::from_rgb(200, 60, 60), &problem.message);
+            let action_view =
+                crate::problem_action::ProblemActionView::from_problem(problem, self.ui_lang());
+            if let Some(next) = action_view.next_step {
+                ui.label(next);
+            }
             ui.small(format!(
                 "{} · {}",
-                problem.code.as_str(),
-                problem.help_id.as_str()
+                action_view.code_wire, action_view.help_wire
             ));
         }
         if let Some(msg) = &self.discovery_msg {
