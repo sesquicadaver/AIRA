@@ -157,7 +157,8 @@ fn phase_r_help_connect_scenario() {
             assert!(
                 text.to_lowercase().contains(&needle.to_lowercase())
                     || text.contains(needle)
-                    || (needle == "invite" && (text.contains("запрошення") || text.contains("invite"))),
+                    || (needle == "invite"
+                        && (text.contains("запрошення") || text.contains("invite"))),
                 "{rel} missing scenario needle: {needle}"
             );
         }
