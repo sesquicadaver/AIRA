@@ -46,10 +46,7 @@ fn phase_t_plan_present() {
 fn phase_t_queue_306_done_307_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-t-plan.md"));
-    assert!(
-        text.contains("| 306 | **DONE**"),
-        "QUEUE #306 must be DONE"
-    );
+    assert!(text.contains("| 306 | **DONE**"), "QUEUE #306 must be DONE");
     assert!(
         !text.contains("| 306 | **OPEN**"),
         "QUEUE #306 must not stay OPEN"
@@ -81,12 +78,7 @@ fn phase_t_queue_306_done_307_open() {
 #[test]
 fn phase_t_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
-    for needle in [
-        "phase-t-plan.md",
-        "#306",
-        "first OPEN `#307`",
-        "RFC-0192",
-    ] {
+    for needle in ["phase-t-plan.md", "#306", "first OPEN `#307`", "RFC-0192"] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
 }
