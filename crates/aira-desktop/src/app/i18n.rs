@@ -81,6 +81,8 @@ pub struct Labels {
     pub cta_import_invite: &'static str,
     pub cta_stop_to_apply: &'static str,
     pub cta_start_to_apply: &'static str,
+    /// Phase R `#293`: one-line cold-start guidance on Connection (P0 + empty book).
+    pub conn_cold_start_guidance: &'static str,
     pub sys_saved_participants: &'static str,
     pub sys_live_sessions: &'static str,
     pub sys_live_unobserved: &'static str,
@@ -273,6 +275,7 @@ static EN: Labels = Labels {
     cta_import_invite: "Import invite…",
     cta_stop_to_apply: "Stop to apply network",
     cta_start_to_apply: "Start to apply network",
+    conn_cold_start_guidance: "Local-only profile so far — no participant network yet. Enable a private network, then import an invite. Status stays unverified until then (not Connected; Applied only after a confirmed Start).",
     sys_saved_participants: "Saved participants (address book):",
     sys_live_sessions: "Live sessions:",
     sys_live_unobserved: "not observed",
@@ -456,6 +459,7 @@ static UK: Labels = Labels {
     cta_import_invite: "Імпортувати запрошення…",
     cta_stop_to_apply: "Стоп, щоб застосувати мережу",
     cta_start_to_apply: "Старт, щоб застосувати мережу",
+    conn_cold_start_guidance: "Поки що лише локальний профіль — мережі учасників ще немає. Увімкніть приватну мережу, потім імпортуйте запрошення. Стан лишається неперевіреним (це не Connected; Applied лише після підтвердженого Старт).",
     sys_saved_participants: "Збережені учасники (адресна книга):",
     sys_live_sessions: "Живі сесії:",
     sys_live_unobserved: "не спостерігалося",
@@ -673,6 +677,15 @@ mod tests {
             .contains("запрошення"));
         assert!(Labels::get(UiLang::En).cta_stop_to_apply.contains("Stop"));
         assert!(Labels::get(UiLang::Uk).cta_start_to_apply.contains("Старт"));
+        assert!(Labels::get(UiLang::En)
+            .conn_cold_start_guidance
+            .contains("Local-only"));
+        assert!(!Labels::get(UiLang::En)
+            .conn_cold_start_guidance
+            .contains("you are Connected"));
+        assert!(Labels::get(UiLang::Uk)
+            .conn_cold_start_guidance
+            .contains("локальний профіль"));
         assert!(Labels::get(UiLang::En)
             .settings_phase_restart
             .contains("restart needed"));

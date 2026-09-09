@@ -669,6 +669,13 @@ impl AiraDesktopApp {
                 None => l.sys_live_unobserved.to_string(),
             });
         });
+        // Phase R `#293`: one guidance line for P0 + empty book (no fake Applied/CONNECTED).
+        if crate::cold_start::is_cold_start_empty_profile(
+            self.settings.network_profile,
+            view.address_book_count,
+        ) {
+            ui.label(l.conn_cold_start_guidance);
+        }
         // Phase R `#287`: exactly one primary Connection CTA (not Refresh-only).
         let cta = crate::connection_cta::primary_connection_cta(
             crate::connection_cta::ConnectionCtaInput {
