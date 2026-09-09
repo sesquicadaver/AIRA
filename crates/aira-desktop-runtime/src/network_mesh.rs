@@ -315,11 +315,13 @@ pub fn load_network_mesh_snapshot(
 
     let book = AddressBook::load(root)?;
     let address_book_count = book.peers.len();
-    // Phase S `#300`: fresh opt-in dial evidence is the only Desktop live-session observation.
-    // Setup / invite / Stop→Start alone must leave this `None` (Help boundary `#299`).
+    // Phase S `#300` / Phase T `#307`: fresh opt-in dial evidence is last-handshake
+    // history only. The dial path closes TCP after evidence capture — it must **not**
+    // invent `live_session_count` (AddressBook ≠ live sessions). Setup / invite /
+    // Stop→Start alone leave both fields empty (`None`).
     let dial_ev = crate::peer_dial::load_fresh_dial_evidence(root).unwrap_or(None);
     let (live_session_count, last_confirmed_handshake) = match dial_ev {
-        Some(ev) => (Some(1usize), Some(ev.summary_line())),
+        Some(ev) => (None, Some(ev.summary_line())),
         None => (None, None),
     };
 
