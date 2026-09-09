@@ -156,17 +156,9 @@ mod tests {
         let dir = tempdir().unwrap();
         aira_object::reset_primary_signer();
         let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
-        // `#303` / `#309`: warm may race; assert blocking verify with detail, clear sticky fail once.
-        let mut obs = gate.observe_verify_now();
-        if !obs.ready {
-            let _ = std::fs::remove_file(dir.path().join("models/activated.observe-fail.json"));
-            obs = gate.observe_verify_now();
-        }
-        assert!(
-            obs.ready,
-            "fixture must verify ready after warm; detail={}",
-            obs.detail
-        );
+        // `#303`: UI load defers hash on miss; warm observe-ready before asserting ready.
+        let obs = gate.observe_verify_now();
+        assert!(obs.ready, "fixture observe_verify_now detail={}", obs.detail);
         let snap = ModelTripleSnapshot::load(dir.path());
         assert!(matches!(snap.selected, ModelFact::Value(_)));
         assert!(snap.ready);
