@@ -21,4 +21,16 @@ Runtime files: `runtime/aira-peer.pid.json`, `aira-peer.lock`. Relay registry: `
 
 Non-loopback `peer_listen` is fail-closed until peer CLI `--explicit` is wired (Out of `#82`).
 
+## Opt-in dial / session evidence (Phase S `#300`)
+
+Desktop **Technical details → Peer dial** calls `run_opt_in_peer_dial` (trusted peer + **explicit** `dial_addr`):
+
+1. Upsert AddressBook with the operator-supplied address
+2. `aira_peer::dial` (hello + Noise XX)
+3. Persist `peers/dial_session_evidence.json` (handshake hash + endpoint + timestamp)
+4. Mesh projection may set `live_session_count = Some(1)` while evidence is fresh — **without** applying reachability DIRECT
+
+Setup / invite / Stop→Start alone still leave live sessions unobserved (`None`). Public bind is not the Desktop default.
+
 Profile matrix and RFC index: [`desktop-network-profiles.md`](desktop-network-profiles.md).
+RFC: [`AIRA-RFC-0187`](../specs/rfc/AIRA-RFC-0187-opt-in-peer-dial-session-evidence.md).

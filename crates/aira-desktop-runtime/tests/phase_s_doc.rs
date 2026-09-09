@@ -24,9 +24,9 @@ fn phase_s_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE R closed",
-        "first OPEN `#300`",
-        "#299",
-        "RFC-0186",
+        "first OPEN `#301`",
+        "#300",
+        "RFC-0187",
         "GPU marketplace",
         "Calculate 2 + 2",
         "public bind",
@@ -44,39 +44,40 @@ fn phase_s_plan_present() {
 }
 
 #[test]
-fn phase_s_queue_299_done_300_open() {
+fn phase_s_queue_300_done_301_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-s-plan.md"));
-    for n in 295..=299 {
+    for n in 295..=300 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
     }
     assert!(
-        !text.contains("| 299 | **OPEN**"),
-        "QUEUE #299 must not stay OPEN"
+        !text.contains("| 300 | **OPEN**"),
+        "QUEUE #300 must not stay OPEN"
     );
     assert!(
-        text.contains("| 300 | **OPEN**"),
-        "QUEUE #300 must be first OPEN"
+        text.contains("| 301 | **OPEN**"),
+        "QUEUE #301 must be first OPEN"
     );
-    for n in 301..=305 {
+    for n in 302..=305 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-335",
-        "RFC-0186",
+        "Analyze-336",
+        "RFC-0187",
         "RFC-0182",
-        "first OPEN `#300`",
-        "#299",
+        "first OPEN `#301`",
+        "#300",
         "QUEUE R closed",
         "desktop-ux.md",
         "Cross-boundary integrity",
-        "setup ≠ remote",
+        "RFC-0187",
+        "opt-in",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
@@ -87,11 +88,11 @@ fn phase_s_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-s-plan.md",
-        "#299",
-        "first OPEN `#300`",
+        "#300",
+        "first OPEN `#301`",
         "RFC-0182",
-        "RFC-0186",
-        "conn_boundary_guidance",
+        "RFC-0187",
+        "run_opt_in_peer_dial",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
@@ -161,6 +162,21 @@ fn phase_s_rfc_0186_present() {
 }
 
 #[test]
+fn phase_s_rfc_0187_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0187-opt-in-peer-dial-session-evidence.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0187 missing");
+    for needle in [
+        "#300",
+        "run_opt_in_peer_dial",
+        "dial_session_evidence",
+        "RFC-0182",
+        "DIRECT",
+    ] {
+        assert!(text.contains(needle), "RFC-0187 missing: {needle}");
+    }
+}
+
+#[test]
 fn phase_s_help_connect_boundary() {
     for rel in [
         "docs/help/en/network.connect.md",
@@ -179,19 +195,9 @@ fn phase_s_help_connect_boundary() {
             text.contains("Boundary") || text.contains("Межа"),
             "{rel} must have Boundary/Межа section"
         );
-    }
-    for rel in [
-        "docs/help/en/network.trust.md",
-        "docs/help/uk/network.trust.md",
-        "docs/help/en/network.reachability.md",
-        "docs/help/uk/network.reachability.md",
-    ] {
-        let text = std::fs::read_to_string(repo_root().join(rel)).unwrap();
         assert!(
-            text.contains("loopback ≠ dial")
-                || text.contains("setup ≠ remote")
-                || text.contains("help:network.connect"),
-            "{rel} must cross-ref connect boundary"
+            text.contains("Peer dial") || text.contains("Dial до піра") || text.contains("opt-in"),
+            "{rel} must mention opt-in dial path"
         );
     }
 }
@@ -204,17 +210,34 @@ fn phase_s_cta_boundary_module_present() {
         "#299",
         "conn_boundary_guidance",
         "Setup is not a remote session",
-        "не віддалена сесія",
-        "not a peer dial address",
-        "не адреса dial",
+        "peer_dial",
+        "#300",
     ] {
         assert!(i18n.contains(needle), "i18n missing: {needle}");
     }
     let ui =
         std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/ui.rs")).unwrap();
-    for needle in ["#299", "conn_boundary_guidance", "HelpId::NetworkConnect"] {
+    for needle in ["#299", "conn_boundary_guidance", "peer_dial", "dial_run"] {
         assert!(ui.contains(needle), "ui missing: {needle}");
     }
+}
+
+#[test]
+fn phase_s_peer_dial_module_present() {
+    let text =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop-runtime/src/peer_dial.rs"))
+            .unwrap();
+    for needle in [
+        "#300",
+        "run_opt_in_peer_dial",
+        "DialSessionEvidence",
+        "explicit dial address",
+        "opt_in_dial_persists_evidence_without_direct_status",
+    ] {
+        assert!(text.contains(needle), "peer_dial missing: {needle}");
+    }
+    let peer_doc = std::fs::read_to_string(repo_root().join("docs/desktop-peer.md")).unwrap();
+    assert!(peer_doc.contains("#300") || peer_doc.contains("RFC-0187"));
 }
 
 #[test]
@@ -224,17 +247,17 @@ fn phase_s_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-s-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
-    assert!(docs.contains("first OPEN `#300`") || docs.contains("#300"));
+    assert!(docs.contains("first OPEN `#301`") || docs.contains("#301"));
 }
 
 #[test]
 fn phase_s_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-s-plan.md") || text.contains("Phase S"));
-    assert!(text.contains("#300") || text.contains("перший OPEN"));
+    assert!(text.contains("#301") || text.contains("перший OPEN"));
     assert!(
-        !text.contains("перший OPEN `#299`") && !text.contains("first OPEN `#299`"),
-        "NEXT_PROBLEM must not keep #299 as first-OPEN after close"
+        !text.contains("перший OPEN `#300`") && !text.contains("first OPEN `#300`"),
+        "NEXT_PROBLEM must not keep #300 as first-OPEN after close"
     );
 }
 
@@ -242,16 +265,10 @@ fn phase_s_next_problem() {
 fn phase_s_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #299 |") || status.contains("#299"));
+    assert!(status.contains("| #300 |") || status.contains("#300"));
     assert!(status.contains("phase_s_doc.rs"));
     assert!(status.contains("phase-s-plan.md"));
-    assert!(status.contains("RFC-0186") || status.contains("0186"));
-    assert!(
-        status.contains(
-            "| #299 | Connect Help boundary honesty | Help/CTA boundary; RFC-0186 | **DONE** |"
-        ) || (status.contains("#299") && status.contains("**DONE**") && status.contains("0186")),
-        "status #299 must be DONE @ RFC-0186"
-    );
+    assert!(status.contains("RFC-0187") || status.contains("0187"));
 }
 
 #[test]

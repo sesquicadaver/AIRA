@@ -1,6 +1,6 @@
 # Phase S — Cross-boundary integrity & connect honesty (post-R)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-09; wiring `#295` **DONE**; `#296` **DONE** @ RFC-0183; `#297` **DONE** @ RFC-0184; `#298` **DONE** @ RFC-0185; `#299` **DONE** @ RFC-0186; first OPEN `#300`).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-09; wiring `#295` **DONE**; `#296` **DONE** @ RFC-0183; `#297` **DONE** @ RFC-0184; `#298` **DONE** @ RFC-0185; `#299` **DONE** @ RFC-0186; `#300` **DONE** @ RFC-0187; first OPEN `#301`).  
 **Джерела:** post-R audit `aira-current.md` @ `e5aee86` (2026-09-09; merge PR #257 / RFC-0174); Phase R [`phase-r-plan.md`](phase-r-plan.md) **DONE** @ RFC-0174; QUEUE R closed; Phase Q [`phase-q-plan.md`](phase-q-plan.md) **DONE** @ RFC-0164; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase S `#295`–`#305`.  
 **Closure:** consolidating **RFC-0182** (id **confirmed free** 2026-09-09; file-free until `#305`).  
@@ -104,7 +104,7 @@ S0 Wiring (план у QUEUE + living smoke; RFC-0182 reserved)
 | `#297` | S1 | Model descriptor root-scoped verify | **DONE** @ RFC-0184: descriptor+payload verify після cold reopen без global keyring priming; тест | identity pair (#298) |
 | `#298` | S1 | Identity incomplete-pair fail-closed | **DONE** @ RFC-0185: mint лише якщо **обох** файлів немає; partial → error; secret perms fail-closed | Help boundary (#299) |
 | `#299` | S1 | Connect Help boundary honesty | **DONE** @ RFC-0186: Help/CTA EN+UK setup ≠ remote session; loopback ≠ peer dial address | dial path (#300) |
-| `#300` | S1 | Opt-in peer dial / session evidence | явна дозволена адреса + dial + confirmed handshake evidence у Desktop path (без public default) | CTA Stop (#301) |
+| `#300` | S1 | Opt-in peer dial / session evidence | **DONE** @ RFC-0187: explicit addr + dial + evidence; mesh live session without DIRECT | CTA Stop (#301) |
 | `#301` | S2 | CTA Stop→Start matrix | stopped runtime → Start (не Refresh-only) без фейкового CONNECTED; transition tests | submit gate (#302) |
 | `#302` | S2 | Submit∥Start/Stop admission | взаємне виключення / черга; немає подвійного start() | observe UI (#303) |
 | `#303` | S2 | Observe miss off UI-thread | cache miss → background/streaming hash; UI не `fs::read` повних weights; admit не послаблюється | durability (#304) |
@@ -117,8 +117,8 @@ S0 Wiring (план у QUEUE + living smoke; RFC-0182 reserved)
     → #297 S1 model descriptor reopen DONE @ RFC-0184
       → #298 S1 identity incomplete-pair DONE @ RFC-0185
         → #299 S1 Help connect boundary DONE @ RFC-0186
-          → #300 S1 opt-in dial/session (first OPEN)
-            → #301 S2 CTA Stop→Start
+          → #300 S1 opt-in dial/session DONE @ RFC-0187
+            → #301 S2 CTA Stop→Start (first OPEN)
               → #302 S2 submit∥lifecycle
                 → #303 S2 observe off-UI
                   → #304 S2 durability honesty

@@ -9,9 +9,9 @@ use aira_desktop_runtime::{
     export_invite_file, export_invite_qr_png, import_invite, import_invite_file,
     import_invite_qr_file, import_invite_qr_luma, join_federation_descriptor_file,
     normalize_settings, read_federation_membership, run_discv_announce, run_discv_find,
-    run_stun_query, submit_desktop_problem, write_settings, DesktopPaths, DesktopSettings,
-    DiscoveryStunOutcome, ImportInviteOutcome, NetworkProfile, PeerInvite, DEFAULT_PEER_LISTEN,
-    DEFAULT_RELAY_TTL_DAYS,
+    run_opt_in_peer_dial, run_stun_query, submit_desktop_problem, write_settings, DesktopPaths,
+    DesktopSettings, DialOutcome, DiscoveryStunOutcome, ImportInviteOutcome, NetworkProfile,
+    PeerInvite, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 use aira_peer::DiscvFindReport;
 use aira_protocol::{FederationMembership, JoinOutcome};
@@ -92,6 +92,15 @@ pub fn discovery_discv_find(
     k: u32,
 ) -> Result<DiscvFindReport> {
     run_discv_find(paths, key_ref, to, k)
+}
+
+/// Phase S `#300`: opt-in dial with explicit address → confirmed handshake evidence.
+pub fn opt_in_peer_dial(
+    paths: &DesktopPaths,
+    peer_identity_id: &str,
+    explicit_addr: &str,
+) -> Result<DialOutcome> {
+    run_opt_in_peer_dial(&paths.data_root, peer_identity_id, explicit_addr)
 }
 
 /// Build local invite + RGBA QR preview for the GUI (bootstraps identity if needed).

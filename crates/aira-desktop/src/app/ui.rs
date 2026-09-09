@@ -353,6 +353,12 @@ impl AiraDesktopApp {
                 None => na.to_string(),
             });
         });
+        if let Some(ev) = &snap.last_confirmed_handshake {
+            ui.horizontal(|ui| {
+                ui.strong(l.mesh_last_handshake);
+                ui.label(ev);
+            });
+        }
     }
 
     fn ui_work(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
@@ -905,6 +911,27 @@ impl AiraDesktopApp {
         }
         if self.settings.network_profile.is_gossip_profile() {
             ui.label("gossip status: enabled (dht+apply-book+apply-trust)");
+        }
+
+        ui.separator();
+        ui.heading(l.peer_dial);
+        ui.label(l.peer_dial_hint);
+        ui.horizontal(|ui| {
+            ui.label(l.dial_peer);
+            ui.text_edit_singleline(&mut self.dial_peer_edit);
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.dial_addr);
+            ui.text_edit_singleline(&mut self.dial_addr_edit);
+            if ui.button(l.dial_run).clicked() {
+                self.run_opt_in_peer_dial();
+            }
+        });
+        if let Some(msg) = &self.dial_msg {
+            ui.label(msg);
+        }
+        if let Some(ev) = &self.mesh_snapshot.last_confirmed_handshake {
+            ui.small(format!("{}: {ev}", l.mesh_last_handshake));
         }
 
         ui.separator();
