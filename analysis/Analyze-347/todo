@@ -1,0 +1,5 @@
+# Analyze-347 todo
+
+- [x] Rollback AddressBook on failed opt-in dial
+- [x] Unit tests (prior A / no-prior)
+- [x] RFC-0197 + living matrix + tips → `#312`
