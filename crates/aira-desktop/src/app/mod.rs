@@ -394,6 +394,23 @@ impl AiraDesktopApp {
                 Err(e) => self.set_problem(ErrorCode::StatusRefreshFailed, e),
             }
         }
+        // Phase T `#308`: opt-in dial completes off-thread; apply evidence / error here.
+        if let Some(outcome) = self.async_jobs.poll_dial() {
+            match outcome {
+                Ok(out) => {
+                    self.dial_msg = Some(format!(
+                        "confirmed handshake {}",
+                        out.evidence.summary_line()
+                    ));
+                    self.clear_problem();
+                    self.request_status_refresh(ctx);
+                }
+                Err(e) => {
+                    self.dial_msg = None;
+                    self.set_problem(ErrorCode::Generic, e);
+                }
+            }
+        }
         let ctx2 = ctx.clone();
         let _ = self.async_jobs.maybe_schedule_periodic_refresh(
             self.paths.clone(),

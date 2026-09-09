@@ -23,9 +23,10 @@ fn phase_t_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE S closed",
-        "first OPEN `#308`",
+        "first OPEN `#309`",
         "RFC-0193",
-        "#307",
+        "RFC-0194",
+        "#308",
         "3301d27",
         "live_session_count",
         "GPU marketplace",
@@ -45,10 +46,10 @@ fn phase_t_plan_present() {
 }
 
 #[test]
-fn phase_t_queue_307_done_308_open() {
+fn phase_t_queue_308_done_309_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-t-plan.md"));
-    for n in 306..=307 {
+    for n in 306..=308 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
@@ -59,21 +60,22 @@ fn phase_t_queue_307_done_308_open() {
         );
     }
     assert!(
-        text.contains("| 308 | **OPEN**"),
-        "QUEUE #308 must be first OPEN"
+        text.contains("| 309 | **OPEN**"),
+        "QUEUE #309 must be first OPEN"
     );
-    for n in 309..=312 {
+    for n in 310..=312 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-343",
+        "Analyze-344",
+        "RFC-0194",
         "RFC-0193",
         "RFC-0192",
-        "first OPEN `#308`",
-        "#307",
+        "first OPEN `#309`",
+        "#308",
         "QUEUE S closed",
         "desktop-ux.md",
         "Operation lifecycle",
@@ -88,10 +90,10 @@ fn phase_t_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-t-plan.md",
-        "#307",
-        "first OPEN `#308`",
+        "#308",
+        "first OPEN `#309`",
         "RFC-0192",
-        "RFC-0193",
+        "RFC-0194",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
@@ -127,6 +129,15 @@ fn phase_t_rfc_0193_present() {
 }
 
 #[test]
+fn phase_t_rfc_0194_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0194-opt-in-dial-off-ui-thread.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0194 missing");
+    for needle in ["#308", "try_spawn_dial", "block_on", "RFC-0192"] {
+        assert!(text.contains(needle), "RFC-0194 missing: {needle}");
+    }
+}
+
+#[test]
 fn phase_t_dial_evidence_module_present() {
     let mesh = std::fs::read_to_string(
         repo_root().join("crates/aira-desktop-runtime/src/network_mesh.rs"),
@@ -147,23 +158,44 @@ fn phase_t_dial_evidence_module_present() {
 }
 
 #[test]
+fn phase_t_dial_off_ui_module_present() {
+    let jobs =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/async_jobs.rs")).unwrap();
+    for needle in [
+        "#308",
+        "try_spawn_dial",
+        "poll_dial",
+        "dial_inflight",
+        "second_dial_rejected_while_inflight",
+    ] {
+        assert!(jobs.contains(needle), "async_jobs missing: {needle}");
+    }
+    let ui_dial =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/peer_dial.rs"))
+            .unwrap();
+    assert!(ui_dial.contains("request_opt_in_peer_dial"));
+    assert!(ui_dial.contains("try_spawn_dial"));
+    assert!(!ui_dial.contains("actions::opt_in_peer_dial"));
+}
+
+#[test]
 fn phase_t_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-t-plan.md") || readme.contains("Phase T"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-t-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
-    assert!(docs.contains("first OPEN `#308`") || docs.contains("#308"));
+    assert!(docs.contains("first OPEN `#309`") || docs.contains("#309"));
 }
 
 #[test]
 fn phase_t_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-t-plan.md") || text.contains("Phase T"));
-    assert!(text.contains("#308") || text.contains("перший OPEN"));
+    assert!(text.contains("#309") || text.contains("перший OPEN"));
     assert!(
-        !text.contains("перший OPEN `#307`") && !text.contains("first OPEN `#307`"),
-        "NEXT_PROBLEM must not keep #307 as first-OPEN after close"
+        !text.contains("перший OPEN `#308`") && !text.contains("first OPEN `#308`"),
+        "NEXT_PROBLEM must not keep #308 as first-OPEN after close"
     );
 }
 
@@ -171,10 +203,10 @@ fn phase_t_next_problem() {
 fn phase_t_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #307 |") || status.contains("#307"));
+    assert!(status.contains("| #308 |") || status.contains("#308"));
     assert!(status.contains("phase_t_doc.rs"));
     assert!(status.contains("phase-t-plan.md"));
-    assert!(status.contains("RFC-0193") || status.contains("0193"));
+    assert!(status.contains("RFC-0194") || status.contains("0194"));
 }
 
 #[test]
@@ -195,6 +227,8 @@ fn phase_t_help_connect_last_check() {
                 && !text.contains("спостереження живої сесії"),
             "{rel} must not claim live session from closed dial"
         );
+        let has_off_ui = text.contains("off the UI thread") || text.contains("поза UI-потоком");
+        assert!(has_off_ui, "{rel} must state dial is off UI-thread (#308)");
     }
 }
 
