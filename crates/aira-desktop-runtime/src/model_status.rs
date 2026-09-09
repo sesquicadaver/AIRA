@@ -131,6 +131,7 @@ impl ModelTripleConclusion {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use tempfile::tempdir;
 
     #[test]
@@ -147,6 +148,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn fixture_ready_does_not_fill_used() {
         let dir = tempdir().unwrap();
         aira_object::reset_primary_signer();
@@ -170,6 +172,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn selected_survives_when_not_ready() {
         let dir = tempdir().unwrap();
         aira_object::reset_primary_signer();
