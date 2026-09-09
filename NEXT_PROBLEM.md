@@ -3,7 +3,7 @@
 **Status:** RESOLVED / provenance  
 **Resolved by:** [`docs/desktop-ux.md`](docs/desktop-ux.md) + [`docs/phase-e-plan.md`](docs/phase-e-plan.md) (`#75`–`#106` **DONE**, 2026-08-22)  
 **Post-resolution stabilization:** [`docs/phase-f-plan.md`](docs/phase-f-plan.md) (`#107`–`#119` **DONE**, 2026-08-24)  
-**Active backlog:** [`QUEUE.md`](QUEUE.md) — Phase S [`docs/phase-s-plan.md`](docs/phase-s-plan.md) `#295`–`#305` **IN PROGRESS** (`#295`–`#301` **DONE** @ RFC-0183…RFC-0188; перший OPEN `#302`; RFC-0182 reserved); Phase R [`docs/phase-r-plan.md`](docs/phase-r-plan.md) `#286`–`#294` **DONE** @ RFC-0174 (**QUEUE R closed**); Phase Q `#275`–`#285` **DONE** @ RFC-0164 (**QUEUE Q closed**); Phase P **DONE** @ RFC-0156 (QUEUE P closed); Phase O **DONE** @ RFC-0146 (QUEUE O closed); **QUEUE N-fix closed** @ RFC-0139; QUEUE N closed @ RFC-0123; QUEUE M closed @ RFC-0117; QUEUE L closed @ RFC-0111
+**Active backlog:** [`QUEUE.md`](QUEUE.md) — Phase S [`docs/phase-s-plan.md`](docs/phase-s-plan.md) `#295`–`#305` **IN PROGRESS** (`#295`–`#302` **DONE** @ RFC-0183…RFC-0189; перший OPEN `#303`; RFC-0182 reserved); Phase R [`docs/phase-r-plan.md`](docs/phase-r-plan.md) `#286`–`#294` **DONE** @ RFC-0174 (**QUEUE R closed**); Phase Q `#275`–`#285` **DONE** @ RFC-0164 (**QUEUE Q closed**); Phase P **DONE** @ RFC-0156 (QUEUE P closed); Phase O **DONE** @ RFC-0146 (QUEUE O closed); **QUEUE N-fix closed** @ RFC-0139; QUEUE N closed @ RFC-0123; QUEUE M closed @ RFC-0117; QUEUE L closed @ RFC-0111
 **Не канон:** цей файл не конкурує з `desktop-ux.md` / `phase-e-plan.md` / `QUEUE.md`. Далі — лише історичний problem statement.
 
 ## Problem statement (вхід)
