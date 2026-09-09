@@ -64,8 +64,8 @@ impl ModelTripleSnapshot {
 
     /// Load selected/ready from Phase D activation under node root; `used` stays Undefined.
     ///
-    /// Uses UI-safe [`ActivatedPointerGate::observe`] (`#303`): cache miss defers
-    /// streaming weight hash off the caller thread (no full `fs::read` of weights).
+    /// Uses UI-safe [`ActivatedPointerGate::observe`] (`#303` / `#309`): cache miss
+    /// defers streaming weight hash; durable fail for a version does not rehash-storm.
     pub fn load(root: impl AsRef<Path>) -> Self {
         let obs = ActivatedPointerGate::from_aira_root(root).observe();
         let selected = if obs.pointer_present {

@@ -23,10 +23,11 @@ fn phase_t_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE S closed",
-        "first OPEN `#309`",
+        "first OPEN `#310`",
         "RFC-0193",
         "RFC-0194",
-        "#308",
+        "RFC-0195",
+        "#309",
         "3301d27",
         "live_session_count",
         "GPU marketplace",
@@ -46,10 +47,10 @@ fn phase_t_plan_present() {
 }
 
 #[test]
-fn phase_t_queue_308_done_309_open() {
+fn phase_t_queue_309_done_310_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-t-plan.md"));
-    for n in 306..=308 {
+    for n in 306..=309 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
@@ -60,22 +61,22 @@ fn phase_t_queue_308_done_309_open() {
         );
     }
     assert!(
-        text.contains("| 309 | **OPEN**"),
-        "QUEUE #309 must be first OPEN"
+        text.contains("| 310 | **OPEN**"),
+        "QUEUE #310 must be first OPEN"
     );
-    for n in 310..=312 {
+    for n in 311..=312 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-344",
+        "Analyze-345",
+        "RFC-0195",
         "RFC-0194",
-        "RFC-0193",
         "RFC-0192",
-        "first OPEN `#309`",
-        "#308",
+        "first OPEN `#310`",
+        "#309",
         "QUEUE S closed",
         "desktop-ux.md",
         "Operation lifecycle",
@@ -90,10 +91,10 @@ fn phase_t_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-t-plan.md",
-        "#308",
-        "first OPEN `#309`",
+        "#309",
+        "first OPEN `#310`",
         "RFC-0192",
-        "RFC-0194",
+        "RFC-0195",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
@@ -125,6 +126,15 @@ fn phase_t_rfc_0193_present() {
         "RFC-0192",
     ] {
         assert!(text.contains(needle), "RFC-0193 missing: {needle}");
+    }
+}
+
+#[test]
+fn phase_t_rfc_0195_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0195-observe-miss-fail-durable.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0195 missing");
+    for needle in ["#309", "observe-fail", "rehash", "RFC-0192"] {
+        assert!(text.contains(needle), "RFC-0195 missing: {needle}");
     }
 }
 
@@ -185,17 +195,17 @@ fn phase_t_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-t-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
-    assert!(docs.contains("first OPEN `#309`") || docs.contains("#309"));
+    assert!(docs.contains("first OPEN `#310`") || docs.contains("#310"));
 }
 
 #[test]
 fn phase_t_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-t-plan.md") || text.contains("Phase T"));
-    assert!(text.contains("#309") || text.contains("перший OPEN"));
+    assert!(text.contains("#310") || text.contains("перший OPEN"));
     assert!(
-        !text.contains("перший OPEN `#308`") && !text.contains("first OPEN `#308`"),
-        "NEXT_PROBLEM must not keep #308 as first-OPEN after close"
+        !text.contains("перший OPEN `#309`") && !text.contains("first OPEN `#309`"),
+        "NEXT_PROBLEM must not keep #309 as first-OPEN after close"
     );
 }
 
@@ -203,10 +213,10 @@ fn phase_t_next_problem() {
 fn phase_t_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #308 |") || status.contains("#308"));
+    assert!(status.contains("| #309 |") || status.contains("#309"));
     assert!(status.contains("phase_t_doc.rs"));
     assert!(status.contains("phase-t-plan.md"));
-    assert!(status.contains("RFC-0194") || status.contains("0194"));
+    assert!(status.contains("RFC-0195") || status.contains("0195"));
 }
 
 #[test]
@@ -229,6 +239,21 @@ fn phase_t_help_connect_last_check() {
         );
         let has_off_ui = text.contains("off the UI thread") || text.contains("поза UI-потоком");
         assert!(has_off_ui, "{rel} must state dial is off UI-thread (#308)");
+    }
+}
+
+#[test]
+fn phase_t_observe_fail_module_present() {
+    let gate =
+        std::fs::read_to_string(repo_root().join("crates/aira-flow/src/activate_gate.rs")).unwrap();
+    for needle in [
+        "#309",
+        "ObserveFailCache",
+        "observe-fail.json",
+        "observe_ui_mismatch_fail_is_sticky_without_rehash_storm",
+        "remember_observe_fail",
+    ] {
+        assert!(gate.contains(needle), "activate_gate missing: {needle}");
     }
 }
 
