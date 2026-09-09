@@ -1,9 +1,9 @@
 # Phase S — Cross-boundary integrity & connect honesty (post-R)
 
-**Статус:** складено 2026-09-09; **НЕ АКТИВОВАНО** — лише план; у `QUEUE.md` **немає** OPEN S-атомів, доки розробник не скаже «активувати Phase S».  
+**Статус:** **IN PROGRESS** (активовано 2026-09-09; wiring `#295` **DONE**; first OPEN `#296`).  
 **Джерела:** post-R audit `aira-current.md` @ `e5aee86` (2026-09-09; merge PR #257 / RFC-0174); Phase R [`phase-r-plan.md`](phase-r-plan.md) **DONE** @ RFC-0174; QUEUE R closed; Phase Q [`phase-q-plan.md`](phase-q-plan.md) **DONE** @ RFC-0164; канон [`desktop-ux.md`](desktop-ux.md).  
-**Канон backlog (після активації):** [`QUEUE.md`](../QUEUE.md) секція Phase S `#295`–`#305`.  
-**Closure (після активації):** consolidating **RFC-0182** (id **confirmed free** 2026-09-09; file-free until `#305`).  
+**Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase S `#295`–`#305`.  
+**Closure:** consolidating **RFC-0182** (id **confirmed free** 2026-09-09; file-free until `#305`).  
 **Не змінює:** анти-місію README; C0/C1 `Calculate 2 + 2`; `aira-core` ledger / LLM-in-Core; GUI stack (egui); IA Work / System / Settings + Help·F1; Claiming Polygon ledger DONE; Claiming global live mesh DONE; QUEUE R історію як never-DONE; public bind / auto-trust як Desktop default.
 
 > Примітка: `aira-current.md` поза git-каноном (`p-only/`). Канон у репо = цей план + `desktop-ux.md` + QUEUE + RFC-D.
@@ -24,7 +24,7 @@ Phase Q/R закрили **локальні** honesty/UX-розриви: install
 
 ```text
 QUEUE R closed (#286–#294 / RFC-0174)
-  → Phase S (draft): cross-boundary integrity + connect honesty
+  → Phase S IN PROGRESS: cross-boundary integrity + connect honesty
     → не Core rewrite; не GPU marketplace; не public bind default
 ```
 
@@ -95,11 +95,11 @@ S0 Wiring (план у QUEUE + living smoke; RFC-0182 reserved)
 
 ---
 
-## 5. Атоми → QUEUE `#295`–`#305` (лише після активації)
+## 5. Атоми → QUEUE `#295`–`#305`
 
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
-| `#295` | S0 | Phase S wiring | план IN PROGRESS; QUEUE `#295`–`#305`; `phase_s_doc`; tips; RFC-0182 reserved file-free | reach key (#296) |
+| `#295` | S0 | Phase S wiring | **DONE**: план IN PROGRESS; QUEUE `#295`–`#305`; `phase_s_doc`; tips; RFC-0182 reserved file-free | reach key (#296) |
 | `#296` | S1 | Reachability key-bound admission | reject same-ID / foreign-key import; verify vs root keyring; negative test | model reopen (#297) |
 | `#297` | S1 | Model descriptor root-scoped verify | descriptor+payload verify після cold reopen без global keyring priming; тест | identity pair (#298) |
 | `#298` | S1 | Identity incomplete-pair fail-closed | mint лише якщо **обох** файлів немає; partial → error; secret perms fail-closed | Help boundary (#299) |
@@ -112,8 +112,8 @@ S0 Wiring (план у QUEUE + living smoke; RFC-0182 reserved)
 | `#305` | S | RFC-0182 + close | consolidating RFC-0182; QUEUE S closed; no OPEN S atoms | — |
 
 ```text
-#295 S0 wiring
-  → #296 S1 reachability key-bound
+#295 S0 wiring DONE
+  → #296 S1 reachability key-bound (first OPEN)
     → #297 S1 model descriptor reopen
       → #298 S1 identity incomplete-pair
         → #299 S1 Help connect boundary
@@ -159,9 +159,8 @@ aira-core still has no GUI/ledger deps.
 
 ```text
 QUEUE R closed @ RFC-0174
-  + developer «активувати Phase S»
+  + developer «активувати Phase S» (2026-09-09)
   → wiring `#295` DONE; план IN PROGRESS; first OPEN `#296`.
-Доки фрази активації немає — цей файл лише draft; QUEUE без OPEN S.
 ```
 
 ---
