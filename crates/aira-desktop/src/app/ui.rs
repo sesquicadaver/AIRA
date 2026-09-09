@@ -916,15 +916,25 @@ impl AiraDesktopApp {
         ui.separator();
         ui.heading(l.peer_dial);
         ui.label(l.peer_dial_hint);
+        let dialing = self.async_jobs.dial_inflight();
         ui.horizontal(|ui| {
             ui.label(l.dial_peer);
-            ui.text_edit_singleline(&mut self.dial_peer_edit);
+            ui.add_enabled(
+                !dialing,
+                egui::TextEdit::singleline(&mut self.dial_peer_edit),
+            );
         });
         ui.horizontal(|ui| {
             ui.label(l.dial_addr);
-            ui.text_edit_singleline(&mut self.dial_addr_edit);
-            if ui.button(l.dial_run).clicked() {
-                self.run_opt_in_peer_dial();
+            ui.add_enabled(
+                !dialing,
+                egui::TextEdit::singleline(&mut self.dial_addr_edit),
+            );
+            if ui
+                .add_enabled(!dialing, egui::Button::new(l.dial_run))
+                .clicked()
+            {
+                self.request_opt_in_peer_dial(ui.ctx());
             }
         });
         if let Some(msg) = &self.dial_msg {

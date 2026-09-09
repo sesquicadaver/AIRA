@@ -1,0 +1,3 @@
+- [x] async_jobs dial slot
+- [x] UI request/poll + waiting label
+- [x] docs + RFC-0194 + tip #309

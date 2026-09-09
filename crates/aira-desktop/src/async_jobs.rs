@@ -1,5 +1,5 @@
-//! Non-blocking Desktop jobs (`#257` / `#272` / `#282` / Phase S `#302`): submit,
-//! status refresh, and Start/Stop lifecycle off the egui thread.
+//! Non-blocking Desktop jobs (`#257` / `#272` / `#282` / Phase S `#302` / Phase T `#308`):
+//! submit, status refresh, Start/Stop lifecycle, and opt-in peer dial off the egui thread.
 //!
 //! `request_repaint_after` only schedules a redraw; data refresh is a separate job.
 //! Each Start/Stop bumps a dedicated `lifecycle_revision` and invalidates refresh so a
@@ -7,6 +7,9 @@
 //!
 //! Phase S `#302`: submit and Start/Stop are mutually exclusive — no parallel
 //! `start()` from submit `ensure_started` while a lifecycle Start is in flight.
+//!
+//! Phase T `#308`: opt-in dial uses its own slot (`try_spawn_dial`); the UI path must
+//! never `block_on` TCP/Noise — F1 and navigation stay available during an attempt.
 
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
@@ -14,8 +17,9 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use aira_desktop_runtime::{
-    load_system_snapshot, start, status, stop, DesktopPaths, DesktopSettings, LifecycleStatus,
-    ModelTripleSnapshot, NetworkMeshSnapshot, PidRecordView, StartOutcome, SystemSnapshot,
+    load_system_snapshot, start, status, stop, DesktopPaths, DesktopSettings, DialOutcome,
+    LifecycleStatus, ModelTripleSnapshot, NetworkMeshSnapshot, PidRecordView, StartOutcome,
+    SystemSnapshot,
 };
 
 use crate::actions;
@@ -133,12 +137,14 @@ pub fn run_submit_job(
     actions::submit_problem(paths, settings, text)
 }
 
-/// In-flight submit / refresh slots (at most one of each).
+/// In-flight submit / refresh / dial slots (at most one of each).
 #[derive(Debug, Default)]
 pub struct AsyncDesktopJobs {
     work_rx: Option<Receiver<Result<WorkResultView, String>>>,
     refresh_rx: Option<Receiver<(u64, Result<StatusSnapshot, String>)>>,
     lifecycle_rx: Option<Receiver<(LifecycleJobKind, Result<LifecycleJobResult, String>)>>,
+    /// Phase T `#308`: at most one opt-in peer dial worker.
+    dial_rx: Option<Receiver<Result<DialOutcome, String>>>,
     /// Kind of in-flight lifecycle job (for Starting/Stopping UI).
     lifecycle_kind: Option<LifecycleJobKind>,
     /// Monotonic generation so a stale refresh cannot overwrite a newer one.
@@ -347,6 +353,52 @@ impl AsyncDesktopJobs {
                     LifecycleJobKind::Stop,
                     Err("lifecycle worker disconnected".into()),
                 ))
+            }
+        }
+    }
+
+    /// Whether an opt-in dial worker is running (`#308`).
+    pub fn dial_inflight(&self) -> bool {
+        self.dial_rx.is_some()
+    }
+
+    /// Start at most one opt-in peer dial off the UI thread (`#308`).
+    ///
+    /// Returns `false` if a dial is already in flight. Dial is independent of
+    /// submit/lifecycle so F1/nav/Work remain usable during a slow endpoint.
+    pub fn try_spawn_dial(
+        &mut self,
+        paths: DesktopPaths,
+        peer_identity_id: String,
+        explicit_addr: String,
+        on_done: impl FnOnce() + Send + 'static,
+    ) -> bool {
+        if self.dial_rx.is_some() {
+            return false;
+        }
+        let (tx, rx) = mpsc::channel();
+        self.dial_rx = Some(rx);
+        thread::spawn(move || {
+            let outcome = actions::opt_in_peer_dial(&paths, &peer_identity_id, &explicit_addr)
+                .map_err(|e| format!("{e:#}"));
+            let _ = tx.send(outcome);
+            on_done();
+        });
+        true
+    }
+
+    /// Non-blocking poll for a finished opt-in dial (`#308`).
+    pub fn poll_dial(&mut self) -> Option<Result<DialOutcome, String>> {
+        let rx = self.dial_rx.as_ref()?;
+        match rx.try_recv() {
+            Ok(v) => {
+                self.dial_rx = None;
+                Some(v)
+            }
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => {
+                self.dial_rx = None;
+                Some(Err("dial worker disconnected".into()))
             }
         }
     }
@@ -565,5 +617,41 @@ mod tests {
     #[test]
     fn status_refresh_interval_is_independent_of_repaint() {
         assert_eq!(STATUS_REFRESH_INTERVAL, Duration::from_secs(2));
+    }
+
+    /// Phase T `#308`: second dial rejected while one is in flight.
+    #[test]
+    fn second_dial_rejected_while_inflight() {
+        let mut jobs = AsyncDesktopJobs::new();
+        let (_hold_tx, hold_rx) = mpsc::channel();
+        jobs.dial_rx = Some(hold_rx);
+        let paths = DesktopPaths::for_data_root(std::env::temp_dir().join("aira-async-jobs-dial"));
+        assert!(jobs.dial_inflight());
+        assert!(!jobs.try_spawn_dial(
+            paths,
+            "aira:identity:x".into(),
+            "127.0.0.1:49157".into(),
+            || {}
+        ));
+    }
+
+    /// Phase T `#308`: dial may run while submit/lifecycle are idle or busy —
+    /// slot is independent so UI never blocks on dial.
+    #[test]
+    fn dial_slot_independent_of_submit_lifecycle() {
+        let mut jobs = AsyncDesktopJobs::new();
+        let (_w_tx, w_rx) = mpsc::channel();
+        jobs.work_rx = Some(w_rx);
+        let paths = DesktopPaths::for_data_root(std::env::temp_dir().join("aira-async-jobs-dial2"));
+        // Empty addr fails closed off-thread; spawn itself must succeed.
+        assert!(jobs.try_spawn_dial(paths, "aira:identity:x".into(), "".into(), || {}));
+        assert!(jobs.dial_inflight());
+        for _ in 0..200 {
+            if jobs.poll_dial().is_some() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert!(!jobs.dial_inflight());
     }
 }
