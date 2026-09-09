@@ -9,6 +9,7 @@ mod camera;
 mod connection_cta;
 mod help;
 mod lexicon;
+mod mesh_language;
 mod settings_apply;
 mod system_view;
 mod work_view;
@@ -26,6 +27,7 @@ use aira_desktop_runtime::{
 use crate::app::AiraDesktopApp;
 use crate::connection_cta::ConnectionPrimaryCta;
 use crate::lexicon::{ActionId, HelpId};
+use crate::mesh_language::StripNetworkPhrase;
 
 fn assert_lexicon_linked() {
     // Keep Phase O lexicon reachable in the binary (`#258` → F1 `#263`).
@@ -44,6 +46,12 @@ fn assert_lexicon_linked() {
         ConnectionPrimaryCta::EnablePrivateNetwork.help_id(),
         HelpId::NetworkConnect
     );
+    // Phase R `#289` strip phrases stay linked (UNKNOWN ≠ OFFLINE).
+    assert_eq!(
+        StripNetworkPhrase::NotChecked.as_str(),
+        "strip.network.not_checked"
+    );
+    assert_ne!(StripNetworkPhrase::NotChecked, StripNetworkPhrase::Offline);
 }
 
 #[derive(Parser, Debug)]

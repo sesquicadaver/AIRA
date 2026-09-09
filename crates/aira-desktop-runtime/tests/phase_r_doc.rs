@@ -23,8 +23,8 @@ fn phase_r_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE Q closed",
-        "first OPEN `#289`",
-        "#288",
+        "first OPEN `#290`",
+        "#289",
         "GPU marketplace",
         "Calculate 2 + 2",
         "UNKNOWN≠OFFLINE",
@@ -42,37 +42,37 @@ fn phase_r_plan_present() {
 }
 
 #[test]
-fn phase_r_queue_288_done_289_open() {
+fn phase_r_queue_289_done_290_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-r-plan.md"));
-    for n in 286..=288 {
+    for n in 286..=289 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
     }
     assert!(
-        !text.contains("| 288 | **OPEN**"),
-        "QUEUE #288 must not stay OPEN"
+        !text.contains("| 289 | **OPEN**"),
+        "QUEUE #289 must not stay OPEN"
     );
     assert!(
-        text.contains("| 289 | **OPEN**"),
-        "QUEUE #289 must be first OPEN"
+        text.contains("| 290 | **OPEN**"),
+        "QUEUE #290 must be first OPEN"
     );
-    for n in 290..=294 {
+    for n in 291..=294 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-324",
+        "Analyze-325",
+        "RFC-0177",
         "RFC-0176",
-        "RFC-0175",
         "RFC-0174",
-        "first OPEN `#289`",
-        "#288",
-        "ui_connect_primary",
+        "first OPEN `#290`",
+        "#289",
+        "mesh_language",
         "QUEUE Q closed",
         "desktop-ux.md",
         "Actionable Desktop Connection",
@@ -86,13 +86,13 @@ fn phase_r_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-r-plan.md",
-        "#288",
-        "first OPEN `#289`",
+        "#289",
+        "first OPEN `#290`",
         "RFC-0174",
-        "RFC-0175",
-        "RFC-0176",
-        "ui_connect_primary",
+        "RFC-0177",
+        "mesh_language",
         "connection_cta",
+        "ui_connect_primary",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
@@ -114,20 +114,25 @@ fn phase_r_rfc_0174_file_free() {
 }
 
 #[test]
-fn phase_r_rfc_0175_and_0176_present() {
-    let rfc175 = std::fs::read_to_string(
-        repo_root().join("specs/rfc/AIRA-RFC-0175-connection-next-step-cta.md"),
-    )
-    .unwrap();
-    for needle in ["#287", "primary CTA", "connection_cta"] {
-        assert!(rfc175.contains(needle), "RFC-0175 missing: {needle}");
-    }
-    let rfc176 = std::fs::read_to_string(
-        repo_root().join("specs/rfc/AIRA-RFC-0176-promote-connect-controls.md"),
-    )
-    .unwrap();
-    for needle in ["#288", "ui_connect_primary", "Technical details"] {
-        assert!(rfc176.contains(needle), "RFC-0176 missing: {needle}");
+fn phase_r_rfc_0175_0176_0177_present() {
+    for (name, needles) in [
+        (
+            "AIRA-RFC-0175-connection-next-step-cta.md",
+            &["#287", "primary CTA", "connection_cta"][..],
+        ),
+        (
+            "AIRA-RFC-0176-promote-connect-controls.md",
+            &["#288", "ui_connect_primary", "Technical details"][..],
+        ),
+        (
+            "AIRA-RFC-0177-human-primary-mesh-strip.md",
+            &["#289", "mesh_language", "UNKNOWN"][..],
+        ),
+    ] {
+        let text = std::fs::read_to_string(repo_root().join("specs/rfc").join(name)).unwrap();
+        for needle in needles {
+            assert!(text.contains(needle), "{name} missing: {needle}");
+        }
     }
 }
 
@@ -138,24 +143,24 @@ fn phase_r_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-r-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
-    assert!(docs.contains("#289") || docs.contains("`#289`"));
+    assert!(docs.contains("#290") || docs.contains("`#290`"));
 }
 
 #[test]
 fn phase_r_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-r-plan.md") || text.contains("Phase R"));
-    assert!(text.contains("#289") || text.contains("перший OPEN"));
+    assert!(text.contains("#290") || text.contains("перший OPEN"));
 }
 
 #[test]
 fn phase_r_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #288 |") || status.contains("#288"));
+    assert!(status.contains("| #289 |") || status.contains("#289"));
     assert!(status.contains("phase_r_doc.rs"));
     assert!(status.contains("phase-r-plan.md"));
-    assert!(status.contains("RFC-0176") || status.contains("0176"));
+    assert!(status.contains("RFC-0177") || status.contains("0177"));
     assert!(status.contains("RFC-0174") || status.contains("0174"));
 }
 
@@ -214,5 +219,31 @@ fn phase_r_connect_primary_outside_tech() {
     assert!(
         !text.contains("fn ui_network_ops"),
         "ui_network_ops must be split for #288"
+    );
+}
+
+#[test]
+fn phase_r_mesh_language_human_primary() {
+    let mesh =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/mesh_language.rs"))
+            .unwrap();
+    for needle in [
+        "strip_network_phrase",
+        "StripNetworkPhrase",
+        "NotChecked",
+        "#289",
+        "ConnectionConclusion",
+    ] {
+        assert!(mesh.contains(needle), "mesh_language missing: {needle}");
+    }
+    let ui =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/ui.rs")).unwrap();
+    assert!(
+        ui.contains("strip_network_from_top_level"),
+        "strip must use shared mesh_language mapping"
+    );
+    assert!(
+        ui.contains("Phase R `#289`"),
+        "mesh status must document human-primary #289"
     );
 }
