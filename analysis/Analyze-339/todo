@@ -1,0 +1,4 @@
+- [x] streaming sha256_path
+- [x] observe defer on miss
+- [x] admit still hashes
+- [x] docs / RFC-0190 / phase_s_doc tip `#304`
