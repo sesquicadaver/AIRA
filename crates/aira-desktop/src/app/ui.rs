@@ -107,6 +107,7 @@ impl eframe::App for AiraDesktopApp {
 
 impl AiraDesktopApp {
     /// Compact status strip on every main screen (`desktop-ux` §2.2 / `#259`).
+    /// Network cell: human phrase via `#289` `mesh_language` (agrees with Connection).
     fn ui_status_strip(&self, ui: &mut egui::Ui) {
         let l = self.labels();
         let work = if self.async_jobs.work_inflight() {
@@ -117,18 +118,15 @@ impl AiraDesktopApp {
             l.strip_work_ready
         };
         let quality = self.system_snapshot.network_quality;
-        let network = match quality {
-            aira_desktop_runtime::DataQuality::Stale => l.strip_net_stale,
-            aira_desktop_runtime::DataQuality::Unknown
-            | aira_desktop_runtime::DataQuality::Unavailable => l.strip_net_unknown,
-            aira_desktop_runtime::DataQuality::Current => {
-                match self.mesh_snapshot.top_level.as_str() {
-                    "DIRECT" | "RELAYED" => l.strip_net_connected,
-                    "OUTBOUND ONLY" | "LOCAL ONLY" => l.strip_net_local,
-                    "UNKNOWN" => l.strip_net_unknown,
-                    _ => l.strip_net_offline,
-                }
-            }
+        let network = match crate::mesh_language::strip_network_from_top_level(
+            quality,
+            &self.mesh_snapshot.top_level,
+        ) {
+            crate::mesh_language::StripNetworkPhrase::Connected => l.strip_net_connected,
+            crate::mesh_language::StripNetworkPhrase::LocalOnly => l.strip_net_local,
+            crate::mesh_language::StripNetworkPhrase::Stale => l.strip_net_stale,
+            crate::mesh_language::StripNetworkPhrase::NotChecked => l.strip_net_unknown,
+            crate::mesh_language::StripNetworkPhrase::Offline => l.strip_net_offline,
         };
         let model =
             match aira_desktop_runtime::ModelTripleConclusion::from_triple(&self.model_triple) {
@@ -218,17 +216,40 @@ impl AiraDesktopApp {
         let l = self.labels();
         let snap = &self.mesh_snapshot;
         ui.heading(l.mesh_heading);
-        let banner_color = match snap.top_level.as_str() {
-            "DIRECT" => egui::Color32::from_rgb(40, 140, 70),
-            "RELAYED" => egui::Color32::from_rgb(40, 100, 180),
-            "OUTBOUND ONLY" => egui::Color32::from_rgb(180, 120, 40),
-            "LOCAL ONLY" => egui::Color32::from_rgb(100, 100, 140),
-            "UNKNOWN" => egui::Color32::from_rgb(120, 120, 120),
-            _ => egui::Color32::from_rgb(140, 60, 60),
+        // Phase R `#289`: human conclusion primary; raw top-level secondary/tech.
+        let conclusion = crate::system_view::ConnectionConclusion::from_top_level(&snap.top_level);
+        let human = match conclusion {
+            crate::system_view::ConnectionConclusion::Direct => l.sys_conn_direct,
+            crate::system_view::ConnectionConclusion::Relayed => l.sys_conn_relayed,
+            crate::system_view::ConnectionConclusion::OutboundOnly => l.sys_conn_outbound,
+            crate::system_view::ConnectionConclusion::LocalOnly => l.sys_conn_local,
+            crate::system_view::ConnectionConclusion::Unknown => l.sys_conn_unknown,
+            crate::system_view::ConnectionConclusion::Offline => l.sys_conn_offline,
         };
+        let banner_color = match conclusion {
+            crate::system_view::ConnectionConclusion::Direct => {
+                egui::Color32::from_rgb(40, 140, 70)
+            }
+            crate::system_view::ConnectionConclusion::Relayed => {
+                egui::Color32::from_rgb(40, 100, 180)
+            }
+            crate::system_view::ConnectionConclusion::OutboundOnly => {
+                egui::Color32::from_rgb(180, 120, 40)
+            }
+            crate::system_view::ConnectionConclusion::LocalOnly => {
+                egui::Color32::from_rgb(100, 100, 140)
+            }
+            crate::system_view::ConnectionConclusion::Unknown => {
+                egui::Color32::from_rgb(120, 120, 120)
+            }
+            crate::system_view::ConnectionConclusion::Offline => {
+                egui::Color32::from_rgb(140, 60, 60)
+            }
+        };
+        ui.colored_label(banner_color, human);
         ui.horizontal(|ui| {
-            ui.strong(l.mesh_banner);
-            ui.colored_label(banner_color, &snap.top_level);
+            ui.small(l.mesh_banner);
+            ui.monospace(&snap.top_level);
         });
         let na = l.mesh_na;
         let yes = l.mesh_yes;
@@ -270,7 +291,7 @@ impl AiraDesktopApp {
         });
         ui.horizontal(|ui| {
             ui.strong(l.mesh_reachability);
-            ui.label(&snap.reachability_status);
+            ui.monospace(&snap.reachability_status);
         });
         ui.horizontal(|ui| {
             ui.strong(l.mesh_direct);
@@ -688,8 +709,9 @@ impl AiraDesktopApp {
             .id_source("sys-connection-tech")
             .default_open(false)
             .show(ui, |ui| {
-                ui.label(format!(
-                    "banner:{} · live_q:{}",
+                // Raw enum secondary (`#289`); human conclusion already above.
+                ui.small(format!(
+                    "top_level:{} · live_q:{}",
                     view.top_level,
                     view.live_sessions_quality.as_str()
                 ));
