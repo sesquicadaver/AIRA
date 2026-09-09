@@ -12,7 +12,7 @@
 | `main` | Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | **немає OPEN** — QUEUE R closed @ RFC-0174; next phase not activated |
+| Активна черга | **немає OPEN** — QUEUE R closed @ RFC-0174; Phase S [`docs/phase-s-plan.md`](docs/phase-s-plan.md) **НЕ АКТИВОВАНО** (draft) |
 
 ## Правила атомарності
 
@@ -755,7 +755,7 @@ R0 wiring (#286 DONE)
 Анти-місія README **ніколи** в QUEUE.
 
 
-**Наступне:** QUEUE R closed — next phase not activated here.
+**Наступне:** QUEUE R closed — Phase S [`docs/phase-s-plan.md`](docs/phase-s-plan.md) **НЕ АКТИВОВАНО** (draft `#295`–`#305`; RFC-0182 reserved). Активувати лише за фразою розробника «активувати Phase S».
 
 ```text
 Q0 wiring (#275 DONE)

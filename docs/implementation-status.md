@@ -478,6 +478,8 @@ Plan: [`phase-n-plan.md`](phase-n-plan.md). Consolidating RFC: `AIRA-RFC-0123` (
 
 **Phase R `#286`–`#294` DONE** @ RFC-0174; QUEUE R closed: [`phase-r-plan.md`](phase-r-plan.md); living smoke `phase_r_doc.rs`; Analyze-322; `#287` Analyze-323 @ RFC-0175; `#288` Analyze-324 @ RFC-0176; `#289` Analyze-325 @ RFC-0177; `#290` Analyze-326 @ RFC-0178; `#291` Analyze-327 @ RFC-0179; `#292` Analyze-328 @ RFC-0180; `#293` Analyze-329 @ RFC-0181; `#294` Analyze-330 @ RFC-0174; QUEUE R closed.
 
+**Phase S draft** [`phase-s-plan.md`](phase-s-plan.md) **НЕ АКТИВОВАНО** — `#295`–`#305` reserved in plan only; consolidating RFC-0182 file-free; no OPEN S atoms until developer activation.
+
 
 ## Phase R gates (**DONE** @ RFC-0174; QUEUE R closed)
 
