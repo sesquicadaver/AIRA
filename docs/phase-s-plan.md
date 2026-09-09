@@ -1,6 +1,6 @@
 # Phase S — Cross-boundary integrity & connect honesty (post-R)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-09; wiring `#295` **DONE**; `#296` **DONE** @ RFC-0183; `#297` **DONE** @ RFC-0184; `#298` **DONE** @ RFC-0185; `#299` **DONE** @ RFC-0186; `#300` **DONE** @ RFC-0187; `#301` **DONE** @ RFC-0188; `#302` **DONE** @ RFC-0189; `#303` **DONE** @ RFC-0190; first OPEN `#304`).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-09; wiring `#295` **DONE**; `#296` **DONE** @ RFC-0183; `#297` **DONE** @ RFC-0184; `#298` **DONE** @ RFC-0185; `#299` **DONE** @ RFC-0186; `#300` **DONE** @ RFC-0187; `#301` **DONE** @ RFC-0188; `#302` **DONE** @ RFC-0189; `#303` **DONE** @ RFC-0190; `#304` **DONE** @ RFC-0191; first OPEN `#305`).  
 **Джерела:** post-R audit `aira-current.md` @ `e5aee86` (2026-09-09; merge PR #257 / RFC-0174); Phase R [`phase-r-plan.md`](phase-r-plan.md) **DONE** @ RFC-0174; QUEUE R closed; Phase Q [`phase-q-plan.md`](phase-q-plan.md) **DONE** @ RFC-0164; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase S `#295`–`#305`.  
 **Closure:** consolidating **RFC-0182** (id **confirmed free** 2026-09-09; file-free until `#305`).  
@@ -108,7 +108,7 @@ S0 Wiring (план у QUEUE + living smoke; RFC-0182 reserved)
 | `#301` | S2 | CTA Stop→Start matrix | **DONE** @ RFC-0188: stopped peer profile → Start not Refresh-only; transition tests | submit gate (#302) |
 | `#302` | S2 | Submit∥Start/Stop admission | **DONE** @ RFC-0189: submit⊥lifecycle; no double start() | observe UI (#303) |
 | `#303` | S2 | Observe miss off UI-thread | **DONE** @ RFC-0190: miss → background streaming hash; no full buffer; admit full-hash | durability (#304) |
-| `#304` | S2 | Reachability durability honesty | crash-safer replay+state **або** docs обмежують «атомарно» до реальної гарантії | RFC close (#305) |
+| `#304` | S2 | Reachability durability honesty | **DONE** @ RFC-0191: docs — replay before state; no joint atomic pair | RFC close (#305) |
 | `#305` | S | RFC-0182 + close | consolidating RFC-0182; QUEUE S closed; no OPEN S atoms | — |
 
 ```text
@@ -121,8 +121,8 @@ S0 Wiring (план у QUEUE + living smoke; RFC-0182 reserved)
             → #301 S2 CTA Stop→Start DONE @ RFC-0188
               → #302 S2 submit∥lifecycle DONE @ RFC-0189
                 → #303 S2 observe off-UI DONE @ RFC-0190
-                  → #304 S2 durability honesty (first OPEN)
-                    → #305 S close RFC-0182
+                  → #304 S2 durability honesty DONE @ RFC-0191
+                    → #305 S close RFC-0182 (first OPEN)
 ```
 
 **Anti-merge:** не зливати key-bound admission з dial UX; не зливати Help-boundary з dial implementation; не зливати observe UI з admission hash policy.

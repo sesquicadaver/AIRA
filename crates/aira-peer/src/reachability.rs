@@ -395,6 +395,9 @@ pub fn load_reachability_replay(
 }
 
 /// Persist challenge-id replay log.
+///
+/// Single-file overwrite via `fs::write` (not temp+rename). Not jointly atomic
+/// with [`crate::reachability_state::ReachabilityLocalState::save`] (`#304`).
 pub fn save_reachability_replay(
     root: impl AsRef<Path>,
     log: &ReachabilityReplayLog,
