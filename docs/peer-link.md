@@ -204,6 +204,10 @@ Transcript domain v2 binds **endpoint + INBOUND** proof direction; probe must be
 
 `apply_successful_probe` requires challenge target = current root identity, durable `peers/reachability_replay.json`, and apply-time freshness (`REACHABILITY_APPLY_MAX_SKEW_SECS`; challenge not expired at apply) — RFC-0170.
 
+## Phase S reachability key-bound admission (`#296`)
+
+In addition to `#281`, `target_public_key` must equal the authoritative root-scoped local verifying key. Same identity string with a foreign embedded key is rejected (`#296` / RFC-0183); state and replay stay unchanged.
+
 ## Phase N-fix expiry before promote (`#251`)
 
 Expired Presence cannot enter AddressBook via promote / `discover_admit_promote`, even when `query_identity` still returns the row (RFC-0143).

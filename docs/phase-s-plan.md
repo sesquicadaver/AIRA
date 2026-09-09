@@ -1,6 +1,6 @@
 # Phase S — Cross-boundary integrity & connect honesty (post-R)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-09; wiring `#295` **DONE**; first OPEN `#296`).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-09; wiring `#295` **DONE**; `#296` **DONE** @ RFC-0183; first OPEN `#297`).  
 **Джерела:** post-R audit `aira-current.md` @ `e5aee86` (2026-09-09; merge PR #257 / RFC-0174); Phase R [`phase-r-plan.md`](phase-r-plan.md) **DONE** @ RFC-0174; QUEUE R closed; Phase Q [`phase-q-plan.md`](phase-q-plan.md) **DONE** @ RFC-0164; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase S `#295`–`#305`.  
 **Closure:** consolidating **RFC-0182** (id **confirmed free** 2026-09-09; file-free until `#305`).  
@@ -100,7 +100,7 @@ S0 Wiring (план у QUEUE + living smoke; RFC-0182 reserved)
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
 | `#295` | S0 | Phase S wiring | **DONE**: план IN PROGRESS; QUEUE `#295`–`#305`; `phase_s_doc`; tips; RFC-0182 reserved file-free | reach key (#296) |
-| `#296` | S1 | Reachability key-bound admission | reject same-ID / foreign-key import; verify vs root keyring; negative test | model reopen (#297) |
+| `#296` | S1 | Reachability key-bound admission | **DONE** @ RFC-0183: reject same-ID / foreign-key import; verify vs root keyring; negative test | model reopen (#297) |
 | `#297` | S1 | Model descriptor root-scoped verify | descriptor+payload verify після cold reopen без global keyring priming; тест | identity pair (#298) |
 | `#298` | S1 | Identity incomplete-pair fail-closed | mint лише якщо **обох** файлів немає; partial → error; secret perms fail-closed | Help boundary (#299) |
 | `#299` | S1 | Connect Help boundary honesty | Help/CTA EN+UK: setup ≠ remote session; loopback ≠ peer dial address | dial path (#300) |
@@ -113,8 +113,8 @@ S0 Wiring (план у QUEUE + living smoke; RFC-0182 reserved)
 
 ```text
 #295 S0 wiring DONE
-  → #296 S1 reachability key-bound (first OPEN)
-    → #297 S1 model descriptor reopen
+  → #296 S1 reachability key-bound DONE @ RFC-0183
+    → #297 S1 model descriptor reopen (first OPEN)
       → #298 S1 identity incomplete-pair
         → #299 S1 Help connect boundary
           → #300 S1 opt-in dial/session
