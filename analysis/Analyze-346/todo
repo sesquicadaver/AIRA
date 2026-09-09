@@ -1,0 +1,3 @@
+- [x] quit_arm_policy + quit_followup_after_submit
+- [x] request_quit / poll_submit wiring + UI copy
+- [x] docs + RFC-0196 + tip #311
