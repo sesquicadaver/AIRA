@@ -2,6 +2,7 @@
 //!
 //! Does **not** apply reachability DIRECT / invent CONNECTED from setup alone.
 //! Public bind stays out of scope — callers supply an explicit dial address.
+//! Phase T `#307`: evidence is last-check history; never invents `live_session_count`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -16,7 +17,7 @@ use time::OffsetDateTime;
 /// Schema id for persisted Desktop dial evidence.
 pub const DIAL_SESSION_EVIDENCE_SCHEMA_ID: &str = "aira:schema:desktop:dial-session-evidence:0.1";
 
-/// How long a confirmed dial counts as an observed live session for mesh projection.
+/// How long a confirmed dial remains shown as **last handshake history** (not a live session).
 pub const DIAL_EVIDENCE_FRESH_SECS: u64 = 300;
 
 /// Durable record of one confirmed authenticated dial (Noise XX completed).
@@ -275,12 +276,41 @@ mod tests {
         assert_ne!(reach.status, aira_peer::ReachabilityStatus::DirectReachable);
 
         let snap = crate::load_network_mesh_snapshot(probe.path(), None).unwrap();
-        assert_eq!(snap.live_session_count, Some(1));
+        // `#307`: closed dial is history, not a live session.
+        assert_eq!(snap.live_session_count, None);
         assert!(snap
             .last_confirmed_handshake
             .as_deref()
             .unwrap()
             .contains(tid.as_str()));
         assert_ne!(snap.top_level, "DIRECT");
+        let sys = crate::load_system_snapshot(probe.path(), None).unwrap();
+        assert_eq!(
+            sys.live_sessions_quality,
+            crate::DataQuality::Unknown,
+            "handshake history must not mark live sessions Current"
+        );
+    }
+
+    #[test]
+    fn fresh_dial_evidence_is_history_not_live_count() {
+        let dir = tempdir().unwrap();
+        let _ = write_node(dir.path(), "hist", [33u8; 32]);
+        let now = OffsetDateTime::now_utc()
+            .format(&Rfc3339)
+            .unwrap_or_else(|_| "1970-01-01T00:00:00Z".into());
+        let ev = DialSessionEvidence {
+            schema: DIAL_SESSION_EVIDENCE_SCHEMA_ID.into(),
+            peer_id: "aira:identity:peer".into(),
+            local_id: "aira:identity:hist".into(),
+            bound_endpoint: "127.0.0.1:49157".into(),
+            noise_handshake_hash_hex: "abcd".repeat(8),
+            direction: "OUTBOUND".into(),
+            confirmed_at: now,
+        };
+        ev.save(dir.path()).unwrap();
+        let snap = crate::load_network_mesh_snapshot(dir.path(), None).unwrap();
+        assert_eq!(snap.live_session_count, None);
+        assert!(snap.last_confirmed_handshake.is_some());
     }
 }
