@@ -3,6 +3,7 @@
 //! Does **not** apply reachability DIRECT / invent CONNECTED from setup alone.
 //! Public bind stays out of scope — callers supply an explicit dial address.
 //! Phase T `#307`: evidence is last-check history; never invents `live_session_count`.
+//! Phase T `#311`: candidate AddressBook upsert is rolled back if dial fails.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -102,9 +103,14 @@ pub struct DialOutcome {
     pub evidence: DialSessionEvidence,
 }
 
-/// Opt-in dial: require trust + **explicit** address, upsert AddressBook, dial, persist evidence.
+/// Opt-in dial: require trust + **explicit** address, trial-upsert AddressBook, dial,
+/// persist evidence.
 ///
-/// Does not mutate reachability DIRECT state. Fail-closed on empty identity/addr or untrusted peer.
+/// Phase T `#311`: the AddressBook write is a **candidate** for this attempt. On dial
+/// failure the prior book is restored (so a known-good address A is not silently
+/// replaced by a failed trial B). On success the candidate remains dial authority.
+/// Does not mutate reachability DIRECT state. Fail-closed on empty identity/addr or
+/// untrusted peer.
 pub fn run_opt_in_peer_dial(
     root: impl AsRef<Path>,
     peer_identity_id: &str,
@@ -131,7 +137,9 @@ pub fn run_opt_in_peer_dial(
         bail!("peer {peer_id} is not trusted — import invite / admit trust first");
     }
 
-    let mut book = AddressBook::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+    // Snapshot authority before the trial upsert (`#311`).
+    let prior_book = AddressBook::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let mut book = prior_book.clone();
     book.upsert(peer_id, addr)
         .map_err(|e| anyhow::anyhow!("address book upsert: {e}"))?;
     book.save(root)
@@ -139,12 +147,25 @@ pub fn run_opt_in_peer_dial(
 
     let root_buf = root.to_path_buf();
     let peer_owned = peer_id.to_string();
-    let session = tokio::runtime::Builder::new_current_thread()
+    let session = match tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .context("tokio runtime for peer dial")?
         .block_on(async move { aira_peer::dial(&root_buf, &peer_owned).await })
-        .map_err(|e| anyhow::anyhow!("dial failed: {e}"))?;
+    {
+        Ok(s) => s,
+        Err(e) => {
+            // Restore pre-attempt book; keep dial failure as the primary error.
+            if let Err(rb) = prior_book.save(root) {
+                return Err(anyhow::anyhow!(
+                    "dial failed: {e}; address book rollback failed: {rb}"
+                ));
+            }
+            return Err(anyhow::anyhow!(
+                "dial failed: {e} (address book restored to pre-attempt authority)"
+            ));
+        }
+    };
 
     let confirmed_at = OffsetDateTime::now_utc()
         .format(&Rfc3339)
@@ -312,5 +333,58 @@ mod tests {
         let snap = crate::load_network_mesh_snapshot(dir.path(), None).unwrap();
         assert_eq!(snap.live_session_count, None);
         assert!(snap.last_confirmed_handshake.is_some());
+    }
+
+    /// `#311`: failed trial dial must not leave candidate B as AddressBook authority.
+    #[test]
+    fn failed_dial_restores_prior_address_book() {
+        let dir = tempdir().unwrap();
+        let (_lid, _) = write_node(dir.path(), "probe", [41u8; 32]);
+        let peer = "aira:identity:peer311";
+        admit_peer_trust(dir.path(), peer, &"aa".repeat(32)).unwrap();
+
+        let known = "127.0.0.1:49157";
+        let mut book = AddressBook::default();
+        book.upsert(peer, known).unwrap();
+        book.save(dir.path()).unwrap();
+
+        // Unreachable candidate (no listener); still a valid P_AIRA port.
+        let candidate = "127.0.0.1:49171";
+        let err = run_opt_in_peer_dial(dir.path(), peer, candidate).unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("dial failed"), "{msg}");
+        assert!(
+            msg.contains("address book restored"),
+            "rollback should be explicit in error: {msg}"
+        );
+
+        let restored = AddressBook::load(dir.path()).unwrap();
+        assert_eq!(
+            restored.as_map().get(peer).map(String::as_str),
+            Some(known),
+            "known address A must survive failed candidate B"
+        );
+        assert!(
+            !DialSessionEvidence::path(dir.path()).is_file(),
+            "failed dial must not write handshake evidence"
+        );
+    }
+
+    /// `#311`: first-time peer with no prior entry is removed after failed dial.
+    #[test]
+    fn failed_dial_removes_new_candidate_when_no_prior() {
+        let dir = tempdir().unwrap();
+        let _ = write_node(dir.path(), "probe", [42u8; 32]);
+        let peer = "aira:identity:peer311new";
+        admit_peer_trust(dir.path(), peer, &"bb".repeat(32)).unwrap();
+
+        let err = run_opt_in_peer_dial(dir.path(), peer, "127.0.0.1:49171").unwrap_err();
+        assert!(err.to_string().contains("address book restored"));
+
+        let book = AddressBook::load(dir.path()).unwrap();
+        assert!(
+            book.as_map().get(peer).is_none(),
+            "failed first dial must not leave orphan AddressBook entry"
+        );
     }
 }
