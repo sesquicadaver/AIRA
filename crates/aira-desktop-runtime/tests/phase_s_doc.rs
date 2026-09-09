@@ -24,8 +24,9 @@ fn phase_s_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE R closed",
-        "first OPEN `#297`",
-        "#296",
+        "first OPEN `#298`",
+        "#297",
+        "RFC-0184",
         "GPU marketplace",
         "Calculate 2 + 2",
         "public bind",
@@ -43,35 +44,36 @@ fn phase_s_plan_present() {
 }
 
 #[test]
-fn phase_s_queue_296_done_297_open() {
+fn phase_s_queue_297_done_298_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-s-plan.md"));
     assert!(text.contains("| 295 | **DONE**"), "QUEUE #295 must be DONE");
     assert!(text.contains("| 296 | **DONE**"), "QUEUE #296 must be DONE");
+    assert!(text.contains("| 297 | **DONE**"), "QUEUE #297 must be DONE");
     assert!(
-        !text.contains("| 296 | **OPEN**"),
-        "QUEUE #296 must not stay OPEN"
+        !text.contains("| 297 | **OPEN**"),
+        "QUEUE #297 must not stay OPEN"
     );
     assert!(
-        text.contains("| 297 | **OPEN**"),
-        "QUEUE #297 must be first OPEN"
+        text.contains("| 298 | **OPEN**"),
+        "QUEUE #298 must be first OPEN"
     );
-    for n in 298..=305 {
+    for n in 299..=305 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-332",
-        "RFC-0183",
+        "Analyze-333",
+        "RFC-0184",
         "RFC-0182",
-        "first OPEN `#297`",
-        "#296",
+        "first OPEN `#298`",
+        "#297",
         "QUEUE R closed",
         "desktop-ux.md",
         "Cross-boundary integrity",
-        "key-bound",
+        "descriptor",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
@@ -82,10 +84,10 @@ fn phase_s_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-s-plan.md",
-        "#296",
-        "first OPEN `#297`",
+        "#297",
+        "first OPEN `#298`",
         "RFC-0182",
-        "RFC-0183",
+        "RFC-0184",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
@@ -116,6 +118,20 @@ fn phase_s_rfc_0183_present() {
 }
 
 #[test]
+fn phase_s_rfc_0184_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0184-model-descriptor-root-scoped-verify.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0184 missing");
+    for needle in [
+        "#297",
+        "ArtifactDescriptor",
+        "bind_thread_crypto",
+        "RFC-0182",
+    ] {
+        assert!(text.contains(needle), "RFC-0184 missing: {needle}");
+    }
+}
+
+#[test]
 fn phase_s_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-s-plan.md") || readme.contains("Phase S"));
@@ -128,17 +144,17 @@ fn phase_s_readme_and_docs_index() {
 fn phase_s_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-s-plan.md") || text.contains("Phase S"));
-    assert!(text.contains("#297") || text.contains("перший OPEN"));
+    assert!(text.contains("#298") || text.contains("перший OPEN"));
 }
 
 #[test]
 fn phase_s_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #296 |") || status.contains("#296"));
+    assert!(status.contains("| #297 |") || status.contains("#297"));
     assert!(status.contains("phase_s_doc.rs"));
     assert!(status.contains("phase-s-plan.md"));
-    assert!(status.contains("RFC-0183") || status.contains("0183"));
+    assert!(status.contains("RFC-0184") || status.contains("0184"));
 }
 
 #[test]
@@ -155,6 +171,21 @@ fn phase_s_key_bound_module_present() {
             text.contains(needle),
             "reachability_state missing: {needle}"
         );
+    }
+}
+
+#[test]
+fn phase_s_descriptor_reopen_module_present() {
+    let text =
+        std::fs::read_to_string(repo_root().join("crates/aira-flow/src/activate_gate.rs")).unwrap();
+    for needle in [
+        "#297",
+        "bind_thread_crypto",
+        "verification_crypto",
+        "AIRA_297_REOPEN_CHILD",
+        "install_disk_identity_activate_fixture",
+    ] {
+        assert!(text.contains(needle), "activate_gate missing: {needle}");
     }
 }
 
