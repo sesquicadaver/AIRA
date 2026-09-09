@@ -23,7 +23,9 @@ fn phase_t_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE S closed",
-        "first OPEN `#312`",
+        "QUEUE T closed",
+        "no OPEN T atoms",
+        "**DONE** @",
         "RFC-0193",
         "RFC-0194",
         "RFC-0195",
@@ -43,16 +45,16 @@ fn phase_t_plan_present() {
         "phase-t-plan must be activated (not НЕ АКТИВОВАНО)"
     );
     assert!(
-        text.contains("IN PROGRESS") || text.contains("**IN PROGRESS**"),
-        "phase-t-plan must be IN PROGRESS after wiring"
+        !text.contains("first OPEN `#312`"),
+        "phase-t-plan must not keep #312 as first-OPEN after close"
     );
 }
 
 #[test]
-fn phase_t_queue_311_done_312_open() {
+fn phase_t_queue_all_done() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-t-plan.md"));
-    for n in 306..=311 {
+    for n in 306..=312 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
@@ -62,17 +64,12 @@ fn phase_t_queue_311_done_312_open() {
             "QUEUE #{n} must not stay OPEN"
         );
     }
-    assert!(
-        text.contains("| 312 | **OPEN**"),
-        "QUEUE #312 must be first OPEN"
-    );
     for needle in [
-        "Analyze-347",
-        "RFC-0197",
-        "RFC-0196",
+        "Analyze-348",
         "RFC-0192",
-        "first OPEN `#312`",
-        "#311",
+        "RFC-0197",
+        "QUEUE T closed",
+        "no OPEN T atoms",
         "QUEUE S closed",
         "desktop-ux.md",
         "Operation lifecycle",
@@ -80,6 +77,10 @@ fn phase_t_queue_311_done_312_open() {
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
+    assert!(
+        !text.contains("first OPEN `#312`"),
+        "QUEUE must not keep #312 as first-OPEN after close"
+    );
 }
 
 #[test]
@@ -87,28 +88,34 @@ fn phase_t_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-t-plan.md",
-        "#311",
-        "first OPEN `#312`",
+        "#312",
         "RFC-0192",
+        "QUEUE T closed",
+        "no OPEN T atoms",
         "RFC-0197",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
+    assert!(
+        !text.contains("first OPEN `#312`"),
+        "desktop-ux must not keep #312 as first-OPEN after close"
+    );
 }
 
 #[test]
-fn phase_t_rfc_0192_file_free() {
-    let rfc_dir = repo_root().join("specs/rfc");
-    let hits: Vec<_> = std::fs::read_dir(&rfc_dir)
-        .unwrap()
-        .filter_map(|e| e.ok())
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.contains("RFC-0192") || n.contains("rfc-0192"))
-        .collect();
-    assert!(
-        hits.is_empty(),
-        "RFC-0192 must stay file-free until #312; found {hits:?}"
-    );
+fn phase_t_rfc_0192_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0192-phase-t-operation-lifecycle-honesty.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0192 missing");
+    for needle in [
+        "#312",
+        "QUEUE T closed",
+        "no OPEN T atoms",
+        "RFC-0197",
+        "RFC-0193",
+        "Operation lifecycle",
+    ] {
+        assert!(text.contains(needle), "RFC-0192 missing: {needle}");
+    }
 }
 
 #[test]
@@ -229,20 +236,28 @@ fn phase_t_dial_off_ui_module_present() {
 fn phase_t_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-t-plan.md") || readme.contains("Phase T"));
+    assert!(readme.contains("QUEUE T closed") || readme.contains("RFC-0192"));
+    assert!(
+        !readme.contains("first OPEN `#312`"),
+        "README must not keep #312 as first-OPEN after close"
+    );
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-t-plan.md"));
-    assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
-    assert!(docs.contains("first OPEN `#312`") || docs.contains("#312"));
+    assert!(docs.contains("QUEUE T closed") || docs.contains("**DONE** @ RFC-0192"));
+    assert!(
+        !docs.contains("first OPEN `#312`"),
+        "docs/README must not keep #312 as first-OPEN after close"
+    );
 }
 
 #[test]
 fn phase_t_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-t-plan.md") || text.contains("Phase T"));
-    assert!(text.contains("#312") || text.contains("перший OPEN"));
+    assert!(text.contains("QUEUE T closed") || text.contains("RFC-0192"));
     assert!(
-        !text.contains("перший OPEN `#311`") && !text.contains("first OPEN `#311`"),
-        "NEXT_PROBLEM must not keep #311 as first-OPEN after close"
+        !text.contains("перший OPEN `#312`") && !text.contains("first OPEN `#312`"),
+        "NEXT_PROBLEM must not keep #312 as first-OPEN after close"
     );
 }
 
@@ -250,10 +265,11 @@ fn phase_t_next_problem() {
 fn phase_t_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #311 |") || status.contains("#311"));
+    assert!(status.contains("| #312 |") || status.contains("#312"));
     assert!(status.contains("phase_t_doc.rs"));
     assert!(status.contains("phase-t-plan.md"));
-    assert!(status.contains("RFC-0197") || status.contains("0197"));
+    assert!(status.contains("RFC-0192") || status.contains("0192"));
+    assert!(status.contains("QUEUE T closed"));
 }
 
 #[test]
@@ -276,10 +292,8 @@ fn phase_t_help_connect_last_check() {
         );
         let has_off_ui = text.contains("off the UI thread") || text.contains("поза UI-потоком");
         assert!(has_off_ui, "{rel} must state dial is off UI-thread (#308)");
-        let has_rollback = text.contains("restores")
-            || text.contains("AddressBook")
-            || text.contains("відновлює")
-            || text.contains("AddressBook");
+        let has_rollback =
+            text.contains("restores") || text.contains("AddressBook") || text.contains("відновлює");
         assert!(
             has_rollback,
             "{rel} must mention AddressBook restore on failed dial (#311)"
