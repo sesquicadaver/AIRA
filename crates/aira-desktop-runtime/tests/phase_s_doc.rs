@@ -24,9 +24,9 @@ fn phase_s_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE R closed",
-        "first OPEN `#298`",
-        "#297",
-        "RFC-0184",
+        "first OPEN `#299`",
+        "#298",
+        "RFC-0185",
         "GPU marketplace",
         "Calculate 2 + 2",
         "public bind",
@@ -44,36 +44,39 @@ fn phase_s_plan_present() {
 }
 
 #[test]
-fn phase_s_queue_297_done_298_open() {
+fn phase_s_queue_298_done_299_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-s-plan.md"));
-    assert!(text.contains("| 295 | **DONE**"), "QUEUE #295 must be DONE");
-    assert!(text.contains("| 296 | **DONE**"), "QUEUE #296 must be DONE");
-    assert!(text.contains("| 297 | **DONE**"), "QUEUE #297 must be DONE");
+    for n in 295..=298 {
+        assert!(
+            text.contains(&format!("| {n} | **DONE**")),
+            "QUEUE #{n} must be DONE"
+        );
+    }
     assert!(
-        !text.contains("| 297 | **OPEN**"),
-        "QUEUE #297 must not stay OPEN"
+        !text.contains("| 298 | **OPEN**"),
+        "QUEUE #298 must not stay OPEN"
     );
     assert!(
-        text.contains("| 298 | **OPEN**"),
-        "QUEUE #298 must be first OPEN"
+        text.contains("| 299 | **OPEN**"),
+        "QUEUE #299 must be first OPEN"
     );
-    for n in 299..=305 {
+    for n in 300..=305 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-333",
-        "RFC-0184",
+        "Analyze-334",
+        "RFC-0185",
         "RFC-0182",
-        "first OPEN `#298`",
-        "#297",
+        "first OPEN `#299`",
+        "#298",
         "QUEUE R closed",
         "desktop-ux.md",
         "Cross-boundary integrity",
-        "descriptor",
+        "incomplete",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
@@ -84,10 +87,10 @@ fn phase_s_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-s-plan.md",
-        "#297",
-        "first OPEN `#298`",
+        "#298",
+        "first OPEN `#299`",
         "RFC-0182",
-        "RFC-0184",
+        "RFC-0185",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
@@ -132,6 +135,15 @@ fn phase_s_rfc_0184_present() {
 }
 
 #[test]
+fn phase_s_rfc_0185_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0185-identity-incomplete-pair-fail-closed.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0185 missing");
+    for needle in ["#298", "incomplete", "local.ed25519", "RFC-0182"] {
+        assert!(text.contains(needle), "RFC-0185 missing: {needle}");
+    }
+}
+
+#[test]
 fn phase_s_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-s-plan.md") || readme.contains("Phase S"));
@@ -144,17 +156,17 @@ fn phase_s_readme_and_docs_index() {
 fn phase_s_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-s-plan.md") || text.contains("Phase S"));
-    assert!(text.contains("#298") || text.contains("перший OPEN"));
+    assert!(text.contains("#299") || text.contains("перший OPEN"));
 }
 
 #[test]
 fn phase_s_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #297 |") || status.contains("#297"));
+    assert!(status.contains("| #298 |") || status.contains("#298"));
     assert!(status.contains("phase_s_doc.rs"));
     assert!(status.contains("phase-s-plan.md"));
-    assert!(status.contains("RFC-0184") || status.contains("0184"));
+    assert!(status.contains("RFC-0185") || status.contains("0185"));
 }
 
 #[test]
@@ -186,6 +198,21 @@ fn phase_s_descriptor_reopen_module_present() {
         "install_disk_identity_activate_fixture",
     ] {
         assert!(text.contains(needle), "activate_gate missing: {needle}");
+    }
+}
+
+#[test]
+fn phase_s_identity_incomplete_pair_module_present() {
+    let text =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop-runtime/src/bootstrap.rs"))
+            .unwrap();
+    for needle in [
+        "#298",
+        "identity incomplete",
+        "write_secret_create_new",
+        "incomplete_identity_pair_is_fail_closed",
+    ] {
+        assert!(text.contains(needle), "bootstrap missing: {needle}");
     }
 }
 

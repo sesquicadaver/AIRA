@@ -61,21 +61,29 @@ pub fn read_local_identity_id(root: &Path) -> Result<Option<String>> {
 
 fn ensure_local_identity(root: &Path) -> Result<()> {
     let np = NodePaths::new(root);
-    if np.identity_json().is_file() && np.identity_key().is_file() {
-        return Ok(());
+    let has_json = np.identity_json().is_file();
+    let has_key = np.identity_key().is_file();
+    match (has_json, has_key) {
+        (true, true) => return Ok(()),
+        (false, false) => {}
+        (true, false) => anyhow::bail!(
+            "identity incomplete: local.identity.json present without local.ed25519 (#298)"
+        ),
+        (false, true) => anyhow::bail!(
+            "identity incomplete: local.ed25519 present without local.identity.json (#298)"
+        ),
     }
+
     let mut rng = OsRng;
     let signing = SigningKey::generate(&mut rng);
     let verifying: VerifyingKey = signing.verifying_key();
     let secret_hex = hex::encode(signing.to_bytes());
     let public_hex = hex::encode(verifying.to_bytes());
     fs::create_dir_all(np.identity_dir())?;
-    fs::write(np.identity_key(), format!("{secret_hex}\n"))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = fs::set_permissions(np.identity_key(), fs::Permissions::from_mode(0o600));
-    }
+
+    // Mint only on empty pair: refuse overwrite / concurrent create (#298).
+    write_secret_create_new(&np.identity_key(), &format!("{secret_hex}\n"))?;
+
     // Install-scoped unique ID; display_name stays "desktop" (#276).
     // Existing roots that already have identity files keep their ID (no silent migration).
     let identity_id = new_desktop_identity_id();
@@ -95,12 +103,51 @@ fn ensure_local_identity(root: &Path) -> Result<()> {
         "key_path": "identity/local.ed25519",
         "signature": sig
     });
-    fs::write(np.identity_json(), serde_json::to_string_pretty(&desc)?)?;
+    write_json_create_new(&np.identity_json(), &serde_json::to_string_pretty(&desc)?)?;
+
     let mut ring = aira_object::Keyring::with_local_test();
     ring.insert_signing(id_ref.clone(), signing);
     aira_object::register_keyring(&ring);
     aira_object::set_primary_signer(id_ref);
     let _ = aira_object::ensure_trust_defaults(root);
+    Ok(())
+}
+
+/// Create secret file only if absent; Unix mode 0o600 is required (fail-closed).
+fn write_secret_create_new(path: &Path, contents: &str) -> Result<()> {
+    use std::io::Write;
+    let mut opts = fs::OpenOptions::new();
+    opts.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.mode(0o600);
+    }
+    let mut f = opts
+        .open(path)
+        .with_context(|| format!("create identity secret {}", path.display()))?;
+    f.write_all(contents.as_bytes())
+        .with_context(|| format!("write identity secret {}", path.display()))?;
+    f.sync_all()
+        .with_context(|| format!("sync identity secret {}", path.display()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(path, fs::Permissions::from_mode(0o600))
+            .with_context(|| format!("chmod 0600 identity secret {}", path.display()))?;
+    }
+    Ok(())
+}
+
+fn write_json_create_new(path: &Path, contents: &str) -> Result<()> {
+    use std::io::Write;
+    let mut f = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .with_context(|| format!("create identity descriptor {}", path.display()))?;
+    f.write_all(contents.as_bytes())
+        .with_context(|| format!("write identity descriptor {}", path.display()))?;
     Ok(())
 }
 
@@ -218,5 +265,82 @@ mod tests {
             read_local_identity_id(&paths.data_root).unwrap().as_deref(),
             Some(LEGACY_DESKTOP_IDENTITY_ID)
         );
+    }
+
+    #[test]
+    fn incomplete_identity_pair_is_fail_closed() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = DesktopPaths::for_data_root(tmp.path().join("partial"));
+        paths.ensure_dirs().unwrap();
+        let np = NodePaths::new(&paths.data_root);
+        fs::create_dir_all(np.identity_dir()).unwrap();
+        let mut settings = load_or_create_settings(&paths).unwrap();
+
+        // Descriptor without secret → reject; must not mint a new pair.
+        let orphan_desc = serde_json::json!({
+            "identity_id": "aira:identity:desktop.partial-json",
+            "identity_type": "local",
+            "display_name": "desktop",
+            "public_key": {"algorithm": "ed25519", "key_hex": "11".repeat(32)},
+            "created_at": "2026-01-01T00:00:00Z",
+            "key_path": "identity/local.ed25519",
+            "signature": {
+                "algorithm": "ed25519",
+                "key_ref": "aira:identity:desktop.partial-json",
+                "signature_value": "22".repeat(64)
+            }
+        });
+        fs::write(
+            np.identity_json(),
+            serde_json::to_string_pretty(&orphan_desc).unwrap(),
+        )
+        .unwrap();
+        let err = ensure_bootstrap(&paths, &mut settings).unwrap_err();
+        assert!(
+            err.to_string().contains("#298") && err.to_string().contains("incomplete"),
+            "{err}"
+        );
+        assert!(
+            !np.identity_key().is_file(),
+            "must not mint secret over orphan json"
+        );
+        assert_eq!(
+            read_local_identity_id(&paths.data_root).unwrap().as_deref(),
+            Some("aira:identity:desktop.partial-json")
+        );
+
+        // Secret without descriptor → reject; must not mint a new descriptor/id.
+        fs::remove_file(np.identity_json()).unwrap();
+        fs::write(np.identity_key(), format!("{}\n", "33".repeat(32))).unwrap();
+        let err = ensure_bootstrap(&paths, &mut settings).unwrap_err();
+        assert!(
+            err.to_string().contains("#298") && err.to_string().contains("incomplete"),
+            "{err}"
+        );
+        assert!(
+            !np.identity_json().is_file(),
+            "must not mint descriptor over orphan secret"
+        );
+        let key_before = fs::read_to_string(np.identity_key()).unwrap();
+        assert_eq!(key_before.trim(), "33".repeat(32));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn minted_identity_secret_is_owner_rw_only() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = DesktopPaths::for_data_root(tmp.path().join("perms"));
+        paths.ensure_dirs().unwrap();
+        let mut settings = load_or_create_settings(&paths).unwrap();
+        ensure_bootstrap(&paths, &mut settings).unwrap();
+        let np = NodePaths::new(&paths.data_root);
+        let mode = fs::metadata(np.identity_key())
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(mode, 0o600, "identity secret must be 0600, got {mode:o}");
     }
 }
