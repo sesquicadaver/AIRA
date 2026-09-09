@@ -10,6 +10,8 @@
 //! `#278` verifies activate evidence against a **root-scoped** keyring
 //! (`Keyring::load_node_identity`), not the process-global ring — so Desktop
 //! reopen shows ready without test keyring priming.
+//! `#297` binds that same root-scoped ring for `CasArtifactStore::resolve` so
+//! node-signed `ArtifactDescriptor` (+ sidecar) verify without process priming.
 
 #[cfg(test)]
 use std::cell::Cell;
@@ -21,8 +23,8 @@ use aira_artifact::{ArtifactStore, CasArtifactStore};
 use aira_csu::support::{json_bytes, make_artifact};
 use aira_csu_execution_llm::{GenerateLocalPayload, ModelActivateGate, ACTIVATE_DENIED};
 use aira_object::{
-    is_cryptographic_signature, local_test_signature, utc_now_rfc3339, AiraRef, ContentHash,
-    Keyring, Signature,
+    bind_thread_crypto, is_cryptographic_signature, local_test_signature, utc_now_rfc3339, AiraRef,
+    ContentHash, Keyring, Signature, LOCAL_TEST_KEY_REF,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -243,6 +245,11 @@ impl ActivatedPointerGate {
             "activated evidence_artifact_id is not an aira ref (fail-closed; not VERIFIED)"
                 .to_string()
         })?;
+        // `#297`: `CasArtifactStore::open` admits on-disk descriptors via process/thread
+        // crypto; bind root keyring before open+resolve so cold reopen works without
+        // process priming.
+        let (ring, primary) = verification_crypto(&self.aira_root);
+        let _crypto = bind_thread_crypto(ring, primary);
         let store = CasArtifactStore::open(self.aira_root.join("artifacts")).map_err(|_| {
             "activated evidence store missing (fail-closed; not VERIFIED)".to_string()
         })?;
@@ -389,15 +396,24 @@ fn signing_bytes_without_signature(artifact: &Value) -> Result<Vec<u8>, String> 
     serde_json::to_vec(&Value::Object(body)).map_err(|_| ACTIVATE_DENIED.to_string())
 }
 
-/// Keyring used to verify activate evidence for this `.aira` root (`#278`).
+/// Keyring + primary used to verify activate evidence for this `.aira` root (`#278` / `#297`).
 ///
-/// Prefer on-disk node identity; fall back to local-test-only ring for fixtures
-/// that never wrote `identity/`. Does **not** mutate the process-global keyring.
-fn verification_keyring(aira_root: &Path) -> Keyring {
+/// Prefer on-disk node identity (already includes local-test for fixture descriptors);
+/// fall back to local-test-only ring for roots that never wrote `identity/`.
+/// Does **not** mutate the process-global keyring.
+fn verification_crypto(aira_root: &Path) -> (Keyring, AiraRef) {
     match Keyring::load_node_identity(aira_root) {
-        Ok((_, ring)) => ring,
-        Err(_) => Keyring::with_local_test(),
+        Ok((id, ring)) => (ring, id),
+        Err(_) => (
+            Keyring::with_local_test(),
+            AiraRef::parse(LOCAL_TEST_KEY_REF).expect("local-test ref"),
+        ),
     }
+}
+
+/// Keyring used to verify activate evidence payload for this `.aira` root (`#278`).
+fn verification_keyring(aira_root: &Path) -> Keyring {
+    verification_crypto(aira_root).0
 }
 
 fn verify_activate_evidence(
@@ -700,8 +716,9 @@ mod tests {
         assert_eq!(take_full_weight_hash_count(), 0);
     }
 
-    /// Write install-scoped identity on disk and activate fixture signed by that
-    /// key **without** registering it into the process keyring (`#278`).
+    /// Write install-scoped identity on disk and activate fixture where **both**
+    /// payload and `ArtifactDescriptor` are signed by that node identity **without**
+    /// registering it into the process keyring (`#278` / `#297`).
     fn install_disk_identity_activate_fixture(root: &Path) -> (ActivatedPointerGate, String) {
         use ed25519_dalek::SigningKey;
         use rand::rngs::OsRng;
@@ -747,11 +764,14 @@ mod tests {
             content_hash.as_str(),
         );
         let raw = serde_json::to_vec(&Value::Object(body.clone())).unwrap();
-        // Sign from disk ring only — never register_keyring / set_primary_signer.
+        // Sign payload + descriptor from disk ring only — never register_keyring /
+        // set_primary_signer on the process slots.
         let (loaded_id, ring) = Keyring::load_node_identity(root).unwrap();
         assert_eq!(loaded_id.as_str(), identity_id.as_str());
         let sig = ring.sign(&loaded_id, &raw).unwrap();
+        let _publish_crypto = bind_thread_crypto(ring.clone(), loaded_id.clone());
         let evidence_id = publish_activate_evidence_signed(root, body, sig).unwrap();
+        drop(_publish_crypto);
         let pointer = json!({
             "updated_at": "2026-09-08T00:00:00Z",
             "model_ref": model_ref,
@@ -790,8 +810,9 @@ mod tests {
     #[test]
     fn observe_ready_after_reopen_without_process_keyring_priming() {
         // Child process: fresh process keyring (local-test only) + on-disk identity.
-        if std::env::var_os("AIRA_278_REOPEN_CHILD").is_some() {
-            let root = std::env::var("AIRA_278_REOPEN_ROOT").expect("AIRA_278_REOPEN_ROOT");
+        // Fixture signs **descriptor and payload** with the node identity (#297).
+        if std::env::var_os("AIRA_297_REOPEN_CHILD").is_some() {
+            let root = std::env::var("AIRA_297_REOPEN_ROOT").expect("AIRA_297_REOPEN_ROOT");
             // Deliberately do not call reset_primary_signer / register_node_identity.
             assert_eq!(
                 aira_object::primary_signer().as_str(),
@@ -811,8 +832,8 @@ mod tests {
         // reads before parent drops `dir`.
         let exe = std::env::current_exe().expect("current_exe");
         let status = std::process::Command::new(&exe)
-            .env("AIRA_278_REOPEN_CHILD", "1")
-            .env("AIRA_278_REOPEN_ROOT", &root)
+            .env("AIRA_297_REOPEN_CHILD", "1")
+            .env("AIRA_297_REOPEN_ROOT", &root)
             .env("RUST_TEST_THREADS", "1")
             .args([
                 "--exact",
