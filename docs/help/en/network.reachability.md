@@ -13,7 +13,7 @@ Reachability is the **last observed** mesh conclusion: direct, relayed, outbound
 
 ## What should happen?
 
-You see an honest conclusion. AddressBook rows are not counted as live sessions. UNKNOWN is not OFFLINE. Strip Network language agrees with Connection.
+You see an honest conclusion. AddressBook rows are not counted as live sessions. UNKNOWN is not OFFLINE. Strip Network language agrees with Connection. Finishing the connect **setup** steps does not invent a remote session; loopback listen is not a peer dial target (help:network.connect).
 
 ## If it failed?
 
@@ -24,6 +24,6 @@ You see an honest conclusion. AddressBook rows are not counted as live sessions.
 
 ## Related
 
-- help:network.connect — invite → profile → restart scenario
+- help:network.connect — invite → profile → restart **setup** (setup ≠ remote; loopback ≠ dial)
 - help:network.trust — trust vs discovery
 - help:node.lifecycle — Start / Stop / Refresh

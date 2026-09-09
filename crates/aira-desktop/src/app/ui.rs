@@ -669,6 +669,15 @@ impl AiraDesktopApp {
                 None => l.sys_live_unobserved.to_string(),
             });
         });
+        // Phase S `#299`: always-visible Connection boundary (setup ≠ remote; loopback ≠ dial).
+        let boundary = ui.label(
+            egui::RichText::new(l.conn_boundary_guidance)
+                .size(12.0)
+                .color(ui.visuals().weak_text_color()),
+        );
+        if boundary.hovered() {
+            self.note_help_focus(HelpId::NetworkConnect);
+        }
         // Phase R `#293`: one guidance line for P0 + empty book (no fake Applied/CONNECTED).
         if crate::cold_start::is_cold_start_empty_profile(
             self.settings.network_profile,

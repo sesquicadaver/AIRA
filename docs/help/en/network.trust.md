@@ -12,7 +12,7 @@ Trust decides whom you accept as a participant. Discovery alone is not trust. De
 
 ## What should happen?
 
-**DISCOVERED** is not **TRUSTED**. Imported invites appear in trust / address-book tooling without inventing live sessions. Connection may show **Import invite…** as the next step when the book is empty.
+**DISCOVERED** is not **TRUSTED**. Imported invites appear in trust / address-book tooling without inventing live sessions. Connection may show **Import invite…** as the next step when the book is empty. Completing invite import is setup of trust — not proof of a live remote session (see help:network.connect boundary).
 
 ## If it failed?
 
@@ -20,6 +20,6 @@ If import fails, check the invite file or QR and retry. Reachability problems ar
 
 ## Related
 
-- help:network.connect — invite → profile → restart scenario
+- help:network.connect — invite → profile → restart **setup** (setup ≠ remote session; loopback ≠ dial)
 - help:network.reachability — observed sessions vs book
 - help:settings.apply — when settings need restart

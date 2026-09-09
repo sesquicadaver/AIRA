@@ -13,7 +13,7 @@
 
 ## Що має відбутися?
 
-Чесний висновок. Рядки AddressBook не рахуються як живі сесії. UNKNOWN ≠ OFFLINE. Мова мережі в рядку стану узгоджена зі З’єднанням.
+Чесний висновок. Рядки AddressBook не рахуються як живі сесії. UNKNOWN ≠ OFFLINE. Мова мережі в рядку стану узгоджена зі З’єднанням. Завершення кроків **налаштування** з’єднання не вигадує віддалену сесію; loopback listen — не dial-адреса peer (help:network.connect).
 
 ## Що робити, якщо не вдалося?
 
@@ -24,6 +24,6 @@
 
 ## Пов'язані теми
 
-- help:network.connect — сценарій invite → профіль → перезапуск
+- help:network.connect — сценарій invite → профіль → перезапуск (**налаштування**; setup ≠ remote; loopback ≠ dial)
 - help:network.trust — довіра vs discovery
 - help:node.lifecycle — Старт / Стоп / Оновити
