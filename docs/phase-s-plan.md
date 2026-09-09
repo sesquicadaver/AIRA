@@ -1,9 +1,9 @@
 # Phase S — Cross-boundary integrity & connect honesty (post-R)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-09; wiring `#295` **DONE**; `#296` **DONE** @ RFC-0183; `#297` **DONE** @ RFC-0184; `#298` **DONE** @ RFC-0185; `#299` **DONE** @ RFC-0186; `#300` **DONE** @ RFC-0187; `#301` **DONE** @ RFC-0188; `#302` **DONE** @ RFC-0189; `#303` **DONE** @ RFC-0190; `#304` **DONE** @ RFC-0191; first OPEN `#305`).  
+**Статус:** **DONE** @ [AIRA-RFC-0182](../specs/rfc/AIRA-RFC-0182-phase-s-cross-boundary-integrity.md) (активовано 2026-09-09; `#295`–`#305` **DONE**; **QUEUE S closed**; no OPEN S atoms).  
 **Джерела:** post-R audit `aira-current.md` @ `e5aee86` (2026-09-09; merge PR #257 / RFC-0174); Phase R [`phase-r-plan.md`](phase-r-plan.md) **DONE** @ RFC-0174; QUEUE R closed; Phase Q [`phase-q-plan.md`](phase-q-plan.md) **DONE** @ RFC-0164; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase S `#295`–`#305`.  
-**Closure:** consolidating **RFC-0182** (id **confirmed free** 2026-09-09; file-free until `#305`).  
+**Closure:** consolidating **RFC-0182** **DONE** @ `#305` (id was confirmed free 2026-09-09 until close).  
 **Не змінює:** анти-місію README; C0/C1 `Calculate 2 + 2`; `aira-core` ledger / LLM-in-Core; GUI stack (egui); IA Work / System / Settings + Help·F1; Claiming Polygon ledger DONE; Claiming global live mesh DONE; QUEUE R історію як never-DONE; public bind / auto-trust як Desktop default.
 
 > Примітка: `aira-current.md` поза git-каноном (`p-only/`). Канон у репо = цей план + `desktop-ux.md` + QUEUE + RFC-D.
@@ -109,7 +109,7 @@ S0 Wiring (план у QUEUE + living smoke; RFC-0182 reserved)
 | `#302` | S2 | Submit∥Start/Stop admission | **DONE** @ RFC-0189: submit⊥lifecycle; no double start() | observe UI (#303) |
 | `#303` | S2 | Observe miss off UI-thread | **DONE** @ RFC-0190: miss → background streaming hash; no full buffer; admit full-hash | durability (#304) |
 | `#304` | S2 | Reachability durability honesty | **DONE** @ RFC-0191: docs — replay before state; no joint atomic pair | RFC close (#305) |
-| `#305` | S | RFC-0182 + close | consolidating RFC-0182; QUEUE S closed; no OPEN S atoms | — |
+| `#305` | S | RFC-0182 + close | **DONE** @ RFC-0182: consolidating; QUEUE S closed; no OPEN S atoms | — |
 
 ```text
 #295 S0 wiring DONE
@@ -122,7 +122,7 @@ S0 Wiring (план у QUEUE + living smoke; RFC-0182 reserved)
               → #302 S2 submit∥lifecycle DONE @ RFC-0189
                 → #303 S2 observe off-UI DONE @ RFC-0190
                   → #304 S2 durability honesty DONE @ RFC-0191
-                    → #305 S close RFC-0182 (first OPEN)
+                    → #305 S close RFC-0182 DONE
 ```
 
 **Anti-merge:** не зливати key-bound admission з dial UX; не зливати Help-boundary з dial implementation; не зливати observe UI з admission hash policy.
@@ -150,7 +150,7 @@ aira-core still has no GUI/ledger deps.
 
 ## 7. RFC (після активації)
 
-- Consolidating (`#305`): **AIRA-RFC-0182** — id **confirmed free** 2026-09-09 (немає `AIRA-RFC-0182*` у дереві; file-free until close).
+- Consolidating (`#305`): **AIRA-RFC-0182** **DONE** — id was confirmed free 2026-09-09 until this close atom.
 - Per-atom RFC-D: `#296`→**0183** … `#304`→**0191** (призначаються на кожному PR); `#305`→0182 consolidating.
 
 ---
