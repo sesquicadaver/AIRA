@@ -70,8 +70,9 @@ pub struct ConnectionCtaInput {
 
 /// Pick exactly one primary Connection CTA from honest state.
 ///
-/// Priority (phase-r §9): RestartNeeded → P0 enable network → empty book
-/// import → Unknown/LocalOnly/Outbound/Offline refresh → Direct/Relayed OK.
+/// Priority (phase-r §9 + Phase S `#301`): RestartNeeded → P0 enable network →
+/// empty book import → **stopped peer profile → Start (not Refresh-only)** →
+/// Unknown/LocalOnly/Outbound/Offline refresh → Direct/Relayed OK.
 pub fn primary_connection_cta(input: ConnectionCtaInput) -> ConnectionPrimaryCta {
     let needs_restart =
         input.apply_phase == SettingsApplyPhase::RestartNeeded || input.restart_hint;
@@ -93,6 +94,14 @@ pub fn primary_connection_cta(input: ConnectionCtaInput) -> ConnectionPrimaryCta
     }
     if input.address_book_count == 0 {
         return ConnectionPrimaryCta::ImportInvite;
+    }
+    // Phase S `#301`: after Stop, peer profiles must not dead-end on Refresh-only.
+    let stopped = matches!(
+        input.program,
+        ProgramConclusion::Stopped | ProgramConclusion::Failed
+    );
+    if stopped && input.profile.requires_peer_listen() {
+        return ConnectionPrimaryCta::StartToApply;
     }
     match input.connection {
         ConnectionConclusion::Direct | ConnectionConclusion::Relayed => {
@@ -216,6 +225,75 @@ mod tests {
         i.apply_phase = SettingsApplyPhase::RestartNeeded;
         i.program = ProgramConclusion::Running;
         assert_eq!(primary_connection_cta(i), ConnectionPrimaryCta::StopToApply);
+    }
+
+    /// Phase S `#301`: stopped + peer profile + unknown must Start, not Refresh.
+    #[test]
+    fn stopped_peer_profile_unknown_is_start_not_refresh() {
+        let mut i = base();
+        i.program = ProgramConclusion::Stopped;
+        i.connection = ConnectionConclusion::Unknown;
+        i.apply_phase = SettingsApplyPhase::Applied;
+        assert_eq!(
+            primary_connection_cta(i),
+            ConnectionPrimaryCta::StartToApply
+        );
+    }
+
+    #[test]
+    fn stopped_peer_profile_local_only_is_start() {
+        let mut i = base();
+        i.program = ProgramConclusion::Stopped;
+        i.connection = ConnectionConclusion::LocalOnly;
+        assert_eq!(
+            primary_connection_cta(i),
+            ConnectionPrimaryCta::StartToApply
+        );
+    }
+
+    #[test]
+    fn failed_peer_profile_is_start_not_refresh() {
+        let mut i = base();
+        i.program = ProgramConclusion::Failed;
+        i.connection = ConnectionConclusion::Offline;
+        assert_eq!(
+            primary_connection_cta(i),
+            ConnectionPrimaryCta::StartToApply
+        );
+    }
+
+    #[test]
+    fn stopped_p0_still_enable_private_network() {
+        let mut i = base();
+        i.profile = NetworkProfile::P0;
+        i.program = ProgramConclusion::Stopped;
+        i.address_book_count = 0;
+        assert_eq!(
+            primary_connection_cta(i),
+            ConnectionPrimaryCta::EnablePrivateNetwork
+        );
+    }
+
+    #[test]
+    fn stopped_empty_book_still_import_before_start() {
+        let mut i = base();
+        i.program = ProgramConclusion::Stopped;
+        i.address_book_count = 0;
+        assert_eq!(
+            primary_connection_cta(i),
+            ConnectionPrimaryCta::ImportInvite
+        );
+    }
+
+    #[test]
+    fn running_unknown_still_refresh() {
+        let mut i = base();
+        i.program = ProgramConclusion::Running;
+        i.connection = ConnectionConclusion::Unknown;
+        assert_eq!(
+            primary_connection_cta(i),
+            ConnectionPrimaryCta::RefreshStatus
+        );
     }
 
     #[test]
