@@ -23,8 +23,8 @@ fn phase_r_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE Q closed",
-        "first OPEN `#293`",
-        "#292",
+        "first OPEN `#294`",
+        "#293",
         "GPU marketplace",
         "Calculate 2 + 2",
         "UNKNOWN≠OFFLINE",
@@ -42,37 +42,31 @@ fn phase_r_plan_present() {
 }
 
 #[test]
-fn phase_r_queue_292_done_293_open() {
+fn phase_r_queue_293_done_294_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-r-plan.md"));
-    for n in 286..=292 {
+    for n in 286..=293 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
     }
     assert!(
-        !text.contains("| 292 | **OPEN**"),
-        "QUEUE #292 must not stay OPEN"
+        !text.contains("| 293 | **OPEN**"),
+        "QUEUE #293 must not stay OPEN"
     );
     assert!(
-        text.contains("| 293 | **OPEN**"),
-        "QUEUE #293 must be first OPEN"
+        text.contains("| 294 | **OPEN**"),
+        "QUEUE #294 must be first OPEN"
     );
-    for n in 294..=294 {
-        assert!(
-            text.contains(&format!("| {n} | **OPEN**")),
-            "QUEUE #{n} must be OPEN"
-        );
-    }
     for needle in [
-        "Analyze-328",
+        "Analyze-329",
+        "RFC-0181",
         "RFC-0180",
-        "RFC-0179",
         "RFC-0174",
-        "first OPEN `#293`",
-        "#292",
-        "UK mesh/discovery parity",
+        "first OPEN `#294`",
+        "#293",
+        "Cold-start empty profile",
         "QUEUE Q closed",
         "desktop-ux.md",
         "Actionable Desktop Connection",
@@ -86,11 +80,11 @@ fn phase_r_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-r-plan.md",
-        "#292",
-        "first OPEN `#293`",
+        "#293",
+        "first OPEN `#294`",
         "RFC-0174",
+        "RFC-0181",
         "RFC-0180",
-        "RFC-0179",
         "problem_action",
         "mesh_language",
         "connection_cta",
@@ -116,7 +110,7 @@ fn phase_r_rfc_0174_file_free() {
 }
 
 #[test]
-fn phase_r_rfc_0175_through_0180_present() {
+fn phase_r_rfc_0175_through_0181_present() {
     for (name, needles) in [
         (
             "AIRA-RFC-0175-connection-next-step-cta.md",
@@ -141,6 +135,10 @@ fn phase_r_rfc_0175_through_0180_present() {
         (
             "AIRA-RFC-0180-uk-mesh-discovery-parity.md",
             &["#292", "mesh", "discovery"][..],
+        ),
+        (
+            "AIRA-RFC-0181-cold-start-empty-profile.md",
+            &["#293", "cold-start", "P0"][..],
         ),
     ] {
         let text = std::fs::read_to_string(repo_root().join("specs/rfc").join(name)).unwrap();
@@ -189,24 +187,24 @@ fn phase_r_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-r-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
-    assert!(docs.contains("#293") || docs.contains("`#293`"));
+    assert!(docs.contains("#294") || docs.contains("`#294`"));
 }
 
 #[test]
 fn phase_r_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-r-plan.md") || text.contains("Phase R"));
-    assert!(text.contains("#293") || text.contains("перший OPEN"));
+    assert!(text.contains("#294") || text.contains("перший OPEN"));
 }
 
 #[test]
 fn phase_r_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #292 |") || status.contains("#292"));
+    assert!(status.contains("| #293 |") || status.contains("#293"));
     assert!(status.contains("phase_r_doc.rs"));
     assert!(status.contains("phase-r-plan.md"));
-    assert!(status.contains("RFC-0180") || status.contains("0180"));
+    assert!(status.contains("RFC-0181") || status.contains("0181"));
     assert!(status.contains("RFC-0174") || status.contains("0174"));
 }
 
@@ -335,4 +333,28 @@ fn phase_r_uk_mesh_i18n_parity_source() {
     ] {
         assert!(text.contains(needle), "i18n missing: {needle}");
     }
+}
+
+#[test]
+fn phase_r_cold_start_module_present() {
+    let text =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/cold_start.rs")).unwrap();
+    for needle in [
+        "is_cold_start_empty_profile",
+        "cold_start_forbids_connected_claim",
+        "#293",
+        "P0",
+    ] {
+        assert!(text.contains(needle), "cold_start missing: {needle}");
+    }
+    let ui =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/ui.rs")).unwrap();
+    assert!(
+        ui.contains("conn_cold_start_guidance") || ui.contains("is_cold_start_empty_profile"),
+        "Connection UI must render cold-start guidance"
+    );
+    let i18n =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/i18n.rs")).unwrap();
+    assert!(i18n.contains("conn_cold_start_guidance"));
+    assert!(i18n.contains("Local-only profile so far"));
 }

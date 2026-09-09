@@ -6,6 +6,7 @@ mod actions;
 mod app;
 mod async_jobs;
 mod camera;
+mod cold_start;
 mod connection_cta;
 mod help;
 mod lexicon;
@@ -26,6 +27,7 @@ use aira_desktop_runtime::{
 };
 
 use crate::app::AiraDesktopApp;
+use crate::cold_start::is_cold_start_empty_profile;
 use crate::connection_cta::ConnectionPrimaryCta;
 use crate::lexicon::{ActionId, HelpId};
 use crate::mesh_language::StripNetworkPhrase;
@@ -58,6 +60,15 @@ fn assert_lexicon_linked() {
     let start_en = action_next_step(ActionId::NodeStart, aira_desktop_runtime::UiLang::En);
     assert!(start_en.contains("Start"));
     assert!(!start_en.contains("node.start"));
+    // Phase R `#293` cold-start empty profile predicate stays linked.
+    assert!(is_cold_start_empty_profile(
+        aira_desktop_runtime::NetworkProfile::P0,
+        0
+    ));
+    assert!(!is_cold_start_empty_profile(
+        aira_desktop_runtime::NetworkProfile::P1,
+        0
+    ));
 }
 
 #[derive(Parser, Debug)]
