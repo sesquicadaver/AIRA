@@ -24,9 +24,9 @@ fn phase_s_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE R closed",
-        "first OPEN `#302`",
+        "first OPEN `#303`",
         "#300",
-        "RFC-0188",
+        "RFC-0189",
         "GPU marketplace",
         "Calculate 2 + 2",
         "public bind",
@@ -44,39 +44,39 @@ fn phase_s_plan_present() {
 }
 
 #[test]
-fn phase_s_queue_301_done_302_open() {
+fn phase_s_queue_302_done_303_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-s-plan.md"));
-    for n in 295..=301 {
+    for n in 295..=302 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
     }
     assert!(
-        !text.contains("| 301 | **OPEN**"),
-        "QUEUE #301 must not stay OPEN"
+        !text.contains("| 302 | **OPEN**"),
+        "QUEUE #302 must not stay OPEN"
     );
     assert!(
-        text.contains("| 302 | **OPEN**"),
-        "QUEUE #302 must be first OPEN"
+        text.contains("| 303 | **OPEN**"),
+        "QUEUE #303 must be first OPEN"
     );
-    for n in 303..=305 {
+    for n in 304..=305 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-337",
-        "RFC-0188",
+        "Analyze-338",
+        "RFC-0189",
         "RFC-0182",
-        "first OPEN `#302`",
-        "#301",
+        "first OPEN `#303`",
+        "#302",
         "QUEUE R closed",
         "desktop-ux.md",
         "Cross-boundary integrity",
-        "Stop→Start",
+        "submit",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
@@ -87,11 +87,11 @@ fn phase_s_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-s-plan.md",
-        "#301",
-        "first OPEN `#302`",
+        "#302",
+        "first OPEN `#303`",
         "RFC-0182",
-        "RFC-0188",
-        "Start",
+        "RFC-0189",
+        "admit_submit_lifecycle",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
@@ -191,6 +191,15 @@ fn phase_s_rfc_0188_present() {
 }
 
 #[test]
+fn phase_s_rfc_0189_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0189-submit-lifecycle-admission.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0189 missing");
+    for needle in ["#302", "admit_submit_lifecycle", "double start", "RFC-0182"] {
+        assert!(text.contains(needle), "RFC-0189 missing: {needle}");
+    }
+}
+
+#[test]
 fn phase_s_help_connect_boundary() {
     for rel in [
         "docs/help/en/network.connect.md",
@@ -261,17 +270,17 @@ fn phase_s_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-s-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
-    assert!(docs.contains("first OPEN `#302`") || docs.contains("#302"));
+    assert!(docs.contains("first OPEN `#303`") || docs.contains("#303"));
 }
 
 #[test]
 fn phase_s_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-s-plan.md") || text.contains("Phase S"));
-    assert!(text.contains("#302") || text.contains("перший OPEN"));
+    assert!(text.contains("#303") || text.contains("перший OPEN"));
     assert!(
-        !text.contains("перший OPEN `#301`") && !text.contains("first OPEN `#301`"),
-        "NEXT_PROBLEM must not keep #301 as first-OPEN after close"
+        !text.contains("перший OPEN `#302`") && !text.contains("first OPEN `#302`"),
+        "NEXT_PROBLEM must not keep #302 as first-OPEN after close"
     );
 }
 
@@ -279,10 +288,10 @@ fn phase_s_next_problem() {
 fn phase_s_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #301 |") || status.contains("#301"));
+    assert!(status.contains("| #302 |") || status.contains("#302"));
     assert!(status.contains("phase_s_doc.rs"));
     assert!(status.contains("phase-s-plan.md"));
-    assert!(status.contains("RFC-0188") || status.contains("0188"));
+    assert!(status.contains("RFC-0189") || status.contains("0189"));
 }
 
 #[test]
@@ -297,6 +306,20 @@ fn phase_s_cta_stop_start_module_present() {
         "requires_peer_listen",
     ] {
         assert!(text.contains(needle), "connection_cta missing: {needle}");
+    }
+}
+
+#[test]
+fn phase_s_submit_lifecycle_module_present() {
+    let text =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/async_jobs.rs")).unwrap();
+    for needle in [
+        "#302",
+        "admit_submit_lifecycle",
+        "submit_rejected_while_lifecycle_inflight",
+        "lifecycle_rejected_while_submit_inflight",
+    ] {
+        assert!(text.contains(needle), "async_jobs missing: {needle}");
     }
 }
 

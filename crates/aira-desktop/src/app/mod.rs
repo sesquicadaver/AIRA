@@ -25,7 +25,7 @@ use crate::async_jobs::{
     QuitFollowup, StatusSnapshot,
 };
 use crate::camera;
-use crate::lexicon::{ErrorCode, HelpId, UiProblem};
+use crate::lexicon::{ActionId, ErrorCode, HelpId, UiProblem};
 
 use self::i18n::Labels;
 
@@ -505,9 +505,22 @@ impl AiraDesktopApp {
         self.applied_runtime = None;
     }
 
-    /// Queue Start/Stop off the UI thread (`#272`). Invalidates in-flight refresh.
+    /// Queue Start/Stop off the UI thread (`#272` / `#302`). Invalidates in-flight refresh.
+    /// Rejected while Work submit is in flight (no parallel `start()`).
     pub(super) fn request_lifecycle(&mut self, kind: LifecycleJobKind, ctx: &egui::Context) {
-        if self.async_jobs.lifecycle_inflight() {
+        let action = match kind {
+            LifecycleJobKind::Start => ActionId::NodeStart,
+            LifecycleJobKind::Stop => ActionId::NodeStop,
+        };
+        let gate = crate::lexicon::lifecycle_action_gate(
+            action,
+            self.async_jobs.work_inflight(),
+            self.async_jobs.lifecycle_inflight(),
+        );
+        if !gate.available {
+            if let Some(code) = gate.reason {
+                self.last_problem = Some(UiProblem::new(code, self.ui_lang(), None));
+            }
             return;
         }
         match kind {

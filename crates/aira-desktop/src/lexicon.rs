@@ -138,12 +138,29 @@ impl ActionGate {
     }
 }
 
-/// Gate for Work submit: at most one in-flight job (`#257`).
-pub fn work_submit_gate(inflight: bool) -> ActionGate {
-    if inflight {
+/// Gate for Work submit: at most one in-flight job (`#257`); blocked during lifecycle (`#302`).
+pub fn work_submit_gate(work_inflight: bool, lifecycle_inflight: bool) -> ActionGate {
+    if work_inflight {
         ActionGate::blocked(ActionId::WorkSubmit, ErrorCode::WorkSubmitInFlight)
+    } else if lifecycle_inflight {
+        ActionGate::blocked(ActionId::WorkSubmit, ErrorCode::LifecycleBusy)
     } else {
         ActionGate::open(ActionId::WorkSubmit)
+    }
+}
+
+/// Gate for Start/Stop: blocked while submit or another lifecycle job is running (`#302`).
+pub fn lifecycle_action_gate(
+    action: ActionId,
+    work_inflight: bool,
+    lifecycle_inflight: bool,
+) -> ActionGate {
+    if lifecycle_inflight {
+        ActionGate::blocked(action, ErrorCode::LifecycleBusy)
+    } else if work_inflight {
+        ActionGate::blocked(action, ErrorCode::WorkBusyLifecycle)
+    } else {
+        ActionGate::open(action)
     }
 }
 
@@ -152,6 +169,10 @@ pub fn work_submit_gate(inflight: bool) -> ActionGate {
 pub enum ErrorCode {
     WorkEmptyText,
     WorkSubmitInFlight,
+    /// Phase S `#302`: Start/Stop (or submit) blocked while the other exclusive job runs.
+    LifecycleBusy,
+    /// Phase S `#302`: Start/Stop blocked while Work submit is in flight.
+    WorkBusyLifecycle,
     WorkSubmitFailed,
     StatusRefreshFailed,
     NodeStartFailed,
@@ -168,6 +189,8 @@ impl ErrorCode {
         match self {
             Self::WorkEmptyText => "work.empty_text",
             Self::WorkSubmitInFlight => "work.submit_in_flight",
+            Self::LifecycleBusy => "desktop.lifecycle_busy",
+            Self::WorkBusyLifecycle => "desktop.work_busy_lifecycle",
             Self::WorkSubmitFailed => "work.submit_failed",
             Self::StatusRefreshFailed => "status.refresh_failed",
             Self::NodeStartFailed => "node.start_failed",
@@ -184,6 +207,7 @@ impl ErrorCode {
             Self::WorkEmptyText | Self::WorkSubmitInFlight | Self::WorkSubmitFailed => {
                 HelpId::WorkSubmit
             }
+            Self::LifecycleBusy | Self::WorkBusyLifecycle => HelpId::NodeLifecycle,
             Self::StatusRefreshFailed | Self::MeshSnapshotFailed => HelpId::NetworkReachability,
             Self::NodeStartFailed | Self::NodeStopFailed | Self::AutostartSyncFailed => {
                 HelpId::NodeLifecycle
@@ -201,7 +225,11 @@ impl ErrorCode {
             Self::NodeStartFailed => Some(ActionId::NodeStart),
             Self::NodeStopFailed => Some(ActionId::NodeStop),
             Self::SettingsPersistFailed => Some(ActionId::SettingsPersist),
-            Self::WorkSubmitInFlight | Self::AutostartSyncFailed | Self::Generic => None,
+            Self::WorkSubmitInFlight
+            | Self::LifecycleBusy
+            | Self::WorkBusyLifecycle
+            | Self::AutostartSyncFailed
+            | Self::Generic => None,
         }
     }
 
@@ -219,6 +247,18 @@ impl ErrorCode {
             }
             (UiLang::Uk, Self::WorkSubmitInFlight) => {
                 "Завдання вже надсилається. Дочекайтеся завершення."
+            }
+            (UiLang::En, Self::LifecycleBusy) => {
+                "Start or Stop is already in progress. Wait for it to finish before submitting or changing lifecycle."
+            }
+            (UiLang::Uk, Self::LifecycleBusy) => {
+                "Старт або Стоп уже виконується. Дочекайтеся завершення перед надсиланням або зміною життєвого циклу."
+            }
+            (UiLang::En, Self::WorkBusyLifecycle) => {
+                "A task is being submitted. Wait for it to finish before Start or Stop."
+            }
+            (UiLang::Uk, Self::WorkBusyLifecycle) => {
+                "Завдання надсилається. Дочекайтеся завершення перед Старт або Стоп."
             }
             (UiLang::En, Self::WorkSubmitFailed) => {
                 "Could not submit the task. Check that AIRA is running, then try again."
@@ -355,6 +395,8 @@ mod tests {
         let codes = [
             ErrorCode::WorkEmptyText,
             ErrorCode::WorkSubmitInFlight,
+            ErrorCode::LifecycleBusy,
+            ErrorCode::WorkBusyLifecycle,
             ErrorCode::WorkSubmitFailed,
             ErrorCode::StatusRefreshFailed,
             ErrorCode::NodeStartFailed,
@@ -383,11 +425,23 @@ mod tests {
 
     #[test]
     fn work_submit_gate_blocks_when_inflight() {
-        assert!(work_submit_gate(false).available);
-        let g = work_submit_gate(true);
+        assert!(work_submit_gate(false, false).available);
+        let g = work_submit_gate(true, false);
         assert!(!g.available);
         assert_eq!(g.reason, Some(ErrorCode::WorkSubmitInFlight));
         assert_eq!(g.action.as_str(), "work.submit");
+        let g2 = work_submit_gate(false, true);
+        assert!(!g2.available);
+        assert_eq!(g2.reason, Some(ErrorCode::LifecycleBusy));
+    }
+
+    #[test]
+    fn lifecycle_gate_blocks_while_submit_inflight() {
+        let g = lifecycle_action_gate(ActionId::NodeStart, true, false);
+        assert!(!g.available);
+        assert_eq!(g.reason, Some(ErrorCode::WorkBusyLifecycle));
+        let g2 = lifecycle_action_gate(ActionId::NodeStop, false, true);
+        assert_eq!(g2.reason, Some(ErrorCode::LifecycleBusy));
     }
 
     #[test]

@@ -7,7 +7,10 @@ impl AiraDesktopApp {
     /// The draft (`problem_text`) is **not** cleared on validation errors, Help,
     /// section switches, or failed runs (`#260`).
     pub(super) fn submit_work(&mut self, ctx: &egui::Context) {
-        let gate = work_submit_gate(self.async_jobs.work_inflight());
+        let gate = work_submit_gate(
+            self.async_jobs.work_inflight(),
+            self.async_jobs.lifecycle_inflight(),
+        );
         if !gate.available {
             if let Some(code) = gate.reason {
                 self.last_problem = Some(UiProblem::new(code, self.ui_lang(), None));
@@ -34,11 +37,12 @@ impl AiraDesktopApp {
             move || ctx.request_repaint(),
         );
         if !started {
-            self.last_problem = Some(UiProblem::new(
-                ErrorCode::WorkSubmitInFlight,
-                self.ui_lang(),
-                None,
-            ));
+            let code = if self.async_jobs.lifecycle_inflight() {
+                ErrorCode::LifecycleBusy
+            } else {
+                ErrorCode::WorkSubmitInFlight
+            };
+            self.last_problem = Some(UiProblem::new(code, self.ui_lang(), None));
             return;
         }
         self.clear_problem();

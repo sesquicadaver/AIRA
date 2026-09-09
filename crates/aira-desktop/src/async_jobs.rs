@@ -1,9 +1,12 @@
-//! Non-blocking Desktop jobs (`#257` / `#272` / `#282`): submit, status refresh, and
-//! Start/Stop lifecycle off the egui thread.
+//! Non-blocking Desktop jobs (`#257` / `#272` / `#282` / Phase S `#302`): submit,
+//! status refresh, and Start/Stop lifecycle off the egui thread.
 //!
 //! `request_repaint_after` only schedules a redraw; data refresh is a separate job.
 //! Each Start/Stop bumps a dedicated `lifecycle_revision` and invalidates refresh so a
 //! stale or mid-lifecycle refresh cannot overwrite post-transition UI (`#282`).
+//!
+//! Phase S `#302`: submit and Start/Stop are mutually exclusive — no parallel
+//! `start()` from submit `ensure_started` while a lifecycle Start is in flight.
 
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
@@ -20,6 +23,28 @@ use crate::work_view::WorkResultView;
 
 /// Interval for light status polling while the window is open.
 pub const STATUS_REFRESH_INTERVAL: Duration = Duration::from_secs(2);
+
+/// Exclusive Desktop job class for `#302` admission (submit ∥ lifecycle).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExclusiveJobKind {
+    Submit,
+    Lifecycle,
+}
+
+/// Pure admission: at most one of submit / lifecycle may run (`#302`).
+///
+/// Returns `true` when `want` may spawn. Refresh is gated separately and already
+/// rejects while lifecycle is in flight (`#282`).
+pub fn admit_submit_lifecycle(
+    want: ExclusiveJobKind,
+    work_inflight: bool,
+    lifecycle_inflight: bool,
+) -> bool {
+    match want {
+        ExclusiveJobKind::Submit => !work_inflight && !lifecycle_inflight,
+        ExclusiveJobKind::Lifecycle => !work_inflight && !lifecycle_inflight,
+    }
+}
 
 /// Which lifecycle control job is running (`#272`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -142,7 +167,8 @@ impl AsyncDesktopJobs {
         self.lifecycle_revision
     }
 
-    /// Start at most one submit worker. Returns false if already in flight.
+    /// Start at most one submit worker. Returns false if already in flight
+    /// or a lifecycle op is running (`#302` — no parallel `start()`).
     pub fn try_spawn_submit(
         &mut self,
         paths: DesktopPaths,
@@ -152,7 +178,11 @@ impl AsyncDesktopJobs {
         ensure_started: bool,
         on_done: impl FnOnce() + Send + 'static,
     ) -> bool {
-        if self.work_rx.is_some() {
+        if !admit_submit_lifecycle(
+            ExclusiveJobKind::Submit,
+            self.work_rx.is_some(),
+            self.lifecycle_inflight(),
+        ) {
             return false;
         }
         let (tx, rx) = mpsc::channel();
@@ -260,6 +290,7 @@ impl AsyncDesktopJobs {
     }
 
     /// Start at most one Start/Stop worker; one revision bump + invalidate refresh (`#282`).
+    /// Rejected while submit is in flight (`#302` — no double `start()`).
     pub fn try_spawn_lifecycle(
         &mut self,
         kind: LifecycleJobKind,
@@ -267,7 +298,11 @@ impl AsyncDesktopJobs {
         node_bin: Option<PathBuf>,
         on_done: impl FnOnce() + Send + 'static,
     ) -> bool {
-        if self.lifecycle_rx.is_some() {
+        if !admit_submit_lifecycle(
+            ExclusiveJobKind::Lifecycle,
+            self.work_inflight(),
+            self.lifecycle_rx.is_some(),
+        ) {
             return false;
         }
         self.lifecycle_revision = self.lifecycle_revision.wrapping_add(1);
@@ -337,6 +372,60 @@ mod tests {
             "Calculate 2 + 2".into(),
             false,
             || {}
+        ));
+    }
+
+    /// Phase S `#302`: submit blocked while Start/Stop runs (no parallel ensure_started start).
+    #[test]
+    fn submit_rejected_while_lifecycle_inflight() {
+        let mut jobs = AsyncDesktopJobs::new();
+        let (_hold_tx, hold_rx) = mpsc::channel();
+        jobs.lifecycle_rx = Some(hold_rx);
+        jobs.lifecycle_kind = Some(LifecycleJobKind::Start);
+        let paths = DesktopPaths::for_data_root(std::env::temp_dir().join("aira-async-jobs-sl"));
+        let settings = DesktopSettings::default_p0(&paths);
+        assert!(!admit_submit_lifecycle(
+            ExclusiveJobKind::Submit,
+            false,
+            true
+        ));
+        assert!(!jobs.try_spawn_submit(
+            paths,
+            settings,
+            None,
+            "Calculate 2 + 2".into(),
+            true,
+            || {}
+        ));
+    }
+
+    /// Phase S `#302`: lifecycle blocked while submit runs.
+    #[test]
+    fn lifecycle_rejected_while_submit_inflight() {
+        let mut jobs = AsyncDesktopJobs::new();
+        let (_hold_tx, hold_rx) = mpsc::channel();
+        jobs.work_rx = Some(hold_rx);
+        let paths = DesktopPaths::for_data_root(std::env::temp_dir().join("aira-async-jobs-ls"));
+        assert!(!admit_submit_lifecycle(
+            ExclusiveJobKind::Lifecycle,
+            true,
+            false
+        ));
+        assert!(!jobs.try_spawn_lifecycle(LifecycleJobKind::Start, paths, None, || {}));
+        assert_eq!(jobs.lifecycle_revision(), 0);
+    }
+
+    #[test]
+    fn admit_allows_when_neither_inflight() {
+        assert!(admit_submit_lifecycle(
+            ExclusiveJobKind::Submit,
+            false,
+            false
+        ));
+        assert!(admit_submit_lifecycle(
+            ExclusiveJobKind::Lifecycle,
+            false,
+            false
         ));
     }
 
