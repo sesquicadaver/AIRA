@@ -731,7 +731,7 @@ O0 wiring (#255 DONE)
 | 288 | **DONE** | ~~Analyze-324 — Promote connect controls~~ | `ui_connect_primary` outside tech; RFC-0176 | `#288` DONE; first OPEN `#289` | language (#289) |
 | 289 | **DONE** | ~~Analyze-325 — Human-primary mesh/strip~~ | `mesh_language` + human mesh/strip; RFC-0177 | `#289` DONE; first OPEN `#290` | footer (#290) |
 | 290 | **DONE** | ~~Analyze-326 — Actionable problem/strip~~ | `problem_action` human next-step; RFC-0178 | `#290` DONE; first OPEN `#291` | Help (#291) |
-| 291 | **DONE** | ~~Analyze-327 — Help connect scenario~~ | invite→profile→restart у help uk/en; RFC-0179 | `#291` DONE; first OPEN `#293` | UK (#292) |
+| 291 | **DONE** | ~~Analyze-327 — Help connect scenario~~ | invite→profile→restart у help uk/en; RFC-0179 | `#291` DONE; first OPEN `#292` | UK (#292) |
 | 292 | **DONE** | ~~Analyze-328 — UK mesh/discovery parity~~ | EN==UK mesh/discovery; RFC-0180 | `#292` DONE; first OPEN `#293` | cold-start (#293) |
 | 293 | **OPEN** | Analyze-329 — Cold-start empty profile | guidance + CTA без fake Applied/CONNECTED | desktop + тести + RFC-D | RFC close (#294) |
 | 294 | **OPEN** | Analyze-330 — RFC-0174 + close | consolidating RFC-0174; QUEUE R closed | RFC-0174; QUEUE R closed | — |
