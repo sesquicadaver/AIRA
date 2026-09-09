@@ -63,6 +63,9 @@ impl ModelTripleSnapshot {
     }
 
     /// Load selected/ready from Phase D activation under node root; `used` stays Undefined.
+    ///
+    /// Uses UI-safe [`ActivatedPointerGate::observe`] (`#303`): cache miss defers
+    /// streaming weight hash off the caller thread (no full `fs::read` of weights).
     pub fn load(root: impl AsRef<Path>) -> Self {
         let obs = ActivatedPointerGate::from_aira_root(root).observe();
         let selected = if obs.pointer_present {
@@ -152,7 +155,9 @@ mod tests {
     fn fixture_ready_does_not_fill_used() {
         let dir = tempdir().unwrap();
         aira_object::reset_primary_signer();
-        ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        // `#303`: UI load defers hash on miss; warm observe-ready before asserting ready.
+        assert!(gate.observe_verify_now().ready);
         let snap = ModelTripleSnapshot::load(dir.path());
         assert!(matches!(snap.selected, ModelFact::Value(_)));
         assert!(snap.ready);
@@ -168,6 +173,22 @@ mod tests {
         );
         assert!(
             matches!(with_used.selected, ModelFact::Value(ref s) if s == "aira:model:test-activated")
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn load_on_miss_is_pending_not_blocking_ready() {
+        let dir = tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        let snap = ModelTripleSnapshot::load(dir.path());
+        assert!(matches!(snap.selected, ModelFact::Value(_)));
+        assert!(!snap.ready);
+        assert!(
+            snap.ready_detail.contains("pending"),
+            "{}",
+            snap.ready_detail
         );
     }
 

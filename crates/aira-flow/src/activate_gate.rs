@@ -5,18 +5,23 @@
 //! cache bytes, `content_hash`, and a signed activate Evidence artifact must match.
 //! Desktop `#269` observes selected vs ready via [`ActivatedPointerGate::observe`].
 //! `#277` light monitoring reuses a versioned metadata cache so status refresh does
-//! not `fs::read` + sha256 full weights every tick; admission (`check_activated`)
-//! always re-hashes weights.
+//! not sha256 full weights every tick; admission (`check_activated`)
+//! always re-hashes weights (streaming).
 //! `#278` verifies activate evidence against a **root-scoped** keyring
 //! (`Keyring::load_node_identity`), not the process-global ring — so Desktop
 //! reopen shows ready without test keyring priming.
 //! `#297` binds that same root-scoped ring for `CasArtifactStore::resolve` so
 //! node-signed `ArtifactDescriptor` (+ sidecar) verify without process priming.
+//! `#303` observe cache miss schedules streaming hash off the caller thread
+//! (UI-safe); never `fs::read` full weights into a buffer. Admit stays full-hash.
 
 #[cfg(test)]
 use std::cell::Cell;
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use aira_artifact::{ArtifactStore, CasArtifactStore};
@@ -54,11 +59,16 @@ struct ObserveReadyCache {
     content_hash: String,
 }
 
+/// Detail when light observe defers weight hashing off the caller thread (`#303`).
+pub const OBSERVE_HASH_PENDING: &str = "observe ready pending (streaming hash off UI thread)";
+
 /// Read-only activation observation for Desktop model triple (`#269`).
 ///
 /// `selected_model_ref` comes from the pointer file; `ready` requires Phase D
 /// evidence/hash confirmation (pointer presence alone is never enough). Light
 /// observe (`#277`) may reuse [`ObserveReadyCache`] for the weights hash step.
+/// On cache miss, [`ActivatedPointerGate::observe`] defers hashing (`#303`);
+/// use [`ActivatedPointerGate::observe_verify_now`] when a blocking confirm is required.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActivationObservation {
     pub pointer_present: bool,
@@ -91,9 +101,24 @@ impl ActivatedPointerGate {
 
     /// Observe selected vs ready without inventing a used-in-result model (`#269`).
     ///
-    /// Uses light verification (`#277`): full weights hash only on cache miss or
-    /// metadata/pointer change. Evidence artifact is always checked.
+    /// Uses light verification (`#277` / `#303`): on observe-ready cache hit, skips
+    /// weights hash; on miss, schedules a **background streaming** hash and returns
+    /// not-ready with [`OBSERVE_HASH_PENDING`] so Desktop UI never `fs::read`s full
+    /// weights on the caller thread. Evidence is checked only after a successful
+    /// hash path (hit or [`Self::observe_verify_now`]).
     pub fn observe(&self) -> ActivationObservation {
+        self.observe_with(VerifyMode::ObserveUi)
+    }
+
+    /// Blocking light observe: stream-hash weights on cache miss (`#277` warm path).
+    ///
+    /// Prefer [`Self::observe`] for Desktop status; use this for tests / warm-up
+    /// that need an immediate ready bit. Admission still uses [`Self::check_activated`].
+    pub fn observe_verify_now(&self) -> ActivationObservation {
+        self.observe_with(VerifyMode::ObserveLight)
+    }
+
+    fn observe_with(&self, mode: VerifyMode) -> ActivationObservation {
         if !self.pointer_path.is_file() {
             return ActivationObservation {
                 pointer_present: false,
@@ -133,7 +158,7 @@ impl ActivatedPointerGate {
             };
         }
         let selected = pointer.model_ref.clone();
-        match self.verify_pointer_ready(&pointer, VerifyMode::ObserveLight) {
+        match self.verify_pointer_ready(&pointer, mode) {
             Ok(()) => ActivationObservation {
                 pointer_present: true,
                 selected_model_ref: Some(selected),
@@ -147,6 +172,25 @@ impl ActivatedPointerGate {
                 detail: e,
             },
         }
+    }
+
+    /// Deduped background warm of observe-ready cache via streaming hash (`#303`).
+    fn schedule_observe_warm(&self, warm_key: String) {
+        static INFLIGHT: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+        let set = INFLIGHT.get_or_init(|| Mutex::new(HashSet::new()));
+        {
+            let mut guard = set.lock().unwrap_or_else(|e| e.into_inner());
+            if !guard.insert(warm_key.clone()) {
+                return;
+            }
+        }
+        let gate = self.clone();
+        thread::spawn(move || {
+            let _ = gate.observe_verify_now();
+            if let Ok(mut guard) = set.lock() {
+                guard.remove(&warm_key);
+            }
+        });
     }
 
     /// Write a Phase D-shaped activate fixture (cache + hash + signed evidence).
@@ -218,7 +262,7 @@ impl ActivatedPointerGate {
         let cache_mtime_ns = mtime_ns(&meta).map_err(|_| ACTIVATE_DENIED.to_string())?;
         let pointer_fp = pointer_fingerprint(pointer);
 
-        let skip_weight_hash = matches!(mode, VerifyMode::ObserveLight)
+        let skip_weight_hash = matches!(mode, VerifyMode::ObserveLight | VerifyMode::ObserveUi)
             && observe_cache_hit(
                 &self.observe_cache_path(),
                 &pointer_fp,
@@ -229,10 +273,16 @@ impl ActivatedPointerGate {
             );
 
         if !skip_weight_hash {
-            let cache_bytes = fs::read(&cache).map_err(|_| ACTIVATE_DENIED.to_string())?;
+            if matches!(mode, VerifyMode::ObserveUi) {
+                let warm_key = format!("{}::{pointer_fp}", self.aira_root.display());
+                self.schedule_observe_warm(warm_key);
+                return Err(OBSERVE_HASH_PENDING.into());
+            }
+            // Streaming hash — never buffer full weights (`#303`). Admit always hashes.
             #[cfg(test)]
             note_full_weight_hash();
-            let observed = ContentHash::sha256_bytes(&cache_bytes);
+            let observed =
+                ContentHash::sha256_path(&cache).map_err(|_| ACTIVATE_DENIED.to_string())?;
             if observed != claimed {
                 let _ = fs::remove_file(self.observe_cache_path());
                 return Err(
@@ -280,9 +330,11 @@ impl ActivatedPointerGate {
 
 #[derive(Debug, Clone, Copy)]
 enum VerifyMode {
-    /// Status / UI monitoring: may skip weights sha256 when observe-ready cache hits.
+    /// Status / UI monitoring: cache hit skips hash; miss schedules background stream (`#303`).
+    ObserveUi,
+    /// Blocking light observe: stream-hash on miss (warm / tests).
     ObserveLight,
-    /// Generate-local admission: always full-hash weights.
+    /// Generate-local admission: always stream-hash weights.
     AdmitFull,
 }
 
@@ -614,7 +666,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         aira_object::reset_primary_signer();
         let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
-        let obs = gate.observe();
+        let obs = gate.observe_verify_now();
         assert!(obs.pointer_present);
         assert_eq!(
             obs.selected_model_ref.as_deref(),
@@ -623,6 +675,37 @@ mod tests {
         assert!(obs.ready);
         // Observation never invents a used-in-result identity.
         assert!(obs.detail.contains("confirmed"));
+    }
+
+    #[test]
+    fn observe_ui_miss_defers_hash_without_caller_full_hash() {
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        let _ = take_full_weight_hash_count();
+        let obs = gate.observe();
+        assert!(!obs.ready, "UI observe must not block on miss hash");
+        assert!(
+            obs.detail.contains("pending") || obs.detail == OBSERVE_HASH_PENDING,
+            "{}",
+            obs.detail
+        );
+        assert_eq!(
+            take_full_weight_hash_count(),
+            0,
+            "caller thread must not stream-hash weights on UI observe miss"
+        );
+        // Background warm writes observe-ready; subsequent UI observe is a cache hit.
+        let mut ready = false;
+        for _ in 0..200 {
+            if gate.observe().ready {
+                ready = true;
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        assert!(ready, "background streaming hash should confirm ready");
+        assert_eq!(take_full_weight_hash_count(), 0);
     }
 
     #[test]
@@ -645,7 +728,7 @@ mod tests {
         aira_object::reset_primary_signer();
         let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
         let _ = take_full_weight_hash_count();
-        assert!(gate.observe().ready);
+        assert!(gate.observe_verify_now().ready);
         assert_eq!(take_full_weight_hash_count(), 1);
         assert!(gate.observe().ready);
         assert_eq!(
@@ -664,7 +747,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         aira_object::reset_primary_signer();
         let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
-        assert!(gate.observe().ready);
+        assert!(gate.observe_verify_now().ready);
         let _ = take_full_weight_hash_count();
         gate.check_activated(&dummy_payload()).unwrap();
         assert_eq!(
@@ -679,12 +762,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         aira_object::reset_primary_signer();
         let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
-        assert!(gate.observe().ready);
+        assert!(gate.observe_verify_now().ready);
         let _ = take_full_weight_hash_count();
         let weights = dir.path().join("models/cache/l218/weights.bin");
         // Same prefix + extra byte → len change → light cache miss → rehash → mismatch.
         fs::write(&weights, b"aira-l218-activate-fixtureX").unwrap();
-        let obs = gate.observe();
+        let obs = gate.observe_verify_now();
         assert!(!obs.ready);
         assert!(
             obs.detail.contains("content_hash mismatch"),
@@ -699,19 +782,19 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         aira_object::reset_primary_signer();
         let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
-        assert!(gate.observe().ready);
+        assert!(gate.observe_verify_now().ready);
         let _ = take_full_weight_hash_count();
         let weights = dir.path().join("models/cache/l218/weights.bin");
         let bytes = fs::read(&weights).unwrap();
         thread::sleep(Duration::from_millis(20));
         fs::write(&weights, &bytes).unwrap();
-        assert!(gate.observe().ready);
+        assert!(gate.observe_verify_now().ready);
         assert_eq!(
             take_full_weight_hash_count(),
             1,
             "mtime change must invalidate observe-ready cache"
         );
-        // Third pass hits the refreshed cache again.
+        // Third pass hits the refreshed cache again (UI observe).
         assert!(gate.observe().ready);
         assert_eq!(take_full_weight_hash_count(), 0);
     }
@@ -801,7 +884,7 @@ mod tests {
             aira_object::primary_signer().as_str(),
             aira_object::LOCAL_TEST_KEY_REF
         );
-        let obs = gate.observe();
+        let obs = gate.observe_verify_now();
         assert!(obs.ready, "detail={}", obs.detail);
         assert!(obs.detail.contains("confirmed"));
         gate.check_activated(&dummy_payload()).unwrap();
@@ -818,7 +901,7 @@ mod tests {
                 aira_object::primary_signer().as_str(),
                 aira_object::LOCAL_TEST_KEY_REF
             );
-            let obs = ActivatedPointerGate::from_aira_root(&root).observe();
+            let obs = ActivatedPointerGate::from_aira_root(&root).observe_verify_now();
             assert!(obs.ready, "child observe detail={}", obs.detail);
             return;
         }
@@ -826,7 +909,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         aira_object::reset_primary_signer();
         let (gate, identity_id) = install_disk_identity_activate_fixture(dir.path());
-        assert!(gate.observe().ready);
+        assert!(gate.observe_verify_now().ready);
         let root = dir.path().to_path_buf();
         // Keep tempdir alive across child by leaking path under owned dir — child
         // reads before parent drops `dir`.
