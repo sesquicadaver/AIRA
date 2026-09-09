@@ -157,7 +157,12 @@ mod tests {
         aira_object::reset_primary_signer();
         let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
         // `#303`: UI load defers hash on miss; warm observe-ready before asserting ready.
-        assert!(gate.observe_verify_now().ready);
+        let obs = gate.observe_verify_now();
+        assert!(
+            obs.ready,
+            "fixture observe_verify_now detail={}",
+            obs.detail
+        );
         let snap = ModelTripleSnapshot::load(dir.path());
         assert!(matches!(snap.selected, ModelFact::Value(_)));
         assert!(snap.ready);

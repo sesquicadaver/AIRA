@@ -92,6 +92,36 @@ pub fn quit_followup_after_lifecycle(
     }
 }
 
+/// Phase T `#310`: after submit settles, continue a deferred Quit with Stop→Close.
+pub fn quit_followup_after_submit(quit_after_stop: bool) -> QuitFollowup {
+    if quit_after_stop {
+        QuitFollowup::QueueStop
+    } else {
+        QuitFollowup::None
+    }
+}
+
+/// How `request_quit` should arm Stop relative to submit∥lifecycle (`#310`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuitArm {
+    /// Call Stop now (or wait for in-flight lifecycle — flag already armed).
+    ArmLifecycle,
+    /// Submit in flight: keep `quit_after_stop`, do **not** call Stop yet.
+    DeferUntilSubmitDone,
+}
+
+/// Pure Quit admission vs submit (`#310`).
+///
+/// Lifecycle-in-flight is handled by the caller (flag only); submit-in-flight must
+/// defer Stop so `#302` exclusivity does not leave a sticky unused quit flag.
+pub fn quit_arm_policy(work_inflight: bool) -> QuitArm {
+    if work_inflight {
+        QuitArm::DeferUntilSubmitDone
+    } else {
+        QuitArm::ArmLifecycle
+    }
+}
+
 /// Authoritative status payload collected off the UI thread.
 #[derive(Debug, Clone)]
 pub struct StatusSnapshot {
@@ -603,6 +633,15 @@ mod tests {
             quit_followup_after_lifecycle(false, LifecycleJobKind::Start, true),
             QuitFollowup::None
         );
+    }
+
+    /// Phase T `#310`: Quit during submit defers Stop until submit settles.
+    #[test]
+    fn quit_during_submit_defers_then_queues_stop() {
+        assert_eq!(quit_arm_policy(true), QuitArm::DeferUntilSubmitDone);
+        assert_eq!(quit_arm_policy(false), QuitArm::ArmLifecycle);
+        assert_eq!(quit_followup_after_submit(true), QuitFollowup::QueueStop);
+        assert_eq!(quit_followup_after_submit(false), QuitFollowup::None);
     }
 
     #[test]

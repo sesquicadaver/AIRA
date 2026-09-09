@@ -21,8 +21,8 @@ use aira_desktop_runtime::{
 
 use crate::actions;
 use crate::async_jobs::{
-    quit_followup_after_lifecycle, AsyncDesktopJobs, LifecycleJobKind, LifecycleJobResult,
-    QuitFollowup, StatusSnapshot,
+    quit_arm_policy, quit_followup_after_lifecycle, quit_followup_after_submit, AsyncDesktopJobs,
+    LifecycleJobKind, LifecycleJobResult, QuitArm, QuitFollowup, StatusSnapshot,
 };
 use crate::camera;
 use crate::lexicon::{ActionId, ErrorCode, HelpId, UiProblem};
@@ -385,6 +385,17 @@ impl AiraDesktopApp {
                     self.last_problem = Some(UiProblem::from_submit_err(&e, self.ui_lang()));
                 }
             }
+            // Phase T `#310`: Quit during submit → Stop→Close after submit settles.
+            match quit_followup_after_submit(self.quit_after_stop) {
+                QuitFollowup::None => {}
+                QuitFollowup::QueueStop => {
+                    self.request_lifecycle(LifecycleJobKind::Stop, ctx);
+                }
+                QuitFollowup::Close => {
+                    self.quit_after_stop = false;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+            }
         }
         if let Some(outcome) = self.async_jobs.poll_refresh() {
             match outcome {
@@ -606,15 +617,24 @@ impl AiraDesktopApp {
         self.refresh_mesh_snapshot();
     }
 
-    /// Quit: Stop off-thread, then close (`#272` / `#282`).
+    /// Quit: Stop off-thread, then close (`#272` / `#282` / `#310`).
     ///
     /// If Start is in flight, only set the flag — `pump_async_jobs` queues Stop after Start.
+    /// If Submit is in flight (`#310`), arm the same flag and defer Stop until submit
+    /// settles (then Stop→Close), with an explicit waiting label — never leave a sticky
+    /// unused quit intent after a rejected Stop.
     pub(super) fn request_quit(&mut self, ctx: &egui::Context) {
         self.quit_after_stop = true;
-        if self.async_jobs.lifecycle_inflight() {
-            return;
+        match quit_arm_policy(self.async_jobs.work_inflight()) {
+            QuitArm::DeferUntilSubmitDone => {
+                self.status_label = self.labels().quit_waiting_submit.to_string();
+            }
+            QuitArm::ArmLifecycle => {
+                if !self.async_jobs.lifecycle_inflight() {
+                    self.request_lifecycle(LifecycleJobKind::Stop, ctx);
+                }
+            }
         }
-        self.request_lifecycle(LifecycleJobKind::Stop, ctx);
     }
 
     pub(super) fn persist_settings(&mut self) -> anyhow::Result<()> {

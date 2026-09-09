@@ -341,7 +341,11 @@ impl ActivatedPointerGate {
             }
         }
 
-        let sticky = |detail: String| {
+        let evidence_id = AiraRef::parse(&pointer.evidence_artifact_id).map_err(|_| {
+            let detail =
+                "activated evidence_artifact_id is not an aira ref (fail-closed; not VERIFIED)"
+                    .to_string();
+            // Invalid pointer field is durable for this version.
             if matches!(mode, VerifyMode::ObserveLight) {
                 remember_observe_fail(
                     &self.observe_fail_path(),
@@ -357,24 +361,21 @@ impl ActivatedPointerGate {
                 );
             }
             detail
-        };
-
-        let evidence_id = AiraRef::parse(&pointer.evidence_artifact_id).map_err(|_| {
-            sticky(
-                "activated evidence_artifact_id is not an aira ref (fail-closed; not VERIFIED)"
-                    .to_string(),
-            )
         })?;
         // `#297`: `CasArtifactStore::open` admits on-disk descriptors via process/thread
         // crypto; bind root keyring before open+resolve so cold reopen works without
         // process priming.
+        //
+        // Do **not** sticky-fail on store/open/resolve I/O (`#309` / `#310` CI): background
+        // warm threads can race tempdir teardown and recreate an empty store; poisoning
+        // the version would break later fixture verifies on path reuse.
         let (ring, primary) = verification_crypto(&self.aira_root);
         let _crypto = bind_thread_crypto(ring, primary);
         let store = CasArtifactStore::open(self.aira_root.join("artifacts")).map_err(|_| {
-            sticky("activated evidence store missing (fail-closed; not VERIFIED)".to_string())
+            "activated evidence store missing (fail-closed; not VERIFIED)".to_string()
         })?;
         let (_desc, ev_bytes) = store.resolve(&evidence_id).map_err(|_| {
-            sticky("activated evidence artifact missing (fail-closed; not VERIFIED)".to_string())
+            "activated evidence artifact missing (fail-closed; not VERIFIED)".to_string()
         })?;
         match verify_activate_evidence(
             &self.aira_root,
@@ -383,7 +384,24 @@ impl ActivatedPointerGate {
             claimed.as_str(),
         ) {
             Ok(()) => {}
-            Err(detail) => return Err(sticky(detail)),
+            Err(detail) => {
+                // Semantic evidence failure is durable for this pointer/cache version.
+                if matches!(mode, VerifyMode::ObserveLight) {
+                    remember_observe_fail(
+                        &self.observe_fail_path(),
+                        &self.observe_cache_path(),
+                        &ObserveFailCache {
+                            pointer_fp: pointer_fp.clone(),
+                            cache_path: pointer.cache_path.clone(),
+                            cache_len,
+                            cache_mtime_ns,
+                            content_hash: claimed.as_str().to_string(),
+                            detail: detail.clone(),
+                        },
+                    );
+                }
+                return Err(detail);
+            }
         }
 
         // Persist light-observe binding after a successful full hash (or refresh after admit).

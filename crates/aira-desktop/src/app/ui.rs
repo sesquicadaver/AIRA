@@ -581,6 +581,9 @@ impl AiraDesktopApp {
                 self.request_quit(ctx);
             }
         });
+        if self.quit_after_stop && self.async_jobs.work_inflight() {
+            ui.colored_label(egui::Color32::from_rgb(180, 120, 40), l.quit_waiting_submit);
+        }
         if self.restart_hint || self.settings_need_restart() {
             ui.colored_label(egui::Color32::from_rgb(180, 120, 40), l.restart_hint);
         }
