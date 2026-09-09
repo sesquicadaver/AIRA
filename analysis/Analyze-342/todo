@@ -1,0 +1,5 @@
+- [x] phase-t-plan.md
+- [x] QUEUE `#306`–`#312`
+- [x] phase_t_doc.rs
+- [x] tips sync; RFC-0192 reserved
+- [ ] do not implement `#307` in this atom
