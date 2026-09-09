@@ -477,7 +477,7 @@ static UK: Labels = Labels {
     strip_net_unknown: "не перевірено",
     strip_net_offline: "немає шляху mesh",
     status: "Стан:",
-    peer: "Peer:",
+    peer: "Учасник (peer):",
     start: "Старт",
     stop: "Стоп",
     refresh: "Оновити",
@@ -512,17 +512,17 @@ static UK: Labels = Labels {
     work_no_answer: "(відповіді ще немає)",
     mesh_heading: "Стан mesh",
     mesh_banner: "Зв’язність:",
-    mesh_identity: "Identity:",
+    mesh_identity: "Ідентичність:",
     mesh_preferred_port: "Обраний порт AIRA:",
-    mesh_local_bind: "Локальний bind:",
+    mesh_local_bind: "Локальне прив’язування:",
     mesh_bind_provenance: "джерело",
-    mesh_listener_unproven: "не доведений живий listener",
-    mesh_rendezvous_local_meta: "записано локальний publish",
-    mesh_external: "Зовнішній endpoint:",
-    mesh_reachability: "Reachability:",
-    mesh_direct: "Direct:",
-    mesh_relay: "Relay:",
-    mesh_rendezvous: "Rendezvous:",
+    mesh_listener_unproven: "не підтверджено живий слухач",
+    mesh_rendezvous_local_meta: "записано локальну публікацію",
+    mesh_external: "Зовнішнє спостереження:",
+    mesh_reachability: "Доступність:",
+    mesh_direct: "Прямий шлях:",
+    mesh_relay: "Через relay:",
+    mesh_rendezvous: "Точка зустрічі:",
     mesh_address_book_count: "Збережені учасники (адресна книга):",
     mesh_live_sessions: "Живі сесії:",
     mesh_na: "—",
@@ -530,21 +530,22 @@ static UK: Labels = Labels {
     mesh_no: "ні",
     network_profile: "Мережевий профіль",
     p0: "P0 лише локальний HTTP",
-    p1: "P1 + peer listen",
+    p1: "P1 + слухання peer",
     p2: "P2 + DHT-книга",
     peer_listen: "peer_listen:",
     save_listen: "Зберегти listen",
     advanced: "Додатково",
     advanced_hint: "P3 relay (--relay) і P4 gossip (--gossip) взаємовиключні на одному peer listen.",
     p3_relay: "P3 relay-хаб",
-    p4_gossip: "P4 gossip trust",
+    p4_gossip: "P4 gossip-довіра",
     relay_ttl: "relay_ttl_days:",
     save_ttl: "Зберегти TTL",
     federation: "Федерація (P5)",
     federation_hint: "Локальний pin: імпорт підписаного JSON-дескриптора (без віддаленого handshake).",
     import_federation: "Імпорт дескриптора федерації…",
-    discovery: "Discovery (P6 Dev)",
+    discovery: "Виявлення (P6 Dev)",
     discovery_hint: "Лише операторські скорочення — явний STUN; без публічного STUN за замовчуванням; без auto-trust.",
+    // Phase R `#292`: CLI-shaped discovery fields stay English tech-only intentionally.
     stun_server: "stun_server:",
     stun_query: "STUN запит",
     discv_to: "discv to:",
@@ -685,5 +686,53 @@ mod tests {
         assert!(Labels::get(UiLang::Uk)
             .help_search_miss
             .contains("поза цим пошуком"));
+    }
+
+    /// Phase R `#292`: mesh/discovery chrome UK ≠ leftover EN labels.
+    #[test]
+    fn uk_mesh_discovery_labels_not_english_shell() {
+        let uk = Labels::get(UiLang::Uk);
+        let en = Labels::get(UiLang::En);
+        for (name, u, e) in [
+            ("mesh_identity", uk.mesh_identity, en.mesh_identity),
+            (
+                "mesh_reachability",
+                uk.mesh_reachability,
+                en.mesh_reachability,
+            ),
+            ("mesh_direct", uk.mesh_direct, en.mesh_direct),
+            ("mesh_relay", uk.mesh_relay, en.mesh_relay),
+            ("mesh_rendezvous", uk.mesh_rendezvous, en.mesh_rendezvous),
+            ("discovery", uk.discovery, en.discovery),
+            ("mesh_external", uk.mesh_external, en.mesh_external),
+            ("mesh_local_bind", uk.mesh_local_bind, en.mesh_local_bind),
+            ("p1", uk.p1, en.p1),
+            ("p4_gossip", uk.p4_gossip, en.p4_gossip),
+            ("peer", uk.peer, en.peer),
+        ] {
+            assert_ne!(u, e, "{name} must differ in UK");
+            assert!(
+                u.chars().any(|c| ('\u{0400}'..='\u{04FF}').contains(&c)),
+                "{name} UK must include Cyrillic: {u}"
+            );
+        }
+        // CLI-shaped discovery ops stay English tech-only by design.
+        for (name, u, e) in [
+            ("stun_server", uk.stun_server, en.stun_server),
+            ("discv_to", uk.discv_to, en.discv_to),
+            ("discv_addr", uk.discv_addr, en.discv_addr),
+            ("discv_announce", uk.discv_announce, en.discv_announce),
+            ("find_key", uk.find_key, en.find_key),
+            ("find_to", uk.find_to, en.find_to),
+            ("discv_find", uk.discv_find, en.discv_find),
+            ("peer_listen", uk.peer_listen, en.peer_listen),
+        ] {
+            assert_eq!(u, e, "{name} stays tech-only EN in both langs");
+        }
+        assert!(uk.discovery.contains("Виявлення"));
+        assert!(uk.mesh_identity.contains("Ідентичність"));
+        assert!(!uk.mesh_listener_unproven.contains("listener"));
+        assert!(!uk.mesh_rendezvous_local_meta.contains("publish"));
+        assert!(!uk.mesh_external.contains("endpoint"));
     }
 }

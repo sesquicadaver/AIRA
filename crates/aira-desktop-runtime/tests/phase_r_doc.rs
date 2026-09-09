@@ -23,8 +23,8 @@ fn phase_r_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE Q closed",
-        "first OPEN `#292`",
-        "#291",
+        "first OPEN `#293`",
+        "#292",
         "GPU marketplace",
         "Calculate 2 + 2",
         "UNKNOWN≠OFFLINE",
@@ -42,37 +42,37 @@ fn phase_r_plan_present() {
 }
 
 #[test]
-fn phase_r_queue_291_done_292_open() {
+fn phase_r_queue_292_done_293_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-r-plan.md"));
-    for n in 286..=291 {
+    for n in 286..=292 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
     }
     assert!(
-        !text.contains("| 291 | **OPEN**"),
-        "QUEUE #291 must not stay OPEN"
+        !text.contains("| 292 | **OPEN**"),
+        "QUEUE #292 must not stay OPEN"
     );
     assert!(
-        text.contains("| 292 | **OPEN**"),
-        "QUEUE #292 must be first OPEN"
+        text.contains("| 293 | **OPEN**"),
+        "QUEUE #293 must be first OPEN"
     );
-    for n in 293..=294 {
+    for n in 294..=294 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     for needle in [
-        "Analyze-327",
+        "Analyze-328",
+        "RFC-0180",
         "RFC-0179",
-        "RFC-0178",
         "RFC-0174",
-        "first OPEN `#292`",
-        "#291",
-        "Help connect scenario",
+        "first OPEN `#293`",
+        "#292",
+        "UK mesh/discovery parity",
         "QUEUE Q closed",
         "desktop-ux.md",
         "Actionable Desktop Connection",
@@ -86,11 +86,11 @@ fn phase_r_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-r-plan.md",
-        "#291",
-        "first OPEN `#292`",
+        "#292",
+        "first OPEN `#293`",
         "RFC-0174",
+        "RFC-0180",
         "RFC-0179",
-        "RFC-0178",
         "problem_action",
         "mesh_language",
         "connection_cta",
@@ -116,7 +116,7 @@ fn phase_r_rfc_0174_file_free() {
 }
 
 #[test]
-fn phase_r_rfc_0175_through_0179_present() {
+fn phase_r_rfc_0175_through_0180_present() {
     for (name, needles) in [
         (
             "AIRA-RFC-0175-connection-next-step-cta.md",
@@ -137,6 +137,10 @@ fn phase_r_rfc_0175_through_0179_present() {
         (
             "AIRA-RFC-0179-help-connect-scenario.md",
             &["#291", "invite", "network.connect"][..],
+        ),
+        (
+            "AIRA-RFC-0180-uk-mesh-discovery-parity.md",
+            &["#292", "mesh", "discovery"][..],
         ),
     ] {
         let text = std::fs::read_to_string(repo_root().join("specs/rfc").join(name)).unwrap();
@@ -185,24 +189,24 @@ fn phase_r_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-r-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
-    assert!(docs.contains("#292") || docs.contains("`#292`"));
+    assert!(docs.contains("#293") || docs.contains("`#293`"));
 }
 
 #[test]
 fn phase_r_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-r-plan.md") || text.contains("Phase R"));
-    assert!(text.contains("#292") || text.contains("перший OPEN"));
+    assert!(text.contains("#293") || text.contains("перший OPEN"));
 }
 
 #[test]
 fn phase_r_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #291 |") || status.contains("#291"));
+    assert!(status.contains("| #292 |") || status.contains("#292"));
     assert!(status.contains("phase_r_doc.rs"));
     assert!(status.contains("phase-r-plan.md"));
-    assert!(status.contains("RFC-0179") || status.contains("0179"));
+    assert!(status.contains("RFC-0180") || status.contains("0180"));
     assert!(status.contains("RFC-0174") || status.contains("0174"));
 }
 
@@ -315,4 +319,20 @@ fn phase_r_problem_action_human_primary() {
         ui.contains("strip_work_from_problem"),
         "status strip must use actionable strip hint"
     );
+}
+
+#[test]
+fn phase_r_uk_mesh_i18n_parity_source() {
+    let text =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/i18n.rs")).unwrap();
+    for needle in [
+        "uk_mesh_discovery_labels_not_english_shell",
+        "Виявлення (P6 Dev)",
+        "Ідентичність:",
+        "Доступність:",
+        "mesh_identity: \"Ідентичність:\"",
+        "#292",
+    ] {
+        assert!(text.contains(needle), "i18n missing: {needle}");
+    }
 }
