@@ -383,7 +383,7 @@ mod tests {
 
         let book = AddressBook::load(dir.path()).unwrap();
         assert!(
-            book.as_map().get(peer).is_none(),
+            !book.as_map().contains_key(peer),
             "failed first dial must not leave orphan AddressBook entry"
         );
     }
