@@ -1,0 +1,4 @@
+- [x] RFC-0182 consolidating
+- [x] QUEUE S closed / no OPEN S
+- [x] phase_s_doc flip
+- [x] tips sync
