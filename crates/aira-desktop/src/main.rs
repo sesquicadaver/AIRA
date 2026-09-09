@@ -10,6 +10,7 @@ mod connection_cta;
 mod help;
 mod lexicon;
 mod mesh_language;
+mod problem_action;
 mod settings_apply;
 mod system_view;
 mod work_view;
@@ -28,6 +29,7 @@ use crate::app::AiraDesktopApp;
 use crate::connection_cta::ConnectionPrimaryCta;
 use crate::lexicon::{ActionId, HelpId};
 use crate::mesh_language::StripNetworkPhrase;
+use crate::problem_action::action_next_step;
 
 fn assert_lexicon_linked() {
     // Keep Phase O lexicon reachable in the binary (`#258` → F1 `#263`).
@@ -52,6 +54,10 @@ fn assert_lexicon_linked() {
         "strip.network.not_checked"
     );
     assert_ne!(StripNetworkPhrase::NotChecked, StripNetworkPhrase::Offline);
+    // Phase R `#290` human next-step copy stays linked (not wire-only).
+    let start_en = action_next_step(ActionId::NodeStart, aira_desktop_runtime::UiLang::En);
+    assert!(start_en.contains("Start"));
+    assert!(!start_en.contains("node.start"));
 }
 
 #[derive(Parser, Debug)]

@@ -21,8 +21,8 @@ use aira_artifact::{ArtifactStore, CasArtifactStore};
 use aira_csu::support::{json_bytes, make_artifact};
 use aira_csu_execution_llm::{GenerateLocalPayload, ModelActivateGate, ACTIVATE_DENIED};
 use aira_object::{
-    active_signature, is_cryptographic_signature, utc_now_rfc3339, AiraRef, ContentHash, Keyring,
-    Signature,
+    is_cryptographic_signature, local_test_signature, utc_now_rfc3339, AiraRef, ContentHash,
+    Keyring, Signature,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -444,7 +444,9 @@ fn publish_activate_evidence(
     let raw_body = activate_evidence_body(model_ref, verified_path, cache_path, content_hash);
     let for_sign = Value::Object(raw_body.clone());
     let raw = serde_json::to_vec(&for_sign).map_err(|e| e.to_string())?;
-    let sig: Signature = active_signature(&raw).map_err(|e| e.to_string())?;
+    // Identity-less fixture roots verify via `Keyring::with_local_test()` (#278).
+    // Sign with local-test so ready is not raced by process-global primary_signer.
+    let sig: Signature = local_test_signature(&raw);
     publish_activate_evidence_signed(root, raw_body, sig)
 }
 

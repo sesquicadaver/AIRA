@@ -1,7 +1,7 @@
 # AIRA Desktop UX — канон рішень
 
 **Статус:** Phase E `#75`–`#106` **DONE** (2026-08-22); Phase F `#107`–`#119` **DONE** (2026-08-24).  
-**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) (runtime-honest) `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed. Phase Q [`phase-q-plan.md`](phase-q-plan.md) `#275`–`#285` **DONE** @ [`AIRA-RFC-0164`](../specs/rfc/AIRA-RFC-0164-phase-q-cross-install-integrity.md); **QUEUE Q closed**; no OPEN Q atoms. Phase R [`phase-r-plan.md`](phase-r-plan.md) `#286`–`#294` **IN PROGRESS** (`#286`–`#289` DONE @ RFC-0175/`connection_cta` + RFC-0176/`ui_connect_primary` + [`AIRA-RFC-0177`](../specs/rfc/AIRA-RFC-0177-human-primary-mesh-strip.md) `mesh_language`; first OPEN `#290`; RFC-0174 reserved).
+**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) (runtime-honest) `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed. Phase Q [`phase-q-plan.md`](phase-q-plan.md) `#275`–`#285` **DONE** @ [`AIRA-RFC-0164`](../specs/rfc/AIRA-RFC-0164-phase-q-cross-install-integrity.md); **QUEUE Q closed**; no OPEN Q atoms. Phase R [`phase-r-plan.md`](phase-r-plan.md) `#286`–`#294` **IN PROGRESS** (`#286`–`#290` DONE @ RFC-0175/`connection_cta` + RFC-0176/`ui_connect_primary` + RFC-0177/`mesh_language` + [`AIRA-RFC-0178`](../specs/rfc/AIRA-RFC-0178-actionable-problem-strip.md) `problem_action`; first OPEN `#291`; RFC-0174 reserved).
 **Provenance:** [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED** → E); UX/Help draft 2026-09-06 (`aira-gui.md` + `aira-desktop-ux-help-draft.md`, поза git).  
 **Не змінює** Book 0–IV / C0–C1 / Core / `aira-core` ledger.  
 **Posture:** Linux E1 = **Developer Preview** над local reference plane.
@@ -77,7 +77,7 @@ O6 (`#261` **DONE** @ [`AIRA-RFC-0152`](../specs/rfc/AIRA-RFC-0152-system-status
 
 Секції: **Програма**, **Модель**, **З’єднання**, **Останні події**.
 
-Кожна: висновок людською мовою, час спостереження, максимум одна коригувальна дія, технічні подробиці. Phase R `#287` **DONE** @ RFC-0175: Connection primary CTA = `connection_cta::primary_connection_cta` (не лише Refresh).
+Кожна: висновок людською мовою, час спостереження, максимум одна коригувальна дія, технічні подробиці. Phase R `#287` **DONE** @ RFC-0175: Connection primary CTA = `connection_cta::primary_connection_cta` (не лише Refresh). Phase R `#290` **DONE** @ RFC-0178: problem/strip next-step = `problem_action` (wire `help:`/`try:` secondary).
 
 ### 4.1. З’єднання — джерела істини (чесність Phase N / N-fix)
 
