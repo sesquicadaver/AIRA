@@ -5,6 +5,8 @@
 //! `mark_local_bind` must not refresh external/relay freshness.
 //! `#281`: DIRECT apply is root-bound, durable-replayed, and apply-time fresh.
 //! `#296`: challenge `target_public_key` must match authoritative root keyring (same-ID / foreign-key reject).
+//! `#304`: replay admit and `reachability.json` are **separate** disk writes (no joint
+//! atomic commit). Crash between them can burn a challenge_id without persisting DIRECT.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -267,6 +269,13 @@ impl ReachabilityLocalState {
     /// - durable challenge-id replay under `peers/reachability_replay.json`
     /// - signed inbound [`ReachabilityLocalEvidence`] bound to the challenge
     ///
+    /// **Durability (`#304`):** this method persists the challenge-id into
+    /// `peers/reachability_replay.json` before mutating `self`. Persisting
+    /// `peers/reachability.json` is a **separate** caller `save`. There is no
+    /// joint atomic commit across the pair: a crash after replay write and before
+    /// state save can leave the challenge_id burned without `DIRECT_REACHABLE` on
+    /// disk. Rejects before `save_reachability_replay` leave both files unchanged.
+    ///
     /// A bare CLI transcript string is not accepted.
     pub fn apply_successful_probe(
         &mut self,
@@ -524,6 +533,15 @@ mod tests {
             st.external_checked_at.as_deref(),
             Some("2026-09-05T12:30:00Z")
         );
+        // `#304`: apply persists replay before caller `save`; not a joint atomic pair.
+        assert!(
+            crate::reachability::reachability_replay_path(target.path()).is_file(),
+            "replay must be on disk after apply"
+        );
+        assert!(
+            !ReachabilityLocalState::path(target.path()).is_file(),
+            "state file must wait for separate save (#304)"
+        );
         st.save(target.path()).unwrap();
         let loaded = ReachabilityLocalState::load(target.path()).unwrap();
         assert_eq!(loaded.status, ReachabilityStatus::DirectReachable);
@@ -536,6 +554,64 @@ mod tests {
         assert!(st
             .apply_successful_probe(target.path(), &result, &forged, "2026-09-05T12:30:00Z")
             .is_err());
+    }
+
+    #[tokio::test]
+    async fn apply_persists_replay_before_state_file_honesty() {
+        // Living contract for `#304`: split disk writes; no joint atomic claim.
+        use crate::{accept, admit_peer_trust, dial, listen_available_loopback, AddressBook};
+
+        let target = tempdir().unwrap();
+        let probe = tempdir().unwrap();
+        let (tid, tpk) = write_node(target.path(), "dur-tgt", [91u8; 32]);
+        let (pid, ppk) = write_node(probe.path(), "dur-prb", [92u8; 32]);
+        admit_peer_trust(target.path(), pid.as_str(), &ppk).unwrap();
+        admit_peer_trust(probe.path(), tid.as_str(), &tpk).unwrap();
+
+        let (listener, addr) = listen_available_loopback().await.unwrap();
+        let endpoint = format!("127.0.0.1:{}", addr.port());
+        let mut book = AddressBook::default();
+        book.upsert(tid.as_str(), &endpoint).unwrap();
+        book.save(probe.path()).unwrap();
+
+        let root_t = target.path().to_path_buf();
+        let accept_task = tokio::spawn(async move { accept(&listener, root_t).await });
+        let probe_session = dial(probe.path(), tid.as_str()).await.unwrap();
+        let target_session = accept_task.await.unwrap().unwrap();
+
+        let ch = ReachabilityChallenge::draft(ChallengeDraft {
+            target_identity_ref: tid.as_str().into(),
+            target_public_key: tpk,
+            endpoint: endpoint.clone(),
+            created_at: "2026-09-05T12:00:00Z".into(),
+            expires_at: "2026-09-05T13:00:00Z".into(),
+        })
+        .unwrap()
+        .sign_for_node_root(target.path())
+        .unwrap();
+        let evidence = target_session
+            .export_reachability_evidence(&ch, "2026-09-05T12:30:00Z")
+            .unwrap();
+        let att = ReachabilityAttestation::issue_for_authenticated_session(
+            &ch,
+            &probe_session,
+            "2026-09-05T12:30:00Z",
+        )
+        .unwrap();
+        let result = ReachabilityResult::new(ch, att);
+        let mut st = ReachabilityLocalState::default();
+        st.apply_successful_probe(target.path(), &result, &evidence, "2026-09-05T12:30:00Z")
+            .unwrap();
+        assert!(crate::reachability::reachability_replay_path(target.path()).is_file());
+        assert!(!ReachabilityLocalState::path(target.path()).is_file());
+        // Re-apply same challenge fails (replay burned) even without state save.
+        let err = st
+            .apply_successful_probe(target.path(), &result, &evidence, "2026-09-05T12:30:00Z")
+            .unwrap_err();
+        assert!(
+            err.to_string().contains("replay") || format!("{err:?}").contains("replay"),
+            "{err}"
+        );
     }
 
     #[tokio::test]

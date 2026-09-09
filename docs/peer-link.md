@@ -206,7 +206,11 @@ Transcript domain v2 binds **endpoint + INBOUND** proof direction; probe must be
 
 ## Phase S reachability key-bound admission (`#296`)
 
-In addition to `#281`, `target_public_key` must equal the authoritative root-scoped local verifying key. Same identity string with a foreign embedded key is rejected (`#296` / RFC-0183); state and replay stay unchanged.
+In addition to `#281`, `target_public_key` must equal the authoritative root-scoped local verifying key. Same identity string with a foreign embedded key is rejected (`#296` / RFC-0183); state and replay stay unchanged **on reject** (no disk writes before admission fails).
+
+## Phase S reachability durability honesty (`#304`)
+
+Successful apply writes **replay first** (`peers/reachability_replay.json`), then the caller persists **state** (`peers/reachability.json`). These are independent `fs::write`s — **not** a joint atomic commit. A crash between them can burn `challenge_id` without lasting `DIRECT_REACHABLE`. Do not document the pair as «атомарно» wider than that. RFC-0191.
 
 ## Phase N-fix expiry before promote (`#251`)
 
