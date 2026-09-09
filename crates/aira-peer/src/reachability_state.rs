@@ -4,6 +4,7 @@
 //! `#279`: local bind / external DIRECT / relay keep independent observation times —
 //! `mark_local_bind` must not refresh external/relay freshness.
 //! `#281`: DIRECT apply is root-bound, durable-replayed, and apply-time fresh.
+//! `#296`: challenge `target_public_key` must match authoritative root keyring (same-ID / foreign-key reject).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -253,10 +254,13 @@ impl ReachabilityLocalState {
         self.validate()
     }
 
-    /// Apply a verified successful peer-assisted probe → DIRECT_REACHABLE (`#281`).
+    /// Apply a verified successful peer-assisted probe → DIRECT_REACHABLE (`#281` / `#296`).
     ///
     /// Admission requires:
-    /// - `result.challenge.target_identity_ref` == current root node identity
+    /// - `result.challenge.target_identity_ref` == current root node identity (`#281`)
+    /// - `result.challenge.target_public_key` == authoritative root-scoped local
+    ///   verifying key for that identity (`#296`) — same-ID / foreign-key packages
+    ///   are rejected even when signatures are self-consistent under the embedded key
     /// - apply-time freshness (challenge not expired at `applied_at`;
     ///   `|applied_at − probed_at|` and evidence `created_at` within skew —
     ///   not only the signed `probed_at` window)
@@ -273,10 +277,24 @@ impl ReachabilityLocalState {
     ) -> Result<(), PeerError> {
         let root = root.as_ref();
         let applied_at = applied_at.into();
-        let (local_id, _) = Keyring::load_node_identity(root)?;
+        let (local_id, ring) = Keyring::load_node_identity(root)?;
         if local_id.as_str() != result.challenge.target_identity_ref {
             return Err(PeerError::Reachability(
                 "reachability evidence apply requires challenge target = current root identity (#281)"
+                    .into(),
+            ));
+        }
+        let expected_pk = ring.verifying_key(local_id.as_str()).ok_or_else(|| {
+            PeerError::Crypto("missing verifying key for root identity (#296)".into())
+        })?;
+        let expected_pk_hex = hex::encode(expected_pk.as_bytes());
+        if !result
+            .challenge
+            .target_public_key
+            .eq_ignore_ascii_case(&expected_pk_hex)
+        {
+            return Err(PeerError::Reachability(
+                "reachability evidence apply requires challenge target_public_key = current root key (#296)"
                     .into(),
             ));
         }
@@ -601,6 +619,68 @@ mod tests {
             matches!(&expired, PeerError::Reachability(msg) if msg.contains("apply time")),
             "{expired:?}"
         );
+    }
+
+    #[tokio::test]
+    async fn apply_rejects_same_identity_foreign_key_package() {
+        use crate::{accept, admit_peer_trust, dial, listen_available_loopback, AddressBook};
+
+        // Same identity *name* on two roots, different signing keys (#296).
+        let victim = tempdir().unwrap();
+        let impostor = tempdir().unwrap();
+        let probe = tempdir().unwrap();
+        let (vid, _vpk) = write_node(victim.path(), "kb-same", [91u8; 32]);
+        let (iid, ipk) = write_node(impostor.path(), "kb-same", [92u8; 32]);
+        assert_eq!(vid.as_str(), iid.as_str());
+        let (pid, ppk) = write_node(probe.path(), "kb-prb", [93u8; 32]);
+        admit_peer_trust(impostor.path(), pid.as_str(), &ppk).unwrap();
+        admit_peer_trust(probe.path(), iid.as_str(), &ipk).unwrap();
+
+        let (listener, addr) = listen_available_loopback().await.unwrap();
+        let endpoint = format!("127.0.0.1:{}", addr.port());
+        let mut book = AddressBook::default();
+        book.upsert(iid.as_str(), &endpoint).unwrap();
+        book.save(probe.path()).unwrap();
+
+        let root_i = impostor.path().to_path_buf();
+        let accept_task = tokio::spawn(async move { accept(&listener, root_i).await });
+        let probe_session = dial(probe.path(), iid.as_str()).await.unwrap();
+        let impostor_session = accept_task.await.unwrap().unwrap();
+
+        let ch = ReachabilityChallenge::draft(ChallengeDraft {
+            target_identity_ref: iid.as_str().into(),
+            target_public_key: ipk,
+            endpoint: endpoint.clone(),
+            created_at: "2026-09-05T12:00:00Z".into(),
+            expires_at: "2026-09-05T13:00:00Z".into(),
+        })
+        .unwrap()
+        .sign_for_node_root(impostor.path())
+        .unwrap();
+        let evidence = impostor_session
+            .export_reachability_evidence(&ch, "2026-09-05T12:30:00Z")
+            .unwrap();
+        let att = ReachabilityAttestation::issue_for_authenticated_session(
+            &ch,
+            &probe_session,
+            "2026-09-05T12:30:00Z",
+        )
+        .unwrap();
+        let result = ReachabilityResult::new(ch, att);
+
+        let mut st = ReachabilityLocalState::default();
+        let before = st.clone();
+        let err = st
+            .apply_successful_probe(victim.path(), &result, &evidence, "2026-09-05T12:30:00Z")
+            .unwrap_err();
+        assert!(
+            matches!(&err, PeerError::Reachability(msg) if msg.contains("#296")),
+            "{err:?}"
+        );
+        assert_eq!(st.status, before.status);
+        assert_eq!(st.status, ReachabilityStatus::Unknown);
+        assert!(!ReachabilityLocalState::path(victim.path()).is_file());
+        assert!(!crate::reachability::reachability_replay_path(victim.path()).is_file());
     }
 
     #[test]
