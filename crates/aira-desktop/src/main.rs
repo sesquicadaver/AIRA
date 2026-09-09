@@ -27,7 +27,7 @@ use aira_desktop_runtime::{
 };
 
 use crate::app::AiraDesktopApp;
-use crate::cold_start::is_cold_start_empty_profile;
+use crate::cold_start::{cold_start_forbids_connected_claim, is_cold_start_empty_profile};
 use crate::connection_cta::ConnectionPrimaryCta;
 use crate::lexicon::{ActionId, HelpId};
 use crate::mesh_language::StripNetworkPhrase;
@@ -68,6 +68,11 @@ fn assert_lexicon_linked() {
     assert!(!is_cold_start_empty_profile(
         aira_desktop_runtime::NetworkProfile::P1,
         0
+    ));
+    assert!(cold_start_forbids_connected_claim(
+        aira_desktop_runtime::NetworkProfile::P0,
+        0,
+        crate::system_view::ConnectionConclusion::Unknown
     ));
 }
 
