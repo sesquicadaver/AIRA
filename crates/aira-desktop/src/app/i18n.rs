@@ -83,6 +83,8 @@ pub struct Labels {
     pub cta_start_to_apply: &'static str,
     /// Phase R `#293`: one-line cold-start guidance on Connection (P0 + empty book).
     pub conn_cold_start_guidance: &'static str,
+    /// Phase S `#299`: Connection boundary — setup ≠ remote session; loopback ≠ dial.
+    pub conn_boundary_guidance: &'static str,
     pub sys_saved_participants: &'static str,
     pub sys_live_sessions: &'static str,
     pub sys_live_unobserved: &'static str,
@@ -275,7 +277,8 @@ static EN: Labels = Labels {
     cta_import_invite: "Import invite…",
     cta_stop_to_apply: "Stop to apply network",
     cta_start_to_apply: "Start to apply network",
-    conn_cold_start_guidance: "Local-only profile so far — no participant network yet. Enable a private network, then import an invite. Status stays unverified until then (not Connected; Applied only after a confirmed Start).",
+    conn_cold_start_guidance: "Local-only profile so far — no participant network yet. Enable a private network, then import an invite. Setup alone is not a remote session; status stays unverified until then (not Connected; Applied only after a confirmed Start).",
+    conn_boundary_guidance: "Setup is not a remote session. Loopback or listen address is not a peer dial address — Connect Help explains the boundary.",
     sys_saved_participants: "Saved participants (address book):",
     sys_live_sessions: "Live sessions:",
     sys_live_unobserved: "not observed",
@@ -459,7 +462,8 @@ static UK: Labels = Labels {
     cta_import_invite: "Імпортувати запрошення…",
     cta_stop_to_apply: "Стоп, щоб застосувати мережу",
     cta_start_to_apply: "Старт, щоб застосувати мережу",
-    conn_cold_start_guidance: "Поки що лише локальний профіль — мережі учасників ще немає. Увімкніть приватну мережу, потім імпортуйте запрошення. Стан лишається неперевіреним (це не Connected; Applied лише після підтвердженого Старт).",
+    conn_cold_start_guidance: "Поки що лише локальний профіль — мережі учасників ще немає. Увімкніть приватну мережу, потім імпортуйте запрошення. Саме налаштування — не віддалена сесія; стан лишається неперевіреним (це не Connected; Applied лише після підтвердженого Старт).",
+    conn_boundary_guidance: "Налаштування — не віддалена сесія. Loopback чи listen-адреса — не адреса dial до піра; межа пояснена в Connect Help.",
     sys_saved_participants: "Збережені учасники (адресна книга):",
     sys_live_sessions: "Живі сесії:",
     sys_live_unobserved: "не спостерігалося",
@@ -686,6 +690,21 @@ mod tests {
         assert!(Labels::get(UiLang::Uk)
             .conn_cold_start_guidance
             .contains("локальний профіль"));
+        assert!(Labels::get(UiLang::En)
+            .conn_cold_start_guidance
+            .contains("Setup alone is not a remote session"));
+        assert!(Labels::get(UiLang::En)
+            .conn_boundary_guidance
+            .contains("Setup is not a remote session"));
+        assert!(Labels::get(UiLang::En)
+            .conn_boundary_guidance
+            .contains("not a peer dial address"));
+        assert!(Labels::get(UiLang::Uk)
+            .conn_boundary_guidance
+            .contains("не віддалена сесія"));
+        assert!(Labels::get(UiLang::Uk)
+            .conn_boundary_guidance
+            .contains("не адреса dial"));
         assert!(Labels::get(UiLang::En)
             .settings_phase_restart
             .contains("restart needed"));
