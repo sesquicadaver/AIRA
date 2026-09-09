@@ -131,7 +131,10 @@ pub struct NetworkMeshSnapshot {
     pub address_book_count: usize,
     /// Authenticated live sessions known to this process.
     /// `None` = not observed from Desktop runtime (do not display as `0` or book size).
+    /// Phase S `#300`: `Some(n)` only from fresh opt-in dial evidence — not from setup alone.
     pub live_session_count: Option<usize>,
+    /// Human summary of last confirmed opt-in dial (`#300`); independent of reachability DIRECT.
+    pub last_confirmed_handshake: Option<String>,
 }
 
 impl NetworkMeshSnapshot {
@@ -154,6 +157,7 @@ impl NetworkMeshSnapshot {
             rendezvous_sequence: 0,
             address_book_count: 0,
             live_session_count: None,
+            last_confirmed_handshake: None,
         }
     }
 }
@@ -311,8 +315,13 @@ pub fn load_network_mesh_snapshot(
 
     let book = AddressBook::load(root)?;
     let address_book_count = book.peers.len();
-    // Desktop runtime has no in-process peer accept loop; live sessions are unknown here.
-    let live_session_count = None;
+    // Phase S `#300`: fresh opt-in dial evidence is the only Desktop live-session observation.
+    // Setup / invite / Stop→Start alone must leave this `None` (Help boundary `#299`).
+    let dial_ev = crate::peer_dial::load_fresh_dial_evidence(root).unwrap_or(None);
+    let (live_session_count, last_confirmed_handshake) = match dial_ev {
+        Some(ev) => (Some(1usize), Some(ev.summary_line())),
+        None => (None, None),
+    };
 
     let direct_reachability = if reach.status == ReachabilityStatus::DirectReachable {
         "yes"
@@ -343,6 +352,7 @@ pub fn load_network_mesh_snapshot(
         rendezvous_sequence: rv.local_sequence,
         address_book_count,
         live_session_count,
+        last_confirmed_handshake,
     })
 }
 

@@ -5,6 +5,7 @@ mod federation;
 mod i18n;
 mod invite;
 mod labels;
+mod peer_dial;
 mod profile;
 mod ui;
 mod work;
@@ -99,6 +100,10 @@ pub struct AiraDesktopApp {
     pub(super) discv_addr_edit: String,
     pub(super) find_key_edit: String,
     pub(super) find_to_edit: String,
+    /// Phase S `#300`: opt-in dial peer identity + explicit address (Technical details).
+    pub(super) dial_peer_edit: String,
+    pub(super) dial_addr_edit: String,
+    pub(super) dial_msg: Option<String>,
     pub(super) last_problem: Option<UiProblem>,
     pub(super) qr_texture: Option<egui::TextureHandle>,
     pub(super) qr_camera: Option<camera::InviteQrCamera>,
@@ -186,6 +191,9 @@ impl AiraDesktopApp {
             discv_addr_edit: String::new(),
             find_key_edit: String::new(),
             find_to_edit: String::new(),
+            dial_peer_edit: String::new(),
+            dial_addr_edit: String::new(),
+            dial_msg: None,
             last_problem,
             qr_texture: None,
             qr_camera: None,

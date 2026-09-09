@@ -18,6 +18,7 @@ mod network_mesh;
 mod node_http;
 mod paths;
 mod peer;
+mod peer_dial;
 mod process;
 mod settings;
 mod ui_prefs;
@@ -65,6 +66,10 @@ pub use network_mesh::{
 pub use node_http::{submit_desktop_problem, submit_problem_http};
 pub use paths::DesktopPaths;
 pub use peer::PeerPidRecordView;
+pub use peer_dial::{
+    load_fresh_dial_evidence, run_opt_in_peer_dial, DialOutcome, DialSessionEvidence,
+    DIAL_EVIDENCE_FRESH_SECS, DIAL_SESSION_EVIDENCE_SCHEMA_ID,
+};
 pub use process::{start, status, stop, LifecycleStatus, PidRecordView, StartOutcome};
 pub use settings::{
     effective_peer_listen, effective_relay_ttl_days, load_or_create_settings, normalize_settings,
