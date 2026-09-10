@@ -661,15 +661,14 @@ mod tests {
             .get_mut(problem_id.as_str())
             .expect("problem row");
         rec["result"] = json!({"result": 999.0, "tampered": true});
-        std::fs::write(
-            &index_path,
-            serde_json::to_string_pretty(&idx).unwrap(),
-        )
-        .unwrap();
+        std::fs::write(&index_path, serde_json::to_string_pretty(&idx).unwrap()).unwrap();
         drop(session);
         let session = LocalSession::open(&root).unwrap();
         let status = session.problem_status(problem_id.as_str()).unwrap();
-        assert_eq!(status.result, Some(json!({"result": 999.0, "tampered": true})));
+        assert_eq!(
+            status.result,
+            Some(json!({"result": 999.0, "tampered": true}))
+        );
         let result = session.get_result(problem_id.as_str()).unwrap();
         assert_eq!(result["result"], json!(4.0));
         assert_ne!(result.get("tampered"), Some(&json!(true)));
@@ -701,11 +700,7 @@ mod tests {
             obj.remove("execution_artifact_id");
             obj.insert("result".into(), json!({"result": 999.0}));
         }
-        std::fs::write(
-            &index_path,
-            serde_json::to_string_pretty(&idx).unwrap(),
-        )
-        .unwrap();
+        std::fs::write(&index_path, serde_json::to_string_pretty(&idx).unwrap()).unwrap();
         drop(session);
         let session = LocalSession::open(&root).unwrap();
         let err = session
