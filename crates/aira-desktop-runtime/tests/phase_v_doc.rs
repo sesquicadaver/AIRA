@@ -44,14 +44,8 @@ fn phase_v_plan_present() {
 fn phase_v_queue_323_done_324_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-v-plan.md"));
-    assert!(
-        text.contains("| 323 | **DONE**"),
-        "QUEUE #323 must be DONE"
-    );
-    assert!(
-        text.contains("| 324 | **OPEN**"),
-        "QUEUE #324 must be OPEN"
-    );
+    assert!(text.contains("| 323 | **DONE**"), "QUEUE #323 must be DONE");
+    assert!(text.contains("| 324 | **OPEN**"), "QUEUE #324 must be OPEN");
     for n in 325..=330 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
