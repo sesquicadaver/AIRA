@@ -1,0 +1,3 @@
+- [x] policy event nonce ids
+- [x] persist equivocation fail-closed
+- [x] RFC-0202 + tip `#318`

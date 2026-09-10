@@ -179,6 +179,7 @@ pub struct CsuRuntime {
     signer: Signature,
     policy_gate: Option<PolicyGate>,
     fail_seq: u64,
+    run_nonce: String,
 }
 
 impl CsuRuntime {
@@ -191,7 +192,15 @@ impl CsuRuntime {
             signer,
             policy_gate: None,
             fail_seq: 0,
+            run_nonce: String::new(),
         }
+    }
+
+    /// Align CSU lifecycle / failure / policy event ids with a plane run nonce (#317).
+    pub fn set_run_nonce(&mut self, run_nonce: impl Into<String>) {
+        let n = run_nonce.into();
+        self.run_nonce = n.clone();
+        self.registry.set_run_nonce(n);
     }
 
     /// Bind a Policy Gate for dispatch enforcement and CSU `check_policy` (fail-closed when unset).
@@ -202,6 +211,11 @@ impl CsuRuntime {
     /// Bind Policy Gate using the runtime signer (default-deny until actions are allowed).
     pub fn bind_policy_gate_from_signer(&mut self) {
         self.policy_gate = Some(PolicyGate::new(self.signer.clone()));
+    }
+
+    /// Bind Policy Gate with a run nonce so policy event ids stay unique across submits (#317).
+    pub fn bind_policy_gate_from_signer_with_nonce(&mut self, run_nonce: impl Into<String>) {
+        self.policy_gate = Some(PolicyGate::new(self.signer.clone()).with_run_nonce(run_nonce));
     }
 
     pub fn policy_gate_mut(&mut self) -> Option<&mut PolicyGate> {
@@ -411,7 +425,12 @@ impl CsuRuntime {
     ) -> Result<(), CsuError> {
         let publisher = self.publisher_for(csu_id);
         self.fail_seq += 1;
-        let id = format!("aira:event:csufail{}", self.fail_seq);
+        let nonce = if self.run_nonce.is_empty() {
+            "0"
+        } else {
+            self.run_nonce.as_str()
+        };
+        let id = format!("aira:event:csufail{nonce}_{}", self.fail_seq);
         let ev = crate::support::make_event_as(
             csu_id.clone(),
             publisher,

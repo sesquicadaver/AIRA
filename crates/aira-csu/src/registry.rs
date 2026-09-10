@@ -3,6 +3,8 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use aira_event::{EventDescriptor, EventSink, EventType};
 use aira_object::{AiraRef, ContentHash, Signature, Timestamp};
@@ -19,13 +21,38 @@ pub struct RegisteredCsu {
     pub state: CsuLifecycleState,
 }
 
+static REGISTRY_NONCE_SEQ: AtomicU64 = AtomicU64::new(1);
+
+fn allocate_registry_nonce() -> String {
+    let n = REGISTRY_NONCE_SEQ.fetch_add(1, Ordering::Relaxed);
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    format!("{nanos:x}{n:x}")
+}
+
 /// Local in-memory (+ optional file) CSU registry.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CsuRegistry {
     entries: HashMap<String, RegisteredCsu>,
     event_seq: u64,
     producer: Option<AiraRef>,
     signer: Option<Signature>,
+    /// Bound into `aira:event:csulife{run_nonce}_{seq}` (#317 companion uniqueness).
+    run_nonce: String,
+}
+
+impl Default for CsuRegistry {
+    fn default() -> Self {
+        Self {
+            entries: HashMap::new(),
+            event_seq: 0,
+            producer: None,
+            signer: None,
+            run_nonce: allocate_registry_nonce(),
+        }
+    }
 }
 
 impl CsuRegistry {
@@ -38,6 +65,16 @@ impl CsuRegistry {
         self.producer = Some(producer);
         self.signer = Some(signer);
         self
+    }
+
+    /// Align lifecycle event ids with a plane/submit run nonce.
+    pub fn with_run_nonce(mut self, run_nonce: impl Into<String>) -> Self {
+        self.run_nonce = run_nonce.into();
+        self
+    }
+
+    pub fn set_run_nonce(&mut self, run_nonce: impl Into<String>) {
+        self.run_nonce = run_nonce.into();
     }
 
     pub fn list(&self) -> Vec<&RegisteredCsu> {
@@ -154,7 +191,7 @@ impl CsuRegistry {
             return Ok(());
         };
         self.event_seq += 1;
-        let id = format!("aira:event:csulife{}", self.event_seq);
+        let id = format!("aira:event:csulife{}_{}", self.run_nonce, self.event_seq);
         let ev = if let Some(entry) = self.entries.get(subject.as_str()) {
             crate::support::make_event_as(
                 subject.clone(),

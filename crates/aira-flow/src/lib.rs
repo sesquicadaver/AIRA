@@ -844,6 +844,83 @@ mod tests {
         assert!(b.as_str().starts_with("aira:problem:flow"));
     }
 
+    /// #317: two submits keep distinct PolicyEvaluated ids in the durable log.
+    #[test]
+    fn two_submits_persist_distinct_policy_event_ids() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let mut session = LocalSession::open(&root).unwrap();
+        session.submit_problem("Calculate 2 + 2").unwrap();
+        session.submit_problem("echo hello").unwrap();
+        drop(session);
+        let durable =
+            aira_event::FileChainEventLog::open(root.join("events/file-chain-log.json")).unwrap();
+        let policy: Vec<_> = durable
+            .chain()
+            .records()
+            .iter()
+            .map(|r| &r.event)
+            .filter(|e| e.event_type == EventType::PolicyEvaluated)
+            .collect();
+        assert!(
+            policy.len() >= 2,
+            "expected policy events from both submits, got {}",
+            policy.len()
+        );
+        let mut ids: Vec<_> = policy.iter().map(|e| e.event_id.as_str()).collect();
+        ids.sort();
+        ids.dedup();
+        assert_eq!(
+            ids.len(),
+            policy.len(),
+            "policy event ids must be unique across submits"
+        );
+        for id in &ids {
+            assert!(
+                id.contains('_'),
+                "policy id should embed run_nonce_seq: {id}"
+            );
+        }
+    }
+
+    /// #317: same event_id with a different content hash must fail-closed on persist.
+    #[test]
+    fn persist_rejects_same_id_different_hash_equivocation() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let mut session = LocalSession::open(&root).unwrap();
+        session.submit_problem("Calculate 2 + 2").unwrap();
+        let original = session
+            .event_tail(500)
+            .unwrap()
+            .into_iter()
+            .find(|e| e.event_type == EventType::PolicyEvaluated)
+            .expect("policy event");
+        let orig_h = original.canonical_content_hash().unwrap();
+        assert_eq!(
+            crate::local::admit_persisted_event(Some(&orig_h), &original).unwrap(),
+            crate::local::PersistAdmit::Duplicate
+        );
+        let mut diverged = original.clone();
+        diverged
+            .object_refs
+            .push(AiraRef::parse("aira:object:equivocation-probe").unwrap());
+        let err = crate::local::admit_persisted_event(Some(&orig_h), &diverged)
+            .expect_err("must not admit same-id different hash");
+        assert!(
+            err.to_string().contains("#317") && err.to_string().contains("equivocation"),
+            "unexpected err: {err}"
+        );
+        assert_eq!(
+            crate::local::admit_persisted_event(None, &diverged).unwrap(),
+            crate::local::PersistAdmit::Append
+        );
+    }
+
     #[test]
     fn local_session_artifacts_are_not_all_mvp_fixed_timestamp() {
         let _lock = isolated_flow();

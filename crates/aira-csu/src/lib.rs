@@ -373,7 +373,15 @@ mod tests {
             0,
             "no CSUFailed when publisher cannot sign"
         );
-        assert_eq!(log.all().len(), before);
+        // PolicyEvaluated may append under a unique id (#317); no other events.
+        let added: Vec<_> = log.all()[before..]
+            .iter()
+            .map(|e| e.event_type.clone())
+            .collect();
+        assert!(
+            added.iter().all(|t| *t == EventType::PolicyEvaluated),
+            "unexpected events after fail-closed emit_failed: {added:?}"
+        );
         let _ = id2;
 
         unregister_csu_tenant(&id);
