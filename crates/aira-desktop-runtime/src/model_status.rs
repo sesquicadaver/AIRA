@@ -1,8 +1,9 @@
 //! Model selected ≠ ready ≠ used (`#269`).
+//! Executor kind ≠ activate-ready (`#319` / RFC-0204).
 
 use std::path::Path;
 
-use aira_flow::{ActivatedPointerGate, ActivationObservation};
+use aira_flow::{staff_executor_kind, ActivatedPointerGate, ActivationObservation};
 
 /// One slot of the model triple (never invent a name).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,6 +37,7 @@ impl ModelFact {
 /// Desktop projection of model monitoring facts (`#269`).
 ///
 /// `used` is filled by the GUI from the last Work result — never copied from selected.
+/// `executor_kind` is staff submit backend (`mock` / `process`) — independent of `ready`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelTripleSnapshot {
     pub selected: ModelFact,
@@ -43,6 +45,8 @@ pub struct ModelTripleSnapshot {
     pub ready_detail: String,
     pub used: ModelFact,
     pub activation: ActivationObservation,
+    /// Staff executor from env (`mock` default). Activate-ready does not imply process.
+    pub executor_kind: String,
 }
 
 impl ModelTripleSnapshot {
@@ -59,6 +63,7 @@ impl ModelTripleSnapshot {
                 ready: false,
                 detail: "not observed".into(),
             },
+            executor_kind: staff_executor_kind().to_string(),
         }
     }
 
@@ -79,6 +84,7 @@ impl ModelTripleSnapshot {
             ready_detail: obs.detail.clone(),
             used: ModelFact::Undefined,
             activation: obs,
+            executor_kind: staff_executor_kind().to_string(),
         }
     }
 
@@ -86,6 +92,11 @@ impl ModelTripleSnapshot {
     pub fn with_used(mut self, used: ModelFact) -> Self {
         self.used = used;
         self
+    }
+
+    /// True when staff submit uses reference MockBackend (#319).
+    pub fn executor_is_reference_mock(&self) -> bool {
+        self.executor_kind == "mock"
     }
 }
 
@@ -135,10 +146,41 @@ impl ModelTripleConclusion {
 mod tests {
     use super::*;
     use serial_test::serial;
+    use std::sync::{Mutex, OnceLock};
+    use std::time::Duration;
     use tempfile::tempdir;
+
+    /// Serialize activate fixtures vs parallel package tests / leftover warm threads.
+    fn isolated_activate() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// `#303` warm threads can briefly miss the evidence store after tempdir churn.
+    fn wait_fixture_ready(gate: &ActivatedPointerGate) -> ActivationObservation {
+        let mut last = gate.observe_verify_now();
+        for _ in 0..40 {
+            if last.ready {
+                return last;
+            }
+            if last.detail.contains("store missing")
+                || last.detail.contains("artifact missing")
+                || last.detail.contains("pending")
+            {
+                std::thread::sleep(Duration::from_millis(25));
+                last = gate.observe_verify_now();
+                continue;
+            }
+            return last;
+        }
+        last
+    }
 
     #[test]
     fn load_without_pointer_is_none_not_ready() {
+        let _lock = isolated_activate();
         let dir = tempdir().unwrap();
         let snap = ModelTripleSnapshot::load(dir.path());
         assert_eq!(snap.selected, ModelFact::None);
@@ -148,16 +190,19 @@ mod tests {
             ModelTripleConclusion::from_triple(&snap),
             ModelTripleConclusion::NoneSelected
         );
+        assert_eq!(snap.executor_kind, "mock");
+        assert!(snap.executor_is_reference_mock());
     }
 
     #[test]
     #[serial]
     fn fixture_ready_does_not_fill_used() {
+        let _lock = isolated_activate();
         let dir = tempdir().unwrap();
         aira_object::reset_primary_signer();
         let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
         // `#303`: UI load defers hash on miss; warm observe-ready before asserting ready.
-        let obs = gate.observe_verify_now();
+        let obs = wait_fixture_ready(&gate);
         assert!(
             obs.ready,
             "fixture observe_verify_now detail={}",
@@ -170,6 +215,10 @@ mod tests {
         assert_eq!(
             ModelTripleConclusion::from_triple(&snap),
             ModelTripleConclusion::Ready
+        );
+        assert!(
+            snap.executor_is_reference_mock(),
+            "activate-ready must not imply process executor"
         );
         let with_used = snap.with_used(ModelFact::Value("aira:model:other".into()));
         assert_eq!(
@@ -184,6 +233,7 @@ mod tests {
     #[test]
     #[serial]
     fn load_on_miss_is_pending_not_blocking_ready() {
+        let _lock = isolated_activate();
         let dir = tempdir().unwrap();
         aira_object::reset_primary_signer();
         ActivatedPointerGate::install_fixture(dir.path()).unwrap();
@@ -200,6 +250,7 @@ mod tests {
     #[test]
     #[serial]
     fn selected_survives_when_not_ready() {
+        let _lock = isolated_activate();
         let dir = tempdir().unwrap();
         aira_object::reset_primary_signer();
         ActivatedPointerGate::install_fixture(dir.path()).unwrap();

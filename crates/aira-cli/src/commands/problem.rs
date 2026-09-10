@@ -13,6 +13,14 @@ pub(crate) fn problem(root: &Path, command: ProblemCommands) -> Result<ExitCode>
     match command {
         ProblemCommands::Submit { text } => {
             ensure_init(root)?;
+            // #319 / RFC-0204: label executor before outcome so mock ≠ configured LLM.
+            let executor = aira_flow::staff_executor_kind();
+            if aira_flow::staff_executor_is_reference_mock() {
+                println!("executor {executor} (reference)");
+                println!("mode reference");
+            } else {
+                println!("executor {executor}");
+            }
             let mut session = LocalSession::open(root).map_err(|e| anyhow::anyhow!("{e}"))?;
             let out = session
                 .submit_problem(&text)

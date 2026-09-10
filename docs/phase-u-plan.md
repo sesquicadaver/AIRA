@@ -1,6 +1,6 @@
 # Phase U — Cross-path contract honesty (post-T)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-10; wiring `#313` **DONE**; `#314` **DONE** @ RFC-0199; `#315` **DONE** @ RFC-0200; `#316` **DONE** @ RFC-0201; `#317` **DONE** @ RFC-0202; `#318` **DONE** @ RFC-0203; first OPEN `#319`; RFC-0198 reserved file-free).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-10; wiring `#313` **DONE**; `#314` **DONE** @ RFC-0199; `#315` **DONE** @ RFC-0200; `#316` **DONE** @ RFC-0201; `#317` **DONE** @ RFC-0202; `#318` **DONE** @ RFC-0203; `#319` **DONE** @ RFC-0204; first OPEN `#320`; RFC-0198 reserved file-free).  
 **Джерела:** post-T audit `aira-current.md` @ `ef5f69c` (2026-09-10; merge PR #276 / RFC-0192); Phase T [`phase-t-plan.md`](phase-t-plan.md) **DONE** @ RFC-0192; **QUEUE T closed**; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase U `#313`–`#322`.  
 **Closure:** consolidating **RFC-0198** (id **confirmed free** 2026-09-10; file-free until `#322`).  
@@ -111,7 +111,7 @@ U0 Wiring (план у QUEUE + living smoke; RFC-0198 reserved)
 | `#316` | U1 | CLI identity create fail-closed | **DONE** @ RFC-0201: shared create; no overwrite | policy IDs (#317) |
 | `#317` | U1 | Policy audit uniqueness | **DONE** @ RFC-0202: unique IDs; same-ID≠hash conflict | failed submit (#318) |
 | `#318` | U1 | Failed submit durable | **DONE** @ RFC-0203: Err після accept → durable failure history | executor (#319) |
-| `#319` | U2 | Submit executor honesty | штатний path не маскує mock; explicit configured backend або явний mock label | AddressBook (#320) |
+| `#319` | U2 | Submit executor honesty | **DONE** @ RFC-0204: env bind + explicit mock/reference label | AddressBook (#320) |
 | `#320` | U2 | AddressBook selective rollback | rollback лише власний candidate; паралельний upsert зберігається | docs (#321) |
 | `#321` | U2 | systemd/docs prime-port | runbook + unit: bind проходить `validate_aira_port` | RFC close (#322) |
 | `#322` | U | RFC-0198 + close | consolidating RFC-0198; QUEUE U closed; no OPEN U atoms | — |
@@ -123,8 +123,8 @@ U0 Wiring (план у QUEUE + living smoke; RFC-0198 reserved)
       → #316 U1 CLI identity DONE @ RFC-0201
         → #317 U1 policy audit IDs DONE @ RFC-0202
           → #318 U1 failed submit durable DONE @ RFC-0203
-            → #319 U2 executor honesty (first OPEN)
-              → #320 U2 AddressBook selective rollback
+            → #319 U2 executor honesty DONE @ RFC-0204
+              → #320 U2 AddressBook selective rollback (first OPEN)
                 → #321 U2 systemd prime-port
                   → #322 U close RFC-0198
 ```

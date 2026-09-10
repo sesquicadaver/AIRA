@@ -21,6 +21,18 @@ pub use local::{
 };
 pub use plane::{FlowError, OperationalPlane, SubmitOutcome};
 
+/// Staff submit executor kind from env (`mock` default, `process` when configured).
+///
+/// #319 / RFC-0204: CLI/Desktop label this explicitly; activate-ready ≠ process backend.
+pub fn staff_executor_kind() -> &'static str {
+    aira_csu_execution_llm::backend_kind_from_env()
+}
+
+/// True when staff path uses reference MockBackend (not a configured process CLI).
+pub fn staff_executor_is_reference_mock() -> bool {
+    staff_executor_kind() == aira_csu_execution_llm::MOCK_BACKEND_ID
+}
+
 /// Crate version string.
 pub fn crate_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
@@ -339,6 +351,81 @@ mod tests {
         assert_ne!(
             result["backend"],
             json!(aira_csu_execution_llm::PROCESS_BACKEND_ID)
+        );
+    }
+
+    /// #319: staff `bind_activate_gate` honors `AIRA_LLM_BACKEND=process` (not forced mock).
+    #[test]
+    fn staff_bind_activate_gate_honors_process_env() {
+        let _lock = isolated_flow();
+        let prev_backend = std::env::var("AIRA_LLM_BACKEND").ok();
+        let prev_bin = std::env::var("AIRA_LLM_PROCESS_BIN").ok();
+        std::env::set_var("AIRA_LLM_BACKEND", "process");
+        std::env::set_var(
+            "AIRA_LLM_PROCESS_BIN",
+            "aira-llm-process-missing-bin-319-do-not-install",
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let bind = plane.bind_activate_gate(aira_csu_execution_llm::AlwaysActivated);
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let err = if bind.is_ok() {
+            plane.submit_problem(prompt).err()
+        } else {
+            None
+        };
+        match prev_backend {
+            Some(v) => std::env::set_var("AIRA_LLM_BACKEND", v),
+            None => std::env::remove_var("AIRA_LLM_BACKEND"),
+        }
+        match prev_bin {
+            Some(v) => std::env::set_var("AIRA_LLM_PROCESS_BIN", v),
+            None => std::env::remove_var("AIRA_LLM_PROCESS_BIN"),
+        }
+        bind.expect("bind_activate_gate");
+        let err = err.expect("process missing bin must Err");
+        assert!(
+            plane
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleFailed
+                    && e.payload_ref
+                        .as_deref()
+                        .is_some_and(|p| p.contains(aira_csu_execution_llm::MISSING_BINARY))),
+            "staff activate bind must use process env, got {err}"
+        );
+    }
+
+    /// #319: test helper keeps MockBackend even when process env is set.
+    #[test]
+    fn enable_activated_mock_llm_ignores_process_env() {
+        let _lock = isolated_flow();
+        let prev_backend = std::env::var("AIRA_LLM_BACKEND").ok();
+        let prev_bin = std::env::var("AIRA_LLM_PROCESS_BIN").ok();
+        std::env::set_var("AIRA_LLM_BACKEND", "process");
+        std::env::set_var(
+            "AIRA_LLM_PROCESS_BIN",
+            "aira-llm-process-missing-bin-319-force-mock",
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        plane.enable_activated_mock_llm().unwrap();
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let out = plane.submit_problem(prompt);
+        match prev_backend {
+            Some(v) => std::env::set_var("AIRA_LLM_BACKEND", v),
+            None => std::env::remove_var("AIRA_LLM_BACKEND"),
+        }
+        match prev_bin {
+            Some(v) => std::env::set_var("AIRA_LLM_PROCESS_BIN", v),
+            None => std::env::remove_var("AIRA_LLM_PROCESS_BIN"),
+        }
+        let SubmitOutcome::Executed { result, .. } = out.unwrap() else {
+            panic!("forced mock must Executed");
+        };
+        assert_eq!(
+            result["backend"],
+            json!(aira_csu_execution_llm::MOCK_BACKEND_ID)
         );
     }
 

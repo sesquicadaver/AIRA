@@ -473,6 +473,9 @@ impl LocalSession {
     /// After ProblemSubmitted accept, plane events (including CapsuleFailed /
     /// FailureEvidence) are always flushed even when the pipeline returns `Err`
     /// (#318 / RFC-0203).
+    ///
+    /// Staff executor follows `AIRA_LLM_BACKEND` via activate bind (#319 /
+    /// RFC-0204); default remains reference mock and must be labeled as such.
     pub fn submit_problem(&mut self, text: &str) -> Result<SubmitOutcome, FlowError> {
         bind_node_crypto(&self.paths.root)?;
         // Allocate a fresh nonce and rebuild plane so ids never collide with prior runs.
