@@ -200,8 +200,8 @@ fn phase_t_addressbook_candidate_module_present() {
             .unwrap();
     for needle in [
         "#311",
-        "prior_book",
-        "address book restored",
+        "prior_endpoint",
+        "address book candidate rolled back",
         "failed_dial_restores_prior_address_book",
         "failed_dial_removes_new_candidate_when_no_prior",
     ] {
