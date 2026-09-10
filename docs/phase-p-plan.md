@@ -74,7 +74,7 @@ P0 Wiring
 | `#266` | P0 | Phase P wiring | **DONE**: цей план IN PROGRESS; QUEUE `#266`–`#274`; `phase_p_doc`; `desktop-ux` tip; RFC-0156 reserved file-free | freshness (#267) |
 | `#267` | P1 | Snapshot freshness | **DONE** @ RFC-0157: `DataQuality::Stale`; measurement≠load; bind≠listener proof | applied (#268) |
 | `#268` | P1 | Applied from runtime | **DONE** @ RFC-0158: confirmed runtime/attach; Undefined when unconfirmed; status sync | model (#269) |
-| `#269` | P1 | Model triple UX | **DONE** @ RFC-0159: selected≠ready≠used; strip+System; Settings observe-only | reachability (#270) |
+| `#269` | P1 | Model triple UX | **DONE** @ RFC-0159: selected≠ready≠used; strip+System; **contract amended 2026-09-10** (local Settings select/activate required; observe-only superseded) | reachability (#270) |
 | `#270` | P1 | Reachability endpoint bind | **DONE** @ RFC-0160: endpoint+direction; CLI evidence ≠ transcript-alone | EVM honesty (#271) |
 | `#271` | P1 | EVM/JSON-RPC honesty | **DONE** @ RFC-0161: https config; Mock≠ledger; PARTIAL | lifecycle (#272) |
 | `#272` | P2 | Lifecycle non-blocking | **DONE** @ RFC-0162: Start/Stop/Quit off update(); refresh invalidate | Help (#273) |

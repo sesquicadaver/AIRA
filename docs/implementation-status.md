@@ -567,7 +567,7 @@ Plan: [`phase-n-plan.md`](phase-n-plan.md). Consolidating RFC: `AIRA-RFC-0123` (
 | #266 | Phase P wiring | plan + QUEUE + `phase_p_doc.rs`; RFC-0156 reserved | **DONE** |
 | #267 | Snapshot freshness | Stale; measurement≠load; RFC-0157 | **DONE** |
 | #268 | Applied from runtime | confirmed runtime / Undefined; RFC-0158 | **DONE** |
-| #269 | Model triple UX | selected≠ready≠used; RFC-0159 | **DONE** |
+| #269 | Model triple UX | selected≠ready≠used; RFC-0159 (**amd. 2026-09-10:** local Settings select/activate) | **DONE** |
 | #270 | Reachability endpoint bind | endpoint+direction; RFC-0160 | **DONE** |
 | #271 | EVM/JSON-RPC honesty | https config; Mock≠ledger; RFC-0161 | **DONE** |
 | #272 | Lifecycle non-blocking | off update(); RFC-0162 | **DONE** |

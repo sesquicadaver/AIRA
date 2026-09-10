@@ -25,7 +25,7 @@ Settings auto-persisted without showing whether the running node still used prev
 ```text
 Offline F1 shell (#263)
 Seed help articles (#264)
-Full model inventory editor
+Full model inventory editor (see RFC-0159 amd. 2026-09-10: local Settings select/activate is in scope there; GPU marketplace still out)
 RFC-0146 consolidating body (#265)
 ```
 
