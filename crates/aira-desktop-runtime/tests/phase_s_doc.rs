@@ -425,16 +425,23 @@ fn phase_s_descriptor_reopen_module_present() {
 
 #[test]
 fn phase_s_identity_incomplete_pair_module_present() {
-    let text =
+    let bootstrap =
         std::fs::read_to_string(repo_root().join("crates/aira-desktop-runtime/src/bootstrap.rs"))
             .unwrap();
     for needle in [
         "#298",
         "identity incomplete",
-        "write_secret_create_new",
         "incomplete_identity_pair_is_fail_closed",
+        "create_or_ensure_node_identity",
     ] {
-        assert!(text.contains(needle), "bootstrap missing: {needle}");
+        assert!(bootstrap.contains(needle), "bootstrap missing: {needle}");
+    }
+    // #316 moved exclusive create_new writes into shared aira-object create path.
+    let create =
+        std::fs::read_to_string(repo_root().join("crates/aira-object/src/crypto/create.rs"))
+            .unwrap();
+    for needle in ["write_secret_create_new", "create_new", "#316"] {
+        assert!(create.contains(needle), "identity create missing: {needle}");
     }
 }
 

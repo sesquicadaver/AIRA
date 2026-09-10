@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use ed25519_dalek::{SigningKey, VerifyingKey};
+use ed25519_dalek::SigningKey;
 use rand::rngs::OsRng;
 
 use aira_flow::{init_node, node_config_present, NodePaths};
@@ -63,91 +63,33 @@ fn ensure_local_identity(root: &Path) -> Result<()> {
     let np = NodePaths::new(root);
     let has_json = np.identity_json().is_file();
     let has_key = np.identity_key().is_file();
-    match (has_json, has_key) {
-        (true, true) => return Ok(()),
-        (false, false) => {}
-        (true, false) => anyhow::bail!(
-            "identity incomplete: local.identity.json present without local.ed25519 (#298)"
-        ),
-        (false, true) => anyhow::bail!(
+    // Fast path keeps Desktop naming helpers out of the shared create call when complete.
+    if has_json && has_key {
+        return Ok(());
+    }
+    if has_json ^ has_key {
+        // Shared op also rejects incomplete pairs; keep #298 wording for Desktop.
+        if has_json {
+            anyhow::bail!(
+                "identity incomplete: local.identity.json present without local.ed25519 (#298)"
+            );
+        }
+        anyhow::bail!(
             "identity incomplete: local.ed25519 present without local.identity.json (#298)"
-        ),
+        );
     }
 
     let mut rng = OsRng;
     let signing = SigningKey::generate(&mut rng);
-    let verifying: VerifyingKey = signing.verifying_key();
-    let secret_hex = hex::encode(signing.to_bytes());
-    let public_hex = hex::encode(verifying.to_bytes());
-    fs::create_dir_all(np.identity_dir())?;
-
-    // Mint only on empty pair: refuse overwrite / concurrent create (#298).
-    write_secret_create_new(&np.identity_key(), &format!("{secret_hex}\n"))?;
-
-    // Install-scoped unique ID; display_name stays "desktop" (#276).
-    // Existing roots that already have identity files keep their ID (no silent migration).
     let identity_id = new_desktop_identity_id();
-    let id_ref = aira_object::AiraRef::parse(&identity_id).map_err(|e| anyhow::anyhow!("{e}"))?;
-    let sig = aira_object::sign_with_key(id_ref.clone(), &signing, identity_id.as_bytes());
-    let created_at =
-        aira_object::utc_now_rfc3339().unwrap_or_else(|_| "1970-01-01T00:00:00Z".into());
-    let desc = serde_json::json!({
-        "identity_id": identity_id,
-        "identity_type": "local",
-        "display_name": "desktop",
-        "public_key": {
-            "algorithm": "ed25519",
-            "key_hex": public_hex
-        },
-        "created_at": created_at,
-        "key_path": "identity/local.ed25519",
-        "signature": sig
-    });
-    write_json_create_new(&np.identity_json(), &serde_json::to_string_pretty(&desc)?)?;
-
-    let mut ring = aira_object::Keyring::with_local_test();
-    ring.insert_signing(id_ref.clone(), signing);
-    aira_object::register_keyring(&ring);
-    aira_object::set_primary_signer(id_ref);
-    let _ = aira_object::ensure_trust_defaults(root);
-    Ok(())
-}
-
-/// Create secret file only if absent; Unix mode 0o600 is required (fail-closed).
-fn write_secret_create_new(path: &Path, contents: &str) -> Result<()> {
-    use std::io::Write;
-    let mut opts = fs::OpenOptions::new();
-    opts.write(true).create_new(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        opts.mode(0o600);
-    }
-    let mut f = opts
-        .open(path)
-        .with_context(|| format!("create identity secret {}", path.display()))?;
-    f.write_all(contents.as_bytes())
-        .with_context(|| format!("write identity secret {}", path.display()))?;
-    f.sync_all()
-        .with_context(|| format!("sync identity secret {}", path.display()))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(path, fs::Permissions::from_mode(0o600))
-            .with_context(|| format!("chmod 0600 identity secret {}", path.display()))?;
-    }
-    Ok(())
-}
-
-fn write_json_create_new(path: &Path, contents: &str) -> Result<()> {
-    use std::io::Write;
-    let mut f = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)
-        .with_context(|| format!("create identity descriptor {}", path.display()))?;
-    f.write_all(contents.as_bytes())
-        .with_context(|| format!("write identity descriptor {}", path.display()))?;
+    aira_object::create_or_ensure_node_identity(
+        root,
+        &identity_id,
+        "desktop",
+        signing,
+        aira_object::NodeIdentityCreatePolicy::Ensure,
+    )
+    .map_err(|e| anyhow::anyhow!("{e}"))?;
     Ok(())
 }
 

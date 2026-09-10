@@ -1,0 +1,3 @@
+- [x] shared create_or_ensure_node_identity
+- [x] CLI CreateExclusive + Desktop Ensure
+- [x] RFC-0201 + tip `#317`

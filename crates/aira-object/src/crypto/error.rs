@@ -51,6 +51,12 @@ pub enum CryptoError {
     TenantIsolation(String),
     #[error("signature.key_ref must equal producer_identity ({key_ref} != {producer})")]
     ProducerIdentityMismatch { producer: String, key_ref: String },
+    /// CLI `identity create` when key and/or descriptor already exist (#316).
+    #[error("node identity already exists (fail-closed create #316)")]
+    IdentityAlreadyExists,
+    /// Partial identity pair on disk — refuse mint/overwrite (#298 / #316).
+    #[error("identity incomplete: {0}")]
+    IdentityIncomplete(String),
 }
 /// True when `grace_until` is still active at process UTC now.
 pub(super) fn node_grace_active(grace_until: &str) -> Result<bool, CryptoError> {

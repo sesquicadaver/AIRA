@@ -2,11 +2,13 @@
 //!
 //! Mechanical split (Analyze-82 / QUEUE #47; tests → `smoke_tests.rs` QUEUE #127).
 
+mod create;
 mod error;
 mod keyring;
 mod rotation;
 mod trust_store;
 
+pub use create::{create_or_ensure_node_identity, CreatedNodeIdentity, NodeIdentityCreatePolicy};
 pub(crate) use error::parse_rfc3339;
 pub use error::{utc_now_rfc3339, CryptoError, LOCAL_TEST_DOMAIN_MSG, LOCAL_TEST_KEY_REF};
 #[cfg(test)]
