@@ -90,6 +90,19 @@ impl Csu for ContextBasicCsu {
             unresolved.push("underspecified_statement".into());
         }
 
+        // #324 / RFC-0209: pull immutable admission snapshot from ProblemSubmitted refs.
+        let mut admission_snapshot = None;
+        for id in &event.artifact_refs {
+            if let Ok((_desc, bytes)) = ctx.resolve_artifact(id) {
+                if let Ok(v) = serde_json::from_slice::<serde_json::Value>(&bytes) {
+                    if v.get("kind").and_then(|k| k.as_str()) == Some("admission_snapshot") {
+                        admission_snapshot = Some(v);
+                        break;
+                    }
+                }
+            }
+        }
+
         let context_body = json!({
             "context_id": format!("aira:context:ctx{}", self.seq),
             "problem_statement_ref": problem_ref.as_str(),
@@ -97,7 +110,8 @@ impl Csu for ContextBasicCsu {
             "resolved_factors": {
                 "language": language,
                 "explicit_constraints": [],
-                "statement_preview": statement.chars().take(120).collect::<String>()
+                "statement_preview": statement.chars().take(120).collect::<String>(),
+                "admission_snapshot": admission_snapshot
             },
             "unresolved_factors": unresolved,
             "confidence": 0.4,
@@ -160,7 +174,7 @@ pub fn crate_version() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aira_artifact::CasArtifactStore;
+    use aira_artifact::{ArtifactStore, ArtifactType, CasArtifactStore};
     use aira_csu::support::make_event as mk;
     use aira_event::MemoryEventLog;
     use aira_object::AiraRef;
@@ -205,5 +219,71 @@ mod tests {
             .all()
             .iter()
             .any(|e| e.event_type == EventType::ContextResolved));
+    }
+
+    #[test]
+    fn problem_submitted_with_admission_snapshot_in_context() {
+        use aira_csu::support::{json_bytes, make_artifact};
+        use aira_object::ContentHash;
+
+        let mut csu = ContextBasicCsu::new();
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+
+        let snap = json!({
+            "payload_schema": "aira:schema:admission:snapshot:0.1",
+            "kind": "admission_snapshot",
+            "statement_content_hash": ContentHash::sha256_bytes(b"Calculate 2 + 2").as_str(),
+            "generation": {},
+            "placement": "local",
+            "resource_budget": {},
+            "fallback": {
+                "allow_model_fallback": false,
+                "allow_placement_fallback": false
+            },
+            "reuse_policy": "allow_reuse"
+        });
+        let bytes = json_bytes(&snap);
+        let art = make_artifact(
+            "aira:artifact:admit-test",
+            ArtifactType::OperationalArtifact,
+            &bytes,
+            vec![],
+        );
+        let art_id = art.artifact_id.clone();
+        store.publish(art, &bytes).unwrap();
+
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let ev = mk(
+            "aira:event:p1",
+            EventType::ProblemSubmitted,
+            vec![AiraRef::parse("aira:problem:01TESTPROBLEM").unwrap()],
+            vec![art_id],
+            vec![],
+            Some("Calculate 2 + 2".into()),
+        );
+        let outs = csu.on_event(&ev, &mut ctx).unwrap();
+        let body = outs
+            .iter()
+            .find_map(|o| match o {
+                CsuOutput::Artifact { payload, .. } => {
+                    serde_json::from_slice::<serde_json::Value>(payload).ok()
+                }
+                _ => None,
+            })
+            .expect("context artifact");
+        let admit = body
+            .pointer("/resolved_factors/admission_snapshot")
+            .expect("admission_snapshot factor");
+        assert_eq!(
+            admit.get("kind").and_then(|k| k.as_str()),
+            Some("admission_snapshot")
+        );
     }
 }

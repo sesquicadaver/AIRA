@@ -1,0 +1,8 @@
+# Analyze-361 todo
+
+- [x] AdmissionSnapshot + default_for_text
+- [x] Publish on ProblemSubmitted (+ DSF path)
+- [x] Context resolved_factors
+- [x] ProblemRecord persist (success + failed)
+- [x] RFC-0209 + QUEUE/docs tips → `#325`
+- [ ] Do **not** implement Submit API (#325) or reuse (#326)

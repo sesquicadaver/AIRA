@@ -185,6 +185,12 @@ pub struct ProblemRecord {
     pub field_artifact_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub result: Option<Value>,
+    /// Immutable admission snapshot frozen at ProblemSubmitted (#324 / RFC-0209).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub admission_snapshot: Option<crate::AdmissionSnapshot>,
+    /// Artifact id of the admission snapshot OperationalArtifact.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub admission_artifact_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -510,6 +516,7 @@ impl LocalSession {
             .problem_ref()
             .map(|r| r.as_str().to_string())
             .unwrap_or_else(|| "aira:problem:unknown".into());
+        let (admission_artifact_id, admission_snapshot) = self.admission_fields();
         let record = ProblemRecord {
             problem_id: problem_id.clone(),
             text: text.to_string(),
@@ -518,8 +525,17 @@ impl LocalSession {
             execution_artifact_id: None,
             field_artifact_id: None,
             result: None,
+            admission_snapshot,
+            admission_artifact_id,
         };
         self.upsert_problem_record(record)
+    }
+
+    fn admission_fields(&self) -> (Option<String>, Option<crate::AdmissionSnapshot>) {
+        match self.plane.last_admission() {
+            Some((id, snap)) => (Some(id.as_str().to_string()), Some(snap.clone())),
+            None => (None, None),
+        }
     }
 
     fn persist_after_submit(
@@ -528,6 +544,7 @@ impl LocalSession {
         outcome: &SubmitOutcome,
     ) -> Result<(), FlowError> {
         self.persist_plane_events()?;
+        let (admission_artifact_id, admission_snapshot) = self.admission_fields();
 
         // Fail-closed: corrupt index is not replaced with empty (#191).
         let record = match outcome {
@@ -543,6 +560,8 @@ impl LocalSession {
                 execution_artifact_id: None,
                 field_artifact_id: None,
                 result: Some(result.clone()),
+                admission_snapshot,
+                admission_artifact_id,
             },
             SubmitOutcome::Executed {
                 problem_id,
@@ -556,6 +575,8 @@ impl LocalSession {
                 execution_artifact_id: Some(execution_artifact_id.as_str().to_string()),
                 field_artifact_id: None,
                 result: Some(result.clone()),
+                admission_snapshot,
+                admission_artifact_id,
             },
             SubmitOutcome::NeedsHumanCollapse { field_artifact_id } => {
                 let problem_id = self
@@ -571,6 +592,8 @@ impl LocalSession {
                     execution_artifact_id: None,
                     field_artifact_id: Some(field_artifact_id.as_str().to_string()),
                     result: None,
+                    admission_snapshot,
+                    admission_artifact_id,
                 }
             }
         };

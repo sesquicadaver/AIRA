@@ -8,11 +8,16 @@
 //! Operator-facing status: `docs/operational-plane.md`.
 
 mod activate_gate;
+mod admission;
 mod local;
 mod plane;
 mod reuse;
 
 pub use activate_gate::{ActivatedPointerGate, ActivationObservation, OBSERVE_HASH_PENDING};
+pub use admission::{
+    AdmissionSnapshot, FallbackRules, GenerationParameters, PlacementPreference, ResourceBudget,
+    ReusePolicy, ADMISSION_SNAPSHOT_KIND, ADMISSION_SNAPSHOT_SCHEMA,
+};
 
 pub use local::{
     init_node, load_config, node_config_present, open_node_sqlite_object_store,
@@ -86,6 +91,70 @@ mod tests {
             .events()
             .iter()
             .any(|e| e.event_type == EventType::ProblemSubmitted));
+    }
+
+    #[test]
+    fn submit_publishes_admission_snapshot_on_problem_submitted() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let text = "Calculate 2 + 2";
+        let _ = plane.submit_problem(text).unwrap();
+        let (admit_id, snap) = plane.last_admission().expect("admission snapshot");
+        assert_eq!(snap.kind, crate::ADMISSION_SNAPSHOT_KIND);
+        assert_eq!(
+            snap.statement_content_hash,
+            aira_object::ContentHash::sha256_bytes(text.as_bytes()).as_str()
+        );
+        let psub = plane
+            .events()
+            .iter()
+            .find(|e| e.event_type == EventType::ProblemSubmitted)
+            .expect("ProblemSubmitted");
+        assert_eq!(psub.payload_ref.as_deref(), Some(text));
+        assert!(
+            psub.artifact_refs
+                .iter()
+                .any(|r| r.as_str() == admit_id.as_str()),
+            "ProblemSubmitted must reference admission artifact"
+        );
+        let (_d, bytes) = plane.artifacts().resolve(admit_id).unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert!(crate::AdmissionSnapshot::is_snapshot_value(&body));
+
+        let ctx_art = plane
+            .events()
+            .iter()
+            .find(|e| e.event_type == EventType::ContextResolved)
+            .and_then(|e| e.artifact_refs.first())
+            .expect("ContextResolved artifact");
+        let (_d, ctx_bytes) = plane.artifacts().resolve(ctx_art).unwrap();
+        let ctx: serde_json::Value = serde_json::from_slice(&ctx_bytes).unwrap();
+        assert_eq!(
+            ctx.pointer("/resolved_factors/admission_snapshot/kind")
+                .and_then(|k| k.as_str()),
+            Some(crate::ADMISSION_SNAPSHOT_KIND)
+        );
+    }
+
+    #[test]
+    fn local_session_persists_admission_snapshot() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let mut session = LocalSession::open(&root).unwrap();
+        let out = session.submit_problem("Calculate 2 + 2").unwrap();
+        let problem_id = match &out {
+            SubmitOutcome::Completed { problem_id, .. } => problem_id.as_str().to_string(),
+            other => panic!("expected completed, got {other:?}"),
+        };
+        drop(session);
+        let reopened = LocalSession::open(&root).unwrap();
+        let rec = reopened.problem_status(&problem_id).unwrap();
+        let snap = rec.admission_snapshot.expect("persisted admission");
+        assert_eq!(snap.kind, crate::ADMISSION_SNAPSHOT_KIND);
+        assert!(rec.admission_artifact_id.is_some());
     }
 
     #[test]

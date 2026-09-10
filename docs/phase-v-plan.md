@@ -1,6 +1,6 @@
 # Phase V — Repair Pack 1: admission integrity & binding
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-10; `#323` **DONE** wiring; first OPEN `#324`).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-10; `#323`–`#324` **DONE**; first OPEN `#325`).  
 **Джерела:** Repair Pack 1 `p-only/aira-repair.md` §«Пакет 1»; Pack 0 **DONE** @ [`repair-package-0.md`](repair-package-0.md) / RFC-0207; Phase U **DONE** @ [`phase-u-plan.md`](phase-u-plan.md) / RFC-0198 (**QUEUE U closed**); trace [`product-requirements-trace.md`](product-requirements-trace.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase V `#323`–`#330`.  
 **Closure:** consolidating **RFC-0208** reserved file-free until `#330` (id confirmed free 2026-09-10).  
@@ -92,7 +92,7 @@ V0 Wiring (план у QUEUE + living smoke; RFC-0208 reserved)
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
 | `#323` | V0 | Phase V wiring | план IN PROGRESS; QUEUE `#323`–`#330`; `phase_v_doc`; tips; RFC-0208 reserved file-free | snapshot type (#324) |
-| `#324` | V1 | Admission snapshot type + persist | immutable fields + persist on admit; wire ProblemSubmitted/Context | Submit API surface (#325) |
+| `#324` | V1 | Admission snapshot type + persist | **DONE** @ RFC-0209: immutable fields + persist on admit | Submit API surface (#325) |
 | `#325` | V1 | Submit API carries constraints | HTTP/CLI/Desktop beyond `text`; mid-run Settings ≠ mutate snapshot | reuse key (#326) |
 | `#326` | V1 | Reuse after constraints | reuse key ⊇ snapshot identity; model-X miss ≠ text-only hit; compare/measure → require-new | activate hash (#327) |
 | `#327` | V1 | `activate_verified` hash continuity | reject if post-copy hash ≠ `VerifiedPointer.content_hash` | capsule binding (#328) |
@@ -101,9 +101,9 @@ V0 Wiring (план у QUEUE + living smoke; RFC-0208 reserved)
 | `#330` | V | RFC-0208 + close | consolidating; QUEUE V closed; `repair-package-1.md` DONE | Pack 2 |
 
 ```text
-#323 V0 wiring (DONE this atom)
-  → #324 V1 admission snapshot
-    → #325 V1 submit constraints API
+#323 V0 wiring (DONE)
+  → #324 V1 admission snapshot DONE @ RFC-0209
+    → #325 V1 submit constraints API (first OPEN)
       → #326 V1 reuse after constraints
         → #327 V1 activate hash continuity
           → #328 V1 capsule/result binding
@@ -143,7 +143,7 @@ aira-core still has no GUI/ledger/LLM deps.
 QUEUE U closed @ RFC-0198
   + Pack 0 DONE @ RFC-0207
   + developer «Pack 1» / «активувати Phase V» (2026-09-10)
-  → wiring `#323` DONE; план IN PROGRESS; first OPEN `#324`.
+  → wiring `#323` DONE; `#324` DONE @ RFC-0209; план IN PROGRESS; first OPEN `#325`.
 ```
 
 ---
