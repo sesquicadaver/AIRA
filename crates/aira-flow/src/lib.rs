@@ -637,6 +637,86 @@ mod tests {
             .any(|e| e.event_type == EventType::ProblemSubmitted));
     }
 
+    /// #315: mutating only `ProblemRecord.result` must not change `get_result`.
+    #[test]
+    fn get_result_by_problem_ignores_tampered_index_cache() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let mut session = LocalSession::open(&root).unwrap();
+        let out = session.submit_problem("Calculate 2 + 2").unwrap();
+        let SubmitOutcome::Completed {
+            problem_id,
+            verified_artifact_id,
+            ..
+        } = out
+        else {
+            panic!("expected completed");
+        };
+        let index_path = root.join("problems/index.json");
+        let raw = std::fs::read_to_string(&index_path).unwrap();
+        let mut idx: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        let rec = idx["problems"]
+            .get_mut(problem_id.as_str())
+            .expect("problem row");
+        rec["result"] = json!({"result": 999.0, "tampered": true});
+        std::fs::write(
+            &index_path,
+            serde_json::to_string_pretty(&idx).unwrap(),
+        )
+        .unwrap();
+        drop(session);
+        let session = LocalSession::open(&root).unwrap();
+        let status = session.problem_status(problem_id.as_str()).unwrap();
+        assert_eq!(status.result, Some(json!({"result": 999.0, "tampered": true})));
+        let result = session.get_result(problem_id.as_str()).unwrap();
+        assert_eq!(result["result"], json!(4.0));
+        assert_ne!(result.get("tampered"), Some(&json!(true)));
+        let (_desc, bytes) = session.get_artifact(verified_artifact_id.as_str()).unwrap();
+        let from_store: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(result, from_store);
+    }
+
+    /// #315: cached result without artifact locator is not authoritative.
+    #[test]
+    fn get_result_by_problem_rejects_result_without_artifact_ref() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let mut session = LocalSession::open(&root).unwrap();
+        let out = session.submit_problem("Calculate 2 + 2").unwrap();
+        let SubmitOutcome::Completed { problem_id, .. } = out else {
+            panic!("expected completed");
+        };
+        let index_path = root.join("problems/index.json");
+        let raw = std::fs::read_to_string(&index_path).unwrap();
+        let mut idx: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        let rec = idx["problems"]
+            .get_mut(problem_id.as_str())
+            .expect("problem row");
+        if let Some(obj) = rec.as_object_mut() {
+            obj.remove("verified_artifact_id");
+            obj.remove("execution_artifact_id");
+            obj.insert("result".into(), json!({"result": 999.0}));
+        }
+        std::fs::write(
+            &index_path,
+            serde_json::to_string_pretty(&idx).unwrap(),
+        )
+        .unwrap();
+        drop(session);
+        let session = LocalSession::open(&root).unwrap();
+        let err = session
+            .get_result(problem_id.as_str())
+            .expect_err("must not trust orphan index result");
+        assert!(
+            err.to_string().contains("no result"),
+            "unexpected err: {err}"
+        );
+    }
+
     #[test]
     fn local_session_generate_persists_execution_not_verified() {
         let _lock = isolated_flow();
