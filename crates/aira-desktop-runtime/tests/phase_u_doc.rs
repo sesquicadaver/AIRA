@@ -367,14 +367,14 @@ fn phase_u_readme_and_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-u-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
-    assert!(docs.contains("first OPEN `#320`") || docs.contains("#319"));
+    assert!(docs.contains("first OPEN `#320`") || docs.contains("#320"));
 }
 
 #[test]
 fn phase_u_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-u-plan.md") || text.contains("Phase U"));
-    assert!(text.contains("#319") || text.contains("перший OPEN"));
+    assert!(text.contains("#320") || text.contains("перший OPEN"));
     assert!(
         !text.contains("перший OPEN `#319`") && !text.contains("first OPEN `#319`"),
         "NEXT_PROBLEM must not keep #319 as first-OPEN after close"
