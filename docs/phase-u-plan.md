@@ -1,9 +1,9 @@
 # Phase U — Cross-path contract honesty (post-T)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-10; wiring `#313` **DONE**; `#314` **DONE** @ RFC-0199; `#315` **DONE** @ RFC-0200; `#316` **DONE** @ RFC-0201; `#317` **DONE** @ RFC-0202; `#318` **DONE** @ RFC-0203; `#319` **DONE** @ RFC-0204; `#320` **DONE** @ RFC-0205; `#321` **DONE** @ RFC-0206; first OPEN `#322`; RFC-0198 reserved file-free).  
+**Статус:** **DONE** @ [AIRA-RFC-0198](../specs/rfc/AIRA-RFC-0198-phase-u-cross-path-contract-honesty.md) (активовано 2026-09-10; `#313`–`#322` **DONE**; **QUEUE U closed**; no OPEN U atoms).  
 **Джерела:** post-T audit `aira-current.md` @ `ef5f69c` (2026-09-10; merge PR #276 / RFC-0192); Phase T [`phase-t-plan.md`](phase-t-plan.md) **DONE** @ RFC-0192; **QUEUE T closed**; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase U `#313`–`#322`.  
-**Closure:** consolidating **RFC-0198** (id **confirmed free** 2026-09-10; file-free until `#322`).  
+**Closure:** consolidating **RFC-0198** **DONE** @ `#322` (id was confirmed free 2026-09-10 until close).  
 **Не змінює:** анти-місію README; C0/C1 `Calculate 2 + 2`; `aira-core` ledger / LLM-in-Core; GUI stack (egui); IA Work / System / Settings + Help·F1; Claiming Polygon ledger DONE; Claiming global live mesh DONE; QUEUE T історію як never-DONE; public bind / auto-trust як Desktop default; admission hash policy (`check_activated`).
 
 > Примітка: `aira-current.md` поза git-каноном (`p-only/`). Канон у репо = цей план + `desktop-ux.md` + QUEUE + RFC-D.
@@ -114,7 +114,7 @@ U0 Wiring (план у QUEUE + living smoke; RFC-0198 reserved)
 | `#319` | U2 | Submit executor honesty | **DONE** @ RFC-0204: env bind + explicit mock/reference label | AddressBook (#320) |
 | `#320` | U2 | AddressBook selective rollback | **DONE** @ RFC-0205: selective candidate rollback; parallel upsert kept | docs (#321) |
 | `#321` | U2 | systemd/docs prime-port | **DONE** @ RFC-0206: unit/runbook bind ∈ P_AIRA (`127.0.0.1:49157`) | RFC close (#322) |
-| `#322` | U | RFC-0198 + close | consolidating RFC-0198; QUEUE U closed; no OPEN U atoms | — |
+| `#322` | U | RFC-0198 + close | **DONE** @ RFC-0198: consolidating; QUEUE U closed; no OPEN U atoms | — |
 
 ```text
 #313 U0 wiring (DONE this atom)
@@ -126,7 +126,7 @@ U0 Wiring (план у QUEUE + living smoke; RFC-0198 reserved)
             → #319 U2 executor honesty DONE @ RFC-0204
               → #320 U2 AddressBook selective rollback DONE @ RFC-0205
                 → #321 U2 systemd prime-port DONE @ RFC-0206
-                  → #322 U close RFC-0198 (first OPEN)
+                  → #322 U close RFC-0198 DONE
 ```
 
 **Anti-merge:** не зливати verify з result-index; не зливати identity з policy IDs; не зливати failed-submit persistence з policy uniqueness; не зливати executor honesty з AddressBook; не зливати docs prime-port з correctness atoms.
@@ -154,7 +154,7 @@ aira-core still has no GUI/ledger deps.
 
 ## 7. RFC (після активації)
 
-- Consolidating (`#322`): **AIRA-RFC-0198** — id **confirmed free** 2026-09-10 (немає `AIRA-RFC-0198*` у дереві; file-free until close).
+- Consolidating (`#322`): **AIRA-RFC-0198** — **DONE** (id was confirmed free 2026-09-10 until close).
 - Per-atom RFC-D: `#314`→**0199** … `#321`→**0206** (призначаються на кожному PR); `#322`→0198 consolidating.
 
 ---
