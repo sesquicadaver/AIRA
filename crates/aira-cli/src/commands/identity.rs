@@ -4,7 +4,7 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use anyhow::{bail, Context, Result};
-use ed25519_dalek::{SigningKey, VerifyingKey};
+use ed25519_dalek::SigningKey;
 use rand::rngs::OsRng;
 
 use aira_flow::NodePaths;
@@ -17,47 +17,20 @@ pub(crate) fn run(root: &Path, command: IdentityCommands) -> Result<ExitCode> {
     match command {
         IdentityCommands::Create { name } => {
             ensure_init(root)?;
-            let paths = NodePaths::new(root);
             let mut rng = OsRng;
             let signing = SigningKey::generate(&mut rng);
-            let verifying: VerifyingKey = signing.verifying_key();
-            let secret_hex = hex::encode(signing.to_bytes());
-            let public_hex = hex::encode(verifying.to_bytes());
-            std::fs::create_dir_all(paths.identity_dir())?;
-            std::fs::write(paths.identity_key(), format!("{secret_hex}\n"))?;
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                let _ = std::fs::set_permissions(
-                    paths.identity_key(),
-                    std::fs::Permissions::from_mode(0o600),
-                );
-            }
             let identity_id = format!("aira:identity:{name}");
-            let id_ref =
-                aira_object::AiraRef::parse(&identity_id).map_err(|e| anyhow::anyhow!("{e}"))?;
-            let sig = aira_object::sign_with_key(id_ref.clone(), &signing, identity_id.as_bytes());
-            let desc = serde_json::json!({
-                "identity_id": identity_id,
-                "identity_type": "local",
-                "display_name": name,
-                "public_key": {
-                    "algorithm": "ed25519",
-                    "key_hex": public_hex
-                },
-                "created_at": "2026-07-16T00:00:00Z",
-                "key_path": "identity/local.ed25519",
-                "signature": sig
-            });
-            std::fs::write(paths.identity_json(), serde_json::to_string_pretty(&desc)?)?;
-            let mut ring = aira_object::Keyring::with_local_test();
-            ring.insert_signing(id_ref.clone(), signing);
-            aira_object::register_keyring(&ring);
-            aira_object::set_primary_signer(id_ref);
-            let _ = aira_object::ensure_trust_defaults(root);
-            println!("created {identity_id}");
-            println!("public_key {public_hex}");
-            println!("identity {}", paths.identity_json().display());
+            let created = aira_object::create_or_ensure_node_identity(
+                root,
+                &identity_id,
+                &name,
+                signing,
+                aira_object::NodeIdentityCreatePolicy::CreateExclusive,
+            )
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+            println!("created {}", created.identity_id.as_str());
+            println!("public_key {}", created.public_key_hex);
+            println!("identity {}", created.identity_json_path.display());
             Ok(ExitCode::SUCCESS)
         }
         IdentityCommands::Rotate {

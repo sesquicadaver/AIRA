@@ -558,6 +558,7 @@ dependencies = [
  "aira-schema",
  "ed25519-dalek",
  "hex",
+ "rand",
  "regex",
  "serde",
  "serde_json",
