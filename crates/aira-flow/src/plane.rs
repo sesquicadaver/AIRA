@@ -105,7 +105,8 @@ impl OperationalPlane {
         let artifacts =
             CasArtifactStore::open(root).map_err(|e| FlowError::Artifact(e.to_string()))?;
         let mut runtime = CsuRuntime::new(local_identity(), local_signature());
-        runtime.bind_policy_gate_from_signer();
+        runtime.set_run_nonce(run_nonce.clone());
+        runtime.bind_policy_gate_from_signer_with_nonce(run_nonce.clone());
         runtime
             .policy_gate_mut()
             .unwrap()

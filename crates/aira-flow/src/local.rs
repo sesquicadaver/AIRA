@@ -495,30 +495,50 @@ impl LocalSession {
         let read = read_event_log_resilient(&self.paths.event_log())?;
         let mut log = read.log;
         for ev in self.plane.events() {
-            if !log
-                .events
-                .iter()
-                .any(|e| e.event_id.as_str() == ev.event_id.as_str())
-            {
-                log.events.push(ev.clone());
+            // #317 / RFC-0202: same-id + same hash → skip; same-id ≠ hash → conflict.
+            match admit_persisted_event(
+                log.events
+                    .iter()
+                    .find(|e| e.event_id.as_str() == ev.event_id.as_str())
+                    .map(|e| {
+                        e.canonical_content_hash()
+                            .map_err(|err| FlowError::Other(err.to_string()))
+                    })
+                    .transpose()?
+                    .as_ref(),
+                ev,
+            )? {
+                PersistAdmit::Append => log.events.push(ev.clone()),
+                PersistAdmit::Duplicate => {}
             }
         }
         write_json(&self.paths.event_log(), &log)?;
 
-        // Durable hash-chain log (#157): append only new event ids.
+        // Durable hash-chain log (#157): append with equivocation check (#317).
         let mut durable = FileChainEventLog::open_or_create(self.paths.file_chain_event_log())
             .map_err(|e| FlowError::Other(e.to_string()))?;
-        let known: std::collections::HashSet<String> = durable
-            .chain()
-            .records()
-            .iter()
-            .map(|r| r.event.event_id.as_str().to_string())
-            .collect();
+        let mut known: std::collections::HashMap<String, aira_object::ContentHash> =
+            std::collections::HashMap::new();
+        for r in durable.chain().records() {
+            let h = r
+                .event
+                .canonical_content_hash()
+                .map_err(|e| FlowError::Other(e.to_string()))?;
+            known.insert(r.event.event_id.as_str().to_string(), h);
+        }
         for ev in self.plane.events() {
-            if !known.contains(ev.event_id.as_str()) {
-                durable
-                    .append(ev.clone())
-                    .map_err(|e| FlowError::Other(e.to_string()))?;
+            let id = ev.event_id.as_str().to_string();
+            match admit_persisted_event(known.get(&id), ev)? {
+                PersistAdmit::Append => {
+                    let next_h = ev
+                        .canonical_content_hash()
+                        .map_err(|e| FlowError::Other(e.to_string()))?;
+                    durable
+                        .append(ev.clone())
+                        .map_err(|e| FlowError::Other(e.to_string()))?;
+                    known.insert(id, next_h);
+                }
+                PersistAdmit::Duplicate => {}
             }
         }
 
@@ -698,6 +718,31 @@ fn record_reuse_index(
         .entry(problem_text_hash(text))
         .or_insert_with(|| verified_artifact_id.as_str().to_string());
     write_json(&paths.reuse_index(), &idx)
+}
+
+/// Whether a candidate event may be appended during persist (#317 / RFC-0202).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PersistAdmit {
+    Append,
+    Duplicate,
+}
+
+/// Same-id + same canonical hash → idempotent skip; same-id ≠ hash → fail-closed.
+pub(crate) fn admit_persisted_event(
+    prior_hash: Option<&aira_object::ContentHash>,
+    incoming: &EventDescriptor,
+) -> Result<PersistAdmit, FlowError> {
+    let next_h = incoming
+        .canonical_content_hash()
+        .map_err(|e| FlowError::Other(e.to_string()))?;
+    match prior_hash {
+        None => Ok(PersistAdmit::Append),
+        Some(prev_h) if prev_h == &next_h => Ok(PersistAdmit::Duplicate),
+        Some(_) => Err(FlowError::Other(format!(
+            "event equivocation on persist: {} (same-id different hash #317)",
+            incoming.event_id.as_str()
+        ))),
+    }
 }
 
 fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), FlowError> {
