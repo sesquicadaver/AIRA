@@ -1,8 +1,9 @@
 //! Model selected ≠ ready ≠ used (`#269`).
+//! Executor kind ≠ activate-ready (`#319` / RFC-0204).
 
 use std::path::Path;
 
-use aira_flow::{ActivatedPointerGate, ActivationObservation};
+use aira_flow::{staff_executor_kind, ActivatedPointerGate, ActivationObservation};
 
 /// One slot of the model triple (never invent a name).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,6 +37,7 @@ impl ModelFact {
 /// Desktop projection of model monitoring facts (`#269`).
 ///
 /// `used` is filled by the GUI from the last Work result — never copied from selected.
+/// `executor_kind` is staff submit backend (`mock` / `process`) — independent of `ready`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelTripleSnapshot {
     pub selected: ModelFact,
@@ -43,6 +45,8 @@ pub struct ModelTripleSnapshot {
     pub ready_detail: String,
     pub used: ModelFact,
     pub activation: ActivationObservation,
+    /// Staff executor from env (`mock` default). Activate-ready does not imply process.
+    pub executor_kind: String,
 }
 
 impl ModelTripleSnapshot {
@@ -59,6 +63,7 @@ impl ModelTripleSnapshot {
                 ready: false,
                 detail: "not observed".into(),
             },
+            executor_kind: staff_executor_kind().to_string(),
         }
     }
 
@@ -79,6 +84,7 @@ impl ModelTripleSnapshot {
             ready_detail: obs.detail.clone(),
             used: ModelFact::Undefined,
             activation: obs,
+            executor_kind: staff_executor_kind().to_string(),
         }
     }
 
@@ -86,6 +92,11 @@ impl ModelTripleSnapshot {
     pub fn with_used(mut self, used: ModelFact) -> Self {
         self.used = used;
         self
+    }
+
+    /// True when staff submit uses reference MockBackend (#319).
+    pub fn executor_is_reference_mock(&self) -> bool {
+        self.executor_kind == "mock"
     }
 }
 
@@ -148,6 +159,8 @@ mod tests {
             ModelTripleConclusion::from_triple(&snap),
             ModelTripleConclusion::NoneSelected
         );
+        assert_eq!(snap.executor_kind, "mock");
+        assert!(snap.executor_is_reference_mock());
     }
 
     #[test]
@@ -170,6 +183,10 @@ mod tests {
         assert_eq!(
             ModelTripleConclusion::from_triple(&snap),
             ModelTripleConclusion::Ready
+        );
+        assert!(
+            snap.executor_is_reference_mock(),
+            "activate-ready must not imply process executor"
         );
         let with_used = snap.with_used(ModelFact::Value("aira:model:other".into()));
         assert_eq!(

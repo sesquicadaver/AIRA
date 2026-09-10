@@ -151,7 +151,14 @@ impl AiraDesktopApp {
                 aira_desktop_runtime::ModelTripleConclusion::SelectedNotReady => {
                     l.strip_model_not_ready
                 }
-                aira_desktop_runtime::ModelTripleConclusion::Ready => l.strip_model_ready,
+                aira_desktop_runtime::ModelTripleConclusion::Ready => {
+                    // #319: activate-ready + mock must not read as configured LLM.
+                    if self.model_triple.executor_is_reference_mock() {
+                        l.strip_model_ready_reference
+                    } else {
+                        l.strip_model_ready
+                    }
+                }
                 aira_desktop_runtime::ModelTripleConclusion::UsedInResult => l.strip_model_used,
             };
         ui.horizontal(|ui| {
@@ -628,6 +635,13 @@ impl AiraDesktopApp {
             ui.label(l.sys_model_used);
             ui.monospace(view.model.used.as_display());
         });
+        ui.horizontal(|ui| {
+            ui.label(l.sys_model_executor);
+            ui.monospace(&view.model.executor_kind);
+        });
+        if view.model.executor_kind == "mock" {
+            ui.small(l.sys_model_executor_mock_hint);
+        }
         ui.small(l.sys_model_triple_hint);
         egui::CollapsingHeader::new(l.sys_tech_details)
             .id_source("sys-model-tech")
@@ -1073,6 +1087,13 @@ impl AiraDesktopApp {
             ui.label(l.sys_model_used);
             ui.monospace(self.model_triple.used.as_display());
         });
+        ui.horizontal(|ui| {
+            ui.label(l.sys_model_executor);
+            ui.monospace(&self.model_triple.executor_kind);
+        });
+        if self.model_triple.executor_is_reference_mock() {
+            ui.small(l.sys_model_executor_mock_hint);
+        }
         ui.small(l.settings_models_observe_only);
         egui::CollapsingHeader::new(l.sys_tech_details)
             .id_source("settings-models-tech")

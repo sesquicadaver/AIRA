@@ -23,7 +23,7 @@ pub enum ProgramConclusion {
     Failed,
 }
 
-/// Model section — three independent facts (`#269`).
+/// Model section — three independent facts (`#269`) + executor honesty (`#319`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelConclusion {
     pub selected: ModelFact,
@@ -31,6 +31,8 @@ pub struct ModelConclusion {
     pub ready_detail: String,
     pub used: ModelFact,
     pub summary: ModelTripleConclusion,
+    /// Staff executor kind (`mock` / `process`); activate-ready ≠ process.
+    pub executor_kind: String,
 }
 
 impl ModelConclusion {
@@ -41,6 +43,7 @@ impl ModelConclusion {
             ready_detail: t.ready_detail.clone(),
             used: t.used.clone(),
             summary: ModelTripleConclusion::from_triple(t),
+            executor_kind: t.executor_kind.clone(),
         }
     }
 }

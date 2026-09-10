@@ -177,15 +177,18 @@ impl OperationalPlane {
 
     /// Bind a Phase D activate handle on the registered execution-llm CSU.
     ///
-    /// Default construction is fail-closed (no gate). Tests inject
-    /// [`AlwaysActivated`]; LocalSession injects [`ActivatedPointerGate`].
+    /// Staff path (#319 / RFC-0204): executor follows `AIRA_LLM_BACKEND`
+    /// (`with_backend_from_env`) so activate does not silently force mock.
+    /// Default construction is fail-closed (no gate). LocalSession injects
+    /// [`ActivatedPointerGate`]. Tests that must ignore env use
+    /// [`Self::enable_activated_mock_llm`].
     pub fn bind_activate_gate(
         &mut self,
         gate: impl ModelActivateGate + 'static,
     ) -> Result<(), FlowError> {
         let csu = ExecutionLlmCsu::new()
             .with_run_nonce(self.run_nonce.clone())
-            .with_mock_backend()
+            .with_backend_from_env()
             .with_activate_gate(gate);
         self.runtime
             .replace_handler(Box::new(csu))
@@ -193,9 +196,16 @@ impl OperationalPlane {
         Ok(())
     }
 
-    /// Test/CI double: MockBackend + Phase D activated.
+    /// Test/CI double: force [`MockBackend`] + Phase D activated (ignores env).
     pub fn enable_activated_mock_llm(&mut self) -> Result<(), FlowError> {
-        self.bind_activate_gate(AlwaysActivated)
+        let csu = ExecutionLlmCsu::new()
+            .with_run_nonce(self.run_nonce.clone())
+            .with_mock_backend()
+            .with_activate_gate(AlwaysActivated);
+        self.runtime
+            .replace_handler(Box::new(csu))
+            .map_err(|e| FlowError::Csu(e.to_string()))?;
+        Ok(())
     }
 
     /// Bind [`ActivatedPointerGate`] for `models/activated.latest.json` under `aira_root`.
