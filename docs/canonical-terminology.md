@@ -1,12 +1,12 @@
 # Canonical Terminology Guardrail
 
 **Issue:** #8  
-**Purpose:** Prevent regression into superseded GPU/Node/Driver/Scheduler-first vocabulary in Core.  
-**Queue / plans:** [`QUEUE.md`](../QUEUE.md) Phase G **OPEN** `#120`–`#146`. Anti-mission list: README §«What AIRA is not»; [`phase-g-plan.md`](phase-g-plan.md) §3.
+**Purpose:** Prevent regression into superseded GPU/Node/Driver/Scheduler-first vocabulary in **Core**.  
+**Queue / plans:** [`QUEUE.md`](../QUEUE.md). Anti-mission list: README §«What AIRA is not»; product trace: [`product-requirements-trace.md`](product-requirements-trace.md).
 
 ## Anti-mission (product / architecture — never in QUEUE)
 
-These are **not** deferred phases or «Phase H» backlog items:
+These are **not** deferred phases or backlog items:
 
 | Forbidden product | README |
 |-------------------|--------|
@@ -15,6 +15,21 @@ These are **not** deferred phases or «Phase H» backlog items:
 | Blockchain network | AIRA is **not** a blockchain network |
 | Scheduler / job orchestration in Core | AIRA is **not** a scheduler |
 | Core solving tasks | Core enables CSU through contracts |
+
+## Out of Kernel ≠ out of project
+
+After listing LLM, Model, GPU and related notions, the corpus rule is:
+
+> **Do not delete from the project — only remove from the Kernel.**
+
+| Allowed outside Core | Forbidden in Core |
+|----------------------|-------------------|
+| Local model select/activate (Desktop/CLI); inventory; ratings CSU | `llm_model_id` as Core ontology / Stable ABI requirement |
+| Capability-based resource offers with explicit consent & quotas | GPU marketplace / anonymous compute rental |
+| Share inference ≠ share weights (separate permissions) | Silent remote trust / public bind defaults |
+| Multidimensional ratings & provenance | Popularity as substitute for VERIFIED |
+
+MVP / Developer Preview / single-phase «out of scope» notes **MUST NOT** be rewritten as permanent product bans (Book 0 §1.3; RFC-0207).
 
 ## Forbidden as Core / ontology terms
 
@@ -60,3 +75,4 @@ From Schema Pack §28 — schemas must not require:
 - Object descriptor `object_type` enum rejects GPU/Node/Driver/…
 - CI / schema fixtures include invalid forbidden-type cases
 - CONTRIBUTING MVP freeze aligns with this guardrail
+- Product completeness uses [`product-requirements-trace.md`](product-requirements-trace.md) (schema/CLI alone ≠ product DONE)

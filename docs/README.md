@@ -11,7 +11,7 @@ GPU marketplace · LLM runtime · blockchain network · scheduler
 Core що «вирішує задачі» замість CSU contracts
 ```
 
-Деталі: [`phase-g-plan.md`](phase-g-plan.md) §3; [`canonical-terminology.md`](canonical-terminology.md).
+Деталі: [`phase-g-plan.md`](phase-g-plan.md) §3; [`canonical-terminology.md`](canonical-terminology.md) (out of Kernel ≠ out of project); [`product-requirements-trace.md`](product-requirements-trace.md).
 
 ## Phase plans (лінійна черга)
 
@@ -48,7 +48,9 @@ Core що «вирішує задачі» замість CSU contracts
 | [`conformance.md`](conformance.md) | C0–C5 runners; v0.3 index; security baseline |
 | [`ci-governance.md`](ci-governance.md) | GitHub Actions merge gate |
 | [`demo.md`](demo.md) | Local 2+2 and failure paths |
-| [`canonical-terminology.md`](canonical-terminology.md) | Forbidden Core vocabulary |
+| [`canonical-terminology.md`](canonical-terminology.md) | Forbidden Core vocabulary; out of Kernel ≠ out of project |
+| [`product-requirements-trace.md`](product-requirements-trace.md) | Product MUST trace (Repair Pack 0); schema/CLI ≠ product DONE |
+| [`repair-package-0.md`](repair-package-0.md) | Pack 0 close @ RFC-0207 |
 
 ## CSU & models
 
