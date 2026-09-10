@@ -376,7 +376,7 @@ mod tests {
         // PolicyEvaluated may append under a unique id (#317); no other events.
         let added: Vec<_> = log.all()[before..]
             .iter()
-            .map(|e| e.event_type.clone())
+            .map(|e| e.event_type)
             .collect();
         assert!(
             added.iter().all(|t| *t == EventType::PolicyEvaluated),
