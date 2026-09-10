@@ -472,11 +472,37 @@ AIRA Conformance Test Specification v0.1
 
 | Artifact | Path |
 |----------|------|
-| Execution queue | [`QUEUE.md`](../QUEUE.md) — Phase G `#120`–`#146` OPEN |
+| Execution queue | [`QUEUE.md`](../QUEUE.md) |
 | Implementation matrix | [`docs/implementation-status.md`](../docs/implementation-status.md) |
+| Product requirements trace | [`docs/product-requirements-trace.md`](../docs/product-requirements-trace.md) |
 | Documentation index | [`docs/README.md`](../docs/README.md) |
-| Phase plans | [`docs/phase-c-plan.md`](../docs/phase-c-plan.md) … [`docs/phase-g-plan.md`](../docs/phase-g-plan.md) |
+| Phase plans | [`docs/phase-c-plan.md`](../docs/phase-c-plan.md) … |
 | Conformance runners | `crates/aira-conformance/`; CI [`docs/ci-governance.md`](../docs/ci-governance.md) |
+
+---
+
+# 17. Product requirements tracing (Repair Package 0)
+
+Нормативний корпус Books **не** замінює продуктові вимоги Desktop/CLI до керування моделями, ресурсами, оцінками та профілями.
+
+```text
+Вимога → нормативна підстава → runtime/API → GUI/F1 → наскрізний тест → фактичний статус
+```
+
+Жива матриця: [`docs/product-requirements-trace.md`](../docs/product-requirements-trace.md). RFC: [`AIRA-RFC-0207`](rfc/AIRA-RFC-0207-repair-package-0-product-contract.md).
+
+**Заборонено** вважати продуктову вимогу виконаною лише тому, що існують:
+
+```text
+schema / fixture
+CLI helper
+local mock backend
+окремий QUEUE atom DONE без user-facing сценарію
+```
+
+Conformance C0/C1 залишаються необхідними й **недостатніми** для product acceptance (якість ML / досконалість UI виключені з базових профілів за Conformance Specification).
+
+Перед supersession історичних джерел Specification Control уже вимагає переносити унікальні фрагменти. Додатково: переносити **продуктові** зобов’язання (вибір, шерінг, оцінки), а не лише онтологію/протоколи.
 | Anti-mission | README §«What AIRA is not»; [`docs/phase-g-plan.md`](../docs/phase-g-plan.md) §3 |
 
 **Оновлено:** 2026-08-24 (Phase F DONE; Phase G OPEN).
