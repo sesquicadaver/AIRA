@@ -26,7 +26,7 @@ fn phase_u_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE T closed",
-        "first OPEN `#321`",
+        "first OPEN `#322`",
         "RFC-0199",
         "RFC-0200",
         "RFC-0201",
@@ -34,6 +34,7 @@ fn phase_u_plan_present() {
         "RFC-0203",
         "RFC-0204",
         "RFC-0205",
+        "RFC-0206",
         "#314",
         "#315",
         "#316",
@@ -41,6 +42,7 @@ fn phase_u_plan_present() {
         "#318",
         "#319",
         "#320",
+        "#321",
         "ef5f69c",
         "GPU marketplace",
         "Calculate 2 + 2",
@@ -59,10 +61,10 @@ fn phase_u_plan_present() {
 }
 
 #[test]
-fn phase_u_queue_320_done_321_open() {
+fn phase_u_queue_321_done_322_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-u-plan.md"));
-    for n in 313..=320 {
+    for n in 313..=321 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
@@ -73,10 +75,12 @@ fn phase_u_queue_320_done_321_open() {
         );
     }
     assert!(
-        text.contains("| 321 | **OPEN**"),
-        "QUEUE #321 must be first OPEN"
+        text.contains("| 322 | **OPEN**"),
+        "QUEUE #322 must be first OPEN"
     );
     for needle in [
+        "Analyze-357",
+        "RFC-0206",
         "Analyze-356",
         "RFC-0205",
         "Analyze-355",
@@ -88,7 +92,8 @@ fn phase_u_queue_320_done_321_open() {
         "RFC-0200",
         "RFC-0199",
         "RFC-0198",
-        "first OPEN `#321`",
+        "first OPEN `#322`",
+        "#321",
         "#320",
         "#319",
         "#318",
@@ -107,7 +112,7 @@ fn phase_u_desktop_ux_tip() {
     for needle in [
         "phase-u-plan.md",
         "#318",
-        "first OPEN `#321`",
+        "first OPEN `#322`",
         "RFC-0198",
         "RFC-0203",
     ] {
@@ -399,23 +404,78 @@ fn phase_u_addressbook_selective_rollback_present() {
 }
 
 #[test]
+fn phase_u_rfc_0206_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0206-systemd-docs-prime-port.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0206 missing");
+    for needle in ["#321", "validate_aira_port", "49157", "7900", "RFC-0198"] {
+        assert!(text.contains(needle), "RFC-0206 missing: {needle}");
+    }
+}
+
+#[test]
+fn phase_u_systemd_peer_bind_is_p_aira() {
+    let unit = std::fs::read_to_string(repo_root().join("deploy/systemd/aira-peer-listen.service"))
+        .expect("peer listen unit");
+    assert!(
+        unit.contains("127.0.0.1:49157"),
+        "systemd peer unit must use P_AIRA example 49157"
+    );
+    let mut binds = Vec::new();
+    for line in unit.lines() {
+        // Include commented ExecStart examples: every advertised --bind must be valid.
+        let trimmed = line.trim_start_matches('#').trim();
+        if let Some(idx) = trimmed.find("--bind ") {
+            let rest = &trimmed[idx + "--bind ".len()..];
+            let bind = rest.split_whitespace().next().unwrap_or("");
+            // Skip placeholders like `--bind PORT` in operator notes.
+            if bind.contains(':') {
+                binds.push(bind.to_string());
+            }
+        }
+    }
+    assert!(!binds.is_empty(), "unit must contain --bind examples");
+    for bind in &binds {
+        assert!(
+            !bind.ends_with(":7900") && !bind.contains(":7900/"),
+            "systemd --bind must not use port 7900: {bind}"
+        );
+        aira_peer::validate_aira_bind(bind).unwrap_or_else(|e| {
+            panic!("systemd example bind {bind} must pass validate_aira_bind: {e}")
+        });
+    }
+    let runbook = std::fs::read_to_string(repo_root().join("docs/runbook-systemd.md")).unwrap();
+    assert!(
+        !runbook.contains("--bind 127.0.0.1:7900") && !runbook.contains("--bind [::1]:7900"),
+        "runbook must not recommend a :7900 peer bind"
+    );
+    assert!(
+        runbook.contains("127.0.0.1:49157"),
+        "runbook must show 49157"
+    );
+    assert!(
+        runbook.contains("validate_aira_port") || runbook.contains("P_AIRA"),
+        "runbook must name prime-port validation"
+    );
+}
+
+#[test]
 fn phase_u_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-u-plan.md") || readme.contains("Phase U"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-u-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
-    assert!(docs.contains("first OPEN `#321`") || docs.contains("#321"));
+    assert!(docs.contains("first OPEN `#322`") || docs.contains("#322"));
 }
 
 #[test]
 fn phase_u_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-u-plan.md") || text.contains("Phase U"));
-    assert!(text.contains("#321") || text.contains("перший OPEN"));
+    assert!(text.contains("#322") || text.contains("перший OPEN"));
     assert!(
-        !text.contains("перший OPEN `#320`") && !text.contains("first OPEN `#320`"),
-        "NEXT_PROBLEM must not keep #320 as first-OPEN after close"
+        !text.contains("перший OPEN `#321`") && !text.contains("first OPEN `#321`"),
+        "NEXT_PROBLEM must not keep #321 as first-OPEN after close"
     );
 }
 
@@ -423,10 +483,10 @@ fn phase_u_next_problem() {
 fn phase_u_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #320 |") || status.contains("#320"));
+    assert!(status.contains("| #321 |") || status.contains("#321"));
     assert!(status.contains("phase_u_doc.rs"));
     assert!(status.contains("phase-u-plan.md"));
-    assert!(status.contains("RFC-0205") || status.contains("0205"));
+    assert!(status.contains("RFC-0206") || status.contains("0206"));
 }
 
 #[test]
