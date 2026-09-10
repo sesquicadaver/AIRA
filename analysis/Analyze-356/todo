@@ -1,0 +1,3 @@
+- [x] selective rollback_own_dial_candidate
+- [x] parallel upsert + skip-replaced tests
+- [x] RFC-0205 + tip `#321`
