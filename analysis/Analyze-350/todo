@@ -1,0 +1,5 @@
+# Analyze-350 todo
+
+- [x] Capsule-sourced verification
+- [x] Substitution + missing-capsule tests
+- [x] RFC-0199 + tips → `#315`

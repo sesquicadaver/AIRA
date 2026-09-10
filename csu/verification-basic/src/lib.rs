@@ -2,7 +2,10 @@
 //!
 //! Distinguishes Output Artifact from Verified Result Artifact.
 //! `#187`: `math.eval.safe` is independently evaluated; a wrong finite result is not VERIFIED.
-//! `#205`: `text.echo` / `text.uppercase` compare claimed `result` to capsule/output `expression`.
+//! `#205`: `text.echo` / `text.uppercase` compare claimed `result` to capsule `expression`.
+//! Phase U `#314`: action/expression are sourced from the admitted capsule
+//! (`CapsuleCompleted` `artifact_refs[1]`), not from executor output. A substituted
+//! but internally consistent output must not VERIFIED.
 
 use aira_artifact::ArtifactType;
 use aira_csu::support::{
@@ -154,26 +157,57 @@ fn claimed_matches_computed(claimed: f64, computed: f64) -> bool {
     claimed.is_finite() && computed.is_finite() && (claimed - computed).abs() <= 1e-9
 }
 
-/// Source text for math/text actions: output `expression` or capsule (`artifact_refs[1]`).
-fn action_expression(
-    body: &Value,
+/// Admitted capsule body from `CapsuleCompleted` second artifact ref (`#314`).
+///
+/// Missing or unreadable capsule is fail-closed — executor output must not substitute.
+fn admitted_capsule(
     event: &EventDescriptor,
     ctx: &mut CsuExecutionContext<'_, '_>,
-) -> Option<String> {
-    if let Some(expr) = body
+) -> Result<Value, String> {
+    let cap_id = event
+        .artifact_refs
+        .get(1)
+        .ok_or_else(|| "CapsuleCompleted missing admitted capsule artifact".to_string())?;
+    let (_, bytes) = ctx
+        .resolve_artifact(cap_id)
+        .map_err(|e| format!("admitted capsule resolve: {e}"))?;
+    serde_json::from_slice(&bytes).map_err(|e| format!("admitted capsule json: {e}"))
+}
+
+/// Action + expression from the admitted capsule (`#314`).
+fn capsule_action_expression(capsule: &Value) -> Result<(String, String), String> {
+    let action = capsule
+        .get("action")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| "admitted capsule missing action".to_string())?
+        .to_string();
+    let expression = capsule
+        .get("expression")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| "admitted capsule missing expression".to_string())?
+        .to_string();
+    Ok((action, expression))
+}
+
+/// Fail-closed if output claims a different action/expression than the capsule (`#314`).
+fn output_matches_capsule(body: &Value, action: &str, expression: &str) -> Result<(), String> {
+    if let Some(out_action) = body.get("action").and_then(|v| v.as_str()) {
+        if out_action != action {
+            return Err("output action diverges from admitted capsule".into());
+        }
+    }
+    if let Some(out_expr) = body
         .get("expression")
         .and_then(|v| v.as_str())
         .filter(|s| !s.is_empty())
     {
-        return Some(expr.to_string());
+        if out_expr != expression {
+            return Err("output expression diverges from admitted capsule".into());
+        }
     }
-    let cap_id = event.artifact_refs.get(1)?;
-    let (_, bytes) = ctx.resolve_artifact(cap_id).ok()?;
-    let cap: Value = serde_json::from_slice(&bytes).ok()?;
-    cap.get("expression")
-        .and_then(|v| v.as_str())
-        .filter(|s| !s.is_empty())
-        .map(str::to_string)
+    Ok(())
 }
 
 /// Problem / context refs for a VRA: capsule body when CapsuleCompleted carries it, else event object_refs.
@@ -242,42 +276,21 @@ fn seal_vra_body(
     Ok(body)
 }
 
-fn math_eval_matches_claimed(
-    body: &Value,
-    event: &EventDescriptor,
-    ctx: &mut CsuExecutionContext<'_, '_>,
-) -> bool {
-    let Some(claimed) = body.get("result").and_then(|v| v.as_f64()) else {
-        return false;
-    };
+fn math_eval_matches_claimed(claimed: f64, expression: &str) -> bool {
     if !claimed.is_finite() {
         return false;
     }
-    let Some(expr) = action_expression(body, event, ctx) else {
-        return false;
-    };
-    match math_eval_safe(&expr) {
+    match math_eval_safe(expression) {
         Ok(computed) => claimed_matches_computed(claimed, computed),
         Err(_) => false,
     }
 }
 
 /// Independent of execution-basic (CSU ↛ CSU). Same `to_uppercase` as execution-basic.
-fn text_matches_claimed(
-    action: &str,
-    body: &Value,
-    event: &EventDescriptor,
-    ctx: &mut CsuExecutionContext<'_, '_>,
-) -> bool {
-    let Some(claimed) = body.get("result").and_then(|v| v.as_str()) else {
-        return false;
-    };
-    let Some(src) = action_expression(body, event, ctx) else {
-        return false;
-    };
+fn text_matches_claimed(action: &str, claimed: &str, expression: &str) -> bool {
     match action {
-        "text.echo" => claimed == src,
-        "text.uppercase" => claimed == src.to_uppercase(),
+        "text.echo" => claimed == expression,
+        "text.uppercase" => claimed == expression.to_uppercase(),
         _ => false,
     }
 }
@@ -316,15 +329,31 @@ impl Csu for VerificationBasicCsu {
         }
 
         let body: Value = serde_json::from_slice(&bytes).unwrap_or(json!({}));
-        let action = body.get("action").and_then(|v| v.as_str()).unwrap_or("");
+        let capsule = match admitted_capsule(event, ctx) {
+            Ok(c) => c,
+            Err(msg) => return self.fail(ctx, event, &msg),
+        };
+        let (action, expression) = match capsule_action_expression(&capsule) {
+            Ok(pair) => pair,
+            Err(msg) => return self.fail(ctx, event, &msg),
+        };
+        if let Err(msg) = output_matches_capsule(&body, &action, &expression) {
+            return self.fail(ctx, event, &msg);
+        }
         // Generate-local is executed by execution-llm; do not mint a fake VERIFIED result.
         // Activate/semantic LLM verify remain later atoms.
         if action == "text.generate.local" {
             return Ok(vec![]);
         }
-        let ok = match action {
-            "math.eval.safe" => math_eval_matches_claimed(&body, event, ctx),
-            "text.echo" | "text.uppercase" => text_matches_claimed(action, &body, event, ctx),
+        let ok = match action.as_str() {
+            "math.eval.safe" => match body.get("result").and_then(|v| v.as_f64()) {
+                Some(claimed) => math_eval_matches_claimed(claimed, &expression),
+                None => false,
+            },
+            "text.echo" | "text.uppercase" => match body.get("result").and_then(|v| v.as_str()) {
+                Some(claimed) => text_matches_claimed(&action, claimed, &expression),
+                None => false,
+            },
             _ => false,
         };
 
@@ -468,10 +497,52 @@ mod tests {
         AiraRef::parse("aira:problem:01TESTPROBLEM").unwrap()
     }
 
+    fn publish_capsule(store: &mut CasArtifactStore, body: Value, id: &str) -> AiraRef {
+        let payload = json_bytes(&body);
+        let cap = make_artifact(id, ArtifactType::ExecutionArtifact, &payload, vec![]);
+        let cap_id = cap.artifact_id.clone();
+        store.publish(cap, &payload).unwrap();
+        cap_id
+    }
+
     fn run_on_output(
         store: &mut CasArtifactStore,
         output_payload: Value,
-        extra_refs: Vec<AiraRef>,
+        capsule_payload: Value,
+    ) -> Vec<CsuOutput> {
+        let cap_id = publish_capsule(store, capsule_payload, "aira:artifact:cap1");
+        let mut csu = VerificationBasicCsu::new();
+        let mut log = MemoryEventLog::new();
+        let payload = json_bytes(&output_payload);
+        let out = make_artifact(
+            "aira:artifact:out1",
+            ArtifactType::ExecutionArtifact,
+            &payload,
+            vec![],
+        );
+        let oid = out.artifact_id.clone();
+        store.publish(out, &payload).unwrap();
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(store),
+            None,
+        );
+        let ev = mk(
+            "aira:event:done1",
+            EventType::CapsuleCompleted,
+            vec![problem()],
+            vec![oid, cap_id],
+            vec![],
+            None,
+        );
+        csu.on_event(&ev, &mut ctx).unwrap()
+    }
+
+    /// CapsuleCompleted with output only — no admitted capsule (`#314` fail-closed).
+    fn run_on_output_without_capsule(
+        store: &mut CasArtifactStore,
+        output_payload: Value,
     ) -> Vec<CsuOutput> {
         let mut csu = VerificationBasicCsu::new();
         let mut log = MemoryEventLog::new();
@@ -484,8 +555,6 @@ mod tests {
         );
         let oid = out.artifact_id.clone();
         store.publish(out, &payload).unwrap();
-        let mut refs = vec![oid];
-        refs.extend(extra_refs);
         let mut ctx = aira_csu::CsuExecutionContext::new(
             csu.manifest().csu_id.clone(),
             &mut log,
@@ -496,7 +565,7 @@ mod tests {
             "aira:event:done1",
             EventType::CapsuleCompleted,
             vec![problem()],
-            refs,
+            vec![oid],
             vec![],
             None,
         );
@@ -534,7 +603,7 @@ mod tests {
         let outs = run_on_output(
             &mut store,
             json!({"action":"math.eval.safe","expression":"2+2","result":4.0}),
-            vec![],
+            json!({"action":"math.eval.safe","expression":"2+2"}),
         );
         assert!(is_verified(&outs));
         assert!(outs.iter().any(|o| matches!(
@@ -554,7 +623,7 @@ mod tests {
         let outs = run_on_output(
             &mut store,
             json!({"action":"math.eval.safe","expression":"2+2","result":5.0}),
-            vec![],
+            json!({"action":"math.eval.safe","expression":"2+2"}),
         );
         assert!(!is_verified(&outs));
         assert!(is_failed(&outs));
@@ -564,32 +633,48 @@ mod tests {
     fn math_expression_from_capsule_artifact() {
         let dir = tempfile::tempdir().unwrap();
         let mut store = CasArtifactStore::open(dir.path()).unwrap();
-        let cap_body = json!({"action":"math.eval.safe","expression":"2+2"});
-        let cap_payload = json_bytes(&cap_body);
-        let cap = make_artifact(
-            "aira:artifact:cap1",
-            ArtifactType::ExecutionArtifact,
-            &cap_payload,
-            vec![],
-        );
-        let cap_id = cap.artifact_id.clone();
-        store.publish(cap, &cap_payload).unwrap();
         let outs = run_on_output(
             &mut store,
             json!({"action":"math.eval.safe","result":4.0}),
-            vec![cap_id],
+            json!({"action":"math.eval.safe","expression":"2+2"}),
         );
         assert!(is_verified(&outs));
     }
 
+    /// `#314`: substituted output expression+result must not VERIFIED even if internally consistent.
     #[test]
-    fn finite_result_without_expression_is_not_verified() {
+    fn substituted_output_expression_is_not_verified() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"math.eval.safe","expression":"1+1","result":2.0}),
+            json!({"action":"math.eval.safe","expression":"2+2"}),
+        );
+        assert!(!is_verified(&outs));
+        assert!(is_failed(&outs));
+    }
+
+    #[test]
+    fn missing_admitted_capsule_is_not_verified() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output_without_capsule(
+            &mut store,
+            json!({"action":"math.eval.safe","expression":"2+2","result":4.0}),
+        );
+        assert!(!is_verified(&outs));
+        assert!(is_failed(&outs));
+    }
+
+    #[test]
+    fn finite_result_without_capsule_expression_is_not_verified() {
         let dir = tempfile::tempdir().unwrap();
         let mut store = CasArtifactStore::open(dir.path()).unwrap();
         let outs = run_on_output(
             &mut store,
             json!({"action":"math.eval.safe","result":4.0}),
-            vec![],
+            json!({"action":"math.eval.safe"}),
         );
         assert!(!is_verified(&outs));
         assert!(is_failed(&outs));
@@ -602,7 +687,7 @@ mod tests {
         let outs = run_on_output(
             &mut store,
             json!({"action":"text.echo","expression":"hello","result":"hello"}),
-            vec![],
+            json!({"action":"text.echo","expression":"hello"}),
         );
         assert!(is_verified(&outs));
     }
@@ -614,7 +699,7 @@ mod tests {
         let outs = run_on_output(
             &mut store,
             json!({"action":"text.uppercase","expression":"hello","result":"HELLO"}),
-            vec![],
+            json!({"action":"text.uppercase","expression":"hello"}),
         );
         assert!(is_verified(&outs));
     }
@@ -626,7 +711,7 @@ mod tests {
         let outs = run_on_output(
             &mut store,
             json!({"action":"text.echo","expression":"hello","result":"world"}),
-            vec![],
+            json!({"action":"text.echo","expression":"hello"}),
         );
         assert!(!is_verified(&outs));
         assert!(is_failed(&outs));
@@ -639,7 +724,7 @@ mod tests {
         let outs = run_on_output(
             &mut store,
             json!({"action":"text.uppercase","expression":"hello","result":"hello"}),
-            vec![],
+            json!({"action":"text.uppercase","expression":"hello"}),
         );
         assert!(!is_verified(&outs));
         assert!(is_failed(&outs));
@@ -649,20 +734,10 @@ mod tests {
     fn text_echo_expression_from_capsule_artifact() {
         let dir = tempfile::tempdir().unwrap();
         let mut store = CasArtifactStore::open(dir.path()).unwrap();
-        let cap_body = json!({"action":"text.echo","expression":"hello"});
-        let cap_payload = json_bytes(&cap_body);
-        let cap = make_artifact(
-            "aira:artifact:captext",
-            ArtifactType::ExecutionArtifact,
-            &cap_payload,
-            vec![],
-        );
-        let cap_id = cap.artifact_id.clone();
-        store.publish(cap, &cap_payload).unwrap();
         let outs = run_on_output(
             &mut store,
             json!({"action":"text.echo","result":"hello"}),
-            vec![cap_id],
+            json!({"action":"text.echo","expression":"hello"}),
         );
         assert!(is_verified(&outs));
     }
@@ -675,10 +750,11 @@ mod tests {
             &mut store,
             json!({
                 "action": "text.generate.local",
+                "expression": "prose",
                 "result": "mock-generate:prose",
                 "backend": "mock"
             }),
-            vec![],
+            json!({"action":"text.generate.local","expression":"prose"}),
         );
         assert!(!is_verified(&outs));
         assert!(!is_failed(&outs));
@@ -686,13 +762,13 @@ mod tests {
     }
 
     #[test]
-    fn text_echo_without_expression_is_not_verified() {
+    fn text_echo_without_capsule_expression_is_not_verified() {
         let dir = tempfile::tempdir().unwrap();
         let mut store = CasArtifactStore::open(dir.path()).unwrap();
         let outs = run_on_output(
             &mut store,
             json!({"action":"text.echo","result":"hello"}),
-            vec![],
+            json!({"action":"text.echo"}),
         );
         assert!(!is_verified(&outs));
         assert!(is_failed(&outs));
@@ -735,7 +811,7 @@ mod tests {
         let outs = run_on_output(
             &mut store,
             json!({"action":"math.eval.safe","expression":"2+2","result":4.0}),
-            vec![],
+            json!({"action":"math.eval.safe","expression":"2+2"}),
         );
         assert!(is_verified(&outs));
         let vra = verified_payload(&outs);
@@ -760,25 +836,15 @@ mod tests {
     fn verified_result_binds_refs_from_capsule() {
         let dir = tempfile::tempdir().unwrap();
         let mut store = CasArtifactStore::open(dir.path()).unwrap();
-        let cap_body = json!({
-            "action": "math.eval.safe",
-            "expression": "2+2",
-            "problem_statement_ref": "aira:problem:fromcapsule",
-            "context_ref": "aira:artifact:ctxfromcapsule"
-        });
-        let cap_payload = json_bytes(&cap_body);
-        let cap = make_artifact(
-            "aira:artifact:capbind",
-            ArtifactType::ExecutionArtifact,
-            &cap_payload,
-            vec![],
-        );
-        let cap_id = cap.artifact_id.clone();
-        store.publish(cap, &cap_payload).unwrap();
         let outs = run_on_output(
             &mut store,
             json!({"action":"math.eval.safe","result":4.0}),
-            vec![cap_id],
+            json!({
+                "action": "math.eval.safe",
+                "expression": "2+2",
+                "problem_statement_ref": "aira:problem:fromcapsule",
+                "context_ref": "aira:artifact:ctxfromcapsule"
+            }),
         );
         assert!(is_verified(&outs));
         let vra = verified_payload(&outs);

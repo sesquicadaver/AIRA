@@ -455,7 +455,7 @@ fn phase_j_semantic_verify_text_205() {
     let src =
         std::fs::read_to_string(repo_root().join("csu/verification-basic/src/lib.rs")).unwrap();
     assert!(src.contains("text_matches_claimed"));
-    assert!(src.contains("action_expression"));
+    assert!(src.contains("capsule_action_expression") || src.contains("admitted_capsule"));
     assert!(
         !src.contains("body.get(\"result\").and_then(|v| v.as_str()).is_some()"),
         "text.* must not stay presence-only"
