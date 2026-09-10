@@ -374,10 +374,7 @@ mod tests {
             "no CSUFailed when publisher cannot sign"
         );
         // PolicyEvaluated may append under a unique id (#317); no other events.
-        let added: Vec<_> = log.all()[before..]
-            .iter()
-            .map(|e| e.event_type)
-            .collect();
+        let added: Vec<_> = log.all()[before..].iter().map(|e| e.event_type).collect();
         assert!(
             added.iter().all(|t| *t == EventType::PolicyEvaluated),
             "unexpected events after fail-closed emit_failed: {added:?}"
