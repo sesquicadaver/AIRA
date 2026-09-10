@@ -15,8 +15,9 @@ mod reuse;
 
 pub use activate_gate::{ActivatedPointerGate, ActivationObservation, OBSERVE_HASH_PENDING};
 pub use admission::{
-    AdmissionSnapshot, FallbackRules, GenerationParameters, PlacementPreference, ResourceBudget,
-    ReusePolicy, ADMISSION_SNAPSHOT_KIND, ADMISSION_SNAPSHOT_SCHEMA,
+    AdmissionConstraints, AdmissionSnapshot, FallbackRules, GenerationParameters,
+    PlacementPreference, ResourceBudget, ReusePolicy, ADMISSION_SNAPSHOT_KIND,
+    ADMISSION_SNAPSHOT_SCHEMA,
 };
 
 pub use local::{
@@ -155,6 +156,43 @@ mod tests {
         let snap = rec.admission_snapshot.expect("persisted admission");
         assert_eq!(snap.kind, crate::ADMISSION_SNAPSHOT_KIND);
         assert!(rec.admission_artifact_id.is_some());
+    }
+
+    #[test]
+    fn submit_with_admission_keeps_snapshot_after_settings_like_mutation() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let text = "Calculate 2 + 2";
+        let constraints = crate::AdmissionConstraints {
+            model_ref: Some("aira:model:chosen".into()),
+            generation: crate::GenerationParameters {
+                temperature: Some(0.3),
+                ..Default::default()
+            },
+            reuse_policy: crate::ReusePolicy::RequireNewExecution,
+            ..Default::default()
+        };
+        let snap = crate::AdmissionSnapshot::from_text_and_constraints(text, &constraints);
+        let _ = plane
+            .submit_problem_with_admission(text, snap.clone())
+            .unwrap();
+        let (_, admitted) = plane.last_admission().expect("admission").clone();
+        assert_eq!(admitted.model_ref.as_deref(), Some("aira:model:chosen"));
+        assert_eq!(admitted.generation.temperature, Some(0.3));
+        assert_eq!(
+            admitted.reuse_policy,
+            crate::ReusePolicy::RequireNewExecution
+        );
+        // Simulate post-submit Settings / activated-pointer change: mutating a
+        // local constraints copy must not rewrite the plane's admitted snapshot.
+        let mut later = constraints;
+        later.model_ref = Some("aira:model:other".into());
+        later.generation.temperature = Some(0.9);
+        assert_ne!(later.model_ref, admitted.model_ref);
+        let (_, still) = plane.last_admission().expect("admission");
+        assert_eq!(still.model_ref.as_deref(), Some("aira:model:chosen"));
+        assert_eq!(still.generation.temperature, Some(0.3));
     }
 
     #[test]

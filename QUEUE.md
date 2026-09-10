@@ -12,7 +12,7 @@
 | `main` | Phase V `#323`–`#330` **IN PROGRESS** @ [`phase-v-plan.md`](docs/phase-v-plan.md) (Repair Pack 1 / admission integrity; RFC-0208 reserved); Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase V [`docs/phase-v-plan.md`](docs/phase-v-plan.md) `#323`–`#324` **DONE**; first OPEN `#325` |
+| Активна черга | Phase V [`docs/phase-v-plan.md`](docs/phase-v-plan.md) `#323`–`#325` **DONE**; first OPEN `#326` |
 
 ## Правила атомарності
 
@@ -883,8 +883,8 @@ Repair source: `p-only/aira-repair.md` Pack 1.
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
 | 323 | **DONE** | ~~Analyze-360 — Phase V wiring~~ | plan + QUEUE `#323`–`#330` + `phase_v_doc`; RFC-0208 reserved | plan IN PROGRESS; `#323` DONE; first OPEN was `#324` | snapshot (#324) |
-| 324 | **DONE** | ~~Analyze-361 — Admission snapshot type + persist~~ | immutable snapshot + persist-on-admit; RFC-0209 | `#324` DONE; first OPEN `#325` | Submit API (#325) |
-| 325 | **OPEN** | Analyze-362 — Submit API carries constraints | HTTP/CLI/Desktop beyond `text`; mid-run Settings ≠ mutate; RFC-0210 | all frontends carry constraints | reuse (#326) |
+| 324 | **DONE** | ~~Analyze-361 — Admission snapshot type + persist~~ | immutable snapshot + persist-on-admit; RFC-0209 | `#324` DONE; tip was `#325` | Submit API (#325) |
+| 325 | **DONE** | ~~Analyze-362 — Submit API carries constraints~~ | HTTP/CLI/Desktop beyond `text`; mid-run Settings ≠ mutate; RFC-0210 | `#325` DONE; first OPEN `#326` | reuse (#326) |
 | 326 | **OPEN** | Analyze-363 — Reuse after constraints | reuse key ⊇ snapshot; require-new for compare/measure; RFC-0211 | no text-only model bypass | activate (#327) |
 | 327 | **OPEN** | Analyze-364 — activate_verified hash continuity | post-copy hash == VerifiedPointer.content_hash; RFC-0212 | tamper → reject | binding (#328) |
 | 328 | **OPEN** | Analyze-365 — Capsule↔Output↔Result binding | generate-local capsule + executor facts; RFC-0213 | model_ref/content hash stamped | e2e (#329) |
@@ -893,12 +893,12 @@ Repair source: `p-only/aira-repair.md` Pack 1.
 
 ### Наступний цикл (Phase V)
 
-**Перший OPEN:** `#325` (Submit API carries constraints). Tip: `#324` DONE @ Analyze-361 / RFC-0209.
+**Перший OPEN:** `#326` (Reuse after constraints). Tip: `#325` DONE @ Analyze-362 / RFC-0210.
 
 ```text
 V0 wiring (#323 DONE)
   → V1 admission snapshot (#324 DONE @ RFC-0209)
-    → V1 submit constraints API (#325 OPEN)
+    → V1 submit constraints API (#325 DONE @ RFC-0210)
       → V1 reuse after constraints (#326 OPEN)
         → V1 activate hash continuity (#327 OPEN)
           → V1 capsule/result binding (#328 OPEN)

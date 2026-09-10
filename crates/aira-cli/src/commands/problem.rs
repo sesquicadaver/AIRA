@@ -3,15 +3,49 @@
 use std::path::Path;
 use std::process::ExitCode;
 
-use aira_flow::{LocalSession, SubmitOutcome};
+use aira_flow::{
+    AdmissionConstraints, AdmissionSnapshot, FallbackRules, GenerationParameters, LocalSession,
+    PlacementPreference, ReusePolicy, SubmitOutcome,
+};
 use anyhow::Result;
 
 use crate::cli::{ArtifactCommands, EventCommands, ProblemCommands, ResultCommands};
 use crate::support::ensure_init;
 
+fn parse_placement(s: &str) -> Result<PlacementPreference> {
+    match s.trim().to_ascii_lowercase().as_str() {
+        "local" => Ok(PlacementPreference::Local),
+        "remote_allowed" => Ok(PlacementPreference::RemoteAllowed),
+        "remote_required" => Ok(PlacementPreference::RemoteRequired),
+        other => {
+            anyhow::bail!("unknown --placement {other} (local|remote_allowed|remote_required)")
+        }
+    }
+}
+
+fn parse_reuse_policy(s: &str) -> Result<ReusePolicy> {
+    match s.trim().to_ascii_lowercase().as_str() {
+        "allow_reuse" => Ok(ReusePolicy::AllowReuse),
+        "require_new_execution" => Ok(ReusePolicy::RequireNewExecution),
+        other => {
+            anyhow::bail!("unknown --reuse-policy {other} (allow_reuse|require_new_execution)")
+        }
+    }
+}
+
 pub(crate) fn problem(root: &Path, command: ProblemCommands) -> Result<ExitCode> {
     match command {
-        ProblemCommands::Submit { text } => {
+        ProblemCommands::Submit {
+            text,
+            model_ref,
+            allowed_model_refs,
+            placement,
+            reuse_policy,
+            temperature,
+            privacy_class,
+            allow_model_fallback,
+            allow_placement_fallback,
+        } => {
             ensure_init(root)?;
             // #319 / RFC-0204: label executor before outcome so mock ≠ configured LLM.
             let executor = aira_flow::staff_executor_kind();
@@ -21,9 +55,32 @@ pub(crate) fn problem(root: &Path, command: ProblemCommands) -> Result<ExitCode>
             } else {
                 println!("executor {executor}");
             }
+            let constraints = AdmissionConstraints {
+                model_ref,
+                allowed_model_refs,
+                generation: GenerationParameters {
+                    temperature,
+                    ..Default::default()
+                },
+                placement: match placement {
+                    Some(p) => parse_placement(&p)?,
+                    None => PlacementPreference::default(),
+                },
+                privacy_class,
+                fallback: FallbackRules {
+                    allow_model_fallback,
+                    allow_placement_fallback,
+                },
+                reuse_policy: match reuse_policy {
+                    Some(p) => parse_reuse_policy(&p)?,
+                    None => ReusePolicy::default(),
+                },
+                ..Default::default()
+            };
+            let snap = AdmissionSnapshot::from_text_and_constraints(&text, &constraints);
             let mut session = LocalSession::open(root).map_err(|e| anyhow::anyhow!("{e}"))?;
             let out = session
-                .submit_problem(&text)
+                .submit_problem_with_admission(&text, snap)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
             match out {
                 SubmitOutcome::Completed {

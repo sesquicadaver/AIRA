@@ -63,7 +63,9 @@ pub use network_mesh::{
     LocalBindProvenance, MeshTopLevel, NetworkMeshSnapshot, SystemSnapshot,
     NETWORK_OBSERVATION_STALE_SECS,
 };
-pub use node_http::{submit_desktop_problem, submit_problem_http};
+pub use node_http::{
+    submit_desktop_problem, submit_desktop_problem_with_admission, submit_problem_http,
+};
 pub use paths::DesktopPaths;
 pub use peer::PeerPidRecordView;
 pub use peer_dial::{
