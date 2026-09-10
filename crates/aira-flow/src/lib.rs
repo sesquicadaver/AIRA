@@ -844,6 +844,66 @@ mod tests {
         assert!(b.as_str().starts_with("aira:problem:flow"));
     }
 
+    /// #318: post-accept pipeline Err still persists problem + failure evidence.
+    #[test]
+    fn failed_submit_persists_problem_and_failure_after_reopen() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        // No ActivatedPointerGate → generate-local CapsuleFailed after ProblemSubmitted.
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let mut session = LocalSession::open(&root).unwrap();
+        let err = session
+            .submit_problem(prompt)
+            .expect_err("must fail without activate");
+        let problem_id = session
+            .plane()
+            .problem_ref()
+            .expect("problem accepted before fail")
+            .as_str()
+            .to_string();
+        assert!(
+            session
+                .plane()
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleFailed),
+            "memory must show CapsuleFailed before reopen: {err}"
+        );
+        drop(session);
+
+        let session = LocalSession::open(&root).unwrap();
+        let status = session.problem_status(&problem_id).unwrap();
+        assert_eq!(status.status, "failed");
+        assert_eq!(status.text, prompt);
+        assert!(status.verified_artifact_id.is_none());
+        assert!(status.execution_artifact_id.is_none());
+        let tail = session.event_tail(500).unwrap();
+        assert!(
+            tail.iter()
+                .any(|e| e.event_type == EventType::ProblemSubmitted),
+            "durable log missing ProblemSubmitted"
+        );
+        assert!(
+            tail.iter()
+                .any(|e| e.event_type == EventType::CapsuleFailed),
+            "durable log missing CapsuleFailed"
+        );
+        assert!(
+            tail.iter()
+                .any(|e| e.event_type == EventType::FailureEvidenceCreated),
+            "durable log missing FailureEvidenceCreated"
+        );
+        let evidence_ref = tail
+            .iter()
+            .find(|e| e.event_type == EventType::FailureEvidenceCreated)
+            .and_then(|e| e.artifact_refs.first())
+            .expect("FailureEvidenceCreated carries artifact ref");
+        let (_desc, bytes) = session.get_artifact(evidence_ref.as_str()).unwrap();
+        assert!(!bytes.is_empty());
+    }
+
     /// #317: two submits keep distinct PolicyEvaluated ids in the durable log.
     #[test]
     fn two_submits_persist_distinct_policy_event_ids() {

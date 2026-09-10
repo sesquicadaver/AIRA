@@ -469,6 +469,10 @@ impl LocalSession {
     }
 
     /// Submit problem, drain pipeline, persist events + problem index.
+    ///
+    /// After ProblemSubmitted accept, plane events (including CapsuleFailed /
+    /// FailureEvidence) are always flushed even when the pipeline returns `Err`
+    /// (#318 / RFC-0203).
     pub fn submit_problem(&mut self, text: &str) -> Result<SubmitOutcome, FlowError> {
         bind_node_crypto(&self.paths.root)?;
         // Allocate a fresh nonce and rebuild plane so ids never collide with prior runs.
@@ -481,9 +485,38 @@ impl LocalSession {
         )?;
         self.plane
             .bind_phase_d_activate_from_root(&self.paths.root)?;
-        let outcome = self.plane.submit_problem(text)?;
-        self.persist_after_submit(text, &outcome)?;
-        Ok(outcome)
+        match self.plane.submit_problem(text) {
+            Ok(outcome) => {
+                self.persist_after_submit(text, &outcome)?;
+                Ok(outcome)
+            }
+            Err(e) => {
+                if self.plane.problem_ref().is_some() {
+                    self.persist_failed_submit(text)?;
+                }
+                Err(e)
+            }
+        }
+    }
+
+    /// Persist plane events + a `failed` problem row after post-accept pipeline Err (#318).
+    fn persist_failed_submit(&mut self, text: &str) -> Result<(), FlowError> {
+        self.persist_plane_events()?;
+        let problem_id = self
+            .plane
+            .problem_ref()
+            .map(|r| r.as_str().to_string())
+            .unwrap_or_else(|| "aira:problem:unknown".into());
+        let record = ProblemRecord {
+            problem_id: problem_id.clone(),
+            text: text.to_string(),
+            status: "failed".into(),
+            verified_artifact_id: None,
+            execution_artifact_id: None,
+            field_artifact_id: None,
+            result: None,
+        };
+        self.upsert_problem_record(record)
     }
 
     fn persist_after_submit(
@@ -491,6 +524,66 @@ impl LocalSession {
         text: &str,
         outcome: &SubmitOutcome,
     ) -> Result<(), FlowError> {
+        self.persist_plane_events()?;
+
+        // Fail-closed: corrupt index is not replaced with empty (#191).
+        let record = match outcome {
+            SubmitOutcome::Completed {
+                problem_id,
+                verified_artifact_id,
+                result,
+            } => ProblemRecord {
+                problem_id: problem_id.as_str().to_string(),
+                text: text.to_string(),
+                status: "completed".into(),
+                verified_artifact_id: Some(verified_artifact_id.as_str().to_string()),
+                execution_artifact_id: None,
+                field_artifact_id: None,
+                result: Some(result.clone()),
+            },
+            SubmitOutcome::Executed {
+                problem_id,
+                execution_artifact_id,
+                result,
+            } => ProblemRecord {
+                problem_id: problem_id.as_str().to_string(),
+                text: text.to_string(),
+                status: "executed".into(),
+                verified_artifact_id: None,
+                execution_artifact_id: Some(execution_artifact_id.as_str().to_string()),
+                field_artifact_id: None,
+                result: Some(result.clone()),
+            },
+            SubmitOutcome::NeedsHumanCollapse { field_artifact_id } => {
+                let problem_id = self
+                    .plane
+                    .problem_ref()
+                    .map(|r| r.as_str().to_string())
+                    .unwrap_or_else(|| "aira:problem:unknown".into());
+                ProblemRecord {
+                    problem_id: problem_id.clone(),
+                    text: text.to_string(),
+                    status: "needs_human_collapse".into(),
+                    verified_artifact_id: None,
+                    execution_artifact_id: None,
+                    field_artifact_id: Some(field_artifact_id.as_str().to_string()),
+                    result: None,
+                }
+            }
+        };
+        self.upsert_problem_record(record)?;
+        if let SubmitOutcome::Completed {
+            verified_artifact_id,
+            ..
+        } = outcome
+        {
+            record_reuse_index(&self.paths, text, verified_artifact_id)?;
+        }
+        Ok(())
+    }
+
+    /// Flush in-memory plane events to legacy + durable logs (#157 / #317 / #318).
+    fn persist_plane_events(&mut self) -> Result<(), FlowError> {
         // Artifact index already flushed by CasArtifactStore::publish.
         let read = read_event_log_resilient(&self.paths.event_log())?;
         let mut log = read.log;
@@ -541,68 +634,18 @@ impl LocalSession {
                 PersistAdmit::Duplicate => {}
             }
         }
+        Ok(())
+    }
 
-        // Fail-closed: corrupt index is not replaced with empty (#191).
+    fn upsert_problem_record(&mut self, record: ProblemRecord) -> Result<(), FlowError> {
         let mut idx = if self.paths.problems_index().exists() {
             read_json::<ProblemsIndex>(&self.paths.problems_index())
                 .map_err(|e| FlowError::Other(format!("problems index: {e}")))?
         } else {
             ProblemsIndex::default()
         };
-        let record = match outcome {
-            SubmitOutcome::Completed {
-                problem_id,
-                verified_artifact_id,
-                result,
-            } => ProblemRecord {
-                problem_id: problem_id.as_str().to_string(),
-                text: text.to_string(),
-                status: "completed".into(),
-                verified_artifact_id: Some(verified_artifact_id.as_str().to_string()),
-                execution_artifact_id: None,
-                field_artifact_id: None,
-                result: Some(result.clone()),
-            },
-            SubmitOutcome::Executed {
-                problem_id,
-                execution_artifact_id,
-                result,
-            } => ProblemRecord {
-                problem_id: problem_id.as_str().to_string(),
-                text: text.to_string(),
-                status: "executed".into(),
-                verified_artifact_id: None,
-                execution_artifact_id: Some(execution_artifact_id.as_str().to_string()),
-                field_artifact_id: None,
-                result: Some(result.clone()),
-            },
-            SubmitOutcome::NeedsHumanCollapse { field_artifact_id } => {
-                let problem_id = self
-                    .plane
-                    .problem_ref()
-                    .map(|r| r.as_str().to_string())
-                    .unwrap_or_else(|| "aira:problem:unknown".into());
-                ProblemRecord {
-                    problem_id: problem_id.clone(),
-                    text: text.to_string(),
-                    status: "needs_human_collapse".into(),
-                    verified_artifact_id: None,
-                    execution_artifact_id: None,
-                    field_artifact_id: Some(field_artifact_id.as_str().to_string()),
-                    result: None,
-                }
-            }
-        };
         idx.problems.insert(record.problem_id.clone(), record);
-        write_json(&self.paths.problems_index(), &idx)?;
-        if let SubmitOutcome::Completed {
-            verified_artifact_id,
-            ..
-        } = outcome
-        {
-            record_reuse_index(&self.paths, text, verified_artifact_id)?;
-        }
-        Ok(())
+        write_json(&self.paths.problems_index(), &idx)
     }
 
     pub fn problem_status(&self, problem_ref: &str) -> Result<ProblemRecord, FlowError> {
