@@ -146,10 +146,41 @@ impl ModelTripleConclusion {
 mod tests {
     use super::*;
     use serial_test::serial;
+    use std::sync::{Mutex, OnceLock};
+    use std::time::Duration;
     use tempfile::tempdir;
+
+    /// Serialize activate fixtures vs parallel package tests / leftover warm threads.
+    fn isolated_activate() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// `#303` warm threads can briefly miss the evidence store after tempdir churn.
+    fn wait_fixture_ready(gate: &ActivatedPointerGate) -> ActivationObservation {
+        let mut last = gate.observe_verify_now();
+        for _ in 0..40 {
+            if last.ready {
+                return last;
+            }
+            if last.detail.contains("store missing")
+                || last.detail.contains("artifact missing")
+                || last.detail.contains("pending")
+            {
+                std::thread::sleep(Duration::from_millis(25));
+                last = gate.observe_verify_now();
+                continue;
+            }
+            return last;
+        }
+        last
+    }
 
     #[test]
     fn load_without_pointer_is_none_not_ready() {
+        let _lock = isolated_activate();
         let dir = tempdir().unwrap();
         let snap = ModelTripleSnapshot::load(dir.path());
         assert_eq!(snap.selected, ModelFact::None);
@@ -166,11 +197,12 @@ mod tests {
     #[test]
     #[serial]
     fn fixture_ready_does_not_fill_used() {
+        let _lock = isolated_activate();
         let dir = tempdir().unwrap();
         aira_object::reset_primary_signer();
         let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
         // `#303`: UI load defers hash on miss; warm observe-ready before asserting ready.
-        let obs = gate.observe_verify_now();
+        let obs = wait_fixture_ready(&gate);
         assert!(
             obs.ready,
             "fixture observe_verify_now detail={}",
@@ -201,6 +233,7 @@ mod tests {
     #[test]
     #[serial]
     fn load_on_miss_is_pending_not_blocking_ready() {
+        let _lock = isolated_activate();
         let dir = tempdir().unwrap();
         aira_object::reset_primary_signer();
         ActivatedPointerGate::install_fixture(dir.path()).unwrap();
@@ -217,6 +250,7 @@ mod tests {
     #[test]
     #[serial]
     fn selected_survives_when_not_ready() {
+        let _lock = isolated_activate();
         let dir = tempdir().unwrap();
         aira_object::reset_primary_signer();
         ActivatedPointerGate::install_fixture(dir.path()).unwrap();

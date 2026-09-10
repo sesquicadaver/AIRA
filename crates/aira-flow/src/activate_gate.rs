@@ -217,7 +217,15 @@ impl ActivatedPointerGate {
     /// Write a Phase D-shaped activate fixture (cache + hash + signed evidence).
     ///
     /// Tests / HTTP helpers only. Does not download weights.
+    ///
+    /// Signs under thread-local local-test crypto so parallel Desktop bootstrap
+    /// cannot change process `primary_signer` mid-publish and poison later
+    /// observe verify (`invalid artifact signature` → store open fail).
     pub fn install_fixture(aira_root: impl AsRef<Path>) -> Result<Self, String> {
+        let _crypto = bind_thread_crypto(
+            Keyring::with_local_test(),
+            AiraRef::parse(LOCAL_TEST_KEY_REF).expect("local-test ref"),
+        );
         let root = aira_root.as_ref();
         let cache_rel = PathBuf::from("models/cache/l218/weights.bin");
         let cache_abs = root.join(&cache_rel);
@@ -371,8 +379,8 @@ impl ActivatedPointerGate {
         // the version would break later fixture verifies on path reuse.
         let (ring, primary) = verification_crypto(&self.aira_root);
         let _crypto = bind_thread_crypto(ring, primary);
-        let store = CasArtifactStore::open(self.aira_root.join("artifacts")).map_err(|_| {
-            "activated evidence store missing (fail-closed; not VERIFIED)".to_string()
+        let store = CasArtifactStore::open(self.aira_root.join("artifacts")).map_err(|e| {
+            format!("activated evidence store missing (fail-closed; not VERIFIED): {e}")
         })?;
         let (_desc, ev_bytes) = store.resolve(&evidence_id).map_err(|_| {
             "activated evidence artifact missing (fail-closed; not VERIFIED)".to_string()
