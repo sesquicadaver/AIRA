@@ -24,6 +24,7 @@ use aira_csu_execution_llm::{
 };
 
 use crate::activate_gate::ActivatedPointerGate;
+use crate::admission::AdmissionSnapshot;
 use aira_csu_reduction_basic::ReductionBasicCsu;
 use aira_csu_verification_basic::VerificationBasicCsu;
 use aira_event::{EventDescriptor, EventSink, EventType, MemoryEventLog};
@@ -79,6 +80,8 @@ pub struct OperationalPlane {
     ready_solutions: Vec<AiraRef>,
     /// Durable reuse catalog (`reuse-index.json`). Bound at open; consulted on submit (#204).
     reuse_index: Option<PathBuf>,
+    /// Last admission snapshot published for the current problem (#324 / RFC-0209).
+    last_admission: Option<(AiraRef, AdmissionSnapshot)>,
 }
 
 impl OperationalPlane {
@@ -151,6 +154,7 @@ impl OperationalPlane {
             run_nonce,
             ready_solutions,
             reuse_index: None,
+            last_admission: None,
         })
     }
 
@@ -252,6 +256,35 @@ impl OperationalPlane {
         self.problem_ref.as_ref()
     }
 
+    /// Admission snapshot bound to the current problem (#324 / RFC-0209).
+    pub fn last_admission(&self) -> Option<&(AiraRef, AdmissionSnapshot)> {
+        self.last_admission.as_ref()
+    }
+
+    /// Publish immutable admission snapshot and return its artifact id (#324).
+    fn publish_admission_snapshot(
+        &mut self,
+        problem_id: &AiraRef,
+        text: &str,
+    ) -> Result<AiraRef, FlowError> {
+        let snap = AdmissionSnapshot::default_for_text(text);
+        let body = serde_json::to_value(&snap).map_err(|e| FlowError::Other(e.to_string()))?;
+        let payload = json_bytes(&body);
+        self.seq += 1;
+        let art = make_artifact(
+            &format!("aira:artifact:admit{}_{}", self.run_nonce, self.seq),
+            ArtifactType::OperationalArtifact,
+            &payload,
+            vec![problem_id.clone()],
+        );
+        let art_id = art.artifact_id.clone();
+        self.artifacts
+            .publish(art, &payload)
+            .map_err(|e| FlowError::Artifact(e.to_string()))?;
+        self.last_admission = Some((art_id.clone(), snap));
+        Ok(art_id)
+    }
+
     /// Seed a ready solution and rebuild Reduction handler (Issue #54).
     ///
     /// In-memory pre-seed. Durable catalog bind is [`Self::open_with_reuse_index`] (#204).
@@ -317,12 +350,14 @@ impl OperationalPlane {
             .map_err(|e| FlowError::Core(e.to_string()))?;
         self.problem_ref = Some(problem_id.clone());
 
+        let admission_id = self.publish_admission_snapshot(&problem_id, text)?;
+
         self.seq += 1;
         let ev = make_event(
             &format!("aira:event:psub{}_{}", self.run_nonce, self.seq),
             EventType::ProblemSubmitted,
             vec![problem_id.clone()],
-            vec![],
+            vec![admission_id],
             vec![],
             Some(text.to_string()),
         );
@@ -524,6 +559,8 @@ impl OperationalPlane {
             .map_err(|e| FlowError::Core(e.to_string()))?;
         self.problem_ref = Some(problem_id.clone());
 
+        let admission_id = self.publish_admission_snapshot(&problem_id, text)?;
+
         let body = json!({
             "field_type": "DifferentiatedSolutionField",
             "problem_statement_ref": problem_id.as_str(),
@@ -549,7 +586,7 @@ impl OperationalPlane {
             &format!("aira:event:dsf{}_{}", self.run_nonce, self.seq),
             EventType::ProblemSubmitted,
             vec![self.problem_ref.clone().unwrap()],
-            vec![art_id.clone()],
+            vec![admission_id, art_id.clone()],
             vec![],
             Some("normative_split:requires_human_collapse".into()),
         );
