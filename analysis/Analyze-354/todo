@@ -1,0 +1,3 @@
+- [x] persist_failed_submit after accept Err
+- [x] reopen test with CapsuleFailed + evidence
+- [x] RFC-0203 + tip `#319`
