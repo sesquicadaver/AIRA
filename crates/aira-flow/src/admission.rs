@@ -60,19 +60,10 @@ pub struct ResourceBudget {
 }
 
 /// Fallback rules frozen at admit (default: no silent substitute).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct FallbackRules {
     pub allow_model_fallback: bool,
     pub allow_placement_fallback: bool,
-}
-
-impl Default for FallbackRules {
-    fn default() -> Self {
-        Self {
-            allow_model_fallback: false,
-            allow_placement_fallback: false,
-        }
-    }
 }
 
 /// Immutable user-constraint snapshot bound to an admitted problem.
