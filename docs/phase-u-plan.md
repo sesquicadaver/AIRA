@@ -1,6 +1,6 @@
 # Phase U — Cross-path contract honesty (post-T)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-10; wiring `#313` **DONE**; `#314` **DONE** @ RFC-0199; `#315` **DONE** @ RFC-0200; `#316` **DONE** @ RFC-0201; `#317` **DONE** @ RFC-0202; `#318` **DONE** @ RFC-0203; `#319` **DONE** @ RFC-0204; `#320` **DONE** @ RFC-0205; first OPEN `#321`; RFC-0198 reserved file-free).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-10; wiring `#313` **DONE**; `#314` **DONE** @ RFC-0199; `#315` **DONE** @ RFC-0200; `#316` **DONE** @ RFC-0201; `#317` **DONE** @ RFC-0202; `#318` **DONE** @ RFC-0203; `#319` **DONE** @ RFC-0204; `#320` **DONE** @ RFC-0205; `#321` **DONE** @ RFC-0206; first OPEN `#322`; RFC-0198 reserved file-free).  
 **Джерела:** post-T audit `aira-current.md` @ `ef5f69c` (2026-09-10; merge PR #276 / RFC-0192); Phase T [`phase-t-plan.md`](phase-t-plan.md) **DONE** @ RFC-0192; **QUEUE T closed**; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase U `#313`–`#322`.  
 **Closure:** consolidating **RFC-0198** (id **confirmed free** 2026-09-10; file-free until `#322`).  
@@ -113,7 +113,7 @@ U0 Wiring (план у QUEUE + living smoke; RFC-0198 reserved)
 | `#318` | U1 | Failed submit durable | **DONE** @ RFC-0203: Err після accept → durable failure history | executor (#319) |
 | `#319` | U2 | Submit executor honesty | **DONE** @ RFC-0204: env bind + explicit mock/reference label | AddressBook (#320) |
 | `#320` | U2 | AddressBook selective rollback | **DONE** @ RFC-0205: selective candidate rollback; parallel upsert kept | docs (#321) |
-| `#321` | U2 | systemd/docs prime-port | runbook + unit: bind проходить `validate_aira_port` | RFC close (#322) |
+| `#321` | U2 | systemd/docs prime-port | **DONE** @ RFC-0206: unit/runbook bind ∈ P_AIRA (`127.0.0.1:49157`) | RFC close (#322) |
 | `#322` | U | RFC-0198 + close | consolidating RFC-0198; QUEUE U closed; no OPEN U atoms | — |
 
 ```text
@@ -125,8 +125,8 @@ U0 Wiring (план у QUEUE + living smoke; RFC-0198 reserved)
           → #318 U1 failed submit durable DONE @ RFC-0203
             → #319 U2 executor honesty DONE @ RFC-0204
               → #320 U2 AddressBook selective rollback DONE @ RFC-0205
-                → #321 U2 systemd prime-port (first OPEN)
-                  → #322 U close RFC-0198
+                → #321 U2 systemd prime-port DONE @ RFC-0206
+                  → #322 U close RFC-0198 (first OPEN)
 ```
 
 **Anti-merge:** не зливати verify з result-index; не зливати identity з policy IDs; не зливати failed-submit persistence з policy uniqueness; не зливати executor honesty з AddressBook; не зливати docs prime-port з correctness atoms.

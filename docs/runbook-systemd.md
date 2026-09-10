@@ -23,7 +23,7 @@ cargo run -p aira-cli -- --root "$ROOT" identity create --name local
 ```
 
 3. Edit each unit: `User`/`Group`, `WorkingDirectory`, `--root`, `ExecStart` binary path.
-4. **Peer PORT:** owned by the operator. Default example is `127.0.0.1:7900`. Change if occupied (`ss -ltn | grep 7900`). Put the same addr in peers’ `address_book.json`.
+4. **Peer PORT (QUEUE `#321` / RFC-0206):** AIRA-owned peer TCP bind must pass **Prime Private Port** validation (`validate_aira_port` / `P_AIRA`: prime in `49152–65535`). Default example is `127.0.0.1:49157` (first `P_AIRA` port; same default as Desktop P1). Do **not** use `:7900` — it is rejected at runtime and the unit will crash-loop. Change only to another free `P_AIRA` prime if occupied (`ss -ltn | grep 49157`). Put the same addr in peers’ `address_book.json`.
 
 ## Install & enable
 
@@ -57,7 +57,7 @@ Until binaries exist at the `ExecStart=` paths, verify reports “not executable
 
 | Class | Items |
 |-------|--------|
-| **Must** (in examples) | `Type=simple`; loopback `--listen` / `--bind`; `Restart=on-failure`; `NoNewPrivileges`; `PrivateTmp` |
+| **Must** (in examples) | `Type=simple`; loopback `--listen` / `--bind`; peer `--bind` ∈ `P_AIRA`; `Restart=on-failure`; `NoNewPrivileges`; `PrivateTmp` |
 | **Optional** | `ProtectSystem=strict` + `ReadWritePaths=…`; TLS/mTLS/`--health-listen`; Bearer `AIRA_HTTP_TOKEN`; peer `--relay` / `--dht` / `--apply-trust` |
 
 Commented TLS/mTLS lines in the unit files are **examples only** — they require operator PEMs and are not a default security posture.
