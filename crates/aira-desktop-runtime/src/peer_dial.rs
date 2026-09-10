@@ -4,12 +4,14 @@
 //! Public bind stays out of scope — callers supply an explicit dial address.
 //! Phase T `#307`: evidence is last-check history; never invents `live_session_count`.
 //! Phase T `#311`: candidate AddressBook upsert is rolled back if dial fails.
+//! Phase U `#320`: rollback undoes **only** this dial's candidate (reload + selective
+//! restore), so a parallel AddressBook upsert survives.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use aira_object::{TrustStore, LOCAL_TEST_KEY_REF};
-use aira_peer::AddressBook;
+use aira_peer::{AddressBook, PeerEndpoint};
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use time::format_description::well_known::Rfc3339;
@@ -106,9 +108,10 @@ pub struct DialOutcome {
 /// Opt-in dial: require trust + **explicit** address, trial-upsert AddressBook, dial,
 /// persist evidence.
 ///
-/// Phase T `#311`: the AddressBook write is a **candidate** for this attempt. On dial
-/// failure the prior book is restored (so a known-good address A is not silently
-/// replaced by a failed trial B). On success the candidate remains dial authority.
+/// Phase T `#311` / Phase U `#320`: the AddressBook write is a **candidate** for this
+/// attempt. On dial failure only that candidate is undone (reload book, restore or
+/// remove this peer_id when still equal to the candidate). Parallel upserts of other
+/// peers are preserved. On success the candidate remains dial authority.
 /// Does not mutate reachability DIRECT state. Fail-closed on empty identity/addr or
 /// untrusted peer.
 pub fn run_opt_in_peer_dial(
@@ -137,9 +140,10 @@ pub fn run_opt_in_peer_dial(
         bail!("peer {peer_id} is not trusted — import invite / admit trust first");
     }
 
-    // Snapshot authority before the trial upsert (`#311`).
+    // Prior endpoint for this peer only (`#320` selective rollback).
     let prior_book = AddressBook::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
-    let mut book = prior_book.clone();
+    let prior_endpoint = prior_book.endpoint_of(peer_id).cloned();
+    let mut book = prior_book;
     book.upsert(peer_id, addr)
         .map_err(|e| anyhow::anyhow!("address book upsert: {e}"))?;
     book.save(root)
@@ -155,14 +159,13 @@ pub fn run_opt_in_peer_dial(
     {
         Ok(s) => s,
         Err(e) => {
-            // Restore pre-attempt book; keep dial failure as the primary error.
-            if let Err(rb) = prior_book.save(root) {
+            if let Err(rb) = rollback_own_dial_candidate(root, peer_id, addr, prior_endpoint) {
                 return Err(anyhow::anyhow!(
-                    "dial failed: {e}; address book rollback failed: {rb}"
+                    "dial failed: {e}; address book candidate rollback failed: {rb}"
                 ));
             }
             return Err(anyhow::anyhow!(
-                "dial failed: {e} (address book restored to pre-attempt authority)"
+                "dial failed: {e} (address book candidate rolled back)"
             ));
         }
     };
@@ -183,6 +186,35 @@ pub fn run_opt_in_peer_dial(
     drop(session);
     evidence.save(root)?;
     Ok(DialOutcome { evidence })
+}
+
+/// Undo only this dial's candidate on the live book (`#320` / RFC-0205).
+///
+/// Reloads from disk. If `peer_id` still holds `candidate_addr`, restores `prior`
+/// or removes the entry. Otherwise leaves the book unchanged (another writer won).
+pub(crate) fn rollback_own_dial_candidate(
+    root: &Path,
+    peer_id: &str,
+    candidate_addr: &str,
+    prior: Option<PeerEndpoint>,
+) -> Result<()> {
+    let mut book = AddressBook::load(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let still_candidate = book
+        .endpoint_of(peer_id)
+        .is_some_and(|ep| ep.addr == candidate_addr);
+    if !still_candidate {
+        return Ok(());
+    }
+    match prior {
+        Some(ep) => book
+            .upsert_via(ep.identity_id, ep.addr, ep.via)
+            .map_err(|e| anyhow::anyhow!("{e}"))?,
+        None => {
+            book.remove(peer_id);
+        }
+    }
+    book.save(root).map_err(|e| anyhow::anyhow!("{e}"))?;
+    Ok(())
 }
 
 /// Load fresh dial evidence for mesh projection (`None` if missing or stale).
@@ -335,7 +367,7 @@ mod tests {
         assert!(snap.last_confirmed_handshake.is_some());
     }
 
-    /// `#311`: failed trial dial must not leave candidate B as AddressBook authority.
+    /// `#311` / `#320`: failed trial dial must not leave candidate B as AddressBook authority.
     #[test]
     fn failed_dial_restores_prior_address_book() {
         let dir = tempdir().unwrap();
@@ -354,7 +386,7 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("dial failed"), "{msg}");
         assert!(
-            msg.contains("address book restored"),
+            msg.contains("address book candidate rolled back"),
             "rollback should be explicit in error: {msg}"
         );
 
@@ -370,7 +402,7 @@ mod tests {
         );
     }
 
-    /// `#311`: first-time peer with no prior entry is removed after failed dial.
+    /// `#311` / `#320`: first-time peer with no prior entry is removed after failed dial.
     #[test]
     fn failed_dial_removes_new_candidate_when_no_prior() {
         let dir = tempdir().unwrap();
@@ -379,12 +411,82 @@ mod tests {
         admit_peer_trust(dir.path(), peer, &"bb".repeat(32)).unwrap();
 
         let err = run_opt_in_peer_dial(dir.path(), peer, "127.0.0.1:49171").unwrap_err();
-        assert!(err.to_string().contains("address book restored"));
+        assert!(err
+            .to_string()
+            .contains("address book candidate rolled back"));
 
         let book = AddressBook::load(dir.path()).unwrap();
         assert!(
             !book.as_map().contains_key(peer),
             "failed first dial must not leave orphan AddressBook entry"
+        );
+    }
+
+    /// `#320`: full-snapshot rollback must not erase a parallel peer upsert.
+    #[test]
+    fn selective_rollback_preserves_parallel_peer_upsert() {
+        let dir = tempdir().unwrap();
+        let peer = "aira:identity:peer320dial";
+        let known = "127.0.0.1:49157";
+        let candidate = "127.0.0.1:49171";
+        let parallel_id = "aira:identity:peer320parallel";
+        let parallel_addr = "127.0.0.1:49177";
+
+        let prior = PeerEndpoint {
+            identity_id: peer.into(),
+            addr: known.into(),
+            via: None,
+        };
+        let mut book = AddressBook::default();
+        book.upsert(peer, known).unwrap();
+        book.save(dir.path()).unwrap();
+
+        // Dial candidate on disk (as after trial upsert).
+        book.upsert(peer, candidate).unwrap();
+        book.save(dir.path()).unwrap();
+
+        // Parallel writer while dial would be in flight.
+        book.upsert(parallel_id, parallel_addr).unwrap();
+        book.save(dir.path()).unwrap();
+
+        rollback_own_dial_candidate(dir.path(), peer, candidate, Some(prior)).unwrap();
+
+        let book = AddressBook::load(dir.path()).unwrap();
+        assert_eq!(
+            book.as_map().get(peer).map(String::as_str),
+            Some(known),
+            "dial peer must restore known addr"
+        );
+        assert_eq!(
+            book.as_map().get(parallel_id).map(String::as_str),
+            Some(parallel_addr),
+            "parallel upsert must survive selective rollback"
+        );
+    }
+
+    /// `#320`: if another writer already replaced the candidate, do not clobber.
+    #[test]
+    fn selective_rollback_skips_when_candidate_already_replaced() {
+        let dir = tempdir().unwrap();
+        let peer = "aira:identity:peer320race";
+        let known = "127.0.0.1:49157";
+        let candidate = "127.0.0.1:49171";
+        let other = "127.0.0.1:49177";
+        let prior = PeerEndpoint {
+            identity_id: peer.into(),
+            addr: known.into(),
+            via: None,
+        };
+        let mut book = AddressBook::default();
+        book.upsert(peer, other).unwrap();
+        book.save(dir.path()).unwrap();
+
+        rollback_own_dial_candidate(dir.path(), peer, candidate, Some(prior)).unwrap();
+        let book = AddressBook::load(dir.path()).unwrap();
+        assert_eq!(
+            book.as_map().get(peer).map(String::as_str),
+            Some(other),
+            "must not overwrite a concurrent non-candidate addr"
         );
     }
 }

@@ -144,6 +144,18 @@ impl AddressBook {
             .map(|p| (p.identity_id.clone(), p.addr.clone()))
             .collect()
     }
+
+    /// Remove one peer by identity. Returns whether an entry was removed.
+    pub fn remove(&mut self, identity_id: &str) -> bool {
+        let before = self.peers.len();
+        self.peers.retain(|p| p.identity_id != identity_id);
+        before != self.peers.len()
+    }
+
+    /// Lookup full endpoint for identity (addr + via).
+    pub fn endpoint_of(&self, identity_id: &str) -> Option<&PeerEndpoint> {
+        self.peers.iter().find(|p| p.identity_id == identity_id)
+    }
 }
 
 #[cfg(test)]
