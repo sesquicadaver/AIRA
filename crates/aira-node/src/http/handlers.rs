@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 
 use aira_conformance::{run_profile, ConformanceProfile};
 use aira_csu::{CsuLifecycleState, CsuManifest, CsuRegistry};
-use aira_flow::SubmitOutcome;
+use aira_flow::{AdmissionConstraints, AdmissionSnapshot, SubmitOutcome};
 
 use super::state::AppState;
 use super::util::{decode_id, err, hex_encode};
@@ -34,6 +34,9 @@ pub(super) async fn health() -> Json<HealthBody> {
 #[derive(Deserialize)]
 pub(super) struct ProblemSubmitBody {
     text: String,
+    /// Optional admit-time constraints (`#325` / RFC-0210). Omitted ≡ text-only defaults.
+    #[serde(default)]
+    admission: AdmissionConstraints,
 }
 
 pub(super) async fn post_problem(
@@ -47,7 +50,8 @@ pub(super) async fn post_problem(
         Ok(g) => g,
         Err(_) => return err(StatusCode::INTERNAL_SERVER_ERROR, "session lock poisoned"),
     };
-    match session.submit_problem(&body.text) {
+    let snap = AdmissionSnapshot::from_text_and_constraints(&body.text, &body.admission);
+    match session.submit_problem_with_admission(&body.text, snap) {
         Ok(SubmitOutcome::Completed {
             problem_id,
             verified_artifact_id,

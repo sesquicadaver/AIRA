@@ -4,6 +4,7 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
+use aira_flow::AdmissionConstraints;
 use anyhow::{bail, Context, Result};
 use serde_json::Value;
 
@@ -14,11 +15,24 @@ use crate::settings::{resolve_token_path, DesktopSettings, HttpAuthMode};
 
 const SUBMIT_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// POST `{ "text" }` to `/v1/problems` on the Desktop node.
+/// POST problem text (+ optional admission constraints) to `/v1/problems`.
+///
+/// Constraints are copied into the HTTP body at submit time (`#325` / RFC-0210);
+/// later Settings changes do not rewrite an already-admitted snapshot.
 pub fn submit_desktop_problem(
     paths: &DesktopPaths,
     settings: &DesktopSettings,
     text: &str,
+) -> Result<Value> {
+    submit_desktop_problem_with_admission(paths, settings, text, &AdmissionConstraints::default())
+}
+
+/// Like [`submit_desktop_problem`] with explicit admit-time constraints.
+pub fn submit_desktop_problem_with_admission(
+    paths: &DesktopPaths,
+    settings: &DesktopSettings,
+    text: &str,
+    admission: &AdmissionConstraints,
 ) -> Result<Value> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
@@ -35,6 +49,7 @@ pub fn submit_desktop_problem(
         &settings.http_listen,
         token.as_deref(),
         trimmed,
+        admission,
         SUBMIT_TIMEOUT,
     )
 }
@@ -44,13 +59,17 @@ pub fn submit_problem_http(
     listen: &str,
     bearer_token: Option<&str>,
     text: &str,
+    admission: &AdmissionConstraints,
     timeout: Duration,
 ) -> Result<Value> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
         bail!("problem text must be non-empty");
     }
-    let body = serde_json::to_vec(&serde_json::json!({ "text": trimmed }))?;
+    let body = serde_json::to_vec(&serde_json::json!({
+        "text": trimmed,
+        "admission": admission,
+    }))?;
     let addr = resolve_listen(listen)?;
     let mut stream =
         TcpStream::connect_timeout(&addr, timeout).with_context(|| format!("connect {listen}"))?;
@@ -106,9 +125,15 @@ mod tests {
 
     #[test]
     fn empty_text_fails_closed() {
-        let err = submit_problem_http("127.0.0.1:1", None, "   ", Duration::from_millis(50))
-            .unwrap_err()
-            .to_string();
+        let err = submit_problem_http(
+            "127.0.0.1:1",
+            None,
+            "   ",
+            &AdmissionConstraints::default(),
+            Duration::from_millis(50),
+        )
+        .unwrap_err()
+        .to_string();
         assert!(err.contains("non-empty"), "{err}");
     }
 
@@ -146,6 +171,7 @@ mod tests {
             assert!(req.contains("POST /v1/problems"));
             assert!(req.contains("Authorization: Bearer tok"));
             assert!(req.contains(r#""text":"Calculate 2 + 2""#));
+            assert!(req.contains(r#""admission""#));
             let body = r#"{"status":"completed","result":4.0}"#;
             let resp = format!(
                 "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
@@ -158,10 +184,64 @@ mod tests {
             &listen,
             Some("tok"),
             "Calculate 2 + 2",
+            &AdmissionConstraints::default(),
             Duration::from_secs(2),
         )
         .unwrap();
         assert_eq!(v["status"], "completed");
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn posts_admission_constraints_in_body() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let handle = thread::spawn(move || {
+            let (mut s, _) = listener.accept().unwrap();
+            let mut buf = Vec::new();
+            loop {
+                let mut chunk = [0u8; 1024];
+                let n = s.read(&mut chunk).unwrap();
+                if n == 0 {
+                    break;
+                }
+                buf.extend_from_slice(&chunk[..n]);
+                if buf.windows(4).any(|w| w == b"\r\n\r\n") {
+                    let req = String::from_utf8_lossy(&buf);
+                    if let Some((_, rest)) = req.split_once("\r\n\r\n") {
+                        if let Some(cl) = req
+                            .lines()
+                            .find(|l| l.to_ascii_lowercase().starts_with("content-length:"))
+                            .and_then(|l| l.split(':').nth(1))
+                            .and_then(|v| v.trim().parse::<usize>().ok())
+                        {
+                            if rest.len() >= cl {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            let req = String::from_utf8_lossy(&buf);
+            assert!(req.contains(r#""model_ref":"aira:model:chosen""#));
+            assert!(req.contains(r#""temperature":0.2"#));
+            let body = r#"{"status":"completed","result":4.0}"#;
+            let resp = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            s.write_all(resp.as_bytes()).unwrap();
+        });
+        let listen = format!("{}:{}", addr.ip(), addr.port());
+        let c = AdmissionConstraints {
+            model_ref: Some("aira:model:chosen".into()),
+            generation: aira_flow::GenerationParameters {
+                temperature: Some(0.2),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let _ = submit_problem_http(&listen, None, "hi", &c, Duration::from_secs(2)).unwrap();
         handle.join().unwrap();
     }
 
@@ -212,6 +292,7 @@ mod tests {
             &listen,
             None,
             "Summarize the local Problem Statement without leaving the host.",
+            &AdmissionConstraints::default(),
             Duration::from_secs(2),
         )
         .unwrap();
@@ -239,9 +320,15 @@ mod tests {
             s.write_all(resp.as_bytes()).unwrap();
         });
         let listen = format!("{}:{}", addr.ip(), addr.port());
-        let err = submit_problem_http(&listen, None, "x", Duration::from_secs(2))
-            .unwrap_err()
-            .to_string();
+        let err = submit_problem_http(
+            &listen,
+            None,
+            "x",
+            &AdmissionConstraints::default(),
+            Duration::from_secs(2),
+        )
+        .unwrap_err()
+        .to_string();
         assert!(err.contains("400"), "{err}");
         assert!(err.contains("text must be non-empty"), "{err}");
         handle.join().unwrap();

@@ -1,8 +1,9 @@
-//! Immutable admission snapshot for Repair Pack 1 / QUEUE `#324` (RFC-0209).
+//! Immutable admission snapshot for Repair Pack 1 / QUEUE `#324`–`#325`
+//! (RFC-0209 / RFC-0210).
 //!
 //! Captured at ProblemSubmitted admit time. Extends the request contract — not a
-//! new Core ontology. HTTP/CLI surfaces that only send `text` get
-//! [`AdmissionSnapshot::default_for_text`]; richer constraints arrive in `#325`.
+//! new Core ontology. HTTP/CLI/Desktop may send [`AdmissionConstraints`]; omitted
+//! fields use [`AdmissionSnapshot::default_for_text`].
 
 use aira_object::ContentHash;
 use serde::{Deserialize, Serialize};
@@ -37,7 +38,7 @@ pub enum ReusePolicy {
     RequireNewExecution,
 }
 
-/// Optional generation knobs frozen at admit (empty until `#325` carries them).
+/// Optional generation knobs frozen at admit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct GenerationParameters {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -64,6 +65,34 @@ pub struct ResourceBudget {
 pub struct FallbackRules {
     pub allow_model_fallback: bool,
     pub allow_placement_fallback: bool,
+}
+
+/// Request-time constraints carried by HTTP/CLI/Desktop (`#325` / RFC-0210).
+///
+/// Copied into an immutable [`AdmissionSnapshot`] at admit; live Settings after
+/// submit must not mutate the admitted task.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct AdmissionConstraints {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub allowed_model_refs: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_content_hash: Option<String>,
+    #[serde(default)]
+    pub generation: GenerationParameters,
+    #[serde(default)]
+    pub placement: PlacementPreference,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub privacy_class: Option<String>,
+    #[serde(default)]
+    pub resource_budget: ResourceBudget,
+    #[serde(default)]
+    pub fallback: FallbackRules,
+    #[serde(default)]
+    pub reuse_policy: ReusePolicy,
 }
 
 /// Immutable user-constraint snapshot bound to an admitted problem.
@@ -98,28 +127,36 @@ pub struct AdmissionSnapshot {
 }
 
 impl AdmissionSnapshot {
+    /// Build a snapshot from request text + optional constraints (`#325`).
+    ///
+    /// Always recomputes `statement_content_hash` from `text` (caller cannot
+    /// forge a mismatched hash). Schema/kind are fixed.
+    pub fn from_text_and_constraints(text: &str, c: &AdmissionConstraints) -> Self {
+        Self {
+            payload_schema: ADMISSION_SNAPSHOT_SCHEMA.into(),
+            kind: ADMISSION_SNAPSHOT_KIND.into(),
+            model_ref: c.model_ref.clone(),
+            allowed_model_refs: c.allowed_model_refs.clone(),
+            statement_content_hash: ContentHash::sha256_bytes(text.as_bytes())
+                .as_str()
+                .to_string(),
+            model_version: c.model_version.clone(),
+            model_content_hash: c.model_content_hash.clone(),
+            generation: c.generation.clone(),
+            placement: c.placement,
+            privacy_class: c.privacy_class.clone(),
+            resource_budget: c.resource_budget.clone(),
+            fallback: c.fallback.clone(),
+            reuse_policy: c.reuse_policy,
+        }
+    }
+
     /// Build the default snapshot for a text-only admit (`#324`).
     ///
     /// Does not invent a selected model. Disallows silent model/placement
     /// fallback. Allows reuse pending constraint-aware keys (`#326`).
     pub fn default_for_text(text: &str) -> Self {
-        Self {
-            payload_schema: ADMISSION_SNAPSHOT_SCHEMA.into(),
-            kind: ADMISSION_SNAPSHOT_KIND.into(),
-            model_ref: None,
-            allowed_model_refs: Vec::new(),
-            statement_content_hash: ContentHash::sha256_bytes(text.as_bytes())
-                .as_str()
-                .to_string(),
-            model_version: None,
-            model_content_hash: None,
-            generation: GenerationParameters::default(),
-            placement: PlacementPreference::Local,
-            privacy_class: None,
-            resource_budget: ResourceBudget::default(),
-            fallback: FallbackRules::default(),
-            reuse_policy: ReusePolicy::AllowReuse,
-        }
+        Self::from_text_and_constraints(text, &AdmissionConstraints::default())
     }
 
     /// True when this JSON body is an admission snapshot artifact.
@@ -143,6 +180,27 @@ mod tests {
         assert_eq!(s.reuse_policy, ReusePolicy::AllowReuse);
         assert!(s.model_ref.is_none());
         assert!(s.statement_content_hash.starts_with("sha256:"));
+    }
+
+    #[test]
+    fn from_constraints_overrides_model_and_hash_from_text() {
+        let c = AdmissionConstraints {
+            model_ref: Some("aira:model:x".into()),
+            reuse_policy: ReusePolicy::RequireNewExecution,
+            generation: GenerationParameters {
+                temperature: Some(0.2),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let s = AdmissionSnapshot::from_text_and_constraints("hello", &c);
+        assert_eq!(s.model_ref.as_deref(), Some("aira:model:x"));
+        assert_eq!(s.reuse_policy, ReusePolicy::RequireNewExecution);
+        assert_eq!(s.generation.temperature, Some(0.2));
+        assert_eq!(
+            s.statement_content_hash,
+            ContentHash::sha256_bytes(b"hello").as_str()
+        );
     }
 
     #[test]

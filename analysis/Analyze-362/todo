@@ -1,0 +1,8 @@
+# Analyze-362 todo
+
+- [x] AdmissionConstraints + from_text_and_constraints
+- [x] submit_problem_with_admission (plane + session)
+- [x] HTTP / CLI / Desktop surfaces
+- [x] Immutability test vs post-submit constraints mutation
+- [x] RFC-0210 + QUEUE/docs tips → `#326`
+- [ ] Do **not** implement reuse (#326) or activate hash (#327)

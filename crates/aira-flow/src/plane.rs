@@ -261,13 +261,12 @@ impl OperationalPlane {
         self.last_admission.as_ref()
     }
 
-    /// Publish immutable admission snapshot and return its artifact id (#324).
+    /// Publish immutable admission snapshot and return its artifact id (#324/#325).
     fn publish_admission_snapshot(
         &mut self,
         problem_id: &AiraRef,
-        text: &str,
+        snap: AdmissionSnapshot,
     ) -> Result<AiraRef, FlowError> {
-        let snap = AdmissionSnapshot::default_for_text(text);
         let body = serde_json::to_value(&snap).map_err(|e| FlowError::Other(e.to_string()))?;
         let payload = json_bytes(&body);
         self.seq += 1;
@@ -321,9 +320,24 @@ impl OperationalPlane {
     }
 
     /// Submit a Problem Statement and drain the operational pipeline (#47–#52).
+    ///
+    /// Text-only admit uses [`AdmissionSnapshot::default_for_text`] (`#324`).
     pub fn submit_problem(&mut self, text: &str) -> Result<SubmitOutcome, FlowError> {
+        self.submit_problem_with_admission(text, AdmissionSnapshot::default_for_text(text))
+    }
+
+    /// Submit with an immutable admission snapshot already prepared (`#325` / RFC-0210).
+    ///
+    /// Callers must build the snapshot via [`AdmissionSnapshot::from_text_and_constraints`]
+    /// (or `default_for_text`). Live Settings after this returns must not mutate the
+    /// admitted snapshot held on the plane / ProblemRecord.
+    pub fn submit_problem_with_admission(
+        &mut self,
+        text: &str,
+        admission: AdmissionSnapshot,
+    ) -> Result<SubmitOutcome, FlowError> {
         if is_normative_split(text) {
-            return self.emit_differentiated_field(text);
+            return self.emit_differentiated_field(text, admission);
         }
         self.bind_catalog_for_text(text)?;
 
@@ -350,7 +364,7 @@ impl OperationalPlane {
             .map_err(|e| FlowError::Core(e.to_string()))?;
         self.problem_ref = Some(problem_id.clone());
 
-        let admission_id = self.publish_admission_snapshot(&problem_id, text)?;
+        let admission_id = self.publish_admission_snapshot(&problem_id, admission)?;
 
         self.seq += 1;
         let ev = make_event(
@@ -535,7 +549,11 @@ impl OperationalPlane {
         Ok(())
     }
 
-    fn emit_differentiated_field(&mut self, text: &str) -> Result<SubmitOutcome, FlowError> {
+    fn emit_differentiated_field(
+        &mut self,
+        text: &str,
+        admission: AdmissionSnapshot,
+    ) -> Result<SubmitOutcome, FlowError> {
         self.seq += 1;
         let problem_id =
             AiraRef::parse(format!("aira:problem:flow{}_{}", self.run_nonce, self.seq))
@@ -559,7 +577,7 @@ impl OperationalPlane {
             .map_err(|e| FlowError::Core(e.to_string()))?;
         self.problem_ref = Some(problem_id.clone());
 
-        let admission_id = self.publish_admission_snapshot(&problem_id, text)?;
+        let admission_id = self.publish_admission_snapshot(&problem_id, admission)?;
 
         let body = json!({
             "field_type": "DifferentiatedSolutionField",

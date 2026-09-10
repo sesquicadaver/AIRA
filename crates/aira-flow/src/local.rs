@@ -483,6 +483,15 @@ impl LocalSession {
     /// Staff executor follows `AIRA_LLM_BACKEND` via activate bind (#319 /
     /// RFC-0204); default remains reference mock and must be labeled as such.
     pub fn submit_problem(&mut self, text: &str) -> Result<SubmitOutcome, FlowError> {
+        self.submit_problem_with_admission(text, crate::AdmissionSnapshot::default_for_text(text))
+    }
+
+    /// Submit with an immutable admission snapshot (`#325` / RFC-0210).
+    pub fn submit_problem_with_admission(
+        &mut self,
+        text: &str,
+        admission: crate::AdmissionSnapshot,
+    ) -> Result<SubmitOutcome, FlowError> {
         bind_node_crypto(&self.paths.root)?;
         // Allocate a fresh nonce and rebuild plane so ids never collide with prior runs.
         // Reduction binds durable reuse-index on submit (#189 / #204); no manual enable_ready_solution.
@@ -494,7 +503,7 @@ impl LocalSession {
         )?;
         self.plane
             .bind_phase_d_activate_from_root(&self.paths.root)?;
-        match self.plane.submit_problem(text) {
+        match self.plane.submit_problem_with_admission(text, admission) {
             Ok(outcome) => {
                 self.persist_after_submit(text, &outcome)?;
                 Ok(outcome)
