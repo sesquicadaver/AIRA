@@ -1,13 +1,12 @@
 # Phase U — Cross-path contract honesty (post-T)
 
-**Статус:** **НЕ АКТИВОВАНО** (draft only; 2026-09-10).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-10; wiring `#313` **DONE**; first OPEN `#314`; RFC-0198 reserved file-free).  
 **Джерела:** post-T audit `aira-current.md` @ `ef5f69c` (2026-09-10; merge PR #276 / RFC-0192); Phase T [`phase-t-plan.md`](phase-t-plan.md) **DONE** @ RFC-0192; **QUEUE T closed**; канон [`desktop-ux.md`](desktop-ux.md).  
-**Канон backlog (після активації):** [`QUEUE.md`](../QUEUE.md) секція Phase U `#313`–`#322` (проєкт; не додано до QUEUE до wiring).  
-**Closure (після активації):** consolidating **RFC-0198** (id **пропоновано вільним** 2026-09-10 — немає `AIRA-RFC-0198*` у дереві; file-free until close).  
+**Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase U `#313`–`#322`.  
+**Closure:** consolidating **RFC-0198** (id **confirmed free** 2026-09-10; file-free until `#322`).  
 **Не змінює:** анти-місію README; C0/C1 `Calculate 2 + 2`; `aira-core` ledger / LLM-in-Core; GUI stack (egui); IA Work / System / Settings + Help·F1; Claiming Polygon ledger DONE; Claiming global live mesh DONE; QUEUE T історію як never-DONE; public bind / auto-trust як Desktop default; admission hash policy (`check_activated`).
 
-> Примітка: `aira-current.md` поза git-каноном (`p-only/`). Канон у репо після активації = цей план + `desktop-ux.md` + QUEUE + RFC-D.  
-> **Цей файл — лише draft:** без `phase_u_doc`, без рядків QUEUE, без tips flip, без reserved RFC-файлу.
+> Примітка: `aira-current.md` поза git-каноном (`p-only/`). Канон у репо = цей план + `desktop-ux.md` + QUEUE + RFC-D.
 
 ---
 
@@ -25,7 +24,7 @@ Phase T замкнула **операційний lifecycle honesty** Desktop (d
 
 ```text
 QUEUE T closed (#306–#312 / RFC-0192)
-  → Phase U DRAFT: cross-path contract honesty
+  → Phase U IN PROGRESS: cross-path contract honesty
     → не Core rewrite; не GPU marketplace; не public bind default
     → не повний SQLite operational rewrite; не новий scheduler daemon
 ```
@@ -102,7 +101,7 @@ U0 Wiring (план у QUEUE + living smoke; RFC-0198 reserved)
 
 ---
 
-## 5. Атоми → QUEUE `#313`–`#322` (проєкт)
+## 5. Атоми → QUEUE `#313`–`#322`
 
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
@@ -118,8 +117,8 @@ U0 Wiring (план у QUEUE + living smoke; RFC-0198 reserved)
 | `#322` | U | RFC-0198 + close | consolidating RFC-0198; QUEUE U closed; no OPEN U atoms | — |
 
 ```text
-#313 U0 wiring
-  → #314 U1 verify capsule-sourced
+#313 U0 wiring (DONE this atom)
+  → #314 U1 verify capsule-sourced (first OPEN)
     → #315 U1 result authority
       → #316 U1 CLI identity
         → #317 U1 policy audit IDs
@@ -155,8 +154,8 @@ aira-core still has no GUI/ledger deps.
 
 ## 7. RFC (після активації)
 
-- Consolidating (`#322`): **AIRA-RFC-0198** — id **пропоновано вільним** 2026-09-10 (немає `AIRA-RFC-0198*` у дереві; file-free until close; підтвердити `rg` на wiring).
-- Per-atom RFC-D (проєкт): `#314`→**0199** … `#321`→**0206**; `#322`→0198 consolidating (перевірити вільність на wiring).
+- Consolidating (`#322`): **AIRA-RFC-0198** — id **confirmed free** 2026-09-10 (немає `AIRA-RFC-0198*` у дереві; file-free until close).
+- Per-atom RFC-D: `#314`→**0199** … `#321`→**0206** (призначаються на кожному PR); `#322`→0198 consolidating.
 
 ---
 
@@ -164,11 +163,9 @@ aira-core still has no GUI/ledger deps.
 
 ```text
 QUEUE T closed @ RFC-0192
-  + developer «активувати Phase U»
+  + developer «активувати Phase U» (2026-09-10)
   → wiring `#313` DONE; план IN PROGRESS; first OPEN `#314`.
 ```
-
-**Зараз:** draft only. Не виконувати wiring / tips / `phase_u_doc` / QUEUE rows без окремої команди активації.
 
 ---
 
