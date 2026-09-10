@@ -605,20 +605,27 @@ impl LocalSession {
         Ok((desc_v, bytes))
     }
 
+    /// Resolve a result by problem id or artifact id.
+    ///
+    /// Authority (#315 / RFC-0200): when `result_ref` is a problem id, the
+    /// problems index is only a locator (`verified_artifact_id` /
+    /// `execution_artifact_id`). The body always comes from ArtifactStore
+    /// (`resolve` verifies descriptor + content hash). Cached
+    /// `ProblemRecord.result` is never trusted alone.
     pub fn get_result(&self, result_ref: &str) -> Result<Value, FlowError> {
-        // Accept verified artifact id or problem id.
         if let Ok(rec) = self.problem_status(result_ref) {
-            if let Some(v) = rec.result {
-                return Ok(v);
-            }
-            if let Some(aid) = rec.verified_artifact_id {
-                let (_, bytes) = self.get_artifact(&aid)?;
-                return serde_json::from_slice(&bytes).map_err(|e| FlowError::Other(e.to_string()));
-            }
-            return Err(FlowError::Other(format!(
-                "no result for problem {result_ref} (status={})",
-                rec.status
-            )));
+            let aid = rec
+                .verified_artifact_id
+                .as_deref()
+                .or(rec.execution_artifact_id.as_deref())
+                .ok_or_else(|| {
+                    FlowError::Other(format!(
+                        "no result for problem {result_ref} (status={})",
+                        rec.status
+                    ))
+                })?;
+            let (_, bytes) = self.get_artifact(aid)?;
+            return serde_json::from_slice(&bytes).map_err(|e| FlowError::Other(e.to_string()));
         }
         let (_, bytes) = self.get_artifact(result_ref)?;
         serde_json::from_slice(&bytes).map_err(|e| FlowError::Other(e.to_string()))

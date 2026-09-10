@@ -26,9 +26,11 @@ fn phase_u_plan_present() {
         "confirmed free",
         "desktop-ux.md",
         "QUEUE T closed",
-        "first OPEN `#315`",
+        "first OPEN `#316`",
         "RFC-0199",
+        "RFC-0200",
         "#314",
+        "#315",
         "ef5f69c",
         "GPU marketplace",
         "Calculate 2 + 2",
@@ -47,10 +49,10 @@ fn phase_u_plan_present() {
 }
 
 #[test]
-fn phase_u_queue_314_done_315_open() {
+fn phase_u_queue_315_done_316_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-u-plan.md"));
-    for n in 313..=314 {
+    for n in 313..=315 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
@@ -61,15 +63,16 @@ fn phase_u_queue_314_done_315_open() {
         );
     }
     assert!(
-        text.contains("| 315 | **OPEN**"),
-        "QUEUE #315 must be first OPEN"
+        text.contains("| 316 | **OPEN**"),
+        "QUEUE #316 must be first OPEN"
     );
     for needle in [
-        "Analyze-350",
+        "Analyze-351",
+        "RFC-0200",
         "RFC-0199",
         "RFC-0198",
-        "first OPEN `#315`",
-        "#314",
+        "first OPEN `#316`",
+        "#315",
         "QUEUE T closed",
         "desktop-ux.md",
         "Cross-path contract",
@@ -84,10 +87,10 @@ fn phase_u_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-u-plan.md",
-        "#314",
-        "first OPEN `#315`",
+        "#315",
+        "first OPEN `#316`",
         "RFC-0198",
-        "RFC-0199",
+        "RFC-0200",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
@@ -118,6 +121,21 @@ fn phase_u_rfc_0199_present() {
 }
 
 #[test]
+fn phase_u_rfc_0200_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0200-result-by-problem-authority.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0200 missing");
+    for needle in [
+        "#315",
+        "ArtifactStore",
+        "ProblemRecord.result",
+        "RFC-0198",
+        "locator",
+    ] {
+        assert!(text.contains(needle), "RFC-0200 missing: {needle}");
+    }
+}
+
+#[test]
 fn phase_u_verification_module_present() {
     let src =
         std::fs::read_to_string(repo_root().join("csu/verification-basic/src/lib.rs")).unwrap();
@@ -134,23 +152,44 @@ fn phase_u_verification_module_present() {
 }
 
 #[test]
+fn phase_u_flow_result_authority_present() {
+    let src = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/local.rs")).unwrap();
+    for needle in [
+        "#315",
+        "RFC-0200",
+        "never trusted alone",
+        "verified_artifact_id",
+        "execution_artifact_id",
+    ] {
+        assert!(src.contains(needle), "aira-flow local.rs missing: {needle}");
+    }
+    let tests = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/lib.rs")).unwrap();
+    for needle in [
+        "get_result_by_problem_ignores_tampered_index_cache",
+        "get_result_by_problem_rejects_result_without_artifact_ref",
+    ] {
+        assert!(tests.contains(needle), "aira-flow tests missing: {needle}");
+    }
+}
+
+#[test]
 fn phase_u_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-u-plan.md") || readme.contains("Phase U"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-u-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("first OPEN"));
-    assert!(docs.contains("first OPEN `#315`") || docs.contains("#315"));
+    assert!(docs.contains("first OPEN `#316`") || docs.contains("#316"));
 }
 
 #[test]
 fn phase_u_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-u-plan.md") || text.contains("Phase U"));
-    assert!(text.contains("#315") || text.contains("перший OPEN"));
+    assert!(text.contains("#316") || text.contains("перший OPEN"));
     assert!(
-        !text.contains("перший OPEN `#314`") && !text.contains("first OPEN `#314`"),
-        "NEXT_PROBLEM must not keep #314 as first-OPEN after close"
+        !text.contains("перший OPEN `#315`") && !text.contains("first OPEN `#315`"),
+        "NEXT_PROBLEM must not keep #315 as first-OPEN after close"
     );
 }
 
@@ -158,10 +197,10 @@ fn phase_u_next_problem() {
 fn phase_u_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #314 |") || status.contains("#314"));
+    assert!(status.contains("| #315 |") || status.contains("#315"));
     assert!(status.contains("phase_u_doc.rs"));
     assert!(status.contains("phase-u-plan.md"));
-    assert!(status.contains("RFC-0199") || status.contains("0199"));
+    assert!(status.contains("RFC-0200") || status.contains("0200"));
 }
 
 #[test]

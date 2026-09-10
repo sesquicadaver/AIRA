@@ -1,6 +1,6 @@
 # Phase U — Cross-path contract honesty (post-T)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-10; wiring `#313` **DONE**; `#314` **DONE** @ RFC-0199; first OPEN `#315`; RFC-0198 reserved file-free).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-10; wiring `#313` **DONE**; `#314` **DONE** @ RFC-0199; `#315` **DONE** @ RFC-0200; first OPEN `#316`; RFC-0198 reserved file-free).  
 **Джерела:** post-T audit `aira-current.md` @ `ef5f69c` (2026-09-10; merge PR #276 / RFC-0192); Phase T [`phase-t-plan.md`](phase-t-plan.md) **DONE** @ RFC-0192; **QUEUE T closed**; канон [`desktop-ux.md`](desktop-ux.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase U `#313`–`#322`.  
 **Closure:** consolidating **RFC-0198** (id **confirmed free** 2026-09-10; file-free until `#322`).  
@@ -107,7 +107,7 @@ U0 Wiring (план у QUEUE + living smoke; RFC-0198 reserved)
 |----|---------|------|-----------|------------------|
 | `#313` | U0 | Phase U wiring | план IN PROGRESS; QUEUE `#313`–`#322`; `phase_u_doc`; tips; RFC-0198 reserved file-free | verify (#314) |
 | `#314` | U1 | Verification capsule-sourced | **DONE** @ RFC-0199: capsule-sourced; substituted output fails | result index (#315) |
-| `#315` | U1 | Result-by-problem authority | `problem_id` → artifact ref + ArtifactStore verify; index лише locator | identity (#316) |
+| `#315` | U1 | Result-by-problem authority | **DONE** @ RFC-0200: problem_id → ArtifactStore; index locator | identity (#316) |
 | `#316` | U1 | CLI identity create fail-closed | shared create op; повторний create = error; validate before write | policy IDs (#317) |
 | `#317` | U1 | Policy audit uniqueness | унікальний ID/рішення; same-ID≠hash → conflict; no silent skip | failed submit (#318) |
 | `#318` | U1 | Failed submit durable | Err після accept → durable problem/failure history після reopen | executor (#319) |
@@ -119,8 +119,8 @@ U0 Wiring (план у QUEUE + living smoke; RFC-0198 reserved)
 ```text
 #313 U0 wiring (DONE this atom)
   → #314 U1 verify capsule-sourced DONE @ RFC-0199
-    → #315 U1 result authority (first OPEN)
-      → #316 U1 CLI identity
+    → #315 U1 result authority DONE @ RFC-0200
+      → #316 U1 CLI identity (first OPEN)
         → #317 U1 policy audit IDs
           → #318 U1 failed submit durable
             → #319 U2 executor honesty

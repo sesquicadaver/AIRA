@@ -1,0 +1,3 @@
+- [x] get_result ArtifactStore authority
+- [x] tamper + orphan tests
+- [x] RFC-0200 + tip `#316`
