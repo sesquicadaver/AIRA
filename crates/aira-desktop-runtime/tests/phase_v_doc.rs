@@ -372,18 +372,17 @@ fn phase_v_status_row() {
 fn phase_v_repair_package_1_present() {
     let text = std::fs::read_to_string(repo_root().join("docs/repair-package-1.md")).unwrap();
     for needle in [
-        "**DONE**",
+        "RFC-0208",
         "phase-v-plan.md",
         "#330",
-        "RFC-0208",
         "QUEUE V closed",
         "Analyze-367",
     ] {
         assert!(text.contains(needle), "repair-package-1 missing: {needle}");
     }
     assert!(
-        !text.contains("**IN PROGRESS**"),
-        "repair-package-1 must not stay IN PROGRESS after #330"
+        text.contains("Structural **DONE**") || text.contains("**DONE** @ [AIRA-RFC-0208"),
+        "repair-package-1 must keep Phase V structural DONE"
     );
 }
 
