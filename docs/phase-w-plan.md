@@ -1,6 +1,6 @@
 # Phase W — Pack 1 residual honesty (post-V audit)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-11; `#331` wiring; first OPEN `#332`).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-11; `#331`–`#332` **DONE**; first OPEN `#333`).  
 **Джерела:** пост-V аудит `p-only/AIRA-audit-d1115f2-2026-09-11.md` @ `d1115f2` (merge PR #295 / RFC-0208); Phase V **DONE** @ [`phase-v-plan.md`](phase-v-plan.md) / RFC-0208 (**QUEUE V closed**); Pack 0 **DONE** @ [`repair-package-0.md`](repair-package-0.md) / RFC-0207; trace [`product-requirements-trace.md`](product-requirements-trace.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase W `#331`–`#342`.  
 **Closure:** consolidating **RFC-0215** reserved file-free until `#342` (id confirmed free 2026-09-11).  
@@ -104,7 +104,7 @@ W0 Wiring (+ A0 contract honesty tips)
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
 | `#331` | W0 | Phase W wiring + A0 tips | план IN PROGRESS; QUEUE `#331`–`#342`; `phase_w_doc`; RFC-0215 reserved; Pack 1 PARTIAL honesty без rewrite V | math (#332) |
-| `#332` | W1 | Math capsule fidelity | `9-3`→6, `9/3`→3, `42`→42; unsupported ≠ default `2+2`; RFC-0216 | strict HTTP (#333) |
+| `#332` | W1 | Math capsule fidelity | **DONE** @ RFC-0216: `9-3`→6, `9/3`→3, `42`→42; unsupported ≠ default `2+2` | strict HTTP (#333) |
 | `#333` | W1 | Strict submit decoding | unknown nested fields / invalid → 4xx; text-only OK; RFC-0217 | constraints matrix (#334) |
 | `#334` | W1 | Constraints enforce-or-reject | кожне поле: enforced або explicit unsupported; RFC-0218 | admission boundary (#335) |
 | `#335` | W1 | Admission boundary verify | text/hash/kind/context mismatch reject; RFC-0219 | activate evidence (#336) |
@@ -117,9 +117,9 @@ W0 Wiring (+ A0 contract honesty tips)
 | `#342` | W | RFC-0215 + close | consolidating; QUEUE W closed; Pack 1 residual honesty DONE | Pack 2 M* |
 
 ```text
-#331 W0 wiring + A0 (DONE this PR → first OPEN #332)
-  → #332 W1 math capsule
-    → #333 W1 strict submit
+#331 W0 wiring + A0 (DONE)
+  → #332 W1 math capsule DONE @ RFC-0216
+    → #333 W1 strict submit (first OPEN)
       → #334 W1 constraints enforce-or-reject
         → #335 W1 admission boundary
           → #336 W1 activate evidence
@@ -163,7 +163,7 @@ aira-core still has no GUI/ledger/LLM deps.
 QUEUE V closed @ RFC-0208
   + audit d1115f2 Pack 1 PARTIAL (D1–D6)
   + developer «активувати residual phase» (2026-09-11)
-  → wiring `#331` DONE; план IN PROGRESS; first OPEN `#332`.
+  → wiring `#331` DONE; `#332` DONE @ RFC-0216; план IN PROGRESS; first OPEN `#333`.
 ```
 
 ---

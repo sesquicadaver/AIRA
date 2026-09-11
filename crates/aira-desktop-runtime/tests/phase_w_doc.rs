@@ -24,7 +24,8 @@ fn phase_w_plan_present() {
         "confirmed free",
         "QUEUE V closed",
         "RFC-0208",
-        "first OPEN `#332`",
+        "RFC-0216",
+        "first OPEN `#333`",
         "D1",
         "D6",
         "GPU marketplace",
@@ -42,29 +43,40 @@ fn phase_w_plan_present() {
         !text.contains("**DONE** @ [AIRA-RFC-0215"),
         "phase-w-plan must not claim RFC-0215 DONE before #342"
     );
+    assert!(
+        !text.contains("first OPEN `#332`"),
+        "phase-w-plan must advance tip past #332"
+    );
 }
 
 #[test]
-fn phase_w_queue_331_done_332_open() {
+fn phase_w_queue_332_done_333_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-w-plan.md"));
-    assert!(text.contains("| 331 | **DONE**"), "QUEUE #331 must be DONE");
-    assert!(text.contains("| 332 | **OPEN**"), "QUEUE #332 must be OPEN");
-    for n in 333..=342 {
+    for n in 331..=332 {
+        assert!(
+            text.contains(&format!("| {n} | **DONE**")),
+            "QUEUE #{n} must be DONE"
+        );
+    }
+    assert!(text.contains("| 333 | **OPEN**"), "QUEUE #333 must be OPEN");
+    for n in 334..=342 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     assert!(
-        !text.contains("| 332 | **DONE**") && !text.contains("| 342 | **DONE**"),
-        "QUEUE #332/#342 must not be DONE yet"
+        !text.contains("| 333 | **DONE**") && !text.contains("| 342 | **DONE**"),
+        "QUEUE #333/#342 must not be DONE yet"
     );
     for needle in [
         "Analyze-368",
+        "Analyze-369",
         "RFC-0215",
+        "RFC-0216",
         "Pack 1 residual",
-        "first OPEN `#332`",
+        "first OPEN `#333`",
         "QUEUE V closed",
         "desktop-ux.md",
         "Math capsule",
@@ -83,13 +95,48 @@ fn phase_w_rfc_0215_file_free() {
 }
 
 #[test]
+fn phase_w_rfc_0216_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0216-math-capsule-fidelity.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0216 missing");
+    for needle in ["#332", "extract_math_expression", "9-3", "2+2", "RFC-0215"] {
+        assert!(text.contains(needle), "RFC-0216 missing: {needle}");
+    }
+}
+
+#[test]
+fn phase_w_math_runtime_present() {
+    let reduction =
+        std::fs::read_to_string(repo_root().join("csu/reduction-basic/src/lib.rs")).unwrap();
+    for needle in [
+        "#332",
+        "extract_math_expression",
+        "refusing default 2+2",
+        "CapsuleFailed",
+    ] {
+        assert!(
+            reduction.contains(needle),
+            "reduction-basic missing: {needle}"
+        );
+    }
+    assert!(
+        !reduction.contains("\"2+2\".into()"),
+        "reduction must not invent default 2+2"
+    );
+    let execution =
+        std::fs::read_to_string(repo_root().join("csu/execution-basic/src/lib.rs")).unwrap();
+    assert!(execution.contains("no default 2+2"));
+    assert!(!execution.contains("unwrap_or(\"2+2\")"));
+}
+
+#[test]
 fn phase_w_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-w-plan.md",
-        "#331",
         "#332",
+        "#333",
         "RFC-0215",
+        "RFC-0216",
         "QUEUE V closed",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
@@ -100,17 +147,17 @@ fn phase_w_desktop_ux_tip() {
 fn phase_w_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-w-plan.md") || readme.contains("Phase W"));
-    assert!(readme.contains("#332") || readme.contains("first OPEN"));
+    assert!(readme.contains("#333") || readme.contains("first OPEN"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-w-plan.md"));
-    assert!(docs.contains("#331") || docs.contains("IN PROGRESS"));
+    assert!(docs.contains("#332") || docs.contains("IN PROGRESS"));
 }
 
 #[test]
 fn phase_w_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-w-plan.md") || text.contains("Phase W"));
-    assert!(text.contains("#332") || text.contains("перший OPEN"));
+    assert!(text.contains("#333") || text.contains("перший OPEN"));
     assert!(text.contains("QUEUE V closed") || text.contains("RFC-0208"));
 }
 
@@ -118,11 +165,11 @@ fn phase_w_next_problem() {
 fn phase_w_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #331 |") || status.contains("#331"));
+    assert!(status.contains("| #332 |") || status.contains("#332"));
     assert!(status.contains("phase_w_doc.rs"));
     assert!(status.contains("phase-w-plan.md"));
-    assert!(status.contains("RFC-0215") || status.contains("0215"));
-    assert!(status.contains("#332"));
+    assert!(status.contains("RFC-0216") || status.contains("0216"));
+    assert!(status.contains("#333"));
 }
 
 #[test]
@@ -132,9 +179,10 @@ fn phase_w_repair_package_1_honesty() {
         "RFC-0208",
         "PARTIAL",
         "phase-w-plan.md",
-        "#331",
         "#332",
+        "#333",
         "RFC-0215",
+        "RFC-0216",
     ] {
         assert!(text.contains(needle), "repair-package-1 missing: {needle}");
     }

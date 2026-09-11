@@ -1,0 +1,6 @@
+# Analyze-369 todo
+
+- [x] extract_math_expression; CapsuleFailed on unsupported
+- [x] execution-basic no default 2+2
+- [x] Plane acceptance + RFC-0216 + tips → `#333`
+- [ ] Do **not** implement `#333` strict HTTP or Pack 2
