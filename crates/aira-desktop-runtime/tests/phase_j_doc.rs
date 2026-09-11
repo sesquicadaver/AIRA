@@ -403,7 +403,10 @@ fn phase_j_reduction_catalog_204() {
     assert!(queue.contains("| 206 | **DONE**"));
     let plane = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/plane.rs")).unwrap();
     assert!(plane.contains("open_with_reuse_index"));
-    assert!(plane.contains("bind_catalog_for_text"));
+    assert!(
+        plane.contains("bind_catalog_for_admission") || plane.contains("bind_catalog_for_text"),
+        "plane must bind reuse catalog on submit (#204 / #326)"
+    );
     let test_src =
         std::fs::read_to_string(repo_root().join("crates/aira-flow/src/lib.rs")).unwrap();
     let ready_fn = test_src
