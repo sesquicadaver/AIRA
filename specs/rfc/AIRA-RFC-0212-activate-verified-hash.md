@@ -23,7 +23,7 @@ Pre-`#327`, activate hashed the cache copy and wrote that hash into the activate
 ## 5. Non-Goals
 
 ```text
-Capsule↔Output↔Result binding (#328)
+Capsule↔Output↔Result binding (#328) — DONE @ RFC-0213
 E2E Pack 1 suite (#329)
 Pack 2 multi-model GUI
 GPU marketplace / LLM-in-Core

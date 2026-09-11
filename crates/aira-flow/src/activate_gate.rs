@@ -28,7 +28,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use aira_artifact::{ArtifactStore, CasArtifactStore};
 use aira_csu::support::{json_bytes, make_artifact};
-use aira_csu_execution_llm::{GenerateLocalPayload, ModelActivateGate, ACTIVATE_DENIED};
+use aira_csu_execution_llm::{
+    ExecutorFacts, GenerateLocalPayload, ModelActivateGate, ACTIVATE_DENIED,
+};
 use aira_object::{
     bind_thread_crypto, is_cryptographic_signature, local_test_signature, utc_now_rfc3339, AiraRef,
     ContentHash, Keyring, Signature, LOCAL_TEST_KEY_REF,
@@ -439,7 +441,7 @@ enum VerifyMode {
 }
 
 impl ModelActivateGate for ActivatedPointerGate {
-    fn check_activated(&self, payload: &GenerateLocalPayload) -> Result<(), String> {
+    fn check_activated(&self, payload: &GenerateLocalPayload) -> Result<ExecutorFacts, String> {
         if !self.pointer_path.is_file() {
             return Err(ACTIVATE_DENIED.into());
         }
@@ -458,7 +460,11 @@ impl ModelActivateGate for ActivatedPointerGate {
                 ));
             }
         }
-        self.verify_pointer_ready(&pointer, VerifyMode::AdmitFull)
+        self.verify_pointer_ready(&pointer, VerifyMode::AdmitFull)?;
+        Ok(ExecutorFacts {
+            model_ref: pointer.model_ref,
+            content_hash: pointer.content_hash,
+        })
     }
 }
 

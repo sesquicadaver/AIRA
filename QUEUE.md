@@ -12,7 +12,7 @@
 | `main` | Phase V `#323`–`#330` **IN PROGRESS** @ [`phase-v-plan.md`](docs/phase-v-plan.md) (Repair Pack 1 / admission integrity; RFC-0208 reserved); Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase V [`docs/phase-v-plan.md`](docs/phase-v-plan.md) `#323`–`#327` **DONE**; first OPEN `#328` |
+| Активна черга | Phase V [`docs/phase-v-plan.md`](docs/phase-v-plan.md) `#323`–`#328` **DONE**; first OPEN `#329` |
 
 ## Правила атомарності
 
@@ -886,14 +886,14 @@ Repair source: `p-only/aira-repair.md` Pack 1.
 | 324 | **DONE** | ~~Analyze-361 — Admission snapshot type + persist~~ | immutable snapshot + persist-on-admit; RFC-0209 | `#324` DONE; tip was `#325` | Submit API (#325) |
 | 325 | **DONE** | ~~Analyze-362 — Submit API carries constraints~~ | HTTP/CLI/Desktop beyond `text`; mid-run Settings ≠ mutate; RFC-0210 | `#325` DONE; tip was `#326` | reuse (#326) |
 | 326 | **DONE** | ~~Analyze-363 — Reuse after constraints~~ | reuse key ⊇ snapshot; require-new for compare/measure; RFC-0211 | `#326` DONE; tip was `#327` | activate (#327) |
-| 327 | **DONE** | ~~Analyze-364 — activate_verified hash continuity~~ | post-copy hash == VerifiedPointer.content_hash; RFC-0212 | `#327` DONE; first OPEN `#328` | binding (#328) |
-| 328 | **OPEN** | Analyze-365 — Capsule↔Output↔Result binding | generate-local capsule + executor facts; RFC-0213 | model_ref/content hash stamped | e2e (#329) |
+| 327 | **DONE** | ~~Analyze-364 — activate_verified hash continuity~~ | post-copy hash == VerifiedPointer.content_hash; RFC-0212 | `#327` DONE; tip was `#328` | binding (#328) |
+| 328 | **DONE** | ~~Analyze-365 — Capsule↔Output↔Result binding~~ | generate-local capsule + executor facts; RFC-0213 | `#328` DONE; first OPEN `#329` | e2e (#329) |
 | 329 | **OPEN** | Analyze-366 — E2E fail-closed tests | repair §6 subset (reuse/settings/activate); RFC-0214 | tests green | RFC close (#330) |
 | 330 | **OPEN** | Analyze-367 — RFC-0208 + close | consolidating RFC-0208; QUEUE V closed; repair-package-1 DONE | RFC-0208; no OPEN V atoms | — |
 
 ### Наступний цикл (Phase V)
 
-**Перший OPEN:** `#328` (Capsule↔Output↔Result binding). Tip: `#327` DONE @ Analyze-364 / RFC-0212.
+**Перший OPEN:** `#329` (E2E fail-closed tests). Tip: `#328` DONE @ Analyze-365 / RFC-0213.
 
 ```text
 V0 wiring (#323 DONE)
@@ -901,7 +901,7 @@ V0 wiring (#323 DONE)
     → V1 submit constraints API (#325 DONE @ RFC-0210)
       → V1 reuse after constraints (#326 DONE @ RFC-0211)
         → V1 activate hash continuity (#327 DONE @ RFC-0212)
-          → V1 capsule/result binding (#328 OPEN)
+          → V1 capsule/result binding (#328 DONE @ RFC-0213)
             → V2 e2e fail-closed (#329 OPEN)
               → V close RFC-0208 (#330 OPEN)
 ```

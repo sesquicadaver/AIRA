@@ -16,7 +16,7 @@ Choice of executor **never** grants `VERIFIED`. GPU marketplace / Core-as-LLM-ru
 |----|------------------------------|-----------------|---------------|----------|-----------------|----------------|
 | PR-M1 | Select / activate a **local** model (or Auto) | Book 0 §1.3 / §3.2; RFC-0159 amd.; this matrix | Phase D activate + inventory | Settings→Models; Work executor control | TBD Pack 2 | **CONTRACT** — UI lag (observe-only superseded) |
 | PR-M2 | Exclude models from auto-selection; set default | Book 0 §1.3; EVO-3 | inventory + policy | Settings catalog | TBD Pack 2 | **ABSENT** (product) |
-| PR-M3 | See actual executor on the result (selected≠used) | RFC-0159; RFC-0172 | WorkResultView / provenance | Work + System | `phase_p` / desktop tests | **PARTIAL** (observe yes; binding Pack 1–2) |
+| PR-M3 | See actual executor on the result (selected≠used) | RFC-0159; RFC-0172; RFC-0213 | WorkResultView / provenance + ExecutionArtifact facts | Work + System | `phase_p` / `#328` stamps | **PARTIAL** (runtime facts `#328`; GUI Pack 2) |
 | PR-M4 | Compare models on a task without silent substitute | aira-repair Pack 2–3 | multi binding | Work «Порівняти» | TBD | **ABSENT** |
 | PR-R1 | Multidimensional ratings (user / quality / ops) | EVO-3; D6–D7; aira-repair Pack 3 | model-rating CSU | Settings / System / result | CLI only today | **PARTIAL** (CLI local; not measured quality UI) |
 | PR-R2 | Independence of evidence (copies ≠ independent votes) | aira-repair §4; DSM research | TBD Pack 3/6 | honesty copy | TBD | **ABSENT** (operational) |
@@ -43,6 +43,6 @@ Status vocabulary matches [`implementation-status.md`](implementation-status.md)
 
 ## Next packages
 
-Pack 1 — admission snapshot + reuse/binding integrity — **IN PROGRESS** as Phase V [`phase-v-plan.md`](phase-v-plan.md) / [`repair-package-1.md`](repair-package-1.md) (`#323`–`#327` DONE @ RFC-0212; first OPEN `#328`; RFC-0208 reserved).  
+Pack 1 — admission snapshot + reuse/binding integrity — **IN PROGRESS** as Phase V [`phase-v-plan.md`](phase-v-plan.md) / [`repair-package-1.md`](repair-package-1.md) (`#323`–`#328` DONE @ RFC-0213; first OPEN `#329`; RFC-0208 reserved).  
 Pack 2 — local multi-model GUI (first user-complete result).  
 See [`repair-package-0.md`](repair-package-0.md).

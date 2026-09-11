@@ -58,7 +58,14 @@ fn is_math_eval_safe(statement: &str) -> bool {
 
 /// RFC-0105 generate-local payload (CustomArtifact content). Extra capsule fields would
 /// fail `additionalProperties: false` / execution-llm `deny_unknown_fields` in `#213`.
-fn generate_local_payload(problem_ref: &AiraRef, prompt: &str, provenance: &AiraRef) -> Value {
+///
+/// `#328`: optional `model_artifact_ref` from admission snapshot when present.
+fn generate_local_payload(
+    problem_ref: &AiraRef,
+    prompt: &str,
+    provenance: &AiraRef,
+    model_ref: Option<&str>,
+) -> Value {
     let mut body = Map::new();
     body.insert(
         "payload_schema".into(),
@@ -67,6 +74,9 @@ fn generate_local_payload(problem_ref: &AiraRef, prompt: &str, provenance: &Aira
     body.insert("action".into(), json!(ACTION_GENERATE_LOCAL));
     body.insert("prompt".into(), json!(prompt));
     body.insert("problem_statement_ref".into(), json!(problem_ref.as_str()));
+    if let Some(m) = model_ref.filter(|s| !s.is_empty()) {
+        body.insert("model_artifact_ref".into(), json!(m));
+    }
     body.insert(
         "constraints".into(),
         json!({ "network": "none", "shell": false }),
@@ -80,6 +90,19 @@ fn generate_local_payload(problem_ref: &AiraRef, prompt: &str, provenance: &Aira
         serde_json::to_value(&sig).expect("signature json"),
     );
     Value::Object(body)
+}
+
+/// Read optional admitted `model_ref` from ContextResolved artifact (`#328`).
+fn admission_model_ref_from_context(
+    ctx: &mut CsuExecutionContext<'_, '_>,
+    context_ref: &AiraRef,
+) -> Option<String> {
+    let (_, bytes) = ctx.resolve_artifact(context_ref).ok()?;
+    let v: Value = serde_json::from_slice(&bytes).ok()?;
+    v.pointer("/resolved_factors/admission_snapshot/model_ref")
+        .and_then(|m| m.as_str())
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
 }
 
 /// Local reduction / reuse CSU.
@@ -267,8 +290,14 @@ impl Csu for ReductionBasicCsu {
             } else {
                 statement.clone()
             };
+            let model_ref = admission_model_ref_from_context(ctx, &context_ref);
             (
-                generate_local_payload(&problem_ref, &prompt, &event.event_id),
+                generate_local_payload(
+                    &problem_ref,
+                    &prompt,
+                    &event.event_id,
+                    model_ref.as_deref(),
+                ),
                 ArtifactType::CustomArtifact,
             )
         } else {
@@ -376,7 +405,7 @@ pub fn crate_version() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aira_artifact::CasArtifactStore;
+    use aira_artifact::{ArtifactStore, CasArtifactStore};
     use aira_csu::support::make_event as mk;
     use aira_event::MemoryEventLog;
 
@@ -499,6 +528,51 @@ mod tests {
         let root = aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")).unwrap();
         let reg = aira_schema::SchemaRegistry::load(root.join("schemas")).unwrap();
         reg.validate(PAYLOAD_SCHEMA_GENERATE_LOCAL, &body).unwrap();
+    }
+
+    #[test]
+    fn generate_local_capsule_carries_admission_model_ref() {
+        let mut csu = ReductionBasicCsu::new();
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let ctx_body = json!({
+            "resolved_factors": {
+                "admission_snapshot": {
+                    "kind": "admission_snapshot",
+                    "model_ref": "aira:model:chosen-x",
+                    "statement_content_hash": "sha256:deadbeef"
+                }
+            }
+        });
+        let ctx_payload = json_bytes(&ctx_body);
+        let ctx_desc = aira_csu::support::make_artifact(
+            "aira:artifact:ctx-admit",
+            ArtifactType::OperationalArtifact,
+            &ctx_payload,
+            vec![],
+        );
+        let ctx_id = ctx_desc.artifact_id.clone();
+        store.publish(ctx_desc, &ctx_payload).unwrap();
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let ev = mk(
+            "aira:event:c-admit",
+            EventType::ContextResolved,
+            vec![AiraRef::parse("aira:problem:01TESTPROBLEM").unwrap()],
+            vec![ctx_id],
+            vec![],
+            Some(prompt.into()),
+        );
+        let outs = csu.on_event(&ev, &mut ctx).unwrap();
+        let (_, body) = capsule_json(&outs);
+        assert_eq!(body["action"], json!(ACTION_GENERATE_LOCAL));
+        assert_eq!(body["model_artifact_ref"], json!("aira:model:chosen-x"));
     }
 
     #[test]
