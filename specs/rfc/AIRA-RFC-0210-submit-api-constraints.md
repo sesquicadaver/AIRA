@@ -53,3 +53,4 @@ Reuse-index key unchanged (still text SHA) until #326.
 - QUEUE `#325` · Analyze-362
 - Depends on RFC-0209 (`#324`)
 - Parent consolidating: RFC-0208 (file-free until `#330`)
+- Superseded for reuse keys by RFC-0211 (`#326`)
