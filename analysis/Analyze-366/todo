@@ -1,0 +1,8 @@
+# Analyze-366 todo
+
+- [x] E2E reuse/model fail-closed
+- [x] E2E settings mid-run keeps admission binding
+- [x] E2E verify-tamper-before-activate rejected
+- [x] Glue C1 + generate-local executor facts
+- [x] Tests + RFC-0214 + tips → `#330`
+- [ ] Do **not** implement RFC-0208 close (#330) or Pack 2 GUI
