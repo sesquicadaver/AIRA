@@ -19,6 +19,9 @@ use crate::util::{append_custom_event, ensure_under_models, sanitize_slot};
 /// Copies `models/verified/…` → `models/cache/…`, publishes ModelInstalled-style
 /// Evidence + Event. Does **not** execute the model. Inventory refresh is left to
 /// the CLI (`scan_and_publish` on [`CACHE_REL`]) to respect CSU↛CSU firewall.
+///
+/// `#327` / RFC-0212: source and post-copy content hashes must equal
+/// [`VerifiedPointer::content_hash`]. Mismatch is fail-closed (no activated pointer).
 pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome, AcquisitionError> {
     let root = aira_root.as_ref();
     let _ = aira_object::register_node_identity(root);
@@ -32,6 +35,13 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
     )
     .map_err(|e| AcquisitionError::Other(e.to_string()))?;
 
+    let expected = ContentHash::parse(&pointer.content_hash).map_err(|_| {
+        AcquisitionError::ActivateHashMismatch {
+            expected: pointer.content_hash.clone(),
+            observed: "(invalid VerifiedPointer.content_hash)".into(),
+        }
+    })?;
+
     let vfile = Path::new(&pointer.verified_path);
     if !vfile.is_file() {
         return Err(AcquisitionError::SourceMissing(
@@ -39,6 +49,15 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
         ));
     }
     ensure_under_models(root, vfile)?;
+
+    let source_bytes = fs::read(vfile).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    let source_hash = ContentHash::sha256_bytes(&source_bytes);
+    if source_hash != expected {
+        return Err(AcquisitionError::ActivateHashMismatch {
+            expected: expected.as_str().to_string(),
+            observed: source_hash.as_str().to_string(),
+        });
+    }
 
     let file_name = vfile
         .file_name()
@@ -55,6 +74,13 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
 
     let file_bytes = fs::read(&dest).map_err(|e| AcquisitionError::Io(e.to_string()))?;
     let content_hash = ContentHash::sha256_bytes(&file_bytes);
+    if content_hash != expected {
+        let _ = fs::remove_file(&dest);
+        return Err(AcquisitionError::ActivateHashMismatch {
+            expected: expected.as_str().to_string(),
+            observed: content_hash.as_str().to_string(),
+        });
+    }
     let hash_hex = content_hash.as_str().trim_start_matches("sha256:");
     let dest_display = dest.display().to_string();
 

@@ -23,7 +23,7 @@ QUEUE `#326` (Phase V / Repair Pack 1): the durable reuse-index key is derived f
 ## 5. Non-Goals
 
 ```text
-activate_verified hash continuity (#327)
+activate_verified hash continuity (#327) — DONE @ RFC-0212
 Capsule↔Output↔Result binding (#328)
 Pack 2 multi-model GUI
 GPU marketplace / LLM-in-Core

@@ -25,6 +25,11 @@ pub enum AcquisitionError {
     NoVerified,
     #[error("no activated cache for model — run models activate first")]
     NoActivated,
+    /// `#327` / RFC-0212: post-copy (or source) bytes ≠ `VerifiedPointer.content_hash`.
+    #[error(
+        "activate content_hash mismatch (fail-closed): verified pointer {expected} vs observed {observed}"
+    )]
+    ActivateHashMismatch { expected: String, observed: String },
     #[error("model artifact missing or invalid: {0}")]
     BadArtifact(String),
     #[error("invalid share visibility (use local|opt_in): {0}")]
