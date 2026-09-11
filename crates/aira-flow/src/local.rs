@@ -612,7 +612,9 @@ impl LocalSession {
             ..
         } = outcome
         {
-            record_reuse_index(&self.paths, text, verified_artifact_id)?;
+            if let Some(snap) = self.plane.last_admission().map(|(_, s)| s.clone()) {
+                record_reuse_index(&self.paths, &snap, verified_artifact_id)?;
+            }
         }
         Ok(())
     }
@@ -770,10 +772,6 @@ fn bind_node_crypto(root: &Path) -> Result<(), FlowError> {
     Ok(())
 }
 
-fn problem_text_hash(text: &str) -> String {
-    crate::reuse::problem_text_hash(text)
-}
-
 /// GET/status must not label generate-local output as a Verified Result Artifact.
 fn split_executed_verified_lie(mut rec: ProblemRecord) -> ProblemRecord {
     if rec.status == "executed" {
@@ -786,16 +784,18 @@ fn split_executed_verified_lie(mut rec: ProblemRecord) -> ProblemRecord {
     rec
 }
 
+/// Persist Completed under admission-scoped reuse key (`#326` / RFC-0211).
 fn record_reuse_index(
     paths: &NodePaths,
-    text: &str,
+    admission: &crate::AdmissionSnapshot,
     verified_artifact_id: &AiraRef,
 ) -> Result<(), FlowError> {
-    let mut idx = crate::reuse::load_reuse_index(&paths.reuse_index()).map_err(FlowError::Other)?;
-    idx.by_content_hash
-        .entry(problem_text_hash(text))
-        .or_insert_with(|| verified_artifact_id.as_str().to_string());
-    write_json(&paths.reuse_index(), &idx)
+    crate::reuse::record_artifact_id(
+        &paths.reuse_index(),
+        admission,
+        verified_artifact_id.as_str(),
+    )
+    .map_err(FlowError::Other)
 }
 
 /// Whether a candidate event may be appended during persist (#317 / RFC-0202).

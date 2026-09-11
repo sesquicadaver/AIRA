@@ -626,7 +626,9 @@ mod tests {
         drop(plane);
 
         let idx_path = dir.path().join("reuse-index.json");
-        let key = aira_object::ContentHash::sha256_bytes("Calculate 2 + 2".as_bytes());
+        let key = AdmissionSnapshot::default_for_text("Calculate 2 + 2")
+            .reuse_catalog_key()
+            .expect("default admit allows reuse");
         let idx = serde_json::json!({
             "by_content_hash": { key.as_str(): ready_id.as_str() }
         });
@@ -678,7 +680,9 @@ mod tests {
 
         let idx_path = dir.path().join("problems").join("reuse-index.json");
         std::fs::create_dir_all(idx_path.parent().unwrap()).unwrap();
-        let key = aira_object::ContentHash::sha256_bytes("Calculate 2 + 2".as_bytes());
+        let key = AdmissionSnapshot::default_for_text("Calculate 2 + 2")
+            .reuse_catalog_key()
+            .expect("default admit allows reuse");
         std::fs::write(
             &idx_path,
             serde_json::to_string_pretty(&serde_json::json!({
@@ -1337,6 +1341,87 @@ mod tests {
                 .any(|e| e.event_type == EventType::CapsuleCompleted),
             "different problem text must not reuse 2+2"
         );
+    }
+
+    #[test]
+    fn local_session_same_text_different_model_ref_does_not_reuse() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let mut session = LocalSession::open(&root).unwrap();
+        let text = "Calculate 2 + 2";
+        assert!(matches!(
+            session.submit_problem(text).unwrap(),
+            SubmitOutcome::Completed { .. }
+        ));
+
+        let constrained = AdmissionSnapshot::from_text_and_constraints(
+            text,
+            &AdmissionConstraints {
+                model_ref: Some("aira:model:other".into()),
+                ..Default::default()
+            },
+        );
+        let second = session
+            .submit_problem_with_admission(text, constrained)
+            .unwrap();
+        assert!(matches!(second, SubmitOutcome::Completed { .. }));
+        assert!(
+            session
+                .plane()
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleCompleted),
+            "different model_ref must not hit text-only reuse"
+        );
+        assert!(
+            !session
+                .plane()
+                .events()
+                .iter()
+                .any(|e| e.payload_ref.as_deref() == Some("reuse:ready_solution")),
+            "model-X admit must not reuse:ready_solution from default admit"
+        );
+    }
+
+    #[test]
+    fn local_session_require_new_execution_skips_reuse() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let mut session = LocalSession::open(&root).unwrap();
+        let text = "Calculate 2 + 2";
+        assert!(matches!(
+            session.submit_problem(text).unwrap(),
+            SubmitOutcome::Completed { .. }
+        ));
+
+        let require_new = AdmissionSnapshot::from_text_and_constraints(
+            text,
+            &AdmissionConstraints {
+                reuse_policy: ReusePolicy::RequireNewExecution,
+                ..Default::default()
+            },
+        );
+        let second = session
+            .submit_problem_with_admission(text, require_new)
+            .unwrap();
+        assert!(matches!(second, SubmitOutcome::Completed { .. }));
+        assert!(
+            session
+                .plane()
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleCompleted),
+            "RequireNewExecution must re-execute"
+        );
+        assert!(!session
+            .plane()
+            .events()
+            .iter()
+            .any(|e| e.payload_ref.as_deref() == Some("reuse:ready_solution")));
     }
 
     #[test]

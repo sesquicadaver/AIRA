@@ -1,6 +1,6 @@
 # AIRA — лінійна черга задач
 
-**Оновлено:** 2026-09-10  
+**Оновлено:** 2026-09-11  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
 **План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **DONE** (2026-08-28, RFC-0069). Phase H Protocol depth v0.3 [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — `#152`–`#183` **DONE** (2026-08-30, RFC-0077). Phase I Semantic contract stabilization [`docs/phase-i-plan.md`](docs/phase-i-plan.md) — `#184`–`#198` **DONE** (2026-08-30, RFC-0078). Phase J Book-gap local remainder [`docs/phase-j-plan.md`](docs/phase-j-plan.md) — `#199`–`#208` **DONE** @ RFC-0096. QUEUE J closed. Phase K Local LLM Execution CSU [`docs/phase-k-plan.md`](docs/phase-k-plan.md) — `#209`–`#216` **DONE** @ RFC-0104. QUEUE K closed. Phase L Execution-boundary hardening [`docs/phase-l-plan.md`](docs/phase-l-plan.md) — `#217`–`#223` **DONE** @ RFC-0111. QUEUE L closed. Phase M OS child sandbox [`docs/phase-m-plan.md`](docs/phase-m-plan.md) — `#224`–`#230` **DONE** @ RFC-0117. QUEUE M closed. Phase N Global Node Rendezvous [`docs/phase-n-plan.md`](docs/phase-n-plan.md) — `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed. Phase N-fix [`docs/phase-n-fix-plan.md`](docs/phase-n-fix-plan.md) — `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed. Phase O Desktop UX + F1 [`docs/phase-o-plan.md`](docs/phase-o-plan.md) — `#255`–`#265` **DONE** @ RFC-0146; **QUEUE O closed**. Phase P [`docs/phase-p-plan.md`](docs/phase-p-plan.md) — `#266`–`#274` **DONE** @ RFC-0156; **QUEUE P closed**. Phase Q [`docs/phase-q-plan.md`](docs/phase-q-plan.md) — `#275`–`#285` **DONE** @ RFC-0164; **QUEUE Q closed**. Phase R [`docs/phase-r-plan.md`](docs/phase-r-plan.md) — `#286`–`#294` **DONE** @ RFC-0174; **QUEUE R closed**. Phase S [`docs/phase-s-plan.md`](docs/phase-s-plan.md) — `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**. Phase T [`docs/phase-t-plan.md`](docs/phase-t-plan.md) — `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**. Phase U [`docs/phase-u-plan.md`](docs/phase-u-plan.md) — `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**. Phase V Repair Pack 1 [`docs/phase-v-plan.md`](docs/phase-v-plan.md) — `#323`–`#330` **IN PROGRESS** (RFC-0208 reserved).
@@ -12,7 +12,7 @@
 | `main` | Phase V `#323`–`#330` **IN PROGRESS** @ [`phase-v-plan.md`](docs/phase-v-plan.md) (Repair Pack 1 / admission integrity; RFC-0208 reserved); Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase V [`docs/phase-v-plan.md`](docs/phase-v-plan.md) `#323`–`#325` **DONE**; first OPEN `#326` |
+| Активна черга | Phase V [`docs/phase-v-plan.md`](docs/phase-v-plan.md) `#323`–`#326` **DONE**; first OPEN `#327` |
 
 ## Правила атомарності
 
@@ -884,8 +884,8 @@ Repair source: `p-only/aira-repair.md` Pack 1.
 |---|--------|---------|-----------------|-----------|------------------|
 | 323 | **DONE** | ~~Analyze-360 — Phase V wiring~~ | plan + QUEUE `#323`–`#330` + `phase_v_doc`; RFC-0208 reserved | plan IN PROGRESS; `#323` DONE; first OPEN was `#324` | snapshot (#324) |
 | 324 | **DONE** | ~~Analyze-361 — Admission snapshot type + persist~~ | immutable snapshot + persist-on-admit; RFC-0209 | `#324` DONE; tip was `#325` | Submit API (#325) |
-| 325 | **DONE** | ~~Analyze-362 — Submit API carries constraints~~ | HTTP/CLI/Desktop beyond `text`; mid-run Settings ≠ mutate; RFC-0210 | `#325` DONE; first OPEN `#326` | reuse (#326) |
-| 326 | **OPEN** | Analyze-363 — Reuse after constraints | reuse key ⊇ snapshot; require-new for compare/measure; RFC-0211 | no text-only model bypass | activate (#327) |
+| 325 | **DONE** | ~~Analyze-362 — Submit API carries constraints~~ | HTTP/CLI/Desktop beyond `text`; mid-run Settings ≠ mutate; RFC-0210 | `#325` DONE; tip was `#326` | reuse (#326) |
+| 326 | **DONE** | ~~Analyze-363 — Reuse after constraints~~ | reuse key ⊇ snapshot; require-new for compare/measure; RFC-0211 | `#326` DONE; first OPEN `#327` | activate (#327) |
 | 327 | **OPEN** | Analyze-364 — activate_verified hash continuity | post-copy hash == VerifiedPointer.content_hash; RFC-0212 | tamper → reject | binding (#328) |
 | 328 | **OPEN** | Analyze-365 — Capsule↔Output↔Result binding | generate-local capsule + executor facts; RFC-0213 | model_ref/content hash stamped | e2e (#329) |
 | 329 | **OPEN** | Analyze-366 — E2E fail-closed tests | repair §6 subset (reuse/settings/activate); RFC-0214 | tests green | RFC close (#330) |
@@ -893,13 +893,13 @@ Repair source: `p-only/aira-repair.md` Pack 1.
 
 ### Наступний цикл (Phase V)
 
-**Перший OPEN:** `#326` (Reuse after constraints). Tip: `#325` DONE @ Analyze-362 / RFC-0210.
+**Перший OPEN:** `#327` (`activate_verified` hash continuity). Tip: `#326` DONE @ Analyze-363 / RFC-0211.
 
 ```text
 V0 wiring (#323 DONE)
   → V1 admission snapshot (#324 DONE @ RFC-0209)
     → V1 submit constraints API (#325 DONE @ RFC-0210)
-      → V1 reuse after constraints (#326 OPEN)
+      → V1 reuse after constraints (#326 DONE @ RFC-0211)
         → V1 activate hash continuity (#327 OPEN)
           → V1 capsule/result binding (#328 OPEN)
             → V2 e2e fail-closed (#329 OPEN)

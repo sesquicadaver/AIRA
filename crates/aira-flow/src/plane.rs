@@ -302,13 +302,19 @@ impl OperationalPlane {
         Ok(())
     }
 
-    /// Bind Reduction from the durable reuse-index for this problem text (#204).
-    fn bind_catalog_for_text(&mut self, text: &str) -> Result<(), FlowError> {
+    /// Bind Reduction from the durable reuse-index for this admit (#204 / `#326`).
+    ///
+    /// Lookup key is [`AdmissionSnapshot::reuse_catalog_key`] (not text alone).
+    /// [`ReusePolicy::RequireNewExecution`] skips bind entirely.
+    fn bind_catalog_for_admission(
+        &mut self,
+        admission: &AdmissionSnapshot,
+    ) -> Result<(), FlowError> {
         let Some(path) = &self.reuse_index else {
             return Ok(());
         };
         let Some(id_str) =
-            crate::reuse::lookup_artifact_id(path, text).map_err(FlowError::Other)?
+            crate::reuse::lookup_artifact_id(path, admission).map_err(FlowError::Other)?
         else {
             return Ok(());
         };
@@ -339,7 +345,7 @@ impl OperationalPlane {
         if is_normative_split(text) {
             return self.emit_differentiated_field(text, admission);
         }
-        self.bind_catalog_for_text(text)?;
+        self.bind_catalog_for_admission(&admission)?;
 
         self.seq += 1;
         let problem_id =

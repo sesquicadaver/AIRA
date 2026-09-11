@@ -1,9 +1,10 @@
-//! Immutable admission snapshot for Repair Pack 1 / QUEUE `#324`–`#325`
-//! (RFC-0209 / RFC-0210).
+//! Immutable admission snapshot for Repair Pack 1 / QUEUE `#324`–`#326`
+//! (RFC-0209 / RFC-0210 / RFC-0211).
 //!
 //! Captured at ProblemSubmitted admit time. Extends the request contract — not a
 //! new Core ontology. HTTP/CLI/Desktop may send [`AdmissionConstraints`]; omitted
 //! fields use [`AdmissionSnapshot::default_for_text`].
+//! Reuse catalog keys are derived from this snapshot (`reuse_catalog_key`, `#326`).
 
 use aira_object::ContentHash;
 use serde::{Deserialize, Serialize};
@@ -163,6 +164,26 @@ impl AdmissionSnapshot {
     pub fn is_snapshot_value(v: &serde_json::Value) -> bool {
         v.get("kind").and_then(|k| k.as_str()) == Some(ADMISSION_SNAPSHOT_KIND)
     }
+
+    /// Composite reuse-index key for this admit (`#326` / RFC-0211).
+    ///
+    /// Returns `None` when [`ReusePolicy::RequireNewExecution`] — callers must
+    /// neither look up nor record a catalog entry. Otherwise hashes a normalized
+    /// canonical serialization of snapshot identity (statement hash + model /
+    /// generation / placement / privacy / budget / fallback). Text-only admits
+    /// share a stable key so default C1 reuse still works; different
+    /// `model_ref` (or other constraints) do not collide with text-only hits.
+    pub fn reuse_catalog_key(&self) -> Option<String> {
+        if self.reuse_policy == ReusePolicy::RequireNewExecution {
+            return None;
+        }
+        let mut norm = self.clone();
+        norm.allowed_model_refs.sort();
+        // Policy is AllowReuse if we reached here; keep it explicit in the bytes.
+        norm.reuse_policy = ReusePolicy::AllowReuse;
+        let bytes = serde_json::to_vec(&norm).ok()?;
+        Some(ContentHash::sha256_bytes(&bytes).as_str().to_string())
+    }
 }
 
 #[cfg(test)]
@@ -215,5 +236,52 @@ mod tests {
         assert!(AdmissionSnapshot::is_snapshot_value(
             &serde_json::from_slice(&raw).unwrap()
         ));
+    }
+
+    #[test]
+    fn reuse_catalog_key_none_when_require_new() {
+        let c = AdmissionConstraints {
+            reuse_policy: ReusePolicy::RequireNewExecution,
+            ..Default::default()
+        };
+        let s = AdmissionSnapshot::from_text_and_constraints("Calculate 2 + 2", &c);
+        assert!(s.reuse_catalog_key().is_none());
+    }
+
+    #[test]
+    fn reuse_catalog_key_differs_when_model_ref_differs() {
+        let text = "Calculate 2 + 2";
+        let a = AdmissionSnapshot::default_for_text(text);
+        let b = AdmissionSnapshot::from_text_and_constraints(
+            text,
+            &AdmissionConstraints {
+                model_ref: Some("aira:model:x".into()),
+                ..Default::default()
+            },
+        );
+        let ka = a.reuse_catalog_key().expect("allow reuse");
+        let kb = b.reuse_catalog_key().expect("allow reuse");
+        assert_ne!(ka, kb);
+        assert_eq!(a.reuse_catalog_key(), a.reuse_catalog_key());
+    }
+
+    #[test]
+    fn reuse_catalog_key_stable_under_allowed_set_order() {
+        let text = "hello";
+        let a = AdmissionSnapshot::from_text_and_constraints(
+            text,
+            &AdmissionConstraints {
+                allowed_model_refs: vec!["aira:model:b".into(), "aira:model:a".into()],
+                ..Default::default()
+            },
+        );
+        let b = AdmissionSnapshot::from_text_and_constraints(
+            text,
+            &AdmissionConstraints {
+                allowed_model_refs: vec!["aira:model:a".into(), "aira:model:b".into()],
+                ..Default::default()
+            },
+        );
+        assert_eq!(a.reuse_catalog_key(), b.reuse_catalog_key());
     }
 }

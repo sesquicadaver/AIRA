@@ -1,0 +1,8 @@
+# Analyze-363 todo
+
+- [x] reuse_catalog_key on AdmissionSnapshot
+- [x] reuse.rs lookup/record by admission key; legacy text-only miss
+- [x] bind_catalog_for_admission + LocalSession record
+- [x] Tests: model_ref miss, RequireNewExecution, default C1 reuse
+- [x] RFC-0211 + QUEUE/docs tips → `#327`
+- [ ] Do **not** implement activate hash (#327) or capsule binding (#328)
