@@ -4,4 +4,5 @@
 - [x] Stamp on generate-local output; conflict fail-closed
 - [x] Admission model_ref → capsule model_artifact_ref
 - [x] Tests + RFC-0213 + tips → `#329`
-- [ ] Do **not** implement e2e suite (#329) or Pack 2 GUI
+- [x] E2E suite delivered in `#329` / Analyze-366 (out of this atom)
+- [ ] Do **not** implement Pack 2 GUI

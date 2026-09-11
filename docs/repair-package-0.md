@@ -25,7 +25,7 @@ Keep microkernel + VERIFIED. Restore the **product obligation** to expose user c
 
 ## Explicitly not delivered here
 
-Pack 1 admission snapshot — Phase V **IN PROGRESS** ([`phase-v-plan.md`](phase-v-plan.md) / [`repair-package-1.md`](repair-package-1.md); `#323`–`#328` DONE @ RFC-0213; first OPEN `#329`). Pack 2 multi-model GUI; Pack 3–7 still need their own phase plans.
+Pack 1 admission snapshot — Phase V **IN PROGRESS** ([`phase-v-plan.md`](phase-v-plan.md) / [`repair-package-1.md`](repair-package-1.md); `#323`–`#329` DONE @ RFC-0214; first OPEN `#330`). Pack 2 multi-model GUI; Pack 3–7 still need their own phase plans.
 
 ## Acceptance (Pack 0)
 

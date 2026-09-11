@@ -29,6 +29,10 @@ uuid = { workspace = true }
 [dev-dependencies]
 tempfile = "3"
 aira-schema = { path = "../aira-schema" }
+aira-csu-model-acquisition = { path = "../../csu/model-acquisition" }
+aira-event = { path = "../aira-event" }
+aira-object = { path = "../aira-object" }
 ed25519-dalek = { workspace = true }
 hex = { workspace = true }
 rand = { workspace = true }
+serde_json = { workspace = true }
