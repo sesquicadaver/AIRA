@@ -1,0 +1,6 @@
+# Analyze-364 todo
+
+- [x] ActivateHashMismatch + source/post-copy compare
+- [x] Tamper + forged-pointer tests
+- [x] RFC-0212 + QUEUE/docs tips → `#328`
+- [ ] Do **not** implement capsule binding (#328) or e2e suite (#329)

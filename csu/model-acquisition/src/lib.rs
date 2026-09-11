@@ -366,6 +366,66 @@ mod tests {
     }
 
     #[test]
+    fn activate_rejects_tampered_verified_bytes() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("tamper.gguf");
+        fs::write(&src, b"activate-honest-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:tamper", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"activate-honest-bytes");
+        let art = signed_model_artifact("aira:model:tamper", observed.as_str());
+        let art_path = dir.path().join("tamper.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        let VerifyOutcome::Verified { verified_path, .. } =
+            verify_quarantine(dir.path(), &art_path).unwrap()
+        else {
+            panic!("expected Verified");
+        };
+        fs::write(&verified_path, b"tampered-after-verify").unwrap();
+        let err = activate_verified(dir.path()).unwrap_err();
+        assert!(
+            matches!(err, AcquisitionError::ActivateHashMismatch { .. }),
+            "expected ActivateHashMismatch, got {err}"
+        );
+        assert!(
+            !dir.path().join(ACTIVATED_POINTER_REL).exists(),
+            "mismatch must not write activated.latest.json"
+        );
+    }
+
+    #[test]
+    fn activate_rejects_forged_verified_pointer_hash() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("forge.gguf");
+        fs::write(&src, b"activate-forge-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:forge", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"activate-forge-bytes");
+        let art = signed_model_artifact("aira:model:forge", observed.as_str());
+        let art_path = dir.path().join("forge.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        verify_quarantine(dir.path(), &art_path).unwrap();
+
+        let vpath = dir.path().join(VERIFIED_POINTER_REL);
+        let mut pointer: Value =
+            serde_json::from_str(&fs::read_to_string(&vpath).unwrap()).unwrap();
+        pointer.as_object_mut().unwrap().insert(
+            "content_hash".into(),
+            json!(ContentHash::sha256_bytes(b"not-the-file").as_str()),
+        );
+        fs::write(&vpath, serde_json::to_string_pretty(&pointer).unwrap()).unwrap();
+
+        let err = activate_verified(dir.path()).unwrap_err();
+        assert!(
+            matches!(err, AcquisitionError::ActivateHashMismatch { .. }),
+            "expected ActivateHashMismatch, got {err}"
+        );
+        assert!(!dir.path().join(ACTIVATED_POINTER_REL).exists());
+    }
+
+    #[test]
     fn publish_deny_without_policy() {
         let dir = tempfile::tempdir().unwrap();
         init_min_root(dir.path());
