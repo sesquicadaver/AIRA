@@ -12,7 +12,7 @@
 | `main` | Phase W `#331`–`#342` **IN PROGRESS** @ [`phase-w-plan.md`](docs/phase-w-plan.md) (Pack 1 residual honesty; RFC-0215 reserved); Phase V `#323`–`#330` **DONE** @ RFC-0208; **QUEUE V closed**; Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase W [`docs/phase-w-plan.md`](docs/phase-w-plan.md) `#331` **DONE**; first OPEN `#332` |
+| Активна черга | Phase W [`docs/phase-w-plan.md`](docs/phase-w-plan.md) `#331`–`#332` **DONE**; first OPEN `#333` |
 
 ## Правила атомарності
 
@@ -919,7 +919,7 @@ Audit source: `p-only/AIRA-audit-d1115f2-2026-09-11.md`.
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
 | 331 | **DONE** | ~~Analyze-368 — Phase W wiring + A0~~ | plan + QUEUE `#331`–`#342` + `phase_w_doc`; RFC-0215 reserved; Pack 1 PARTIAL honesty | plan IN PROGRESS; `#331` DONE; first OPEN `#332` | math (#332) |
-| 332 | **OPEN** | Analyze-369 — Math capsule fidelity | `9-3`/`9/3`/`42` correct; no default `2+2`; RFC-0216 | tests green | strict HTTP (#333) |
+| 332 | **DONE** | ~~Analyze-369 — Math capsule fidelity~~ | `9-3`/`9/3`/`42` correct; no default `2+2`; RFC-0216 | `#332` DONE; first OPEN `#333` | strict HTTP (#333) |
 | 333 | **OPEN** | Analyze-370 — Strict submit decoding | unknown nested fields → 4xx; RFC-0217 | 4xx before execution | constraints (#334) |
 | 334 | **OPEN** | Analyze-371 — Constraints enforce-or-reject | enforced or explicit unsupported; RFC-0218 | matrix fail-closed | admission (#335) |
 | 335 | **OPEN** | Analyze-372 — Admission boundary verify | text/hash/kind mismatch reject; RFC-0219 | boundary green | activate evidence (#336) |
@@ -933,12 +933,12 @@ Audit source: `p-only/AIRA-audit-d1115f2-2026-09-11.md`.
 
 ### Наступний цикл (Phase W)
 
-**Перший OPEN:** `#332` (Math capsule fidelity). Tip: `#331` DONE @ Analyze-368; RFC-0215 reserved.
+**Перший OPEN:** `#333` (Strict submit decoding). Tip: `#332` DONE @ Analyze-369 / RFC-0216.
 
 ```text
 W0 wiring + A0 (#331 DONE)
-  → W1 math capsule (#332 OPEN)
-    → W1 strict submit (#333 OPEN)
+  → W1 math capsule (#332 DONE @ RFC-0216)
+    → W1 strict submit (#333 OPEN / first OPEN)
       → W1 constraints enforce-or-reject (#334 OPEN)
         → W1 admission boundary (#335 OPEN)
           → W1 activate evidence (#336 OPEN)

@@ -192,11 +192,19 @@ impl Csu for ExecutionBasicCsu {
         if action == "text.generate.local" {
             return Ok(vec![]);
         }
-        let expression = capsule
+        // `#332` / RFC-0216: never invent a default `2+2` when the capsule omits expression.
+        let Some(expression) = capsule
             .get("expression")
             .and_then(|v| v.as_str())
-            .or(event.payload_ref.as_deref())
-            .unwrap_or("2+2");
+            .filter(|s| !s.is_empty())
+            .or(event.payload_ref.as_deref().filter(|s| !s.is_empty()))
+        else {
+            return self.fail(
+                ctx,
+                event,
+                "execution requires non-empty capsule expression (no default 2+2)",
+            );
+        };
 
         // Hard deny shell/network markers in capsule constraints.
         if capsule
@@ -335,6 +343,9 @@ mod tests {
     #[test]
     fn math_eval_safe_completes() {
         assert_eq!(math_eval_safe("2+2").unwrap(), 4.0);
+        assert_eq!(math_eval_safe("9-3").unwrap(), 6.0);
+        assert_eq!(math_eval_safe("9/3").unwrap(), 3.0);
+        assert_eq!(math_eval_safe("42").unwrap(), 42.0);
         let mut csu = ExecutionBasicCsu::new();
         let mut log = MemoryEventLog::new();
         let dir = tempfile::tempdir().unwrap();
@@ -356,6 +367,51 @@ mod tests {
         );
         let outs = csu.on_event(&ev, &mut ctx).unwrap();
         assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Event(e) if e.event_type == EventType::CapsuleCompleted
+        )));
+    }
+
+    #[test]
+    fn missing_expression_fails_without_default_two_plus_two() {
+        let mut csu = ExecutionBasicCsu::new();
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let body = json!({
+            "action": "math.eval.safe",
+            "constraints": { "network": "none", "shell": false }
+        });
+        let payload = json_bytes(&body);
+        let desc = make_artifact(
+            "aira:artifact:cap-missing-expr",
+            ArtifactType::ExecutionArtifact,
+            &payload,
+            vec![],
+        );
+        let cap = desc.artifact_id.clone();
+        store.publish(desc, &payload).unwrap();
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let ev = mk(
+            "aira:event:cap-missing",
+            EventType::CapsuleCreated,
+            vec![AiraRef::parse("aira:problem:01TESTPROBLEM").unwrap()],
+            vec![cap],
+            vec![],
+            None,
+        );
+        let outs = csu.on_event(&ev, &mut ctx).unwrap();
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Event(e) if e.event_type == EventType::CapsuleFailed
+                && e.payload_ref.as_deref().is_some_and(|p| p.contains("no default 2+2"))
+        )));
+        assert!(outs.iter().all(|o| !matches!(
             o,
             CsuOutput::Event(e) if e.event_type == EventType::CapsuleCompleted
         )));

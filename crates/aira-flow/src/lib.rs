@@ -296,6 +296,41 @@ mod tests {
         );
     }
 
+    /// `#332` / RFC-0216: Problem→Capsule expression fidelity (audit D1).
+    #[test]
+    fn math_sub_div_bare_number_verify_correct_result() {
+        let _lock = isolated_flow();
+        for (text, expected) in [("9-3", 6.0), ("9/3", 3.0), ("42", 42.0)] {
+            let dir = tempfile::tempdir().unwrap();
+            let mut plane = OperationalPlane::open(dir.path()).unwrap();
+            let out = plane.submit_problem(text).unwrap();
+            let SubmitOutcome::Completed { result, .. } = out else {
+                panic!("expected Completed for {text}, got {out:?}");
+            };
+            assert_eq!(result["result"], json!(expected), "result for {text}");
+            assert_eq!(result["verification_status"], json!("VERIFIED"));
+        }
+    }
+
+    #[test]
+    fn unsupported_calculate_does_not_verify_as_two_plus_two() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let err = plane.submit_problem("Calculate xyz 7q").unwrap_err();
+        assert!(
+            plane
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleFailed),
+            "unsupported math must CapsuleFailed, got {err}"
+        );
+        assert!(
+            !plane.has_verified_result_artifact(),
+            "must not mint VERIFIED 4 for substituted 2+2"
+        );
+    }
+
     #[test]
     fn non_math_prompt_completes_via_execution_llm_mock() {
         let _lock = isolated_flow();

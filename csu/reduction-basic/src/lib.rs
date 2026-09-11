@@ -49,11 +49,64 @@ fn is_math_eval_safe(statement: &str) -> bool {
         return true;
     }
     let cleaned: String = statement.chars().filter(|c| !c.is_whitespace()).collect();
+    is_pure_math_expression(&cleaned)
+}
+
+fn is_pure_math_expression(cleaned: &str) -> bool {
     !cleaned.is_empty()
-        && has_digit
+        && cleaned.chars().any(|c| c.is_ascii_digit())
         && cleaned
             .chars()
             .all(|c| c.is_ascii_digit() || matches!(c, '+' | '-' | '*' | '/' | '(' | ')' | '.'))
+}
+
+fn is_math_token(token: &str) -> bool {
+    !token.is_empty()
+        && token
+            .chars()
+            .all(|c| c.is_ascii_digit() || matches!(c, '+' | '-' | '*' | '/' | '(' | ')' | '.'))
+        && token
+            .chars()
+            .any(|c| c.is_ascii_digit() || matches!(c, '+' | '-' | '*' | '/' | '(' | ')'))
+}
+
+/// Extract the arithmetic expression that must appear on the math capsule (`#332` / RFC-0216).
+///
+/// Never invents a default `2+2`. Unsupported / empty extracts fail closed.
+fn extract_math_expression(statement: &str) -> Result<String, String> {
+    let trimmed = statement.trim();
+    if trimmed.is_empty() {
+        return Err("empty math statement".into());
+    }
+
+    let after_calculate = {
+        let lower = trimmed.to_lowercase();
+        if lower.starts_with("calculate") {
+            trimmed["calculate".len()..].trim()
+        } else {
+            trimmed
+        }
+    };
+
+    let cleaned: String = after_calculate
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    if is_pure_math_expression(&cleaned) {
+        return Ok(cleaned);
+    }
+
+    let joined: String = trimmed
+        .split_whitespace()
+        .filter(|t| is_math_token(t))
+        .collect();
+    if is_pure_math_expression(&joined) {
+        return Ok(joined);
+    }
+
+    Err(format!(
+        "unsupported math expression in statement (refusing default 2+2): {statement}"
+    ))
 }
 
 /// RFC-0105 generate-local payload (CustomArtifact content). Extra capsule fields would
@@ -300,23 +353,31 @@ impl Csu for ReductionBasicCsu {
                 ),
                 ArtifactType::CustomArtifact,
             )
-        } else {
-            let expr = if action == ACTION_MATH_EVAL_SAFE {
-                // naive extract: use payload or default 2+2
-                if statement.contains('+') || statement.contains('*') {
-                    statement
-                        .split_whitespace()
-                        .filter(|t| {
-                            t.chars()
-                                .any(|c| c.is_ascii_digit() || "+-*/()".contains(c))
-                        })
-                        .collect::<Vec<_>>()
-                        .join("")
-                } else {
-                    "2+2".into()
+        } else if action == ACTION_MATH_EVAL_SAFE {
+            let expr = match extract_math_expression(&statement) {
+                Ok(e) => e,
+                Err(msg) => {
+                    let failed = make_event_as(
+                        self.manifest.csu_id.clone(),
+                        self.manifest.publisher_identity.clone(),
+                        &self.next_id("event"),
+                        EventType::CapsuleFailed,
+                        vec![problem_ref.clone()],
+                        vec![neg_desc.artifact_id.clone()],
+                        vec![event.event_id.clone()],
+                        Some(msg.clone()),
+                    )
+                    .map_err(|e| CsuHandlerError {
+                        message: e.to_string(),
+                    })?;
+                    ctx.append_event(failed.clone())
+                        .map_err(|e| CsuHandlerError {
+                            message: e.to_string(),
+                        })?;
+                    outs.push(CsuOutput::Failure { message: msg });
+                    outs.push(CsuOutput::Event(failed));
+                    return Ok(outs);
                 }
-            } else {
-                statement.clone()
             };
             (
                 json!({
@@ -325,6 +386,22 @@ impl Csu for ReductionBasicCsu {
                     "context_ref": context_ref.as_str(),
                     "action": action,
                     "expression": expr,
+                    "required_capabilities": [action],
+                    "input_artifact_refs": [context_ref.as_str()],
+                    "constraints": { "network": "none", "shell": false },
+                    "policy_refs": ["aira:policy:default"],
+                    "provenance_refs": [event.event_id.as_str()]
+                }),
+                ArtifactType::ExecutionArtifact,
+            )
+        } else {
+            (
+                json!({
+                    "capsule_id": format!("aira:capsule:red{}", self.seq),
+                    "problem_statement_ref": problem_ref.as_str(),
+                    "context_ref": context_ref.as_str(),
+                    "action": action,
+                    "expression": statement.clone(),
                     "required_capabilities": [action],
                     "input_artifact_refs": [context_ref.as_str()],
                     "constraints": { "network": "none", "shell": false },
@@ -508,6 +585,66 @@ mod tests {
         assert_eq!(body["constraints"]["network"], json!("none"));
         assert_eq!(body["constraints"]["shell"], json!(false));
         assert_ne!(body["action"], json!(ACTION_GENERATE_LOCAL));
+    }
+
+    #[test]
+    fn math_capsule_preserves_sub_div_and_bare_number() {
+        for (statement, expr) in [
+            ("9-3", "9-3"),
+            ("9/3", "9/3"),
+            ("42", "42"),
+            ("Calculate 9 - 3", "9-3"),
+            ("Calculate 9 / 3", "9/3"),
+            ("Calculate 42", "42"),
+        ] {
+            let outs = reduce(statement);
+            assert_eq!(
+                capsule_action(&outs),
+                ACTION_MATH_EVAL_SAFE,
+                "action for {statement}"
+            );
+            let (_, body) = capsule_json(&outs);
+            assert_eq!(
+                body["expression"],
+                json!(expr),
+                "expression for {statement}"
+            );
+        }
+    }
+
+    #[test]
+    fn unsupported_math_statement_fails_without_default_two_plus_two() {
+        let outs = reduce("Calculate xyz 7q");
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Event(e) if e.event_type == EventType::CapsuleFailed
+        )));
+        assert!(outs.iter().any(|o| matches!(o, CsuOutput::Failure { .. })));
+        assert!(
+            outs.iter().all(|o| !matches!(
+                o,
+                CsuOutput::Event(e) if e.event_type == EventType::CapsuleCreated
+            )),
+            "must not CapsuleCreated with invented 2+2"
+        );
+        assert!(
+            !outs.iter().any(|o| match o {
+                CsuOutput::Artifact { payload, .. } => {
+                    let v: Value = serde_json::from_slice(payload).unwrap_or(json!({}));
+                    v.get("expression") == Some(&json!("2+2"))
+                }
+                _ => false,
+            }),
+            "must not publish expression 2+2"
+        );
+    }
+
+    #[test]
+    fn extract_math_expression_helpers() {
+        assert_eq!(extract_math_expression("2+2").unwrap(), "2+2");
+        assert_eq!(extract_math_expression("9-3").unwrap(), "9-3");
+        assert_eq!(extract_math_expression("Calculate 42").unwrap(), "42");
+        assert!(extract_math_expression("Calculate only words").is_err());
     }
 
     #[test]
