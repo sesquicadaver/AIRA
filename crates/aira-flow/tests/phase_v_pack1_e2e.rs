@@ -10,7 +10,7 @@ use std::sync::{Mutex, OnceLock};
 
 use aira_csu_model_acquisition::{
     activate_verified, fetch_to_quarantine, verify_quarantine, write_default_deny_policy,
-    AcquisitionError, ACTIVATED_POINTER_REL, VerifyOutcome,
+    AcquisitionError, VerifyOutcome, ACTIVATED_POINTER_REL,
 };
 use aira_event::EventType;
 use aira_flow::{
@@ -152,11 +152,12 @@ fn pack1_e2e_settings_mid_run_keeps_admission_binding() {
         ..Default::default()
     };
     let snap = AdmissionSnapshot::from_text_and_constraints(text, &constraints);
-    let _ = plane
-        .submit_problem_with_admission(text, snap)
-        .unwrap();
+    let _ = plane.submit_problem_with_admission(text, snap).unwrap();
     let (_, admitted) = plane.last_admission().expect("admission").clone();
-    assert_eq!(admitted.model_ref.as_deref(), Some("aira:model:pack1-chosen"));
+    assert_eq!(
+        admitted.model_ref.as_deref(),
+        Some("aira:model:pack1-chosen")
+    );
     assert_eq!(admitted.generation.temperature, Some(0.25));
 
     // Post-admit Settings / UI mutation of a local copy (not re-admit).
