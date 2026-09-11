@@ -66,8 +66,8 @@ pub(crate) fn record_artifact_id(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aira_object::ContentHash;
     use crate::admission::{AdmissionConstraints, ReusePolicy};
+    use aira_object::ContentHash;
 
     /// Legacy helper: SHA of problem text alone (pre-`#326` key shape).
     fn problem_text_hash(text: &str) -> String {

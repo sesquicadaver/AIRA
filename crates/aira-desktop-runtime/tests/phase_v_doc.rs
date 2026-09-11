@@ -162,7 +162,12 @@ fn phase_v_admission_runtime_present() {
         assert!(admission.contains(needle), "admission.rs missing: {needle}");
     }
     let reuse = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/reuse.rs")).unwrap();
-    for needle in ["reuse_catalog_key", "#326", "RequireNewExecution", "lookup_artifact_id"] {
+    for needle in [
+        "reuse_catalog_key",
+        "#326",
+        "RequireNewExecution",
+        "lookup_artifact_id",
+    ] {
         assert!(reuse.contains(needle), "reuse.rs missing: {needle}");
     }
     let plane = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/plane.rs")).unwrap();

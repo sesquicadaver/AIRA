@@ -182,11 +182,7 @@ impl AdmissionSnapshot {
         // Policy is AllowReuse if we reached here; keep it explicit in the bytes.
         norm.reuse_policy = ReusePolicy::AllowReuse;
         let bytes = serde_json::to_vec(&norm).ok()?;
-        Some(
-            ContentHash::sha256_bytes(&bytes)
-                .as_str()
-                .to_string(),
-        )
+        Some(ContentHash::sha256_bytes(&bytes).as_str().to_string())
     }
 }
 
