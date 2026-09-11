@@ -10,7 +10,7 @@ Unit coverage for `#324`–`#328` existed in-crate, but Pack 1 §6 / `aira-repai
 
 ## 3. Motivation
 
-`aira-repair.md` Pack 1 §6; [`docs/phase-v-plan.md`](../../docs/phase-v-plan.md); parent consolidating RFC-0208 reserved until `#330`.
+`aira-repair.md` Pack 1 §6; [`docs/phase-v-plan.md`](../../docs/phase-v-plan.md); parent consolidating RFC-0208 (file-free until `#330`; now DONE).
 
 ## 4. Scope
 

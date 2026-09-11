@@ -43,6 +43,6 @@ Status vocabulary matches [`implementation-status.md`](implementation-status.md)
 
 ## Next packages
 
-Pack 1 — admission snapshot + reuse/binding integrity — **IN PROGRESS** as Phase V [`phase-v-plan.md`](phase-v-plan.md) / [`repair-package-1.md`](repair-package-1.md) (`#323`–`#329` DONE @ RFC-0214; first OPEN `#330`; RFC-0208 reserved).  
+Pack 1 — admission snapshot + reuse/binding integrity — **DONE** as Phase V [`phase-v-plan.md`](phase-v-plan.md) / [`repair-package-1.md`](repair-package-1.md) (`#323`–`#330` DONE @ RFC-0208; **QUEUE V closed**).  
 Pack 2 — local multi-model GUI (first user-complete result).  
 See [`repair-package-0.md`](repair-package-0.md).
