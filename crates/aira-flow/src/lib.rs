@@ -537,6 +537,46 @@ mod tests {
     }
 
     #[test]
+    fn generate_local_output_stamps_executor_facts() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        plane.enable_activated_mock_llm().unwrap();
+        let prompt = "Summarize the local Problem Statement without leaving the host.";
+        let SubmitOutcome::Executed {
+            execution_artifact_id,
+            result,
+            ..
+        } = plane.submit_problem(prompt).unwrap()
+        else {
+            panic!("expected Executed");
+        };
+        assert_eq!(
+            result["model_ref"],
+            json!(aira_csu_execution_llm::ALWAYS_ACTIVATED_MODEL_REF)
+        );
+        assert_eq!(
+            result["model_content_hash"],
+            json!(aira_csu_execution_llm::AlwaysActivated::content_hash())
+        );
+        assert!(result.get("capsule_ref").and_then(|v| v.as_str()).is_some());
+        assert!(result
+            .get("problem_statement_ref")
+            .and_then(|v| v.as_str())
+            .is_some());
+        let completed = plane
+            .events()
+            .iter()
+            .find(|e| e.event_type == EventType::CapsuleCompleted)
+            .expect("CapsuleCompleted");
+        assert_eq!(completed.artifact_refs.len(), 2);
+        assert_eq!(
+            completed.artifact_refs[0].as_str(),
+            execution_artifact_id.as_str()
+        );
+    }
+
+    #[test]
     fn missing_process_binary_on_plane_is_capsule_failed() {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();

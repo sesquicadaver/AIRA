@@ -1,7 +1,7 @@
 //! Execution-llm CSU (QUEUE #211 / Analyze-246; plane `#213`; activate gate `#214`;
 //! process backend `#215`; child env whitelist `#219`; bounded pipes `#220`;
 //! network=none contract `#222`; Landlock FS `#225`; seccomp `#226`; netns `#227`;
-//! sandbox-required `#228`).
+//! sandbox-required `#228`; executor facts `#328` / RFC-0213).
 //!
 //! Host-local `text.generate.local` capsules complete only through a bound
 //! [`GenerateBackend`] **and** a bound [`ModelActivateGate`]. [`MockBackend`] is
@@ -9,6 +9,11 @@
 //! spawns a fixed argv (no shell) and fail-closes when the binary is
 //! missing. Missing backend, missing/inactive Phase D activate, or invalid
 //! payload → [`EventType::CapsuleFailed`], never a fake VERIFIED result.
+//!
+//! `#328`: successful generate stamps [`ExecutorFacts`] (`model_ref` +
+//! `model_content_hash`) plus capsule/problem binding refs onto the
+//! ExecutionArtifact. CapsuleCompleted always carries `[output, capsule]`.
+//! Chosen ≠ executed without those facts.
 //!
 //! OperationalPlane registers this CSU with [`MockBackend`] (`#213`) and injects
 //! the activate handle (`#214`). Capsules whose action is not generate-local are
@@ -150,18 +155,46 @@ impl GenerateBackend for MockBackend {
 ///
 /// The gate is **activation state**, not a required `model_artifact_ref` on the
 /// RFC-0105 payload. Absence of a bound gate is fail-closed.
+///
+/// `#328` / RFC-0213: success returns [`ExecutorFacts`] so the ExecutionArtifact
+/// can stamp the verified `model_ref` + weight `content_hash` (chosen ≠ executed
+/// without proof).
 pub trait ModelActivateGate: Send {
-    /// `Ok` if generate may proceed. `Err` becomes [`EventType::CapsuleFailed`].
-    fn check_activated(&self, payload: &GenerateLocalPayload) -> Result<(), String>;
+    /// `Ok(facts)` if generate may proceed. `Err` becomes [`EventType::CapsuleFailed`].
+    fn check_activated(&self, payload: &GenerateLocalPayload) -> Result<ExecutorFacts, String>;
+}
+
+/// Proven executor identity frozen at generate-local admit (`#328` / RFC-0213).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExecutorFacts {
+    /// Content-based model identity (activated `model_ref`).
+    pub model_ref: String,
+    /// SHA of activated weights (`ActivatedPointer.content_hash`).
+    pub content_hash: String,
 }
 
 /// Test double: treat a model as Phase D activated.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct AlwaysActivated;
 
+/// Stable test model identity used by [`AlwaysActivated`] (`#328`).
+pub const ALWAYS_ACTIVATED_MODEL_REF: &str = "aira:model:always-activated";
+
+impl AlwaysActivated {
+    /// Deterministic weight hash for the always-activated test double.
+    pub fn content_hash() -> String {
+        aira_object::ContentHash::sha256_bytes(b"always-activated")
+            .as_str()
+            .to_string()
+    }
+}
+
 impl ModelActivateGate for AlwaysActivated {
-    fn check_activated(&self, _payload: &GenerateLocalPayload) -> Result<(), String> {
-        Ok(())
+    fn check_activated(&self, _payload: &GenerateLocalPayload) -> Result<ExecutorFacts, String> {
+        Ok(ExecutorFacts {
+            model_ref: ALWAYS_ACTIVATED_MODEL_REF.into(),
+            content_hash: Self::content_hash(),
+        })
     }
 }
 
@@ -170,7 +203,7 @@ impl ModelActivateGate for AlwaysActivated {
 pub struct NeverActivated;
 
 impl ModelActivateGate for NeverActivated {
-    fn check_activated(&self, _payload: &GenerateLocalPayload) -> Result<(), String> {
+    fn check_activated(&self, _payload: &GenerateLocalPayload) -> Result<ExecutorFacts, String> {
         Err(ACTIVATE_DENIED.into())
     }
 }
@@ -274,11 +307,47 @@ impl ExecutionLlmCsu {
     ///
     /// Optional `model_artifact_ref` is accepted by RFC-0105 and forwarded to
     /// the gate; it is **not** required on every payload.
-    fn check_activate(&self, payload: &GenerateLocalPayload) -> Result<(), String> {
+    /// Returns [`ExecutorFacts`] for output stamping (`#328`).
+    fn check_activate(&self, payload: &GenerateLocalPayload) -> Result<ExecutorFacts, String> {
         match self.activate_gate.as_ref() {
             Some(gate) => gate.check_activated(payload),
             None => Err(ACTIVATE_DENIED.into()),
         }
+    }
+
+    /// Stamp verified executor facts + capsule/problem binding onto generate output (`#328`).
+    fn stamp_executor_binding(
+        mut result: Value,
+        facts: &ExecutorFacts,
+        capsule_id: &AiraRef,
+        payload: &GenerateLocalPayload,
+    ) -> Result<Value, String> {
+        let obj = result
+            .as_object_mut()
+            .ok_or_else(|| "generate output must be a JSON object".to_string())?;
+        if let Some(existing) = obj.get("model_ref").and_then(|v| v.as_str()) {
+            if existing != facts.model_ref {
+                return Err(format!(
+                    "executor model_ref conflict: claimed {existing} vs activated {}",
+                    facts.model_ref
+                ));
+            }
+        }
+        if let Some(existing) = obj.get("model_content_hash").and_then(|v| v.as_str()) {
+            if existing != facts.content_hash {
+                return Err(format!(
+                    "executor model_content_hash conflict: claimed {existing} vs activated {}",
+                    facts.content_hash
+                ));
+            }
+        }
+        obj.insert("model_ref".into(), json!(facts.model_ref));
+        obj.insert("model_content_hash".into(), json!(facts.content_hash));
+        obj.insert("capsule_ref".into(), json!(capsule_id.as_str()));
+        if let Some(pref) = &payload.problem_statement_ref {
+            obj.insert("problem_statement_ref".into(), json!(pref.as_str()));
+        }
+        Ok(result)
     }
 
     fn fail(
@@ -363,9 +432,10 @@ impl Csu for ExecutionLlmCsu {
             Err(msg) => return self.fail(ctx, event, &msg),
         };
 
-        if let Err(msg) = self.check_activate(&payload) {
-            return self.fail(ctx, event, &msg);
-        }
+        let facts = match self.check_activate(&payload) {
+            Ok(f) => f,
+            Err(msg) => return self.fail(ctx, event, &msg),
+        };
 
         let backend = match self.backend.as_ref() {
             Some(b) => b,
@@ -379,7 +449,12 @@ impl Csu for ExecutionLlmCsu {
         };
 
         match backend.generate(&payload) {
-            Ok(result) => {
+            Ok(raw) => {
+                let result = match Self::stamp_executor_binding(raw, &facts, &capsule_id, &payload)
+                {
+                    Ok(v) => v,
+                    Err(msg) => return self.fail(ctx, event, &msg),
+                };
                 let out_payload = json_bytes(&result);
                 let out_id = self.next_id("artifact");
                 let out_desc = make_artifact_as(
@@ -566,6 +641,63 @@ mod tests {
         );
         assert_eq!(result["backend"], json!(MOCK_BACKEND_ID));
         assert_eq!(result["action"], json!(ACTION_GENERATE_LOCAL));
+        assert_eq!(result["model_ref"], json!(ALWAYS_ACTIVATED_MODEL_REF));
+        assert_eq!(
+            result["model_content_hash"],
+            json!(AlwaysActivated::content_hash())
+        );
+        assert_eq!(
+            result["problem_statement_ref"],
+            json!("aira:problem:01TESTPROBLEM")
+        );
+        assert!(result
+            .get("capsule_ref")
+            .and_then(|v| v.as_str())
+            .is_some_and(|s| s.starts_with("aira:artifact:")));
+        let done = outs
+            .iter()
+            .find_map(|o| match o {
+                CsuOutput::Event(e) if e.event_type == EventType::CapsuleCompleted => Some(e),
+                _ => None,
+            })
+            .expect("CapsuleCompleted");
+        assert_eq!(
+            done.artifact_refs.len(),
+            2,
+            "CapsuleCompleted must bind output then capsule (#328)"
+        );
+    }
+
+    #[test]
+    fn conflicting_executor_model_ref_is_capsule_failed() {
+        struct LyingBackend;
+        impl GenerateBackend for LyingBackend {
+            fn generate(&self, payload: &GenerateLocalPayload) -> Result<Value, String> {
+                payload.validate()?;
+                Ok(json!({
+                    "result": "lie",
+                    "action": ACTION_GENERATE_LOCAL,
+                    "backend": MOCK_BACKEND_ID,
+                    "model_ref": "aira:model:forged",
+                }))
+            }
+        }
+        let mut csu = ExecutionLlmCsu::new()
+            .with_backend(LyingBackend)
+            .with_activate_gate(AlwaysActivated);
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap = bind_capsule(&mut store, &valid_generate_body());
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(failed(&outs), "conflict must CapsuleFailed: {outs:?}");
+        assert!(!completed(&outs));
     }
 
     #[test]

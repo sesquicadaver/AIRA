@@ -1,6 +1,6 @@
 # Phase V — Repair Pack 1: admission integrity & binding
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-10; `#323`–`#327` **DONE**; first OPEN `#328`).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-10; `#323`–`#328` **DONE**; first OPEN `#329`).  
 **Джерела:** Repair Pack 1 `p-only/aira-repair.md` §«Пакет 1»; Pack 0 **DONE** @ [`repair-package-0.md`](repair-package-0.md) / RFC-0207; Phase U **DONE** @ [`phase-u-plan.md`](phase-u-plan.md) / RFC-0198 (**QUEUE U closed**); trace [`product-requirements-trace.md`](product-requirements-trace.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase V `#323`–`#330`.  
 **Closure:** consolidating **RFC-0208** reserved file-free until `#330` (id confirmed free 2026-09-10).  
@@ -96,7 +96,7 @@ V0 Wiring (план у QUEUE + living smoke; RFC-0208 reserved)
 | `#325` | V1 | Submit API carries constraints | **DONE** @ RFC-0210: HTTP/CLI/Desktop beyond `text`; mid-run Settings ≠ mutate | reuse key (#326) |
 | `#326` | V1 | Reuse after constraints | **DONE** @ RFC-0211: reuse key ⊇ snapshot; model-X miss ≠ text-only hit; require-new | activate hash (#327) |
 | `#327` | V1 | `activate_verified` hash continuity | **DONE** @ RFC-0212: post-copy == VerifiedPointer.content_hash; tamper → reject | capsule binding (#328) |
-| `#328` | V1 | Capsule↔Output↔Result binding | generate-local capsule + executor facts (`model_ref`/content hash) | e2e suite (#329) |
+| `#328` | V1 | Capsule↔Output↔Result binding | **DONE** @ RFC-0213: executor facts stamped; CapsuleCompleted [output,capsule] | e2e suite (#329) |
 | `#329` | V2 | E2E fail-closed tests | reuse/model, settings-during-run, verify-tamper-before-activate | Pack 2 GUI |
 | `#330` | V | RFC-0208 + close | consolidating; QUEUE V closed; `repair-package-1.md` DONE | Pack 2 |
 
@@ -106,8 +106,8 @@ V0 Wiring (план у QUEUE + living smoke; RFC-0208 reserved)
     → #325 V1 submit constraints API DONE @ RFC-0210
       → #326 V1 reuse after constraints DONE @ RFC-0211
         → #327 V1 activate hash continuity DONE @ RFC-0212
-          → #328 V1 capsule/result binding (first OPEN)
-            → #329 V2 e2e fail-closed
+          → #328 V1 capsule/result binding DONE @ RFC-0213
+            → #329 V2 e2e fail-closed (first OPEN)
               → #330 V close RFC-0208
 ```
 
@@ -143,7 +143,7 @@ aira-core still has no GUI/ledger/LLM deps.
 QUEUE U closed @ RFC-0198
   + Pack 0 DONE @ RFC-0207
   + developer «Pack 1» / «активувати Phase V» (2026-09-10)
-  → wiring `#323` DONE; `#324`–`#327` DONE @ RFC-0209…0212; план IN PROGRESS; first OPEN `#328`.
+  → wiring `#323` DONE; `#324`–`#328` DONE @ RFC-0209…0213; план IN PROGRESS; first OPEN `#329`.
 ```
 
 ---
