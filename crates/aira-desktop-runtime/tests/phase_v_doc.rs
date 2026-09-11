@@ -14,7 +14,6 @@ fn phase_v_plan_present() {
         "Repair Pack 1",
         "#323",
         "#330",
-        "IN PROGRESS",
         "Admission snapshot",
         "Reuse after constraints",
         "activate_verified",
@@ -23,6 +22,9 @@ fn phase_v_plan_present() {
         "AIRA-RFC-0208",
         "confirmed free",
         "QUEUE U closed",
+        "QUEUE V closed",
+        "no OPEN V atoms",
+        "**DONE** @",
         "RFC-0207",
         "RFC-0209",
         "RFC-0210",
@@ -30,7 +32,6 @@ fn phase_v_plan_present() {
         "RFC-0212",
         "RFC-0213",
         "RFC-0214",
-        "first OPEN `#330`",
         "GPU marketplace",
         "Calculate 2 + 2",
         "public bind",
@@ -42,8 +43,8 @@ fn phase_v_plan_present() {
         "phase-v-plan must be activated (not НЕ АКТИВОВАНО)"
     );
     assert!(
-        !text.contains("**DONE** @ [AIRA-RFC-0208"),
-        "phase-v-plan must not claim RFC-0208 DONE before #330"
+        text.contains("**DONE** @ [AIRA-RFC-0208"),
+        "phase-v-plan must claim RFC-0208 DONE after #330"
     );
     assert!(
         !text.contains("first OPEN `#324`")
@@ -51,26 +52,30 @@ fn phase_v_plan_present() {
             && !text.contains("first OPEN `#326`")
             && !text.contains("first OPEN `#327`")
             && !text.contains("first OPEN `#328`")
-            && !text.contains("first OPEN `#329`"),
-        "phase-v-plan must advance tip past #329"
+            && !text.contains("first OPEN `#329`")
+            && !text.contains("first OPEN `#330`"),
+        "phase-v-plan must not keep a V first-OPEN after close"
+    );
+    assert!(
+        !text.contains("**IN PROGRESS**"),
+        "phase-v-plan must not stay IN PROGRESS after #330"
     );
 }
 
 #[test]
-fn phase_v_queue_329_done_330_open() {
+fn phase_v_queue_all_done() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-v-plan.md"));
-    for n in 323..=329 {
+    for n in 323..=330 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
+        assert!(
+            !text.contains(&format!("| {n} | **OPEN**")),
+            "QUEUE #{n} must not stay OPEN"
+        );
     }
-    assert!(text.contains("| 330 | **OPEN**"), "QUEUE #330 must be OPEN");
-    assert!(
-        !text.contains("| 330 | **DONE**"),
-        "QUEUE #330 must not be DONE yet"
-    );
     for needle in [
         "Analyze-360",
         "Analyze-361",
@@ -79,6 +84,7 @@ fn phase_v_queue_329_done_330_open() {
         "Analyze-364",
         "Analyze-365",
         "Analyze-366",
+        "Analyze-367",
         "RFC-0208",
         "RFC-0209",
         "RFC-0210",
@@ -88,21 +94,33 @@ fn phase_v_queue_329_done_330_open() {
         "RFC-0214",
         "Repair Pack 1",
         "admission integrity",
-        "first OPEN `#330`",
+        "QUEUE V closed",
+        "no OPEN V atoms",
         "QUEUE U closed",
         "desktop-ux.md",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
+    assert!(
+        !text.contains("first OPEN `#330`"),
+        "QUEUE must not keep #330 as first-OPEN after close"
+    );
 }
 
 #[test]
-fn phase_v_rfc_0208_file_free() {
+fn phase_v_rfc_0208_present() {
     let path = repo_root().join("specs/rfc/AIRA-RFC-0208-phase-v-admission-integrity.md");
-    assert!(
-        !path.exists(),
-        "RFC-0208 must stay file-free until #330 close"
-    );
+    let text = std::fs::read_to_string(&path).expect("RFC-0208 missing");
+    for needle in [
+        "#330",
+        "QUEUE V closed",
+        "no OPEN V atoms",
+        "RFC-0214",
+        "RFC-0209",
+        "admission integrity",
+    ] {
+        assert!(text.contains(needle), "RFC-0208 missing: {needle}");
+    }
 }
 
 #[test]
@@ -293,32 +311,48 @@ fn phase_v_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-v-plan.md",
-        "#329",
         "#330",
         "RFC-0208",
-        "RFC-0214",
+        "QUEUE V closed",
+        "no OPEN V atoms",
         "QUEUE U closed",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
+    assert!(
+        !text.contains("first OPEN `#330`"),
+        "desktop-ux must not keep #330 as first-OPEN after close"
+    );
 }
 
 #[test]
 fn phase_v_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-v-plan.md") || readme.contains("Phase V"));
-    assert!(readme.contains("#330") || readme.contains("first OPEN"));
+    assert!(readme.contains("QUEUE V closed") || readme.contains("RFC-0208"));
+    assert!(
+        !readme.contains("first OPEN `#330`"),
+        "README must not keep #330 as first-OPEN after close"
+    );
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-v-plan.md"));
-    assert!(docs.contains("#329") || docs.contains("IN PROGRESS"));
+    assert!(docs.contains("QUEUE V closed") || docs.contains("**DONE** @ RFC-0208"));
     assert!(docs.contains("repair-package-1.md"));
+    assert!(
+        !docs.contains("first OPEN `#330`"),
+        "docs/README must not keep #330 as first-OPEN after close"
+    );
 }
 
 #[test]
 fn phase_v_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-v-plan.md") || text.contains("Phase V"));
-    assert!(text.contains("#330") || text.contains("перший OPEN"));
+    assert!(text.contains("QUEUE V closed") || text.contains("RFC-0208"));
+    assert!(
+        !text.contains("first OPEN `#330`") && !text.contains("перший OPEN `#330`"),
+        "NEXT_PROBLEM must not keep #330 as first-OPEN after close"
+    );
     assert!(text.contains("phase-u-plan.md") || text.contains("Phase U"));
     assert!(text.contains("QUEUE U closed") || text.contains("RFC-0198"));
 }
@@ -327,26 +361,30 @@ fn phase_v_next_problem() {
 fn phase_v_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #329 |") || status.contains("#329"));
+    assert!(status.contains("| #330 |") || status.contains("#330"));
     assert!(status.contains("phase_v_doc.rs"));
     assert!(status.contains("phase-v-plan.md"));
-    assert!(status.contains("RFC-0214") || status.contains("0214"));
-    assert!(status.contains("#330"));
+    assert!(status.contains("RFC-0208") || status.contains("0208"));
+    assert!(status.contains("QUEUE V closed"));
 }
 
 #[test]
 fn phase_v_repair_package_1_present() {
     let text = std::fs::read_to_string(repo_root().join("docs/repair-package-1.md")).unwrap();
     for needle in [
-        "IN PROGRESS",
+        "**DONE**",
         "phase-v-plan.md",
-        "#329",
         "#330",
         "RFC-0208",
-        "RFC-0214",
+        "QUEUE V closed",
+        "Analyze-367",
     ] {
         assert!(text.contains(needle), "repair-package-1 missing: {needle}");
     }
+    assert!(
+        !text.contains("**IN PROGRESS**"),
+        "repair-package-1 must not stay IN PROGRESS after #330"
+    );
 }
 
 #[test]

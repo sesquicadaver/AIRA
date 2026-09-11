@@ -9,10 +9,10 @@
 
 | | |
 |--|--|
-| `main` | Phase V `#323`–`#330` **IN PROGRESS** @ [`phase-v-plan.md`](docs/phase-v-plan.md) (Repair Pack 1 / admission integrity; RFC-0208 reserved); Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
+| `main` | Phase V `#323`–`#330` **DONE** @ RFC-0208; **QUEUE V closed**; Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase V [`docs/phase-v-plan.md`](docs/phase-v-plan.md) `#323`–`#329` **DONE**; first OPEN `#330` |
+| Активна черга | Phase V [`docs/phase-v-plan.md`](docs/phase-v-plan.md) `#323`–`#330` **DONE** @ RFC-0208; **QUEUE V closed**; no OPEN V atoms |
 
 ## Правила атомарності
 
@@ -877,7 +877,7 @@ U0 wiring (#313 DONE)
 ## Активна черга (лінійна) — Phase V: Repair Pack 1 admission integrity
 
 План: [`docs/phase-v-plan.md`](docs/phase-v-plan.md). Pack close: [`docs/repair-package-1.md`](docs/repair-package-1.md). Канон: [`docs/desktop-ux.md`](docs/desktop-ux.md) + [`docs/product-requirements-trace.md`](docs/product-requirements-trace.md). QUEUE U closed @ RFC-0198; Pack 0 DONE @ RFC-0207.
-**Не** GPU marketplace; **не** LLM у `aira-core`; consolidating RFC-0208 у `#330` reserved file-free; **не** Admission snapshot (`#324`) у wiring.
+**Не** GPU marketplace; **не** LLM у `aira-core`; consolidating RFC-0208 у `#330` **DONE**; **не** Admission snapshot (`#324`) у wiring.
 Repair source: `p-only/aira-repair.md` Pack 1.
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
@@ -888,12 +888,12 @@ Repair source: `p-only/aira-repair.md` Pack 1.
 | 326 | **DONE** | ~~Analyze-363 — Reuse after constraints~~ | reuse key ⊇ snapshot; require-new for compare/measure; RFC-0211 | `#326` DONE; tip was `#327` | activate (#327) |
 | 327 | **DONE** | ~~Analyze-364 — activate_verified hash continuity~~ | post-copy hash == VerifiedPointer.content_hash; RFC-0212 | `#327` DONE; tip was `#328` | binding (#328) |
 | 328 | **DONE** | ~~Analyze-365 — Capsule↔Output↔Result binding~~ | generate-local capsule + executor facts; RFC-0213 | `#328` DONE; tip was `#329` | e2e (#329) |
-| 329 | **DONE** | ~~Analyze-366 — E2E fail-closed tests~~ | repair §6 subset (reuse/settings/activate); RFC-0214 | `#329` DONE; first OPEN `#330` | RFC close (#330) |
-| 330 | **OPEN** | Analyze-367 — RFC-0208 + close | consolidating RFC-0208; QUEUE V closed; repair-package-1 DONE | RFC-0208; no OPEN V atoms | — |
+| 329 | **DONE** | ~~Analyze-366 — E2E fail-closed tests~~ | repair §6 subset (reuse/settings/activate); RFC-0214 | `#329` DONE; tip was `#330` | RFC close (#330) |
+| 330 | **DONE** | ~~Analyze-367 — RFC-0208 + close~~ | consolidating RFC-0208; QUEUE V closed; repair-package-1 DONE | RFC-0208; QUEUE V closed | — |
 
 ### Наступний цикл (Phase V)
 
-**Перший OPEN:** `#330` (RFC-0208 + close). Tip: `#329` DONE @ Analyze-366 / RFC-0214.
+**Phase V COMPLETE** (`#323`–`#330` **DONE** @ RFC-0208). **QUEUE V closed.** no OPEN V atoms. Pack 2 GUI remains out of V. This close does **not** invent a next feature phase.
 
 ```text
 V0 wiring (#323 DONE)
@@ -903,7 +903,7 @@ V0 wiring (#323 DONE)
         → V1 activate hash continuity (#327 DONE @ RFC-0212)
           → V1 capsule/result binding (#328 DONE @ RFC-0213)
             → V2 e2e fail-closed (#329 DONE @ RFC-0214)
-              → V close RFC-0208 (#330 OPEN)
+              → V close RFC-0208 (#330 DONE)
 ```
 
 Анти-місія README **ніколи** в QUEUE.
