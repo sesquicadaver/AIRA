@@ -56,11 +56,9 @@ fn open_nofollow_read(path: &Path) -> Result<File, AcquisitionError> {
 
 fn open_nofollow_write(path: &Path) -> Result<File, AcquisitionError> {
     match fs::symlink_metadata(path) {
-        Ok(meta) if meta.file_type().is_symlink() => {
-            return Err(AcquisitionError::SymlinkRejected(
-                path.display().to_string(),
-            ));
-        }
+        Ok(meta) if meta.file_type().is_symlink() => Err(AcquisitionError::SymlinkRejected(
+            path.display().to_string(),
+        )),
         Ok(_) => {
             let mut opts = OpenOptions::new();
             opts.write(true).truncate(true);
@@ -121,10 +119,7 @@ pub(crate) fn materialize_weights_nofollow(
     expected: Option<&ContentHash>,
 ) -> Result<(ContentHash, u64), AcquisitionError> {
     let mut src_f = open_nofollow_read(src)?;
-    let mut dest_f = match open_nofollow_write(dest) {
-        Ok(f) => f,
-        Err(e) => return Err(e),
-    };
+    let mut dest_f = open_nofollow_write(dest)?;
 
     let mut hasher = Sha256::new();
     let mut buf = [0u8; WEIGHTS_IO_BUF];
