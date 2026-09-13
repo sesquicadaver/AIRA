@@ -5,6 +5,7 @@
 mod activate;
 mod error;
 mod manifest;
+mod materialize;
 mod policy;
 mod publish;
 mod quarantine;
@@ -913,5 +914,155 @@ mod tests {
         let out = publish_local(dir.path(), "aira:model:x", "local", false).unwrap();
         assert!(matches!(out, PublishOutcome::Denied(_)));
         assert!(!dir.path().join(CAPABILITY_AD_POINTER_REL).exists());
+    }
+
+    /// `#338` / RFC-0222: activate must not follow a cache dest symlink outside models.
+    #[cfg(unix)]
+    #[test]
+    fn activate_rejects_cache_dest_symlink_escape() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("sym.gguf");
+        fs::write(&src, b"symlink-escape-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:sym", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"symlink-escape-bytes");
+        let art = signed_model_artifact("aira:model:sym", observed.as_str());
+        let art_path = dir.path().join("sym.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        verify_quarantine(dir.path(), &art_path).unwrap();
+
+        let outside = dir.path().join("outside-escape.gguf");
+        fs::write(&outside, b"do-not-clobber").unwrap();
+        let slot = sanitize_slot_test("aira:model:sym");
+        let dest_dir = dir.path().join("models/cache").join(&slot);
+        fs::create_dir_all(&dest_dir).unwrap();
+        let dest = dest_dir.join("sym.gguf");
+        symlink(&outside, &dest).unwrap();
+
+        let err = activate_verified(dir.path()).unwrap_err();
+        assert!(
+            matches!(err, AcquisitionError::SymlinkRejected(_)),
+            "dest symlink must SymlinkRejected, got {err}"
+        );
+        assert_eq!(fs::read(&outside).unwrap(), b"do-not-clobber");
+        assert!(!dir.path().join(ACTIVATED_POINTER_REL).exists());
+    }
+
+    /// `#338`: verify must not follow a verified dest symlink outside models.
+    #[cfg(unix)]
+    #[test]
+    fn verify_rejects_verified_dest_symlink_escape() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("vsym.gguf");
+        fs::write(&src, b"verify-symlink-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:vsym", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"verify-symlink-bytes");
+        let art = signed_model_artifact("aira:model:vsym", observed.as_str());
+        let art_path = dir.path().join("vsym.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+
+        let outside = dir.path().join("outside-verified.gguf");
+        fs::write(&outside, b"keep-me").unwrap();
+        let slot = sanitize_slot_test("aira:model:vsym");
+        let dest_dir = dir.path().join("models/verified").join(&slot);
+        fs::create_dir_all(&dest_dir).unwrap();
+        symlink(&outside, dest_dir.join("vsym.gguf")).unwrap();
+
+        let err = verify_quarantine(dir.path(), &art_path).unwrap_err();
+        assert!(
+            matches!(err, AcquisitionError::SymlinkRejected(_)),
+            "verified dest symlink must SymlinkRejected, got {err}"
+        );
+        assert_eq!(fs::read(&outside).unwrap(), b"keep-me");
+        assert!(!dir.path().join(VERIFIED_POINTER_REL).exists());
+    }
+
+    /// `#338`: quarantine must not follow a dest symlink outside models.
+    #[cfg(unix)]
+    #[test]
+    fn quarantine_rejects_dest_symlink_escape() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("qsym.gguf");
+        fs::write(&src, b"quarantine-symlink-bytes").unwrap();
+
+        let outside = dir.path().join("outside-q.gguf");
+        fs::write(&outside, b"untouched").unwrap();
+        let slot = sanitize_slot_test("aira:model:qsym");
+        let dest_dir = dir.path().join("models/quarantine").join(&slot);
+        fs::create_dir_all(&dest_dir).unwrap();
+        symlink(&outside, dest_dir.join("qsym.gguf")).unwrap();
+
+        let err = fetch_to_quarantine(dir.path(), "aira:model:qsym", &src).unwrap_err();
+        assert!(
+            matches!(err, AcquisitionError::SymlinkRejected(_)),
+            "quarantine dest symlink must SymlinkRejected, got {err}"
+        );
+        assert_eq!(fs::read(&outside).unwrap(), b"untouched");
+        assert!(!dir.path().join(QUARANTINE_POINTER_REL).exists());
+    }
+
+    /// `#338`: activate rejects verified source that is a symlink (no-follow).
+    #[cfg(unix)]
+    #[test]
+    fn activate_rejects_verified_source_symlink() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("ssym.gguf");
+        fs::write(&src, b"source-symlink-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:ssym", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"source-symlink-bytes");
+        let art = signed_model_artifact("aira:model:ssym", observed.as_str());
+        let art_path = dir.path().join("ssym.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        let VerifyOutcome::Verified { verified_path, .. } =
+            verify_quarantine(dir.path(), &art_path).unwrap()
+        else {
+            panic!("expected Verified");
+        };
+
+        let verified = Path::new(&verified_path);
+        let real = verified
+            .parent()
+            .unwrap()
+            .join("real-ssym.gguf");
+        fs::rename(&verified_path, &real).unwrap();
+        symlink(&real, &verified_path).unwrap();
+
+        let err = activate_verified(dir.path()).unwrap_err();
+        assert!(
+            matches!(err, AcquisitionError::SymlinkRejected(_)),
+            "source symlink must SymlinkRejected, got {err}"
+        );
+        assert!(!dir.path().join(ACTIVATED_POINTER_REL).exists());
+    }
+
+    fn sanitize_slot_test(model_ref: &str) -> String {
+        let mut out = String::with_capacity(model_ref.len());
+        for c in model_ref.chars() {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' {
+                out.push(c);
+            } else {
+                out.push('_');
+            }
+        }
+        if out.is_empty() {
+            "model".into()
+        } else {
+            out
+        }
     }
 }

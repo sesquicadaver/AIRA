@@ -15,6 +15,7 @@ use crate::types::{
     ActivateOutcome, ActivatedPointer, VerifiedPointer, ACTIVATED_POINTER_REL,
     ACTIVATION_TRUST_FIXTURE_REL, CACHE_REL, CSU_ID, VERIFIED_POINTER_REL,
 };
+use crate::materialize::{content_hash_nofollow, materialize_weights_nofollow};
 use crate::util::{
     append_custom_event, ensure_under_models, sanitize_slot, sign_for_root,
     signing_bytes_without_signature,
@@ -38,6 +39,9 @@ struct VerifyEvidenceAuthority {
 /// `#336` / RFC-0220: [`VerifiedPointer`] is locator-only. Model/hash/verified status
 /// come from the signed verify evidence at `evidence_artifact_id`; pointer fields that
 /// disagree with evidence reject before any cache write.
+///
+/// `#338` / RFC-0222: materialize with no-follow opens, bounded stream buffer, and
+/// post-copy hash of actual dest bytes (symlink/partial must not leave a ready model).
 pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome, AcquisitionError> {
     let root = aira_root.as_ref();
     let _ = aira_object::register_node_identity(root);
@@ -70,8 +74,7 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
     }
     ensure_under_models(root, vfile)?;
 
-    let source_bytes = fs::read(vfile).map_err(|e| AcquisitionError::Io(e.to_string()))?;
-    let source_hash = ContentHash::sha256_bytes(&source_bytes);
+    let source_hash = content_hash_nofollow(vfile)?;
     if source_hash != expected {
         return Err(AcquisitionError::ActivateHashMismatch {
             expected: expected.as_str().to_string(),
@@ -89,18 +92,20 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
     fs::create_dir_all(&dest_dir).map_err(|e| AcquisitionError::Io(e.to_string()))?;
     ensure_under_models(root, &dest_dir)?;
     let dest = dest_dir.join(&file_name);
-    fs::copy(vfile, &dest).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    let (content_hash, _) = materialize_weights_nofollow(vfile, &dest, Some(&expected)).map_err(
+        |e| match e {
+            AcquisitionError::MaterializeHashMismatch {
+                expected: exp,
+                observed,
+            } => AcquisitionError::ActivateHashMismatch {
+                expected: exp,
+                observed,
+            },
+            other => other,
+        },
+    )?;
     ensure_under_models(root, &dest)?;
 
-    let file_bytes = fs::read(&dest).map_err(|e| AcquisitionError::Io(e.to_string()))?;
-    let content_hash = ContentHash::sha256_bytes(&file_bytes);
-    if content_hash != expected {
-        let _ = fs::remove_file(&dest);
-        return Err(AcquisitionError::ActivateHashMismatch {
-            expected: expected.as_str().to_string(),
-            observed: content_hash.as_str().to_string(),
-        });
-    }
     let hash_hex = content_hash.as_str().trim_start_matches("sha256:");
     let dest_display = dest.display().to_string();
 

@@ -36,6 +36,14 @@ pub enum AcquisitionError {
     /// `#337` / RFC-0221: production activate path rejects implicit local-test / missing identity.
     #[error("activate production trust failed (fail-closed): {detail}")]
     ActivateProductionTrust { detail: String },
+    /// `#338` / RFC-0222: symlink on materialize path (no-follow, fail-closed).
+    #[error("symlink rejected (fail-closed, no-follow): {0}")]
+    SymlinkRejected(String),
+    /// `#338` / RFC-0222: streamed or post-copy weights hash mismatch (fail-closed).
+    #[error(
+        "weights materialize hash mismatch (fail-closed): expected {expected} vs observed {observed}"
+    )]
+    MaterializeHashMismatch { expected: String, observed: String },
     #[error("model artifact missing or invalid: {0}")]
     BadArtifact(String),
     #[error("invalid share visibility (use local|opt_in): {0}")]
