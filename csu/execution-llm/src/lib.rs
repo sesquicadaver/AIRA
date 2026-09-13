@@ -1,7 +1,8 @@
 //! Execution-llm CSU (QUEUE #211 / Analyze-246; plane `#213`; activate gate `#214`;
 //! process backend `#215`; child env whitelist `#219`; bounded pipes `#220`;
 //! network=none contract `#222`; Landlock FS `#225`; seccomp `#226`; netns `#227`;
-//! sandbox-required `#228`; executor facts `#328` / RFC-0213).
+//! sandbox-required `#228`; executor facts `#328` / RFC-0213;
+//! verified backend binding `#339` / RFC-0223).
 //!
 //! Host-local `text.generate.local` capsules complete only through a bound
 //! [`GenerateBackend`] **and** a bound [`ModelActivateGate`]. [`MockBackend`] is
@@ -10,10 +11,14 @@
 //! missing. Missing backend, missing/inactive Phase D activate, or invalid
 //! payload → [`EventType::CapsuleFailed`], never a fake VERIFIED result.
 //!
-//! `#328`: successful generate stamps [`ExecutorFacts`] (`model_ref` +
+//! `#328`: successful **process** generate stamps [`ExecutorFacts`] (`model_ref` +
 //! `model_content_hash`) plus capsule/problem binding refs onto the
 //! ExecutionArtifact. CapsuleCompleted always carries `[output, capsule]`.
-//! Chosen ≠ executed without those facts.
+//!
+//! `#339` / RFC-0223: [`GenerateBackend::generate`] receives the activate binding.
+//! Mock never stamps used-model (model did not run). Process with an explicit
+//! `expected_model_ref` that disagrees with the binding fail-closes
+//! ([`BINDING_MISMATCH`]). Chosen ≠ executed without verified process binding.
 //!
 //! OperationalPlane registers this CSU with [`MockBackend`] (`#213`) and injects
 //! the activate handle (`#214`). Capsules whose action is not generate-local are
@@ -35,13 +40,14 @@ mod sandbox;
 mod seccomp;
 
 pub use process::{
-    backend_kind_from, backend_kind_from_env, ProcessBackend, CHILD_ENV_ALLOWLIST, EMPTY_STDOUT,
-    ENV_LLM_BACKEND, ENV_LLM_LANDLOCK, ENV_LLM_NETNS, ENV_LLM_SANDBOX_REQUIRED, ENV_LLM_SECCOMP,
-    ENV_PROCESS_ARGS, ENV_PROCESS_BIN, ENV_PROCESS_TIMEOUT_MS, LANDLOCK_FAILED,
-    LANDLOCK_UNSUPPORTED, MISSING_BINARY, NETNS_BLOCKS_LOOPBACK, NETNS_FAILED, NETNS_UNSUPPORTED,
-    NETWORK_NONE_CONTRACT, NONZERO_EXIT, PIPE_OVERFLOW, PIPE_STDERR_LIMIT, PIPE_STDOUT_LIMIT,
-    PROCESS_BACKEND_ID, SANDBOX_REQUIRED, SANDBOX_REQUIRED_LOOPBACK, SECCOMP_FAILED,
-    SECCOMP_UNSUPPORTED, SECCOMP_VIOLATION, SPAWN_FAILED, TIMED_OUT,
+    backend_kind_from, backend_kind_from_env, ProcessBackend, BINDING_MISMATCH,
+    CHILD_ENV_ALLOWLIST, EMPTY_STDOUT, ENV_LLM_BACKEND, ENV_LLM_LANDLOCK, ENV_LLM_NETNS,
+    ENV_LLM_SANDBOX_REQUIRED, ENV_LLM_SECCOMP, ENV_PROCESS_ARGS, ENV_PROCESS_BIN,
+    ENV_PROCESS_TIMEOUT_MS, LANDLOCK_FAILED, LANDLOCK_UNSUPPORTED, MISSING_BINARY,
+    NETNS_BLOCKS_LOOPBACK, NETNS_FAILED, NETNS_UNSUPPORTED, NETWORK_NONE_CONTRACT, NONZERO_EXIT,
+    PIPE_OVERFLOW, PIPE_STDERR_LIMIT, PIPE_STDOUT_LIMIT, PROCESS_BACKEND_ID, SANDBOX_REQUIRED,
+    SANDBOX_REQUIRED_LOOPBACK, SECCOMP_FAILED, SECCOMP_UNSUPPORTED, SECCOMP_VIOLATION,
+    SPAWN_FAILED, TIMED_OUT,
 };
 
 use aira_artifact::ArtifactType;
@@ -125,8 +131,15 @@ impl GenerateLocalPayload {
 ///
 /// [`MockBackend`] is in-process (no spawn, no sockets). [`ProcessBackend`]
 /// spawns a **fixed argv** (no shell; never `sh -c`).
+///
+/// `#339`: `binding` is the activate-gate verified identity. Backends must not
+/// invent a different used-model; mock must not claim used-model at all.
 pub trait GenerateBackend: Send {
-    fn generate(&self, payload: &GenerateLocalPayload) -> Result<Value, String>;
+    fn generate(
+        &self,
+        payload: &GenerateLocalPayload,
+        binding: &ExecutorFacts,
+    ) -> Result<Value, String>;
 }
 
 /// Deterministic in-process backend. No model, no process, no sockets.
@@ -141,8 +154,13 @@ impl MockBackend {
 }
 
 impl GenerateBackend for MockBackend {
-    fn generate(&self, payload: &GenerateLocalPayload) -> Result<Value, String> {
+    fn generate(
+        &self,
+        payload: &GenerateLocalPayload,
+        _binding: &ExecutorFacts,
+    ) -> Result<Value, String> {
         payload.validate()?;
+        // `#339`: mock never claims used-model (weights were not executed).
         Ok(json!({
             "result": Self::mock_text(&payload.prompt),
             "action": ACTION_GENERATE_LOCAL,
@@ -165,12 +183,18 @@ pub trait ModelActivateGate: Send {
 }
 
 /// Proven executor identity frozen at generate-local admit (`#328` / RFC-0213).
+///
+/// `#339` / RFC-0223: optional `cache_path` is the activated weights locator the
+/// process backend may verify against; used-model stamps require a non-mock backend
+/// that accepted this binding.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExecutorFacts {
     /// Content-based model identity (activated `model_ref`).
     pub model_ref: String,
     /// SHA of activated weights (`ActivatedPointer.content_hash`).
     pub content_hash: String,
+    /// Activated cache path when known (Phase D pointer); empty for test doubles.
+    pub cache_path: String,
 }
 
 /// Test double: treat a model as Phase D activated.
@@ -194,6 +218,7 @@ impl ModelActivateGate for AlwaysActivated {
         Ok(ExecutorFacts {
             model_ref: ALWAYS_ACTIVATED_MODEL_REF.into(),
             content_hash: Self::content_hash(),
+            cache_path: String::new(),
         })
     }
 }
@@ -315,7 +340,7 @@ impl ExecutionLlmCsu {
         }
     }
 
-    /// Stamp verified executor facts + capsule/problem binding onto generate output (`#328`).
+    /// Stamp capsule/problem refs; stamp used-model only for non-mock backends (`#339`).
     fn stamp_executor_binding(
         mut result: Value,
         facts: &ExecutorFacts,
@@ -325,6 +350,26 @@ impl ExecutionLlmCsu {
         let obj = result
             .as_object_mut()
             .ok_or_else(|| "generate output must be a JSON object".to_string())?;
+        let backend = obj
+            .get("backend")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        if backend == MOCK_BACKEND_ID {
+            // Mock did not run weights — refuse used-model claims (`#339` / A8).
+            if obj.contains_key("model_ref") || obj.contains_key("model_content_hash") {
+                return Err(
+                    "mock backend must not claim used-model (fail-closed; not VERIFIED)".into(),
+                );
+            }
+            obj.insert("capsule_ref".into(), json!(capsule_id.as_str()));
+            if let Some(pref) = &payload.problem_statement_ref {
+                obj.insert("problem_statement_ref".into(), json!(pref.as_str()));
+            }
+            return Ok(result);
+        }
+
         if let Some(existing) = obj.get("model_ref").and_then(|v| v.as_str()) {
             if existing != facts.model_ref {
                 return Err(format!(
@@ -448,7 +493,7 @@ impl Csu for ExecutionLlmCsu {
             }
         };
 
-        match backend.generate(&payload) {
+        match backend.generate(&payload, &facts) {
             Ok(raw) => {
                 let result = match Self::stamp_executor_binding(raw, &facts, &capsule_id, &payload)
                 {
@@ -641,10 +686,13 @@ mod tests {
         );
         assert_eq!(result["backend"], json!(MOCK_BACKEND_ID));
         assert_eq!(result["action"], json!(ACTION_GENERATE_LOCAL));
-        assert_eq!(result["model_ref"], json!(ALWAYS_ACTIVATED_MODEL_REF));
-        assert_eq!(
-            result["model_content_hash"],
-            json!(AlwaysActivated::content_hash())
+        assert!(
+            result.get("model_ref").is_none(),
+            "mock must not stamp used-model (#339), got {result}"
+        );
+        assert!(
+            result.get("model_content_hash").is_none(),
+            "mock must not stamp model_content_hash (#339), got {result}"
         );
         assert_eq!(
             result["problem_statement_ref"],
@@ -672,12 +720,16 @@ mod tests {
     fn conflicting_executor_model_ref_is_capsule_failed() {
         struct LyingBackend;
         impl GenerateBackend for LyingBackend {
-            fn generate(&self, payload: &GenerateLocalPayload) -> Result<Value, String> {
+            fn generate(
+                &self,
+                payload: &GenerateLocalPayload,
+                _binding: &ExecutorFacts,
+            ) -> Result<Value, String> {
                 payload.validate()?;
                 Ok(json!({
                     "result": "lie",
                     "action": ACTION_GENERATE_LOCAL,
-                    "backend": MOCK_BACKEND_ID,
+                    "backend": PROCESS_BACKEND_ID,
                     "model_ref": "aira:model:forged",
                 }))
             }
@@ -1030,6 +1082,82 @@ mod tests {
             result["result"],
             json!("Summarize the local Problem Statement without leaving the host.")
         );
+        assert_eq!(result["model_ref"], json!(ALWAYS_ACTIVATED_MODEL_REF));
+        assert_eq!(
+            result["model_content_hash"],
+            json!(AlwaysActivated::content_hash())
+        );
+    }
+
+    /// `#339`: fixed process config for B while A is activated → CapsuleFailed.
+    #[cfg(unix)]
+    #[test]
+    fn process_expected_model_ref_mismatch_is_capsule_failed() {
+        let mut csu = ExecutionLlmCsu::new()
+            .with_process_backend(
+                ProcessBackend::new("/bin/echo").with_expected_model_ref("aira:model:other"),
+            )
+            .with_activate_gate(AlwaysActivated);
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap = bind_capsule(&mut store, &valid_generate_body());
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(
+            failed(&outs),
+            "binding mismatch must CapsuleFailed: {outs:?}"
+        );
+        assert!(!completed(&outs));
+        assert!(outs.iter().any(|o| matches!(
+            o,
+            CsuOutput::Failure { message } if message.contains(BINDING_MISMATCH)
+        )));
+    }
+
+    /// `#339`: mock must refuse output that claims used-model.
+    #[test]
+    fn mock_claiming_used_model_is_capsule_failed() {
+        struct MockClaimsModel;
+        impl GenerateBackend for MockClaimsModel {
+            fn generate(
+                &self,
+                payload: &GenerateLocalPayload,
+                _binding: &ExecutorFacts,
+            ) -> Result<Value, String> {
+                payload.validate()?;
+                Ok(json!({
+                    "result": "fake",
+                    "action": ACTION_GENERATE_LOCAL,
+                    "backend": MOCK_BACKEND_ID,
+                    "model_ref": ALWAYS_ACTIVATED_MODEL_REF,
+                }))
+            }
+        }
+        let mut csu = ExecutionLlmCsu::new()
+            .with_backend(MockClaimsModel)
+            .with_activate_gate(AlwaysActivated);
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let cap = bind_capsule(&mut store, &valid_generate_body());
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let outs = csu.on_event(&created_event(cap), &mut ctx).unwrap();
+        assert!(
+            failed(&outs),
+            "mock used-model claim must CapsuleFailed: {outs:?}"
+        );
+        assert!(!completed(&outs));
     }
 
     #[cfg(unix)]

@@ -614,13 +614,18 @@ mod tests {
         else {
             panic!("expected Executed");
         };
+        // `#339`: mock completes with capsule/problem binding but no used-model stamp.
         assert_eq!(
-            result["model_ref"],
-            json!(aira_csu_execution_llm::ALWAYS_ACTIVATED_MODEL_REF)
+            result["backend"],
+            json!(aira_csu_execution_llm::MOCK_BACKEND_ID)
         );
-        assert_eq!(
-            result["model_content_hash"],
-            json!(aira_csu_execution_llm::AlwaysActivated::content_hash())
+        assert!(
+            result.get("model_ref").is_none(),
+            "mock must not stamp used-model (#339), got {result}"
+        );
+        assert!(
+            result.get("model_content_hash").is_none(),
+            "mock must not stamp model_content_hash (#339), got {result}"
         );
         assert!(result.get("capsule_ref").and_then(|v| v.as_str()).is_some());
         assert!(result

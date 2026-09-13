@@ -85,13 +85,17 @@ pub fn format_work_result(v: &Value) -> WorkResultView {
     }
 }
 
-/// Model identity from this execution payload only (`#269` / `#283`).
+/// Model identity from this execution payload only (`#269` / `#283` / `#339`).
 ///
 /// Accepts model id/hash evidence (`model_ref`, `model_artifact_ref`, optional
 /// `model_content_hash`). Never maps `backend` / provenance into the model field —
 /// without model evidence returns `None` (GUI → used = none / undefined, not `backend:*`).
+/// `#339`: explicit mock backend never fills used-model even if a field slipped in.
 fn extract_used_model(v: &Value, _provenance: ProvenanceKind) -> Option<String> {
     let result = v.get("result")?;
+    if opt_str(result, "backend").as_deref() == Some("mock") {
+        return None;
+    }
     for key in ["model_ref", "model_artifact_ref", "model_content_hash"] {
         if let Some(m) = opt_str(result, key) {
             if m.starts_with("backend:") {
