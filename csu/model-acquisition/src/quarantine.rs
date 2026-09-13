@@ -7,6 +7,7 @@ use aira_event::EventType;
 use aira_object::{utc_now_rfc3339, AiraRef, ContentHash};
 
 use crate::error::AcquisitionError;
+use crate::materialize::materialize_weights_nofollow;
 use crate::policy::request_download;
 use crate::types::{
     FetchOutcome, GateDecision, QuarantinePointer, CSU_ID, QUARANTINE_POINTER_REL, QUARANTINE_REL,
@@ -19,6 +20,7 @@ use crate::util::{
 /// Run policy gate; on ALLOW copy local `source` into scoped quarantine.
 ///
 /// Does **not** verify hash/signature (`#63`) or activate (`#64`). Rejects URL schemes.
+/// `#338` / RFC-0222: quarantine materialize is no-follow + streamed + post-copy hashed.
 pub fn fetch_to_quarantine(
     aira_root: impl AsRef<Path>,
     model_ref: &str,
@@ -55,12 +57,10 @@ pub fn fetch_to_quarantine(
     ensure_under_models(root, &dest_dir)?;
 
     let dest = dest_dir.join(&file_name);
-    fs::copy(source, &dest).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    // `#338` / RFC-0222: no-follow + bounded stream + post-copy hash.
+    let (content_hash, bytes) = materialize_weights_nofollow(source, &dest, None)?;
     ensure_under_models(root, &dest)?;
 
-    let file_bytes = fs::read(&dest).map_err(|e| AcquisitionError::Io(e.to_string()))?;
-    let bytes = file_bytes.len() as u64;
-    let content_hash = ContentHash::sha256_bytes(&file_bytes);
     let hash_hex = content_hash.as_str().trim_start_matches("sha256:");
     let updated_at = utc_now_rfc3339().map_err(|e| AcquisitionError::Crypto(e.to_string()))?;
 

@@ -4,11 +4,12 @@ use std::path::Path;
 use aira_csu::support::make_event;
 use aira_event::EventType;
 use aira_object::{
-    is_cryptographic_signature, utc_now_rfc3339, verify_ed25519, AiraRef, ContentHash, Signature,
+    is_cryptographic_signature, utc_now_rfc3339, verify_ed25519, AiraRef, Signature,
 };
 use serde_json::Value;
 
 use crate::error::AcquisitionError;
+use crate::materialize::{content_hash_nofollow, materialize_weights_nofollow};
 use crate::types::{
     QuarantinePointer, VerifiedPointer, VerifyOutcome, QUARANTINE_POINTER_REL,
     VERIFIED_POINTER_REL, VERIFIED_REL,
@@ -42,8 +43,7 @@ pub fn verify_quarantine(
     }
     ensure_under_models(root, qfile)?;
 
-    let file_bytes = fs::read(qfile).map_err(|e| AcquisitionError::Io(e.to_string()))?;
-    let observed = ContentHash::sha256_bytes(&file_bytes);
+    let observed = content_hash_nofollow(qfile)?;
     let observed_hash = observed.as_str().to_string();
 
     let art_raw = fs::read_to_string(artifact_path.as_ref())
@@ -168,7 +168,8 @@ pub fn verify_quarantine(
     fs::create_dir_all(&dest_dir).map_err(|e| AcquisitionError::Io(e.to_string()))?;
     ensure_under_models(root, &dest_dir)?;
     let dest = dest_dir.join(&file_name);
-    fs::copy(qfile, &dest).map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    // `#338` / RFC-0222: no-follow + bounded stream + post-copy hash before pointer.
+    materialize_weights_nofollow(qfile, &dest, Some(&observed))?;
     ensure_under_models(root, &dest)?;
 
     let dest_display = dest.display().to_string();
