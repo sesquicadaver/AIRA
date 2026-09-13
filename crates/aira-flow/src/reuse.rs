@@ -124,7 +124,45 @@ pub(crate) fn admit_reuse_candidate(
     result_compatible_with_statement(statement_text, &body)
 }
 
-fn result_compatible_with_statement(statement: &str, body: &Value) -> Result<(), String> {
+/// Problem-id result lookup binding (`#341` / RFC-0225 / audit A10).
+///
+/// Index locator alone is insufficient. Accept when:
+/// - `problem_statement_ref` equals this problem id, or
+/// - `statement_content_hash` matches this problem text, or
+/// - claimed `result` is independently compatible with the problem text (reuse).
+pub(crate) fn artifact_binds_problem_lookup(
+    problem_id: &str,
+    problem_text: &str,
+    body: &Value,
+) -> Result<(), String> {
+    if let Some(pref) = body.get("problem_statement_ref").and_then(|v| v.as_str()) {
+        if pref == problem_id {
+            return Ok(());
+        }
+    }
+    if let Some(h) = body.get("statement_content_hash").and_then(|v| v.as_str()) {
+        let expect = ContentHash::sha256_bytes(problem_text.as_bytes());
+        if h == expect.as_str() {
+            return Ok(());
+        }
+        return Err(
+            "result artifact statement_content_hash disagrees with problem text (fail-closed)"
+                .into(),
+        );
+    }
+    result_compatible_with_statement(problem_text, body)
+        .map_err(|e| format!("result artifact does not bind to problem {problem_id}: {e}"))
+}
+
+/// Whether an artifact body is an honest answer for this problem text (`#341`).
+///
+/// Used by reuse admit and by [`crate::local::LocalSession::get_result`] so a
+/// locator swap to a foreign VRA cannot serve as this problem's result, while
+/// admission-scoped reuse of a same-statement VRA (new problem id) still works.
+pub(crate) fn result_compatible_with_statement(
+    statement: &str,
+    body: &Value,
+) -> Result<(), String> {
     let result = body.get("result").ok_or_else(|| {
         "reuse candidate missing result and statement_content_hash (fail-closed)".to_string()
     })?;

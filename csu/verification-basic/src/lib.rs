@@ -6,6 +6,9 @@
 //! Phase U `#314`: action/expression are sourced from the admitted capsule
 //! (`CapsuleCompleted` `artifact_refs[1]`), not from executor output. A substituted
 //! but internally consistent output must not VERIFIED.
+//! `#341` / RFC-0225: capsule `problem_statement_ref` must agree with event
+//! `object_refs`; generate-local without `expression` must not emit false
+//! `VerificationFailed`.
 
 use aira_artifact::ArtifactType;
 use aira_csu::support::{
@@ -174,21 +177,50 @@ fn admitted_capsule(
     serde_json::from_slice(&bytes).map_err(|e| format!("admitted capsule json: {e}"))
 }
 
-/// Action + expression from the admitted capsule (`#314`).
-fn capsule_action_expression(capsule: &Value) -> Result<(String, String), String> {
-    let action = capsule
+/// Action from the admitted capsule (`#314` / `#341`).
+fn capsule_action(capsule: &Value) -> Result<String, String> {
+    capsule
         .get("action")
         .and_then(|v| v.as_str())
         .filter(|s| !s.is_empty())
-        .ok_or_else(|| "admitted capsule missing action".to_string())?
-        .to_string();
-    let expression = capsule
+        .map(|s| s.to_string())
+        .ok_or_else(|| "admitted capsule missing action".to_string())
+}
+
+/// Expression from the admitted capsule (required for math/echo/uppercase).
+fn capsule_expression(capsule: &Value) -> Result<String, String> {
+    capsule
         .get("expression")
         .and_then(|v| v.as_str())
         .filter(|s| !s.is_empty())
-        .ok_or_else(|| "admitted capsule missing expression".to_string())?
-        .to_string();
-    Ok((action, expression))
+        .map(|s| s.to_string())
+        .ok_or_else(|| "admitted capsule missing expression".to_string())
+}
+
+/// Fail-closed if capsule problem ref disagrees with CapsuleCompleted object_refs (`#341`).
+///
+/// Missing capsule stamp is allowed (unit fixtures); production capsules carry the ref.
+fn capsule_matches_event_problem(capsule: &Value, event: &EventDescriptor) -> Result<(), String> {
+    let Some(cap_prob) = capsule
+        .get("problem_statement_ref")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+    else {
+        return Ok(());
+    };
+    let Some(ev_prob) = event.object_refs.first() else {
+        return Err(
+            "CapsuleCompleted missing problem object_ref while capsule is bound (fail-closed)"
+                .into(),
+        );
+    };
+    if cap_prob != ev_prob.as_str() {
+        return Err(
+            "admitted capsule problem_statement_ref disagrees with event object_refs (fail-closed)"
+                .into(),
+        );
+    }
+    Ok(())
 }
 
 /// Fail-closed if output claims a different action/expression than the capsule (`#314`).
@@ -333,17 +365,24 @@ impl Csu for VerificationBasicCsu {
             Ok(c) => c,
             Err(msg) => return self.fail(ctx, event, &msg),
         };
-        let (action, expression) = match capsule_action_expression(&capsule) {
-            Ok(pair) => pair,
+        if let Err(msg) = capsule_matches_event_problem(&capsule, event) {
+            return self.fail(ctx, event, &msg);
+        }
+        let action = match capsule_action(&capsule) {
+            Ok(a) => a,
+            Err(msg) => return self.fail(ctx, event, &msg),
+        };
+        // Generate-local is executed by execution-llm; do not mint a fake VERIFIED
+        // result and do not require math/echo `expression` (`#341` / S11 honesty).
+        if action == "text.generate.local" {
+            return Ok(vec![]);
+        }
+        let expression = match capsule_expression(&capsule) {
+            Ok(e) => e,
             Err(msg) => return self.fail(ctx, event, &msg),
         };
         if let Err(msg) = output_matches_capsule(&body, &action, &expression) {
             return self.fail(ctx, event, &msg);
-        }
-        // Generate-local is executed by execution-llm; do not mint a fake VERIFIED result.
-        // Activate/semantic LLM verify remain later atoms.
-        if action == "text.generate.local" {
-            return Ok(vec![]);
         }
         let ok = match action.as_str() {
             "math.eval.safe" => match body.get("result").and_then(|v| v.as_f64()) {
@@ -510,6 +549,15 @@ mod tests {
         output_payload: Value,
         capsule_payload: Value,
     ) -> Vec<CsuOutput> {
+        run_on_output_with_problem(store, output_payload, capsule_payload, problem())
+    }
+
+    fn run_on_output_with_problem(
+        store: &mut CasArtifactStore,
+        output_payload: Value,
+        capsule_payload: Value,
+        problem_ref: AiraRef,
+    ) -> Vec<CsuOutput> {
         let cap_id = publish_capsule(store, capsule_payload, "aira:artifact:cap1");
         let mut csu = VerificationBasicCsu::new();
         let mut log = MemoryEventLog::new();
@@ -531,7 +579,7 @@ mod tests {
         let ev = mk(
             "aira:event:done1",
             EventType::CapsuleCompleted,
-            vec![problem()],
+            vec![problem_ref],
             vec![oid, cap_id],
             vec![],
             None,
@@ -761,6 +809,51 @@ mod tests {
         assert!(outs.is_empty());
     }
 
+    /// `#341`: production generate capsule has `prompt`, not `expression` — must not VF.
+    #[test]
+    fn generate_local_capsule_without_expression_is_not_verification_failed() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({
+                "action": "text.generate.local",
+                "prompt": "Summarize locally",
+                "result": "mock-generate:Summarize locally",
+                "backend": "mock"
+            }),
+            json!({
+                "action": "text.generate.local",
+                "prompt": "Summarize locally",
+                "problem_statement_ref": "aira:problem:01TESTPROBLEM"
+            }),
+        );
+        assert!(!is_verified(&outs));
+        assert!(
+            !is_failed(&outs),
+            "generate without expression must not VerificationFailed"
+        );
+        assert!(outs.is_empty());
+    }
+
+    /// `#341`: swapped capsule bound to a different problem must not VERIFIED.
+    #[test]
+    fn swapped_capsule_output_refs_for_wrong_problem_are_not_verified() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let outs = run_on_output(
+            &mut store,
+            json!({"action":"math.eval.safe","expression":"2+2","result":4.0}),
+            json!({
+                "action": "math.eval.safe",
+                "expression": "2+2",
+                "problem_statement_ref": "aira:problem:other"
+            }),
+        );
+        assert!(!is_verified(&outs));
+        assert!(is_failed(&outs));
+    }
+
     #[test]
     fn text_echo_without_capsule_expression_is_not_verified() {
         let dir = tempfile::tempdir().unwrap();
@@ -836,7 +929,8 @@ mod tests {
     fn verified_result_binds_refs_from_capsule() {
         let dir = tempfile::tempdir().unwrap();
         let mut store = CasArtifactStore::open(dir.path()).unwrap();
-        let outs = run_on_output(
+        let problem_ref = AiraRef::parse("aira:problem:fromcapsule").unwrap();
+        let outs = run_on_output_with_problem(
             &mut store,
             json!({"action":"math.eval.safe","result":4.0}),
             json!({
@@ -845,6 +939,7 @@ mod tests {
                 "problem_statement_ref": "aira:problem:fromcapsule",
                 "context_ref": "aira:artifact:ctxfromcapsule"
             }),
+            problem_ref,
         );
         assert!(is_verified(&outs));
         let vra = verified_payload(&outs);
