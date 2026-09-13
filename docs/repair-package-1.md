@@ -1,12 +1,12 @@
 # Repair Package 1 — Admission integrity & binding
 
-**Status:** Structural **DONE** @ [AIRA-RFC-0208](../specs/rfc/AIRA-RFC-0208-phase-v-admission-integrity.md) (Phase V `#323`–`#330`; **QUEUE V closed**). Product honesty vs audit `d1115f2`: **PARTIAL** — residual gaps tracked in Phase W [`phase-w-plan.md`](phase-w-plan.md) `#331`–`#342` (**IN PROGRESS**; first OPEN `#339`; RFC-0215 reserved).  
+**Status:** Structural **DONE** @ [AIRA-RFC-0208](../specs/rfc/AIRA-RFC-0208-phase-v-admission-integrity.md) (Phase V `#323`–`#330`; **QUEUE V closed**). Product honesty vs audit `d1115f2`: **PARTIAL** — residual gaps tracked in Phase W [`phase-w-plan.md`](phase-w-plan.md) `#331`–`#342` (**IN PROGRESS**; first OPEN `#340`; RFC-0215 reserved).  
 **Tip at start of work:** `b8c36fd` (Pack 0 / RFC-0207 on `main`).  
 **Plan source (out of git):** `p-only/aira-repair.md` Pack 1; residual audit `p-only/AIRA-audit-d1115f2-2026-09-11.md`.  
 **Consolidating RFC (structural):** **AIRA-RFC-0208** **DONE** @ `#330`.  
 **Residual consolidating RFC:** **AIRA-RFC-0215** reserved file-free until `#342`.  
 **Trace:** [`product-requirements-trace.md`](product-requirements-trace.md) (PR-M3 / PR-H1 binding rows).  
-**Analyze:** V [`Analyze-360`](../analysis/Analyze-360/) … [`Analyze-367`](../analysis/Analyze-367/); W wiring [`Analyze-368`](../analysis/Analyze-368/) (`#331`); math [`Analyze-369`](../analysis/Analyze-369/) (`#332` / RFC-0216); strict submit [`Analyze-370`](../analysis/Analyze-370/) (`#333` / RFC-0217); constraints [`Analyze-371`](../analysis/Analyze-371/) (`#334` / RFC-0218); boundary [`Analyze-372`](../analysis/Analyze-372/) (`#335` / RFC-0219); evidence [`Analyze-373`](../analysis/Analyze-373/) (`#336` / RFC-0220); trust [`Analyze-374`](../analysis/Analyze-374/) (`#337` / RFC-0221); materialize [`Analyze-375`](../analysis/Analyze-375/) (`#338` / RFC-0222)
+**Analyze:** V [`Analyze-360`](../analysis/Analyze-360/) … [`Analyze-367`](../analysis/Analyze-367/); W wiring [`Analyze-368`](../analysis/Analyze-368/) (`#331`); math [`Analyze-369`](../analysis/Analyze-369/) (`#332` / RFC-0216); strict submit [`Analyze-370`](../analysis/Analyze-370/) (`#333` / RFC-0217); constraints [`Analyze-371`](../analysis/Analyze-371/) (`#334` / RFC-0218); boundary [`Analyze-372`](../analysis/Analyze-372/) (`#335` / RFC-0219); evidence [`Analyze-373`](../analysis/Analyze-373/) (`#336` / RFC-0220); trust [`Analyze-374`](../analysis/Analyze-374/) (`#337` / RFC-0221); materialize [`Analyze-375`](../analysis/Analyze-375/) (`#338` / RFC-0222); binding [`Analyze-376`](../analysis/Analyze-376/) (`#339` / RFC-0223)
 
 ## Intent
 
@@ -27,7 +27,7 @@ Keep microkernel + VERIFIED. Make user constraints an **immutable admission snap
 | Item | Change |
 |------|--------|
 | Phase W plan | [`phase-w-plan.md`](phase-w-plan.md) **IN PROGRESS** |
-| QUEUE W | `#331`–`#338` DONE; `#339`–`#342` OPEN |
+| QUEUE W | `#331`–`#339` DONE; `#340`–`#342` OPEN |
 | Living smoke | `phase_w_doc.rs` |
 | RFC-0215 | reserved file-free |
 | A0 | Pack 1 PARTIAL honesty without rewriting V as never-DONE |
@@ -38,6 +38,7 @@ Keep microkernel + VERIFIED. Make user constraints an **immutable admission snap
 | `#336` / RFC-0220 | activate evidence authority (pointer locator-only) |
 | `#337` / RFC-0221 | production activation trust (no implicit local-test) |
 | `#338` / RFC-0222 | safe weights materialization (no-follow + post-copy + bounded buffer) |
+| `#339` / RFC-0223 | backend verified binding (mock ≠ used-model; mismatch reject) |
 
 ## Explicitly not delivered (Pack 2+)
 

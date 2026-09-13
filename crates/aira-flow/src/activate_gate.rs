@@ -509,6 +509,7 @@ impl ModelActivateGate for ActivatedPointerGate {
         Ok(ExecutorFacts {
             model_ref: pointer.model_ref,
             content_hash: pointer.content_hash,
+            cache_path: pointer.cache_path,
         })
     }
 }

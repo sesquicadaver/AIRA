@@ -1,6 +1,6 @@
 # Phase W — Pack 1 residual honesty (post-V audit)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-11; `#331`–`#338` **DONE**; first OPEN `#339`).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-11; `#331`–`#339` **DONE**; first OPEN `#340`).  
 **Джерела:** пост-V аудит `p-only/AIRA-audit-d1115f2-2026-09-11.md` @ `d1115f2` (merge PR #295 / RFC-0208); Phase V **DONE** @ [`phase-v-plan.md`](phase-v-plan.md) / RFC-0208 (**QUEUE V closed**); Pack 0 **DONE** @ [`repair-package-0.md`](repair-package-0.md) / RFC-0207; trace [`product-requirements-trace.md`](product-requirements-trace.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase W `#331`–`#342`.  
 **Closure:** consolidating **RFC-0215** reserved file-free until `#342` (id confirmed free 2026-09-11).  
@@ -112,7 +112,7 @@ W0 Wiring (+ A0 contract honesty tips)
 | `#336` | W1 | Activate evidence authority | **DONE** @ RFC-0220: pointer locator-only; primary evidence authority | production trust (#337) |
 | `#337` | W1 | Production activation trust | **DONE** @ RFC-0221: no implicit local-test; fixtures separate | materialize (#338) |
 | `#338` | W1 | Safe weights materialization | **DONE** @ RFC-0222: no-follow + post-copy + bounded buffer | backend binding (#339) |
-| `#339` | W1 | Backend verified binding | mismatch reject; mock ≠ used-model; RFC-0223 | reuse candidate (#340) |
+| `#339` | W1 | Backend verified binding | **DONE** @ RFC-0223: mismatch reject; mock ≠ used-model | reuse candidate (#340) |
 | `#340` | W1 | Reuse candidate independent check | чужий VRA у ключі ≠ Completed; RFC-0224 | result binding (#341) |
 | `#341` | W1 | Result/verify task binding | swap refs reject; generate ≠ false VerificationFailed; RFC-0225 | close (#342) |
 | `#342` | W | RFC-0215 + close | consolidating; QUEUE W closed; Pack 1 residual honesty DONE | Pack 2 M* |
@@ -126,8 +126,8 @@ W0 Wiring (+ A0 contract honesty tips)
           → #336 W1 activate evidence DONE @ RFC-0220
             → #337 W1 production trust DONE @ RFC-0221
               → #338 W1 safe materialize DONE @ RFC-0222
-                → #339 W1 backend binding (first OPEN)
-                  → #340 W1 reuse candidate
+                → #339 W1 backend binding DONE @ RFC-0223
+                  → #340 W1 reuse candidate (first OPEN)
                     → #341 W1 result/verify binding
                       → #342 W close RFC-0215
 ```
@@ -164,7 +164,7 @@ aira-core still has no GUI/ledger/LLM deps.
 QUEUE V closed @ RFC-0208
   + audit d1115f2 Pack 1 PARTIAL (D1–D6)
   + developer «активувати residual phase» (2026-09-11)
-  → wiring `#331` DONE; `#332`–`#338` DONE @ RFC-0222; план IN PROGRESS; first OPEN `#339`.
+  → wiring `#331` DONE; `#332`–`#339` DONE @ RFC-0223; план IN PROGRESS; first OPEN `#340`.
 ```
 
 ---

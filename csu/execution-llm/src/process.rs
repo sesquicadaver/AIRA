@@ -49,12 +49,17 @@ use super::sandbox::sandbox_required_from;
 #[cfg(target_os = "linux")]
 use super::seccomp::restrict_syscalls_self;
 use super::seccomp::seccomp_enabled_from;
-use super::{GenerateBackend, GenerateLocalPayload, ACTION_GENERATE_LOCAL, MOCK_BACKEND_ID};
+use super::{
+    ExecutorFacts, GenerateBackend, GenerateLocalPayload, ACTION_GENERATE_LOCAL, MOCK_BACKEND_ID,
+};
 
 pub use super::landlock::{ENV_LLM_LANDLOCK, LANDLOCK_FAILED, LANDLOCK_UNSUPPORTED};
 pub use super::netns::{ENV_LLM_NETNS, NETNS_BLOCKS_LOOPBACK, NETNS_FAILED, NETNS_UNSUPPORTED};
 pub use super::sandbox::{ENV_LLM_SANDBOX_REQUIRED, SANDBOX_REQUIRED, SANDBOX_REQUIRED_LOOPBACK};
 pub use super::seccomp::{ENV_LLM_SECCOMP, SECCOMP_FAILED, SECCOMP_UNSUPPORTED, SECCOMP_VIOLATION};
+
+/// Fail-closed when fixed process config disagrees with activate binding (`#339`).
+pub const BINDING_MISMATCH: &str = "generate backend binding mismatch (fail-closed; not VERIFIED)";
 
 /// Backend id stamped on successful process output.
 pub const PROCESS_BACKEND_ID: &str = "process";
@@ -130,6 +135,8 @@ pub struct ProcessBackend {
     netns: bool,
     host_loopback: bool,
     sandbox_required: bool,
+    /// When set, must equal [`ExecutorFacts::model_ref`] or generate fail-closes (`#339`).
+    expected_model_ref: Option<String>,
     #[cfg(test)]
     kernel_unavailable_for_test: bool,
 }
@@ -146,6 +153,7 @@ impl ProcessBackend {
             netns: false,
             host_loopback: false,
             sandbox_required: false,
+            expected_model_ref: None,
             #[cfg(test)]
             kernel_unavailable_for_test: false,
         }
@@ -180,6 +188,15 @@ impl ProcessBackend {
     /// Child wait timeout. Elapsed wait → fail-closed.
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
+        self
+    }
+
+    /// Require this `model_ref` to match the activate binding (`#339` / RFC-0223).
+    ///
+    /// Use when the fixed argv/config selects a concrete model (e.g. ollama `run B`
+    /// while A is activated) so mismatch fail-closes instead of stamping A's identity.
+    pub fn with_expected_model_ref(mut self, model_ref: impl Into<String>) -> Self {
+        self.expected_model_ref = Some(model_ref.into());
         self
     }
 
@@ -282,8 +299,20 @@ impl ProcessBackend {
 }
 
 impl GenerateBackend for ProcessBackend {
-    fn generate(&self, payload: &GenerateLocalPayload) -> Result<Value, String> {
+    fn generate(
+        &self,
+        payload: &GenerateLocalPayload,
+        binding: &ExecutorFacts,
+    ) -> Result<Value, String> {
         payload.validate()?;
+        if let Some(want) = &self.expected_model_ref {
+            if want != &binding.model_ref {
+                return Err(format!(
+                    "{BINDING_MISMATCH}: configured {want} vs activated {}",
+                    binding.model_ref
+                ));
+            }
+        }
         if self.sandbox_required {
             super::sandbox::enforce(
                 self.host_loopback || looks_like_ollama(&self.program),
@@ -405,10 +434,13 @@ impl GenerateBackend for ProcessBackend {
         if text.is_empty() {
             return Err(EMPTY_STDOUT.into());
         }
+        // Process accepted the activate binding — claim used-model from it (`#339`).
         Ok(json!({
             "result": text,
             "action": ACTION_GENERATE_LOCAL,
             "backend": PROCESS_BACKEND_ID,
+            "model_ref": binding.model_ref,
+            "model_content_hash": binding.content_hash,
         }))
     }
 }
@@ -694,6 +726,14 @@ mod tests {
         }
     }
 
+    fn dummy_binding() -> crate::ExecutorFacts {
+        crate::ExecutorFacts {
+            model_ref: crate::ALWAYS_ACTIVATED_MODEL_REF.into(),
+            content_hash: crate::AlwaysActivated::content_hash(),
+            cache_path: String::new(),
+        }
+    }
+
     fn env_lock() -> MutexGuard<'static, ()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
         LOCK.get_or_init(|| Mutex::new(()))
@@ -812,7 +852,7 @@ mod tests {
         env::set_var("AIRA_HTTP_TOKEN", "l219-secret-do-not-leak");
         env::set_var("AIRA_LLM_BACKEND", "process");
         let out = ProcessBackend::new(&script)
-            .generate(&dummy_payload("ignored-prompt"))
+            .generate(&dummy_payload("ignored-prompt"), &dummy_binding())
             .expect("dump-env script must complete");
         match prev_token {
             Some(v) => env::set_var("AIRA_HTTP_TOKEN", v),
@@ -886,7 +926,7 @@ mod tests {
         chmod_exec(&script);
         let err = ProcessBackend::new(&script)
             .with_timeout(Duration::from_secs(10))
-            .generate(&dummy_payload("ignored"))
+            .generate(&dummy_payload("ignored"), &dummy_binding())
             .unwrap_err();
         assert!(
             err.contains(PIPE_OVERFLOW),
@@ -908,7 +948,7 @@ mod tests {
         chmod_exec(&script);
         let err = ProcessBackend::new(&script)
             .with_timeout(Duration::from_secs(10))
-            .generate(&dummy_payload("ignored"))
+            .generate(&dummy_payload("ignored"), &dummy_binding())
             .unwrap_err();
         assert!(
             err.contains(PIPE_OVERFLOW),
@@ -953,7 +993,7 @@ mod tests {
         chmod_exec(&script);
 
         let leaked = ProcessBackend::new(&script)
-            .generate(&dummy_payload("ignored"))
+            .generate(&dummy_payload("ignored"), &dummy_binding())
             .expect("unsandboxed script must read sibling secret");
         let leaked_text = leaked["result"].as_str().expect("result string");
         assert!(
@@ -963,7 +1003,7 @@ mod tests {
 
         let err = ProcessBackend::new(&script)
             .with_landlock()
-            .generate(&dummy_payload("ignored"))
+            .generate(&dummy_payload("ignored"), &dummy_binding())
             .unwrap_err();
         assert!(
             !err.contains("LANDLOCK_SECRET_225"),
@@ -986,7 +1026,7 @@ mod tests {
         chmod_exec(&script);
         let out = ProcessBackend::new(&script)
             .with_landlock()
-            .generate(&dummy_payload("ignored"))
+            .generate(&dummy_payload("ignored"), &dummy_binding())
             .expect("echo-only jail script must complete under Landlock");
         let text = out["result"].as_str().expect("result string");
         assert!(text.contains("LANDLOCK_OK"), "got {text}");
@@ -1017,7 +1057,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let probe = super::compile_socket_probe(dir.path());
         let leaked = ProcessBackend::new(&probe)
-            .generate(&dummy_payload("ignored"))
+            .generate(&dummy_payload("ignored"), &dummy_binding())
             .expect("unsandboxed socket probe must complete");
         let leaked_text = leaked["result"].as_str().expect("result string");
         assert!(
@@ -1027,7 +1067,7 @@ mod tests {
 
         let err = ProcessBackend::new(&probe)
             .with_seccomp()
-            .generate(&dummy_payload("ignored"))
+            .generate(&dummy_payload("ignored"), &dummy_binding())
             .unwrap_err();
         assert!(
             !err.contains("SOCKET_OK"),
@@ -1046,7 +1086,7 @@ mod tests {
     fn seccomp_echo_succeeds() {
         let out = ProcessBackend::new("/bin/echo")
             .with_seccomp()
-            .generate(&dummy_payload("SECCOMP_OK"))
+            .generate(&dummy_payload("SECCOMP_OK"), &dummy_binding())
             .expect("echo must complete under seccomp deny-list");
         let text = out["result"].as_str().expect("result string");
         assert!(text.contains("SECCOMP_OK"), "got {text}");
@@ -1075,7 +1115,7 @@ mod tests {
     fn ollama_with_netns_is_fail_closed() {
         let err = ProcessBackend::ollama("aira-llm-process-missing-bin-215-do-not-install", "m")
             .with_netns()
-            .generate(&dummy_payload("ignored"))
+            .generate(&dummy_payload("ignored"), &dummy_binding())
             .unwrap_err();
         assert!(
             err.contains(NETNS_BLOCKS_LOOPBACK),
@@ -1092,7 +1132,7 @@ mod tests {
         env::remove_var(ENV_PROCESS_BIN);
         env::set_var(ENV_LLM_NETNS, "1");
         let err = ProcessBackend::from_env()
-            .generate(&dummy_payload("ignored"))
+            .generate(&dummy_payload("ignored"), &dummy_binding())
             .unwrap_err();
         match prev_bin {
             Some(v) => env::set_var(ENV_PROCESS_BIN, v),
@@ -1113,7 +1153,7 @@ mod tests {
     fn netns_echo_succeeds_or_fail_closed() {
         let result = ProcessBackend::new("/bin/echo")
             .with_netns()
-            .generate(&dummy_payload("NETNS_OK"));
+            .generate(&dummy_payload("NETNS_OK"), &dummy_binding());
         match result {
             Ok(out) => {
                 let text = out["result"].as_str().expect("result string");
@@ -1144,7 +1184,7 @@ mod tests {
 
         let leaked = ProcessBackend::new(&probe)
             .with_args([&host, &port])
-            .generate(&dummy_payload("ignored"))
+            .generate(&dummy_payload("ignored"), &dummy_binding())
             .expect("unsandboxed connect probe must reach host loopback");
         let leaked_text = leaked["result"].as_str().expect("result string");
         assert!(
@@ -1155,7 +1195,7 @@ mod tests {
         let err = ProcessBackend::new(&probe)
             .with_args([&host, &port])
             .with_netns()
-            .generate(&dummy_payload("ignored"))
+            .generate(&dummy_payload("ignored"), &dummy_binding())
             .unwrap_err();
         assert!(
             !err.contains("CONNECT_OK"),
@@ -1190,7 +1230,7 @@ mod tests {
         let err = ProcessBackend::new("/bin/echo")
             .with_sandbox_required()
             .with_unavailable_kernel_for_test()
-            .generate(&dummy_payload("SANDBOX_OK"))
+            .generate(&dummy_payload("SANDBOX_OK"), &dummy_binding())
             .unwrap_err();
         assert!(
             err.contains(SANDBOX_REQUIRED),
@@ -1204,7 +1244,7 @@ mod tests {
     fn sandbox_required_ollama_is_fail_closed() {
         let err = ProcessBackend::ollama("aira-llm-process-missing-bin-215-do-not-install", "m")
             .with_sandbox_required()
-            .generate(&dummy_payload("ignored"))
+            .generate(&dummy_payload("ignored"), &dummy_binding())
             .unwrap_err();
         assert!(
             err.contains(SANDBOX_REQUIRED_LOOPBACK),
@@ -1218,7 +1258,7 @@ mod tests {
     fn sandbox_required_echo_succeeds_or_fail_closed() {
         let result = ProcessBackend::new("/bin/echo")
             .with_sandbox_required()
-            .generate(&dummy_payload("SANDBOX_OK"));
+            .generate(&dummy_payload("SANDBOX_OK"), &dummy_binding());
         match result {
             Ok(out) => {
                 let text = out["result"].as_str().expect("result string");
