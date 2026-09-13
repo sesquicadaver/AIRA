@@ -312,9 +312,13 @@ impl OperationalPlane {
     ///
     /// Lookup key is [`AdmissionSnapshot::reuse_catalog_key`] (not text alone).
     /// [`ReusePolicy::RequireNewExecution`] skips bind entirely.
+    ///
+    /// `#340` / RFC-0224: resolve + [`crate::reuse::admit_reuse_candidate`] before
+    /// [`Self::enable_ready_solution`]. Foreign / incompatible artifact → miss (re-execute).
     fn bind_catalog_for_admission(
         &mut self,
         admission: &AdmissionSnapshot,
+        statement_text: &str,
     ) -> Result<(), FlowError> {
         let Some(path) = &self.reuse_index else {
             return Ok(());
@@ -325,9 +329,21 @@ impl OperationalPlane {
             return Ok(());
         };
         let id = AiraRef::parse(&id_str).map_err(map_obj)?;
-        if self.artifacts.resolve(&id).is_ok() {
-            self.enable_ready_solution(id)?;
+        let Ok((desc, bytes)) = self.artifacts.resolve(&id) else {
+            return Ok(());
+        };
+        if crate::reuse::admit_reuse_candidate(
+            admission,
+            statement_text,
+            desc.artifact_type,
+            &bytes,
+        )
+        .is_err()
+        {
+            // Fail-closed miss: do not bind foreign/incompatible candidate.
+            return Ok(());
         }
+        self.enable_ready_solution(id)?;
         Ok(())
     }
 
@@ -357,7 +373,7 @@ impl OperationalPlane {
         if is_normative_split(text) {
             return self.emit_differentiated_field(text, admission);
         }
-        self.bind_catalog_for_admission(&admission)?;
+        self.bind_catalog_for_admission(&admission, text)?;
 
         self.seq += 1;
         let problem_id =

@@ -816,6 +816,69 @@ mod tests {
             .any(|e| e.payload_ref.as_deref() == Some("reuse:ready_solution")));
     }
 
+    /// `#340` / RFC-0224: correct reuse key + foreign VRA must not short-circuit to Completed.
+    #[test]
+    fn foreign_vra_under_correct_reuse_key_does_not_complete_via_reuse() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let arts = dir.path().join("arts");
+        let mut plane = OperationalPlane::open(&arts).unwrap();
+        let foreign_payload = json_bytes(&json!({
+            "result": 999.0,
+            "verification_status": "VERIFIED",
+            "confidence": 1.0,
+            "scope": { "scope_type": "local", "description": "foreign" },
+            "evidence_refs": [],
+            "provenance_refs": []
+        }));
+        let foreign = make_artifact(
+            "aira:artifact:foreign999",
+            ArtifactType::VerifiedResultArtifact,
+            &foreign_payload,
+            vec![],
+        );
+        let foreign_id = foreign.artifact_id.clone();
+        plane
+            .artifacts_mut()
+            .publish(foreign, &foreign_payload)
+            .unwrap();
+        drop(plane);
+
+        let idx_path = dir.path().join("reuse-index.json");
+        let key = AdmissionSnapshot::default_for_text("Calculate 2 + 2")
+            .reuse_catalog_key()
+            .expect("default admit allows reuse");
+        std::fs::write(
+            &idx_path,
+            serde_json::to_string_pretty(&serde_json::json!({
+                "by_content_hash": { key.as_str(): foreign_id.as_str() }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let mut plane = OperationalPlane::open_with_reuse_index(&arts, &idx_path).unwrap();
+        let out = plane.submit_problem("Calculate 2 + 2").unwrap();
+        let SubmitOutcome::Completed { result, .. } = out else {
+            panic!("expected Completed via re-execute, got {out:?}");
+        };
+        assert_eq!(result["result"], json!(4.0), "must not publish foreign 999");
+        assert!(
+            !plane
+                .events()
+                .iter()
+                .any(|e| e.payload_ref.as_deref() == Some("reuse:ready_solution")),
+            "foreign candidate must not bind as ready_solution"
+        );
+        assert!(
+            plane
+                .events()
+                .iter()
+                .any(|e| e.event_type == EventType::CapsuleCreated),
+            "miss must fall through to execution"
+        );
+    }
+
     #[test]
     fn failure_to_evidence_demo() {
         let _lock = isolated_flow();
