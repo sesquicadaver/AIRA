@@ -1,6 +1,6 @@
 # Phase W — Pack 1 residual honesty (post-V audit)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-11; `#331`–`#334` **DONE**; first OPEN `#335`).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-11; `#331`–`#335` **DONE**; first OPEN `#336`).  
 **Джерела:** пост-V аудит `p-only/AIRA-audit-d1115f2-2026-09-11.md` @ `d1115f2` (merge PR #295 / RFC-0208); Phase V **DONE** @ [`phase-v-plan.md`](phase-v-plan.md) / RFC-0208 (**QUEUE V closed**); Pack 0 **DONE** @ [`repair-package-0.md`](repair-package-0.md) / RFC-0207; trace [`product-requirements-trace.md`](product-requirements-trace.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase W `#331`–`#342`.  
 **Closure:** consolidating **RFC-0215** reserved file-free until `#342` (id confirmed free 2026-09-11).  
@@ -108,7 +108,7 @@ W0 Wiring (+ A0 contract honesty tips)
 | `#332` | W1 | Math capsule fidelity | **DONE** @ RFC-0216: `9-3`→6, `9/3`→3, `42`→42; unsupported ≠ default `2+2` | strict HTTP (#333) |
 | `#333` | W1 | Strict submit decoding | **DONE** @ RFC-0217: unknown → 4xx; text-only OK | constraints matrix (#334) |
 | `#334` | W1 | Constraints enforce-or-reject | **DONE** @ RFC-0218: matrix enforce-or-reject | admission boundary (#335) |
-| `#335` | W1 | Admission boundary verify | text/hash/kind/context mismatch reject; RFC-0219 | activate evidence (#336) |
+| `#335` | W1 | Admission boundary verify | **DONE** @ RFC-0219: text/hash/kind/schema boundary | activate evidence (#336) |
 | `#336` | W1 | Activate evidence authority | pointer locator-only; primary evidence authority; RFC-0220 | production trust (#337) |
 | `#337` | W1 | Production activation trust | no implicit local-test; fixtures separate; RFC-0221 | materialize (#338) |
 | `#338` | W1 | Safe weights materialization | no-follow + post-copy + bounded buffer; RFC-0222 | backend binding (#339) |
@@ -122,8 +122,8 @@ W0 Wiring (+ A0 contract honesty tips)
   → #332 W1 math capsule DONE @ RFC-0216
     → #333 W1 strict submit DONE @ RFC-0217
       → #334 W1 constraints enforce-or-reject DONE @ RFC-0218
-        → #335 W1 admission boundary (first OPEN)
-          → #336 W1 activate evidence
+        → #335 W1 admission boundary DONE @ RFC-0219
+          → #336 W1 activate evidence (first OPEN)
             → #337 W1 production trust
               → #338 W1 safe materialize
                 → #339 W1 backend binding
@@ -164,7 +164,7 @@ aira-core still has no GUI/ledger/LLM deps.
 QUEUE V closed @ RFC-0208
   + audit d1115f2 Pack 1 PARTIAL (D1–D6)
   + developer «активувати residual phase» (2026-09-11)
-  → wiring `#331` DONE; `#332`–`#334` DONE @ RFC-0218; план IN PROGRESS; first OPEN `#335`.
+  → wiring `#331` DONE; `#332`–`#335` DONE @ RFC-0219; план IN PROGRESS; first OPEN `#336`.
 ```
 
 ---

@@ -1,12 +1,12 @@
 # Repair Package 1 — Admission integrity & binding
 
-**Status:** Structural **DONE** @ [AIRA-RFC-0208](../specs/rfc/AIRA-RFC-0208-phase-v-admission-integrity.md) (Phase V `#323`–`#330`; **QUEUE V closed**). Product honesty vs audit `d1115f2`: **PARTIAL** — residual gaps tracked in Phase W [`phase-w-plan.md`](phase-w-plan.md) `#331`–`#342` (**IN PROGRESS**; first OPEN `#335`; RFC-0215 reserved).  
+**Status:** Structural **DONE** @ [AIRA-RFC-0208](../specs/rfc/AIRA-RFC-0208-phase-v-admission-integrity.md) (Phase V `#323`–`#330`; **QUEUE V closed**). Product honesty vs audit `d1115f2`: **PARTIAL** — residual gaps tracked in Phase W [`phase-w-plan.md`](phase-w-plan.md) `#331`–`#342` (**IN PROGRESS**; first OPEN `#336`; RFC-0215 reserved).  
 **Tip at start of work:** `b8c36fd` (Pack 0 / RFC-0207 on `main`).  
 **Plan source (out of git):** `p-only/aira-repair.md` Pack 1; residual audit `p-only/AIRA-audit-d1115f2-2026-09-11.md`.  
 **Consolidating RFC (structural):** **AIRA-RFC-0208** **DONE** @ `#330`.  
 **Residual consolidating RFC:** **AIRA-RFC-0215** reserved file-free until `#342`.  
 **Trace:** [`product-requirements-trace.md`](product-requirements-trace.md) (PR-M3 / PR-H1 binding rows).  
-**Analyze:** V [`Analyze-360`](../analysis/Analyze-360/) … [`Analyze-367`](../analysis/Analyze-367/); W wiring [`Analyze-368`](../analysis/Analyze-368/) (`#331`); math [`Analyze-369`](../analysis/Analyze-369/) (`#332` / RFC-0216); strict submit [`Analyze-370`](../analysis/Analyze-370/) (`#333` / RFC-0217); constraints [`Analyze-371`](../analysis/Analyze-371/) (`#334` / RFC-0218)
+**Analyze:** V [`Analyze-360`](../analysis/Analyze-360/) … [`Analyze-367`](../analysis/Analyze-367/); W wiring [`Analyze-368`](../analysis/Analyze-368/) (`#331`); math [`Analyze-369`](../analysis/Analyze-369/) (`#332` / RFC-0216); strict submit [`Analyze-370`](../analysis/Analyze-370/) (`#333` / RFC-0217); constraints [`Analyze-371`](../analysis/Analyze-371/) (`#334` / RFC-0218); boundary [`Analyze-372`](../analysis/Analyze-372/) (`#335` / RFC-0219)
 
 ## Intent
 
@@ -27,13 +27,14 @@ Keep microkernel + VERIFIED. Make user constraints an **immutable admission snap
 | Item | Change |
 |------|--------|
 | Phase W plan | [`phase-w-plan.md`](phase-w-plan.md) **IN PROGRESS** |
-| QUEUE W | `#331`–`#334` DONE; `#335`–`#342` OPEN |
+| QUEUE W | `#331`–`#335` DONE; `#336`–`#342` OPEN |
 | Living smoke | `phase_w_doc.rs` |
 | RFC-0215 | reserved file-free |
 | A0 | Pack 1 PARTIAL honesty without rewriting V as never-DONE |
 | `#332` / RFC-0216 | math capsule fidelity; no default `2+2` |
 | `#333` / RFC-0217 | strict submit decoding; unknown fields 4xx |
 | `#334` / RFC-0218 | constraints enforce-or-reject matrix |
+| `#335` / RFC-0219 | admission boundary text/hash/kind/schema |
 
 ## Explicitly not delivered (Pack 2+)
 

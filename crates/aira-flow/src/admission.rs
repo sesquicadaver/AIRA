@@ -174,6 +174,59 @@ impl AdmissionSnapshot {
         v.get("kind").and_then(|k| k.as_str()) == Some(ADMISSION_SNAPSHOT_KIND)
     }
 
+    /// Verify snapshot↔text integrity at the library/HTTP submit boundary (`#335` / RFC-0219).
+    ///
+    /// Rejects forged `statement_content_hash`, wrong `kind` / `payload_schema` before
+    /// any ProblemSubmitted effect. Builders like [`Self::from_text_and_constraints`]
+    /// already set correct values; this closes the mutable-struct / hand-built path.
+    pub fn verify_input_boundary(&self, problem_text: &str) -> Result<(), String> {
+        if self.kind != ADMISSION_SNAPSHOT_KIND {
+            return Err(format!(
+                "admission boundary: kind must be {ADMISSION_SNAPSHOT_KIND}, got {}",
+                self.kind
+            ));
+        }
+        if self.payload_schema != ADMISSION_SNAPSHOT_SCHEMA {
+            return Err(format!(
+                "admission boundary: payload_schema must be {ADMISSION_SNAPSHOT_SCHEMA}, got {}",
+                self.payload_schema
+            ));
+        }
+        let expect = ContentHash::sha256_bytes(problem_text.as_bytes())
+            .as_str()
+            .to_string();
+        if self.statement_content_hash != expect {
+            return Err(format!(
+                "admission boundary: statement_content_hash mismatch (snapshot {} != text {expect})",
+                self.statement_content_hash
+            ));
+        }
+        Ok(())
+    }
+
+    /// Validate an admission JSON factor embedded in Context (`#335`).
+    ///
+    /// Missing factor is allowed (legacy / text-only path without artifact). Present
+    /// factor must carry correct kind + schema.
+    pub fn verify_context_factor(v: &serde_json::Value) -> Result<(), String> {
+        let kind = v.get("kind").and_then(|k| k.as_str()).unwrap_or("");
+        if kind != ADMISSION_SNAPSHOT_KIND {
+            return Err(format!(
+                "admission boundary: context factor kind must be {ADMISSION_SNAPSHOT_KIND}, got {kind}"
+            ));
+        }
+        let schema = v
+            .get("payload_schema")
+            .and_then(|k| k.as_str())
+            .unwrap_or("");
+        if schema != ADMISSION_SNAPSHOT_SCHEMA {
+            return Err(format!(
+                "admission boundary: context factor payload_schema must be {ADMISSION_SNAPSHOT_SCHEMA}, got {schema}"
+            ));
+        }
+        Ok(())
+    }
+
     /// Composite reuse-index key for this admit (`#326` / RFC-0211).
     ///
     /// Returns `None` when [`ReusePolicy::RequireNewExecution`] — callers must
@@ -466,5 +519,37 @@ mod tests {
         );
         s.enforce_or_reject("Summarize the local Problem Statement")
             .unwrap();
+    }
+
+    #[test]
+    fn verify_input_boundary_rejects_forged_hash() {
+        let mut s = AdmissionSnapshot::default_for_text("Calculate 2 + 2");
+        s.statement_content_hash = "sha256:deadbeef".into();
+        let err = s.verify_input_boundary("Calculate 2 + 2").unwrap_err();
+        assert!(err.contains("statement_content_hash"), "{err}");
+    }
+
+    #[test]
+    fn verify_input_boundary_rejects_wrong_kind() {
+        let mut s = AdmissionSnapshot::default_for_text("hello");
+        s.kind = "not_admission".into();
+        let err = s.verify_input_boundary("hello").unwrap_err();
+        assert!(err.contains("kind"), "{err}");
+    }
+
+    #[test]
+    fn verify_input_boundary_ok_for_builder() {
+        let s = AdmissionSnapshot::default_for_text("Calculate 2 + 2");
+        s.verify_input_boundary("Calculate 2 + 2").unwrap();
+    }
+
+    #[test]
+    fn verify_context_factor_rejects_bad_schema() {
+        let v = serde_json::json!({
+            "kind": "admission_snapshot",
+            "payload_schema": "aira:schema:wrong"
+        });
+        let err = AdmissionSnapshot::verify_context_factor(&v).unwrap_err();
+        assert!(err.contains("payload_schema"), "{err}");
     }
 }
