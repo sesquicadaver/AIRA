@@ -1,7 +1,7 @@
 # Phase X — Pack 2: local multi-model GUI (post-W)
 
 **Статус:** **QUEUED** (записано 2026-09-13; **не** first OPEN; виконувати лише після **QUEUE W closed** / `#342`; активація = `#343` wiring).  
-**Джерела:** GUI-аудит `p-only/aira-current.md` (2026-09-13, скріншоти Desktop); Repair Pack 2 `p-only/aira-repair.md` §«Пакет 2»; audit M1–M6 `p-only/AIRA-audit-d1115f2-2026-09-11.md`; trace [`product-requirements-trace.md`](product-requirements-trace.md) (PR-M1…PR-M4); Phase W residual honesty [`phase-w-plan.md`](phase-w-plan.md) `#331`–`#342` (**IN PROGRESS**; first OPEN `#333`; RFC-0215 reserved).  
+**Джерела:** GUI-аудит `p-only/aira-current.md` (2026-09-13, скріншоти Desktop); Repair Pack 2 `p-only/aira-repair.md` §«Пакет 2»; audit M1–M6 `p-only/AIRA-audit-d1115f2-2026-09-11.md`; trace [`product-requirements-trace.md`](product-requirements-trace.md) (PR-M1…PR-M4); Phase W residual honesty [`phase-w-plan.md`](phase-w-plan.md) `#331`–`#342` (**IN PROGRESS**; first OPEN `#334`; RFC-0215 reserved).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase X `#343`–`#358`.  
 **Closure:** consolidating **RFC-0226** reserved file-free until `#358` (id confirmed free 2026-09-13).  
 **Не змінює:** анти-місію README; Phase W / V історію; Pack 1 admission honesty; `aira-core` ledger / LLM-in-Core; egui stack rewrite; Pack 3 ratings evidence UI; Pack 4 remote compute quotas; Pack 5 weight-transfer ≠ inference; Pack 6–7; public bind / auto-trust як Desktop default.
@@ -178,7 +178,7 @@ QUEUE W closed @ RFC-0215
   + developer / wiring `#343`
   + джерела: aira-current.md + Pack 2 + M1–M6
   → phase-x-plan IN PROGRESS; first OPEN `#344` (після `#343` DONE).
-До `#342` DONE: Phase X = QUEUED; first OPEN лишається `#333`.
+До `#342` DONE: Phase X = QUEUED; first OPEN лишається `#334`.
 ```
 
 ---
