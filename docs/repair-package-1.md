@@ -35,7 +35,7 @@ Keep microkernel + VERIFIED. Make user constraints an **immutable admission snap
 
 ## Explicitly not delivered (Pack 2+)
 
-Multi-model GUI / Settings catalog / Work «Порівняти» (audit M1–M6); Pack 3–7.
+Multi-model GUI / Settings catalog / Work «Порівняти» (audit M1–M6) → Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` **QUEUED** (після W). Pack 3–7 still separate.
 
 ## Acceptance
 
