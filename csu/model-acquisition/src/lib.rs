@@ -1035,10 +1035,7 @@ mod tests {
         };
 
         let verified = Path::new(&verified_path);
-        let real = verified
-            .parent()
-            .unwrap()
-            .join("real-ssym.gguf");
+        let real = verified.parent().unwrap().join("real-ssym.gguf");
         fs::rename(&verified_path, &real).unwrap();
         symlink(&real, &verified_path).unwrap();
 

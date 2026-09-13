@@ -162,10 +162,8 @@ fn phase_w_rfc_0222_present() {
 
 #[test]
 fn phase_w_safe_materialize_runtime_present() {
-    let mat = std::fs::read_to_string(
-        repo_root().join("csu/model-acquisition/src/materialize.rs"),
-    )
-    .unwrap();
+    let mat = std::fs::read_to_string(repo_root().join("csu/model-acquisition/src/materialize.rs"))
+        .unwrap();
     assert!(mat.contains("materialize_weights_nofollow"));
     assert!(mat.contains("O_NOFOLLOW") || mat.contains("nofollow"));
     assert!(mat.contains("#338") || mat.contains("RFC-0222"));

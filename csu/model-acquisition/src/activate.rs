@@ -11,11 +11,11 @@ use aira_object::{
 use serde_json::{json, Map, Value};
 
 use crate::error::AcquisitionError;
+use crate::materialize::{content_hash_nofollow, materialize_weights_nofollow};
 use crate::types::{
     ActivateOutcome, ActivatedPointer, VerifiedPointer, ACTIVATED_POINTER_REL,
     ACTIVATION_TRUST_FIXTURE_REL, CACHE_REL, CSU_ID, VERIFIED_POINTER_REL,
 };
-use crate::materialize::{content_hash_nofollow, materialize_weights_nofollow};
 use crate::util::{
     append_custom_event, ensure_under_models, sanitize_slot, sign_for_root,
     signing_bytes_without_signature,
@@ -92,8 +92,8 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
     fs::create_dir_all(&dest_dir).map_err(|e| AcquisitionError::Io(e.to_string()))?;
     ensure_under_models(root, &dest_dir)?;
     let dest = dest_dir.join(&file_name);
-    let (content_hash, _) = materialize_weights_nofollow(vfile, &dest, Some(&expected)).map_err(
-        |e| match e {
+    let (content_hash, _) =
+        materialize_weights_nofollow(vfile, &dest, Some(&expected)).map_err(|e| match e {
             AcquisitionError::MaterializeHashMismatch {
                 expected: exp,
                 observed,
@@ -102,8 +102,7 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
                 observed,
             },
             other => other,
-        },
-    )?;
+        })?;
     ensure_under_models(root, &dest)?;
 
     let hash_hex = content_hash.as_str().trim_start_matches("sha256:");

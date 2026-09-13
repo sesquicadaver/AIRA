@@ -9,11 +9,11 @@ use aira_object::{
 use serde_json::Value;
 
 use crate::error::AcquisitionError;
+use crate::materialize::{content_hash_nofollow, materialize_weights_nofollow};
 use crate::types::{
     QuarantinePointer, VerifiedPointer, VerifyOutcome, QUARANTINE_POINTER_REL,
     VERIFIED_POINTER_REL, VERIFIED_REL,
 };
-use crate::materialize::{content_hash_nofollow, materialize_weights_nofollow};
 use crate::util::{
     append_custom_event, ensure_under_models, publish_verify_evidence, sanitize_slot,
     signing_bytes_without_signature, VerifyEvidenceInput,

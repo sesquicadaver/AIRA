@@ -7,11 +7,11 @@ use aira_event::EventType;
 use aira_object::{utc_now_rfc3339, AiraRef, ContentHash};
 
 use crate::error::AcquisitionError;
+use crate::materialize::materialize_weights_nofollow;
 use crate::policy::request_download;
 use crate::types::{
     FetchOutcome, GateDecision, QuarantinePointer, CSU_ID, QUARANTINE_POINTER_REL, QUARANTINE_REL,
 };
-use crate::materialize::materialize_weights_nofollow;
 use crate::util::{
     append_custom_event, build_quarantine_receipt, ensure_under_models, reject_remote_source,
     sanitize_slot,
