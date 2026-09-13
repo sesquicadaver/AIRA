@@ -116,8 +116,7 @@ fn phase_w_queue_all_done() {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
     assert!(
-        !text.contains("**Перший OPEN:** `#342`")
-            && text.contains("**Перший OPEN:** `#343`"),
+        !text.contains("**Перший OPEN:** `#342`") && text.contains("**Перший OPEN:** `#343`"),
         "QUEUE tip must advance from #342 to #343 after W close"
     );
     for n in 343..=358 {
