@@ -712,6 +712,10 @@ impl LocalSession {
     /// `execution_artifact_id`). The body always comes from ArtifactStore
     /// (`resolve` verifies descriptor + content hash). Cached
     /// `ProblemRecord.result` is never trusted alone.
+    ///
+    /// `#341` / RFC-0225: after resolve, the body must bind to this problem
+    /// (ref / statement hash / independent result check). A swapped locator to
+    /// a foreign VRA fails closed.
     pub fn get_result(&self, result_ref: &str) -> Result<Value, FlowError> {
         if let Ok(rec) = self.problem_status(result_ref) {
             let aid = rec
@@ -725,7 +729,11 @@ impl LocalSession {
                     ))
                 })?;
             let (_, bytes) = self.get_artifact(aid)?;
-            return serde_json::from_slice(&bytes).map_err(|e| FlowError::Other(e.to_string()));
+            let body: Value =
+                serde_json::from_slice(&bytes).map_err(|e| FlowError::Other(e.to_string()))?;
+            crate::reuse::artifact_binds_problem_lookup(result_ref, &rec.text, &body)
+                .map_err(FlowError::Other)?;
+            return Ok(body);
         }
         let (_, bytes) = self.get_artifact(result_ref)?;
         serde_json::from_slice(&bytes).map_err(|e| FlowError::Other(e.to_string()))

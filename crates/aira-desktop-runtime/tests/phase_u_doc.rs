@@ -202,7 +202,8 @@ fn phase_u_verification_module_present() {
     for needle in [
         "#314",
         "admitted_capsule",
-        "capsule_action_expression",
+        "capsule_action",
+        "capsule_expression",
         "output_matches_capsule",
         "substituted_output_expression_is_not_verified",
         "missing_admitted_capsule_is_not_verified",

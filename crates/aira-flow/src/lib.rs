@@ -1081,6 +1081,60 @@ mod tests {
         );
     }
 
+    /// `#341` / RFC-0225: swapping verified_artifact_id to a foreign VRA must fail.
+    #[test]
+    fn get_result_by_problem_rejects_swapped_verified_artifact_ref() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join(".aira");
+        init_node(&root).unwrap();
+        let mut session = LocalSession::open(&root).unwrap();
+        let first = session.submit_problem("Calculate 2 + 2").unwrap();
+        let SubmitOutcome::Completed {
+            problem_id: pid_a,
+            verified_artifact_id: aid_a,
+            ..
+        } = first
+        else {
+            panic!("expected completed A");
+        };
+        let second = session.submit_problem("Calculate 9 - 3").unwrap();
+        let SubmitOutcome::Completed {
+            problem_id: pid_b,
+            verified_artifact_id: aid_b,
+            ..
+        } = second
+        else {
+            panic!("expected completed B");
+        };
+        assert_ne!(aid_a.as_str(), aid_b.as_str());
+
+        let index_path = root.join("problems/index.json");
+        let raw = std::fs::read_to_string(&index_path).unwrap();
+        let mut idx: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        let rec = idx["problems"]
+            .get_mut(pid_a.as_str())
+            .expect("problem A row");
+        rec["verified_artifact_id"] = json!(aid_b.as_str());
+        std::fs::write(&index_path, serde_json::to_string_pretty(&idx).unwrap()).unwrap();
+        drop(session);
+
+        let session = LocalSession::open(&root).unwrap();
+        let err = session
+            .get_result(pid_a.as_str())
+            .expect_err("swapped foreign VRA must not bind to problem A");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("fail-closed")
+                || msg.contains("does not bind")
+                || msg.contains("incompatible"),
+            "unexpected err: {msg}"
+        );
+        // Honest problem B still resolves.
+        let ok_b = session.get_result(pid_b.as_str()).unwrap();
+        assert_eq!(ok_b["result"], json!(6.0));
+    }
+
     #[test]
     fn local_session_generate_persists_execution_not_verified() {
         let _lock = isolated_flow();
@@ -1130,6 +1184,13 @@ mod tests {
         );
         let result = session.get_result(problem_id.as_str()).unwrap();
         assert_eq!(result["action"], json!("text.generate.local"));
+        let tail = session.event_tail(80).unwrap();
+        assert!(
+            !tail
+                .iter()
+                .any(|e| e.event_type == EventType::VerificationFailed),
+            "generate-local must not emit false VerificationFailed (#341)"
+        );
     }
 
     #[test]
