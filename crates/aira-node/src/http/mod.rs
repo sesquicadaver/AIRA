@@ -145,6 +145,61 @@ mod tests {
         assert!(v.get("result").is_some());
     }
 
+    /// `#333` / RFC-0217: unknown submit fields must 4xx before execution (audit D3).
+    #[tokio::test]
+    async fn http_post_problem_unknown_top_level_field_is_4xx() {
+        let (_dir, state) = setup();
+        let (st, v) = json_req(
+            router(state),
+            "POST",
+            "/v1/problems",
+            Some(json!({"text": "Calculate 2 + 2", "admisson": {"model_ref": "aira:model:x"}})),
+        )
+        .await;
+        assert!(
+            st.is_client_error(),
+            "typo admisson must not execute: {st} {v}"
+        );
+        assert_ne!(v.get("status").and_then(|s| s.as_str()), Some("completed"));
+    }
+
+    #[tokio::test]
+    async fn http_post_problem_unknown_admission_field_is_4xx() {
+        let (_dir, state) = setup();
+        let (st, v) = json_req(
+            router(state),
+            "POST",
+            "/v1/problems",
+            Some(json!({
+                "text": "Calculate 2 + 2",
+                "admission": {"model_reff": "aira:model:x"}
+            })),
+        )
+        .await;
+        assert!(
+            st.is_client_error(),
+            "typo model_reff must not execute: {st} {v}"
+        );
+        assert_ne!(v.get("status").and_then(|s| s.as_str()), Some("completed"));
+    }
+
+    #[tokio::test]
+    async fn http_post_problem_known_admission_still_ok() {
+        let (_dir, state) = setup();
+        let (st, v) = json_req(
+            router(state),
+            "POST",
+            "/v1/problems",
+            Some(json!({
+                "text": "Calculate 2 + 2",
+                "admission": {"model_ref": "aira:model:x", "reuse_policy": "require_new_execution"}
+            })),
+        )
+        .await;
+        assert_eq!(st, StatusCode::OK, "{v}");
+        assert_eq!(v["status"], "completed");
+    }
+
     fn write_activated_pointer(root: &std::path::Path) {
         aira_flow::ActivatedPointerGate::install_fixture(root).unwrap();
     }

@@ -1,10 +1,12 @@
 //! Immutable admission snapshot for Repair Pack 1 / QUEUE `#324`–`#326`
-//! (RFC-0209 / RFC-0210 / RFC-0211).
+//! (RFC-0209 / RFC-0210 / RFC-0211) and strict request decoding (`#333` / RFC-0217).
 //!
 //! Captured at ProblemSubmitted admit time. Extends the request contract — not a
 //! new Core ontology. HTTP/CLI/Desktop may send [`AdmissionConstraints`]; omitted
 //! fields use [`AdmissionSnapshot::default_for_text`].
 //! Reuse catalog keys are derived from this snapshot (`reuse_catalog_key`, `#326`).
+//! Request constraint structs use `deny_unknown_fields` so typos do not silently
+//! become defaults (audit D3). Persisted [`AdmissionSnapshot`] stays permissive.
 
 use aira_object::ContentHash;
 use serde::{Deserialize, Serialize};
@@ -41,6 +43,7 @@ pub enum ReusePolicy {
 
 /// Optional generation knobs frozen at admit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct GenerationParameters {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
@@ -54,6 +57,7 @@ pub struct GenerationParameters {
 
 /// Optional resource budget frozen at admit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct ResourceBudget {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_cost: Option<f64>,
@@ -63,6 +67,7 @@ pub struct ResourceBudget {
 
 /// Fallback rules frozen at admit (default: no silent substitute).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct FallbackRules {
     pub allow_model_fallback: bool,
     pub allow_placement_fallback: bool,
@@ -72,7 +77,11 @@ pub struct FallbackRules {
 ///
 /// Copied into an immutable [`AdmissionSnapshot`] at admit; live Settings after
 /// submit must not mutate the admitted task.
+///
+/// `#333` / RFC-0217: unknown keys (e.g. `model_reff`) fail closed — they must
+/// not be dropped into text-only defaults.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct AdmissionConstraints {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_ref: Option<String>,
@@ -283,5 +292,35 @@ mod tests {
             },
         );
         assert_eq!(a.reuse_catalog_key(), b.reuse_catalog_key());
+    }
+
+    #[test]
+    fn constraints_deny_unknown_fields() {
+        let err = serde_json::from_str::<AdmissionConstraints>(r#"{"model_reff":"aira:model:x"}"#)
+            .expect_err("typo must not become defaults");
+        assert!(err.to_string().contains("unknown field"), "{err}");
+    }
+
+    #[test]
+    fn generation_deny_unknown_fields() {
+        let err = serde_json::from_str::<GenerationParameters>(r#"{"temperatur":0.1}"#)
+            .expect_err("typo must fail");
+        assert!(err.to_string().contains("unknown field"), "{err}");
+    }
+
+    #[test]
+    fn constraints_known_fields_ok() {
+        let c: AdmissionConstraints = serde_json::from_str(
+            r#"{"model_ref":"aira:model:x","generation":{"temperature":0.2}}"#,
+        )
+        .unwrap();
+        assert_eq!(c.model_ref.as_deref(), Some("aira:model:x"));
+        assert_eq!(c.generation.temperature, Some(0.2));
+    }
+
+    #[test]
+    fn empty_constraints_object_ok() {
+        let c: AdmissionConstraints = serde_json::from_str("{}").unwrap();
+        assert_eq!(c, AdmissionConstraints::default());
     }
 }

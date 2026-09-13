@@ -31,7 +31,10 @@ pub(super) async fn health() -> Json<HealthBody> {
     })
 }
 
+/// HTTP submit body (`#325` / RFC-0210). `#333` / RFC-0217: unknown keys → 4xx
+/// (e.g. typo `admisson` must not silently drop constraints).
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct ProblemSubmitBody {
     text: String,
     /// Optional admit-time constraints (`#325` / RFC-0210). Omitted ≡ text-only defaults.
