@@ -419,8 +419,186 @@ mod tests {
 
         let err = activate_verified(dir.path()).unwrap_err();
         assert!(
-            matches!(err, AcquisitionError::ActivateHashMismatch { .. }),
-            "expected ActivateHashMismatch, got {err}"
+            matches!(err, AcquisitionError::ActivateEvidenceAuthority { .. }),
+            "forged pointer hash vs evidence must ActivateEvidenceAuthority, got {err}"
+        );
+        assert!(!dir.path().join(ACTIVATED_POINTER_REL).exists());
+    }
+
+    /// #336 / RFC-0220: weights + matching pointer hash still fail — evidence is authority.
+    #[test]
+    fn activate_rejects_weights_and_pointer_hash_tamper() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("combo.gguf");
+        fs::write(&src, b"combo-honest-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:combo", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"combo-honest-bytes");
+        let art = signed_model_artifact("aira:model:combo", observed.as_str());
+        let art_path = dir.path().join("combo.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        let VerifyOutcome::Verified { verified_path, .. } =
+            verify_quarantine(dir.path(), &art_path).unwrap()
+        else {
+            panic!("expected Verified");
+        };
+        let tampered = b"combo-tampered-weights";
+        fs::write(&verified_path, tampered).unwrap();
+        let new_hash = ContentHash::sha256_bytes(tampered);
+        let vpath = dir.path().join(VERIFIED_POINTER_REL);
+        let mut pointer: Value =
+            serde_json::from_str(&fs::read_to_string(&vpath).unwrap()).unwrap();
+        pointer
+            .as_object_mut()
+            .unwrap()
+            .insert("content_hash".into(), json!(new_hash.as_str()));
+        fs::write(&vpath, serde_json::to_string_pretty(&pointer).unwrap()).unwrap();
+
+        let err = activate_verified(dir.path()).unwrap_err();
+        assert!(
+            matches!(err, AcquisitionError::ActivateEvidenceAuthority { .. }),
+            "weights+hash tamper must fail evidence authority, got {err}"
+        );
+        assert!(!dir.path().join(ACTIVATED_POINTER_REL).exists());
+    }
+
+    #[test]
+    fn activate_rejects_pointer_model_ref_mismatch() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("mref.gguf");
+        fs::write(&src, b"mref-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:mref", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"mref-bytes");
+        let art = signed_model_artifact("aira:model:mref", observed.as_str());
+        let art_path = dir.path().join("mref.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        verify_quarantine(dir.path(), &art_path).unwrap();
+
+        let vpath = dir.path().join(VERIFIED_POINTER_REL);
+        let mut pointer: Value =
+            serde_json::from_str(&fs::read_to_string(&vpath).unwrap()).unwrap();
+        pointer
+            .as_object_mut()
+            .unwrap()
+            .insert("model_ref".into(), json!("aira:model:other"));
+        fs::write(&vpath, serde_json::to_string_pretty(&pointer).unwrap()).unwrap();
+
+        let err = activate_verified(dir.path()).unwrap_err();
+        assert!(
+            matches!(err, AcquisitionError::ActivateEvidenceAuthority { .. }),
+            "model_ref mismatch must ActivateEvidenceAuthority, got {err}"
+        );
+        assert!(!dir.path().join(ACTIVATED_POINTER_REL).exists());
+    }
+
+    #[test]
+    fn activate_rejects_missing_evidence_ref() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("miss.gguf");
+        fs::write(&src, b"miss-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:miss", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"miss-bytes");
+        let art = signed_model_artifact("aira:model:miss", observed.as_str());
+        let art_path = dir.path().join("miss.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        verify_quarantine(dir.path(), &art_path).unwrap();
+
+        let vpath = dir.path().join(VERIFIED_POINTER_REL);
+        let mut pointer: Value =
+            serde_json::from_str(&fs::read_to_string(&vpath).unwrap()).unwrap();
+        pointer.as_object_mut().unwrap().insert(
+            "evidence_artifact_id".into(),
+            json!("aira:artifact:acq-verify-ok:does-not-exist"),
+        );
+        fs::write(&vpath, serde_json::to_string_pretty(&pointer).unwrap()).unwrap();
+
+        let err = activate_verified(dir.path()).unwrap_err();
+        assert!(
+            matches!(err, AcquisitionError::ActivateEvidenceAuthority { .. }),
+            "missing evidence ref must ActivateEvidenceAuthority, got {err}"
+        );
+        assert!(!dir.path().join(ACTIVATED_POINTER_REL).exists());
+    }
+
+    #[test]
+    fn activate_rejects_tampered_evidence_signature() {
+        use aira_artifact::{ArtifactStore, ArtifactType, CasArtifactStore};
+        use aira_csu::support::{json_bytes, make_artifact};
+        use aira_object::{AiraRef, ContentHash};
+        use serde_json::Map;
+
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("esig.gguf");
+        fs::write(&src, b"esig-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:esig", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"esig-bytes");
+        let art = signed_model_artifact("aira:model:esig", observed.as_str());
+        let art_path = dir.path().join("esig.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        let VerifyOutcome::Verified {
+            model_ref,
+            verified_path,
+            content_hash,
+            quarantine_path,
+            ..
+        } = verify_quarantine(dir.path(), &art_path).unwrap()
+        else {
+            panic!("expected Verified");
+        };
+
+        // Publish a forged verify-evidence with locator-matching fields but bad signature.
+        let mut body = Map::new();
+        body.insert("kind".into(), json!("model-verify-evidence"));
+        body.insert("model_ref".into(), json!(model_ref));
+        body.insert("verified".into(), json!(true));
+        body.insert("activated".into(), json!(false));
+        body.insert("quarantine_path".into(), json!(quarantine_path));
+        body.insert("verified_path".into(), json!(verified_path));
+        body.insert("observed_hash".into(), json!(content_hash));
+        body.insert("expected_hash".into(), json!(content_hash));
+        body.insert("reason_refs".into(), json!(["aira:reason:model-verified"]));
+        body.insert(
+            "signature".into(),
+            json!({
+                "algorithm": "ed25519",
+                "key_ref": "aira:identity:local-test",
+                "signature_value": "aa".repeat(64)
+            }),
+        );
+        let payload = Value::Object(body);
+        let bytes = json_bytes(&payload);
+        let ch = ContentHash::sha256_bytes(&bytes);
+        let hash_hex = ch.as_str().trim_start_matches("sha256:");
+        let forged_id = format!("aira:artifact:acq-verify-ok:{hash_hex}");
+        let desc = make_artifact(
+            &forged_id,
+            ArtifactType::CustomArtifact,
+            &bytes,
+            vec![AiraRef::parse(CSU_ID).unwrap()],
+        );
+        let mut store = CasArtifactStore::open(dir.path().join("artifacts")).unwrap();
+        store.publish(desc, &bytes).unwrap();
+
+        let vpath = dir.path().join(VERIFIED_POINTER_REL);
+        let mut pointer: Value =
+            serde_json::from_str(&fs::read_to_string(&vpath).unwrap()).unwrap();
+        pointer
+            .as_object_mut()
+            .unwrap()
+            .insert("evidence_artifact_id".into(), json!(forged_id));
+        fs::write(&vpath, serde_json::to_string_pretty(&pointer).unwrap()).unwrap();
+
+        let err = activate_verified(dir.path()).unwrap_err();
+        assert!(
+            matches!(err, AcquisitionError::ActivateEvidenceAuthority { .. }),
+            "tampered evidence signature must ActivateEvidenceAuthority, got {err}"
         );
         assert!(!dir.path().join(ACTIVATED_POINTER_REL).exists());
     }
