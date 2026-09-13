@@ -12,7 +12,7 @@
 | `main` | Phase W `#331`–`#342` **IN PROGRESS** @ [`phase-w-plan.md`](docs/phase-w-plan.md) (Pack 1 residual honesty; RFC-0215 reserved); Phase X `#343`–`#358` **QUEUED** @ [`phase-x-plan.md`](docs/phase-x-plan.md) (Pack 2 GUI; RFC-0226 reserved); Phase V `#323`–`#330` **DONE** @ RFC-0208; **QUEUE V closed**; Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase W [`docs/phase-w-plan.md`](docs/phase-w-plan.md) `#331`–`#335` **DONE**; first OPEN `#336`; Phase X Pack 2 **QUEUED** `#343`–`#358` |
+| Активна черга | Phase W [`docs/phase-w-plan.md`](docs/phase-w-plan.md) `#331`–`#336` **DONE**; first OPEN `#337`; Phase X Pack 2 **QUEUED** `#343`–`#358` |
 
 ## Правила атомарності
 
@@ -923,7 +923,7 @@ Audit source: `p-only/AIRA-audit-d1115f2-2026-09-11.md`.
 | 333 | **DONE** | ~~Analyze-370 — Strict submit decoding~~ | unknown nested fields → 4xx; RFC-0217 | `#333` DONE; first OPEN `#334` | constraints (#334) |
 | 334 | **DONE** | ~~Analyze-371 — Constraints enforce-or-reject~~ | enforced or explicit unsupported; RFC-0218 | `#334` DONE; first OPEN `#335` | admission (#335) |
 | 335 | **DONE** | ~~Analyze-372 — Admission boundary verify~~ | text/hash/kind mismatch reject; RFC-0219 | `#335` DONE; first OPEN `#336` | activate evidence (#336) |
-| 336 | **OPEN** | Analyze-373 — Activate evidence authority | pointer locator-only; primary evidence; RFC-0220 | tamper matrix | production trust (#337) |
+| 336 | **DONE** | ~~Analyze-373 — Activate evidence authority~~ | pointer locator-only; primary evidence; RFC-0220 | `#336` DONE; first OPEN `#337` | production trust (#337) |
 | 337 | **OPEN** | Analyze-374 — Production activation trust | no implicit local-test; RFC-0221 | fixtures separate | materialize (#338) |
 | 338 | **OPEN** | Analyze-375 — Safe weights materialization | no-follow + post-copy + bounded buffer; RFC-0222 | symlink safe | backend binding (#339) |
 | 339 | **OPEN** | Analyze-376 — Backend verified binding | mismatch reject; mock ≠ used-model; RFC-0223 | binding green | reuse candidate (#340) |
@@ -933,7 +933,7 @@ Audit source: `p-only/AIRA-audit-d1115f2-2026-09-11.md`.
 
 ### Наступний цикл (Phase W)
 
-**Перший OPEN:** `#336` (Activate evidence authority). Tip: `#335` DONE @ Analyze-372 / RFC-0219.  
+**Перший OPEN:** `#337` (Production activation trust). Tip: `#336` DONE @ Analyze-373 / RFC-0220.  
 **Handoff після `#342`:** Phase X Pack 2 [`docs/phase-x-plan.md`](docs/phase-x-plan.md) `#343`–`#358` (**QUEUED**; RFC-0226 reserved).
 
 ```text
@@ -942,8 +942,8 @@ W0 wiring + A0 (#331 DONE)
     → W1 strict submit (#333 DONE @ RFC-0217)
       → W1 constraints enforce-or-reject (#334 DONE @ RFC-0218)
         → W1 admission boundary (#335 DONE @ RFC-0219)
-          → W1 activate evidence (#336 OPEN / first OPEN)
-            → W1 production trust (#337 OPEN)
+          → W1 activate evidence (#336 DONE @ RFC-0220)
+            → W1 production trust (#337 OPEN / first OPEN)
               → W1 safe materialize (#338 OPEN)
                 → W1 backend binding (#339 OPEN)
                   → W1 reuse candidate (#340 OPEN)
@@ -1080,7 +1080,7 @@ P0 wiring (#266 DONE)
 | Phase N semantic honesty / live rendezvous (post-N audit) | [`docs/phase-n-fix-plan.md`](docs/phase-n-fix-plan.md); `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; global live **PARTIAL** |
 | Desktop UX contract + contextual Help F1 (post-N-fix) | [`docs/phase-o-plan.md`](docs/phase-o-plan.md); [`docs/desktop-ux.md`](docs/desktop-ux.md); `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed |
 | Runtime-honest Desktop (post-O audit) | [`docs/phase-p-plan.md`](docs/phase-p-plan.md); `aira-current.md` @ `700ffd5`; `#266`–`#274` (**DONE** @ RFC-0156; QUEUE P closed) |
-| Pack 1 residual honesty (post-V audit) | [`docs/phase-w-plan.md`](docs/phase-w-plan.md); `#331`–`#342` **IN PROGRESS**; first OPEN `#336` |
+| Pack 1 residual honesty (post-V audit) | [`docs/phase-w-plan.md`](docs/phase-w-plan.md); `#331`–`#342` **IN PROGRESS**; first OPEN `#337` |
 | Pack 2 local multi-model GUI (aira-current 2026-09-13 + M1–M6) | [`docs/phase-x-plan.md`](docs/phase-x-plan.md); `#343`–`#358` **QUEUED** (після W; RFC-0226 reserved) |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

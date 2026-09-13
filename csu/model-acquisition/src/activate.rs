@@ -4,7 +4,10 @@ use std::path::Path;
 use aira_artifact::{ArtifactStore, ArtifactType, CasArtifactStore};
 use aira_csu::support::{json_bytes, make_artifact, make_event};
 use aira_event::EventType;
-use aira_object::{active_signature, utc_now_rfc3339, AiraRef, ContentHash, Signature};
+use aira_object::{
+    active_signature, is_cryptographic_signature, utc_now_rfc3339, verify_ed25519, AiraRef,
+    ContentHash, Signature,
+};
 use serde_json::{json, Map, Value};
 
 use crate::error::AcquisitionError;
@@ -12,7 +15,15 @@ use crate::types::{
     ActivateOutcome, ActivatedPointer, VerifiedPointer, ACTIVATED_POINTER_REL, CACHE_REL, CSU_ID,
     VERIFIED_POINTER_REL,
 };
-use crate::util::{append_custom_event, ensure_under_models, sanitize_slot};
+use crate::util::{
+    append_custom_event, ensure_under_models, sanitize_slot, signing_bytes_without_signature,
+};
+
+/// Authority extracted from primary signed `model-verify-evidence` (#336 / RFC-0220).
+struct VerifyEvidenceAuthority {
+    model_ref: String,
+    content_hash: String,
+}
 
 /// Explicitly activate a verified model into local cache.
 ///
@@ -20,8 +31,12 @@ use crate::util::{append_custom_event, ensure_under_models, sanitize_slot};
 /// Evidence + Event. Does **not** execute the model. Inventory refresh is left to
 /// the CLI (`scan_and_publish` on [`CACHE_REL`]) to respect CSU↛CSU firewall.
 ///
-/// `#327` / RFC-0212: source and post-copy content hashes must equal
-/// [`VerifiedPointer::content_hash`]. Mismatch is fail-closed (no activated pointer).
+/// `#327` / RFC-0212: source and post-copy content hashes must equal the verify
+/// evidence `observed_hash`. Mismatch is fail-closed (no activated pointer).
+///
+/// `#336` / RFC-0220: [`VerifiedPointer`] is locator-only. Model/hash/verified status
+/// come from the signed verify evidence at `evidence_artifact_id`; pointer fields that
+/// disagree with evidence reject before any cache write.
 pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome, AcquisitionError> {
     let root = aira_root.as_ref();
     let _ = aira_object::register_node_identity(root);
@@ -35,10 +50,14 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
     )
     .map_err(|e| AcquisitionError::Other(e.to_string()))?;
 
-    let expected = ContentHash::parse(&pointer.content_hash).map_err(|_| {
-        AcquisitionError::ActivateHashMismatch {
-            expected: pointer.content_hash.clone(),
-            observed: "(invalid VerifiedPointer.content_hash)".into(),
+    let authority = resolve_verify_evidence_authority(root, &pointer)?;
+
+    let expected = ContentHash::parse(&authority.content_hash).map_err(|_| {
+        AcquisitionError::ActivateEvidenceAuthority {
+            detail: format!(
+                "verify evidence observed_hash is not a valid ContentHash: {}",
+                authority.content_hash
+            ),
         }
     })?;
 
@@ -64,7 +83,7 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
         .ok_or_else(|| AcquisitionError::Other("verified path has no file name".into()))?
         .to_string_lossy()
         .to_string();
-    let slot = sanitize_slot(&pointer.model_ref);
+    let slot = sanitize_slot(&authority.model_ref);
     let dest_dir = root.join(CACHE_REL).join(&slot);
     fs::create_dir_all(&dest_dir).map_err(|e| AcquisitionError::Io(e.to_string()))?;
     ensure_under_models(root, &dest_dir)?;
@@ -86,7 +105,7 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
 
     let evidence_id = publish_activate_evidence(
         root,
-        &pointer.model_ref,
+        &authority.model_ref,
         &pointer.verified_path,
         &dest_display,
         content_hash.as_str(),
@@ -102,14 +121,17 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
         vec![],
         vec![AiraRef::parse(&evidence_id).expect("aid")],
         vec![],
-        Some(format!("op:model-installed:activate:{}", pointer.model_ref)),
+        Some(format!(
+            "op:model-installed:activate:{}",
+            authority.model_ref
+        )),
     );
     append_custom_event(root, event)?;
 
     let updated_at = utc_now_rfc3339().map_err(|e| AcquisitionError::Crypto(e.to_string()))?;
     let ap = ActivatedPointer {
         updated_at,
-        model_ref: pointer.model_ref.clone(),
+        model_ref: authority.model_ref.clone(),
         cache_path: dest_display.clone(),
         verified_path: pointer.verified_path.clone(),
         content_hash: content_hash.as_str().to_string(),
@@ -127,7 +149,7 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
 
     let cache_scan = root.join(CACHE_REL);
     Ok(ActivateOutcome {
-        model_ref: pointer.model_ref,
+        model_ref: authority.model_ref,
         cache_path: dest_display,
         verified_path: pointer.verified_path,
         content_hash: content_hash.as_str().to_string(),
@@ -135,6 +157,117 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
         cache_scan_dir: cache_scan.display().to_string(),
     })
 }
+
+/// Resolve and cryptographically verify primary verify evidence; treat pointer as locator.
+fn resolve_verify_evidence_authority(
+    root: &Path,
+    pointer: &VerifiedPointer,
+) -> Result<VerifyEvidenceAuthority, AcquisitionError> {
+    if pointer.evidence_artifact_id.trim().is_empty() {
+        return Err(AcquisitionError::ActivateEvidenceAuthority {
+            detail: "VerifiedPointer.evidence_artifact_id is empty (locator requires evidence)"
+                .into(),
+        });
+    }
+    let evidence_id = AiraRef::parse(&pointer.evidence_artifact_id).map_err(|e| {
+        AcquisitionError::ActivateEvidenceAuthority {
+            detail: format!("evidence_artifact_id is not an aira ref: {e}"),
+        }
+    })?;
+
+    let store = CasArtifactStore::open(root.join("artifacts")).map_err(|e| {
+        AcquisitionError::ActivateEvidenceAuthority {
+            detail: format!("evidence store open failed: {e}"),
+        }
+    })?;
+    let (_desc, bytes) =
+        store
+            .resolve(&evidence_id)
+            .map_err(|e| AcquisitionError::ActivateEvidenceAuthority {
+                detail: format!("verify evidence artifact missing/unresolvable: {e}"),
+            })?;
+
+    let body: Value = serde_json::from_slice(&bytes).map_err(|e| {
+        AcquisitionError::ActivateEvidenceAuthority {
+            detail: format!("verify evidence is not JSON: {e}"),
+        }
+    })?;
+
+    if body.get("kind").and_then(|v| v.as_str()) != Some("model-verify-evidence") {
+        return Err(AcquisitionError::ActivateEvidenceAuthority {
+            detail: "evidence kind must be model-verify-evidence".into(),
+        });
+    }
+    if body.get("verified") != Some(&Value::Bool(true)) {
+        return Err(AcquisitionError::ActivateEvidenceAuthority {
+            detail: "verify evidence verified!=true".into(),
+        });
+    }
+
+    let model_ref = body
+        .get("model_ref")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| AcquisitionError::ActivateEvidenceAuthority {
+            detail: "verify evidence missing model_ref".into(),
+        })?
+        .to_string();
+
+    let observed_hash = body
+        .get("observed_hash")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| AcquisitionError::ActivateEvidenceAuthority {
+            detail: "verify evidence missing observed_hash".into(),
+        })?
+        .to_string();
+
+    let sig: Signature = serde_json::from_value(
+        body.get("signature").cloned().unwrap_or(Value::Null),
+    )
+    .map_err(|_| AcquisitionError::ActivateEvidenceAuthority {
+        detail: "verify evidence missing or invalid signature".into(),
+    })?;
+    if !is_cryptographic_signature(&sig) {
+        return Err(AcquisitionError::ActivateEvidenceAuthority {
+            detail: "verify evidence signature is not cryptographic".into(),
+        });
+    }
+    let msg = signing_bytes_without_signature(&body)?;
+    verify_ed25519(&sig, &msg).map_err(|e| AcquisitionError::ActivateEvidenceAuthority {
+        detail: format!("verify evidence signature verify failed: {e}"),
+    })?;
+
+    // Locator integrity: unsigned pointer must not disagree with signed evidence.
+    if pointer.model_ref != model_ref {
+        return Err(AcquisitionError::ActivateEvidenceAuthority {
+            detail: format!(
+                "pointer model_ref {:?} disagrees with evidence model_ref {:?}",
+                pointer.model_ref, model_ref
+            ),
+        });
+    }
+    if pointer.content_hash != observed_hash {
+        return Err(AcquisitionError::ActivateEvidenceAuthority {
+            detail: "pointer content_hash disagrees with evidence observed_hash (pointer is locator-only)"
+                .into(),
+        });
+    }
+    if let Some(ev_path) = body.get("verified_path").and_then(|v| v.as_str()) {
+        if pointer.verified_path != ev_path {
+            return Err(AcquisitionError::ActivateEvidenceAuthority {
+                detail: "pointer verified_path disagrees with evidence verified_path (pointer is locator-only)"
+                    .into(),
+            });
+        }
+    }
+
+    Ok(VerifyEvidenceAuthority {
+        model_ref,
+        content_hash: observed_hash,
+    })
+}
+
 fn publish_activate_evidence(
     root: &Path,
     model_ref: &str,

@@ -25,11 +25,14 @@ pub enum AcquisitionError {
     NoVerified,
     #[error("no activated cache for model — run models activate first")]
     NoActivated,
-    /// `#327` / RFC-0212: post-copy (or source) bytes ≠ `VerifiedPointer.content_hash`.
+    /// `#327` / RFC-0212: post-copy (or source) bytes ≠ verify evidence `observed_hash`.
     #[error(
-        "activate content_hash mismatch (fail-closed): verified pointer {expected} vs observed {observed}"
+        "activate content_hash mismatch (fail-closed): verify evidence {expected} vs observed {observed}"
     )]
     ActivateHashMismatch { expected: String, observed: String },
+    /// `#336` / RFC-0220: primary signed verify evidence missing, unsigned, or disagrees with locator.
+    #[error("activate evidence authority failed (fail-closed): {detail}")]
+    ActivateEvidenceAuthority { detail: String },
     #[error("model artifact missing or invalid: {0}")]
     BadArtifact(String),
     #[error("invalid share visibility (use local|opt_in): {0}")]
