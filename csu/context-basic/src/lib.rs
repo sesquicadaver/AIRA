@@ -90,12 +90,24 @@ impl Csu for ContextBasicCsu {
             unresolved.push("underspecified_statement".into());
         }
 
-        // #324 / RFC-0209: pull immutable admission snapshot from ProblemSubmitted refs.
+        // #324 / RFC-0209 + #335 / RFC-0219: pull immutable admission snapshot;
+        // present factor must pass kind/schema boundary.
         let mut admission_snapshot = None;
         for id in &event.artifact_refs {
             if let Ok((_desc, bytes)) = ctx.resolve_artifact(id) {
                 if let Ok(v) = serde_json::from_slice::<serde_json::Value>(&bytes) {
                     if v.get("kind").and_then(|k| k.as_str()) == Some("admission_snapshot") {
+                        let schema = v
+                            .get("payload_schema")
+                            .and_then(|s| s.as_str())
+                            .unwrap_or("");
+                        if schema != "aira:schema:admission:snapshot:0.1" {
+                            return Err(CsuHandlerError {
+                                message: format!(
+                                    "admission boundary: context factor payload_schema must be aira:schema:admission:snapshot:0.1, got {schema}"
+                                ),
+                            });
+                        }
                         admission_snapshot = Some(v);
                         break;
                     }
@@ -284,6 +296,53 @@ mod tests {
         assert_eq!(
             admit.get("kind").and_then(|k| k.as_str()),
             Some("admission_snapshot")
+        );
+    }
+
+    #[test]
+    fn problem_submitted_rejects_admission_with_wrong_schema() {
+        use aira_csu::support::{json_bytes, make_artifact};
+        use aira_object::ContentHash;
+
+        let mut csu = ContextBasicCsu::new();
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+
+        let snap = json!({
+            "payload_schema": "aira:schema:forged",
+            "kind": "admission_snapshot",
+            "statement_content_hash": ContentHash::sha256_bytes(b"Calculate 2 + 2").as_str(),
+        });
+        let bytes = json_bytes(&snap);
+        let art = make_artifact(
+            "aira:artifact:admit-bad",
+            ArtifactType::OperationalArtifact,
+            &bytes,
+            vec![],
+        );
+        let art_id = art.artifact_id.clone();
+        store.publish(art, &bytes).unwrap();
+
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let ev = mk(
+            "aira:event:p1",
+            EventType::ProblemSubmitted,
+            vec![AiraRef::parse("aira:problem:01TESTPROBLEM").unwrap()],
+            vec![art_id],
+            vec![],
+            Some("Calculate 2 + 2".into()),
+        );
+        let err = csu.on_event(&ev, &mut ctx).expect_err("bad schema");
+        assert!(
+            err.message.contains("admission boundary"),
+            "{}",
+            err.message
         );
     }
 }

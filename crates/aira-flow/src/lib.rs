@@ -188,6 +188,39 @@ mod tests {
     }
 
     #[test]
+    fn submit_rejects_forged_admission_statement_hash() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let text = "Calculate 2 + 2";
+        let mut snap = crate::AdmissionSnapshot::default_for_text(text);
+        snap.statement_content_hash =
+            "sha256:0000000000000000000000000000000000000000000000000000000000000000".into();
+        let err = plane
+            .submit_problem_with_admission(text, snap)
+            .expect_err("forged hash must fail closed");
+        assert!(matches!(err, FlowError::AdmissionBoundary(_)), "{err:?}");
+        assert!(
+            plane.problem_ref().is_none(),
+            "no problem effect before boundary reject"
+        );
+    }
+
+    #[test]
+    fn submit_rejects_wrong_admission_kind() {
+        let _lock = isolated_flow();
+        let dir = tempfile::tempdir().unwrap();
+        let mut plane = OperationalPlane::open(dir.path()).unwrap();
+        let text = "Calculate 2 + 2";
+        let mut snap = crate::AdmissionSnapshot::default_for_text(text);
+        snap.kind = "forged_kind".into();
+        let err = plane
+            .submit_problem_with_admission(text, snap)
+            .expect_err("wrong kind must fail closed");
+        assert!(matches!(err, FlowError::AdmissionBoundary(_)), "{err:?}");
+    }
+
+    #[test]
     fn calculate_two_plus_two_demo() {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();

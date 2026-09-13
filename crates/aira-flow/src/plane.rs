@@ -48,6 +48,9 @@ pub enum FlowError {
     /// Required admission constraint cannot be enforced (`#334` / RFC-0218).
     #[error("unsupported constraint: {0}")]
     UnsupportedConstraint(String),
+    /// Snapshot↔text / kind / schema mismatch at admit (`#335` / RFC-0219).
+    #[error("admission boundary: {0}")]
+    AdmissionBoundary(String),
     #[error("flow: {0}")]
     Other(String),
 }
@@ -345,6 +348,9 @@ impl OperationalPlane {
         text: &str,
         admission: AdmissionSnapshot,
     ) -> Result<SubmitOutcome, FlowError> {
+        admission
+            .verify_input_boundary(text)
+            .map_err(FlowError::AdmissionBoundary)?;
         admission
             .enforce_or_reject(text)
             .map_err(FlowError::UnsupportedConstraint)?;
