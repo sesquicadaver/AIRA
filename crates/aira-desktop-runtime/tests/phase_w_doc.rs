@@ -171,7 +171,8 @@ fn phase_w_production_activation_trust_runtime_present() {
         std::fs::read_to_string(repo_root().join("csu/model-acquisition/src/error.rs")).unwrap();
     assert!(err.contains("ActivateProductionTrust"));
     let keyring =
-        std::fs::read_to_string(repo_root().join("crates/aira-object/src/crypto/keyring.rs")).unwrap();
+        std::fs::read_to_string(repo_root().join("crates/aira-object/src/crypto/keyring.rs"))
+            .unwrap();
     assert!(keyring.contains("without_local_test"));
 }
 
