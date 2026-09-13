@@ -1,10 +1,10 @@
 # Phase W — Pack 1 residual honesty (post-V audit)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-11; `#331`–`#341` **DONE**; first OPEN `#342`).  
+**Статус:** **DONE** @ [AIRA-RFC-0215](../specs/rfc/AIRA-RFC-0215-phase-w-pack1-residual-honesty.md) (активовано 2026-09-11; `#331`–`#342` **DONE**; **QUEUE W closed**; no OPEN W atoms).  
 **Джерела:** пост-V аудит `p-only/AIRA-audit-d1115f2-2026-09-11.md` @ `d1115f2` (merge PR #295 / RFC-0208); Phase V **DONE** @ [`phase-v-plan.md`](phase-v-plan.md) / RFC-0208 (**QUEUE V closed**); Pack 0 **DONE** @ [`repair-package-0.md`](repair-package-0.md) / RFC-0207; trace [`product-requirements-trace.md`](product-requirements-trace.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase W `#331`–`#342`.  
-**Closure:** consolidating **RFC-0215** reserved file-free until `#342` (id confirmed free 2026-09-11).  
-**Handoff (після `#342`):** Pack 2 GUI → Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` (**QUEUED**; RFC-0226 reserved; джерело GUI `p-only/aira-current.md` 2026-09-13).  
+**Closure:** consolidating **RFC-0215** **DONE** @ `#342` (id was confirmed free 2026-09-11 until close).  
+**Handoff:** Pack 2 GUI → Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` (**QUEUED**; first OPEN `#343`; RFC-0226 reserved; джерело GUI `p-only/aira-current.md` 2026-09-13).  
 **Не змінює:** анти-місію README; історію Phase V як never-DONE; C0/C1 `Calculate 2 + 2` як execution-basic для unconstrained math; `aira-core` ledger / LLM-in-Core; GUI stack (egui) rewrite; Pack 2 multi-model catalog / Work «Порівняти» (M1–M6) — **окремий Phase X**; Pack 3–7; public bind / auto-trust як Desktop default.
 
 > Примітка: аудит і `aira-repair.md` поза git-каноном (`p-only/`). Канон у репо = цей план + Pack 1 close + QUEUE + RFC-D.
@@ -27,7 +27,7 @@ Phase V закрила **структурний** Pack 1 (snapshot persist, reus
 ```text
 QUEUE V closed (#323–#330 / RFC-0208)
   + audit d1115f2: Pack 1 PARTIAL (D1–D6)
-  → Phase W IN PROGRESS: residual honesty A0–A10
+  → Phase W residual honesty A0–A10 (closed @ RFC-0215)
     → не Pack 2 GUI (M1–M6); не Pack 3–7; не Core rewrite
 ```
 
@@ -104,7 +104,7 @@ W0 Wiring (+ A0 contract honesty tips)
 
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
-| `#331` | W0 | Phase W wiring + A0 tips | план IN PROGRESS; QUEUE `#331`–`#342`; `phase_w_doc`; RFC-0215 reserved; Pack 1 PARTIAL honesty без rewrite V | math (#332) |
+| `#331` | W0 | Phase W wiring + A0 tips | **DONE**: plan + QUEUE `#331`–`#342` + `phase_w_doc`; RFC-0215 reserved at wiring | math (#332) |
 | `#332` | W1 | Math capsule fidelity | **DONE** @ RFC-0216: `9-3`→6, `9/3`→3, `42`→42; unsupported ≠ default `2+2` | strict HTTP (#333) |
 | `#333` | W1 | Strict submit decoding | **DONE** @ RFC-0217: unknown → 4xx; text-only OK | constraints matrix (#334) |
 | `#334` | W1 | Constraints enforce-or-reject | **DONE** @ RFC-0218: matrix enforce-or-reject | admission boundary (#335) |
@@ -115,7 +115,7 @@ W0 Wiring (+ A0 contract honesty tips)
 | `#339` | W1 | Backend verified binding | **DONE** @ RFC-0223: mismatch reject; mock ≠ used-model | reuse candidate (#340) |
 | `#340` | W1 | Reuse candidate independent check | **DONE** @ RFC-0224: чужий VRA ≠ Completed; admit_reuse_candidate | result binding (#341) |
 | `#341` | W1 | Result/verify task binding | **DONE** @ RFC-0225: swap refs reject; generate ≠ false VF | close (#342) |
-| `#342` | W | RFC-0215 + close | consolidating; QUEUE W closed; Pack 1 residual honesty DONE | Pack 2 M* |
+| `#342` | W | RFC-0215 + close | **DONE** @ RFC-0215: consolidating; QUEUE W closed | Pack 2 M* |
 
 ```text
 #331 W0 wiring + A0 (DONE)
@@ -129,7 +129,8 @@ W0 Wiring (+ A0 contract honesty tips)
                 → #339 W1 backend binding DONE @ RFC-0223
                   → #340 W1 reuse candidate DONE @ RFC-0224
                     → #341 W1 result/verify binding DONE @ RFC-0225
-                      → #342 W close RFC-0215 (first OPEN)
+                      → #342 W close RFC-0215 DONE
+                        → Phase X first OPEN `#343`
 ```
 
 **Anti-merge:** не зливати math із strict HTTP; не зливати evidence authority з backend binding; не зливати close з runtime; не зливати M1–M6 у W.
@@ -153,8 +154,8 @@ aira-core still has no GUI/ledger/LLM deps.
 
 ## 7. RFC (після активації)
 
-- Consolidating (`#342`): **AIRA-RFC-0215** — reserved file-free until close (id confirmed free 2026-09-11).
-- Per-atom RFC-D: `#332`→**0216** … `#341`→**0225** (призначаються на кожному PR); `#342`→0215 consolidating.
+- Consolidating (`#342`): **AIRA-RFC-0215** **DONE** (id was confirmed free 2026-09-11 until close).
+- Per-atom RFC-D: `#332`→**0216** … `#341`→**0225**; `#342`→0215 consolidating.
 
 ---
 
@@ -164,7 +165,7 @@ aira-core still has no GUI/ledger/LLM deps.
 QUEUE V closed @ RFC-0208
   + audit d1115f2 Pack 1 PARTIAL (D1–D6)
   + developer «активувати residual phase» (2026-09-11)
-  → wiring `#331` DONE; `#332`–`#341` DONE @ RFC-0225; план IN PROGRESS; first OPEN `#342`.
+  → wiring `#331` DONE; `#332`–`#342` DONE @ RFC-0215; план **DONE**; **QUEUE W closed**; first OPEN `#343`.
 ```
 
 ---

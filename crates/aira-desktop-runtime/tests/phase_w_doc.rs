@@ -14,15 +14,18 @@ fn phase_w_plan_present() {
         "Pack 1 residual honesty",
         "#331",
         "#342",
-        "IN PROGRESS",
         "Math capsule fidelity",
         "Strict submit decoding",
         "Constraints enforce-or-reject",
         "Activate evidence authority",
         "Backend verified binding",
+        "Reuse candidate independent check",
+        "Result/verify task binding",
         "AIRA-RFC-0215",
         "confirmed free",
         "QUEUE V closed",
+        "QUEUE W closed",
+        "no OPEN W atoms",
         "RFC-0208",
         "RFC-0216",
         "RFC-0217",
@@ -34,8 +37,6 @@ fn phase_w_plan_present() {
         "RFC-0223",
         "RFC-0224",
         "RFC-0225",
-        "Result/verify task binding",
-        "first OPEN `#342`",
         "D1",
         "D6",
         "GPU marketplace",
@@ -44,6 +45,7 @@ fn phase_w_plan_present() {
         "phase-x-plan.md",
         "Handoff",
         "public bind",
+        "first OPEN `#343`",
     ] {
         assert!(text.contains(needle), "phase-w-plan missing: {needle}");
     }
@@ -52,30 +54,33 @@ fn phase_w_plan_present() {
         "phase-w-plan must be activated (not НЕ АКТИВОВАНО)"
     );
     assert!(
-        !text.contains("**DONE** @ [AIRA-RFC-0215"),
-        "phase-w-plan must not claim RFC-0215 DONE before #342"
+        text.contains("**DONE** @ [AIRA-RFC-0215"),
+        "phase-w-plan must claim RFC-0215 DONE after #342"
     );
     assert!(
-        !text.contains("first OPEN `#341`"),
-        "phase-w-plan must advance tip past #341"
+        !text.contains("first OPEN `#342`"),
+        "phase-w-plan must not keep #342 as first-OPEN after close"
+    );
+    assert!(
+        !text.contains("**IN PROGRESS**"),
+        "phase-w-plan must not stay IN PROGRESS after #342"
     );
 }
 
 #[test]
-fn phase_w_queue_341_done_342_open() {
+fn phase_w_queue_all_done() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-w-plan.md"));
-    for n in 331..=341 {
+    for n in 331..=342 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
+        assert!(
+            !text.contains(&format!("| {n} | **OPEN**")),
+            "QUEUE #{n} must not stay OPEN"
+        );
     }
-    assert!(text.contains("| 342 | **OPEN**"), "QUEUE #342 must be OPEN");
-    assert!(
-        !text.contains("| 342 | **DONE**"),
-        "QUEUE #342 must not be DONE yet"
-    );
     for needle in [
         "Analyze-368",
         "Analyze-369",
@@ -88,6 +93,7 @@ fn phase_w_queue_341_done_342_open() {
         "Analyze-376",
         "Analyze-377",
         "Analyze-378",
+        "Analyze-379",
         "RFC-0215",
         "RFC-0216",
         "RFC-0217",
@@ -100,13 +106,19 @@ fn phase_w_queue_341_done_342_open() {
         "RFC-0224",
         "RFC-0225",
         "Pack 1 residual",
-        "first OPEN `#342`",
+        "QUEUE W closed",
+        "no OPEN W atoms",
+        "first OPEN `#343`",
         "QUEUE V closed",
         "phase-x-plan.md",
         "Pack 2",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
+    assert!(
+        !text.contains("**Перший OPEN:** `#342`") && text.contains("**Перший OPEN:** `#343`"),
+        "QUEUE tip must advance from #342 to #343 after W close"
+    );
     for n in 343..=358 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
@@ -116,12 +128,20 @@ fn phase_w_queue_341_done_342_open() {
 }
 
 #[test]
-fn phase_w_rfc_0215_file_free() {
+fn phase_w_rfc_0215_present() {
     let path = repo_root().join("specs/rfc/AIRA-RFC-0215-phase-w-pack1-residual-honesty.md");
-    assert!(
-        !path.exists(),
-        "RFC-0215 must stay file-free until #342 close"
-    );
+    let text = std::fs::read_to_string(&path).expect("RFC-0215 missing after #342 close");
+    for needle in [
+        "#342",
+        "QUEUE W closed",
+        "no OPEN W atoms",
+        "RFC-0225",
+        "RFC-0216",
+        "Pack 1 residual honesty",
+        "first OPEN #343",
+    ] {
+        assert!(text.contains(needle), "RFC-0215 missing: {needle}");
+    }
 }
 
 #[test]
@@ -441,43 +461,61 @@ fn phase_w_desktop_ux_tip() {
     let text = std::fs::read_to_string(repo_root().join("docs/desktop-ux.md")).unwrap();
     for needle in [
         "phase-w-plan.md",
-        "#341",
         "#342",
+        "#343",
         "RFC-0215",
-        "RFC-0225",
+        "QUEUE W closed",
         "QUEUE V closed",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
+    assert!(
+        !text.contains("first OPEN `#342`"),
+        "desktop-ux must advance tip past #342"
+    );
 }
 
 #[test]
 fn phase_w_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-w-plan.md") || readme.contains("Phase W"));
-    assert!(readme.contains("#342") || readme.contains("first OPEN"));
+    assert!(readme.contains("QUEUE W closed") || readme.contains("RFC-0215"));
+    assert!(readme.contains("#343") || readme.contains("first OPEN"));
+    assert!(
+        !readme.contains("first OPEN `#342`"),
+        "README must not keep #342 as first-OPEN"
+    );
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-w-plan.md"));
-    assert!(docs.contains("#341") || docs.contains("IN PROGRESS"));
+    assert!(docs.contains("QUEUE W closed") || docs.contains("**DONE** @ RFC-0215"));
+    assert!(
+        !docs.contains("first OPEN `#342`"),
+        "docs/README must not keep #342 as first-OPEN"
+    );
 }
 
 #[test]
 fn phase_w_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-w-plan.md") || text.contains("Phase W"));
-    assert!(text.contains("#342") || text.contains("перший OPEN"));
-    assert!(text.contains("QUEUE V closed") || text.contains("RFC-0208"));
+    assert!(text.contains("QUEUE W closed") || text.contains("RFC-0215"));
+    assert!(text.contains("#343") || text.contains("перший OPEN"));
+    assert!(
+        !text.contains("first OPEN `#342`") && !text.contains("перший OPEN `#342`"),
+        "NEXT_PROBLEM must not keep #342 as first-OPEN"
+    );
 }
 
 #[test]
 fn phase_w_status_row() {
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("| #341 |") || status.contains("#341"));
+    assert!(status.contains("| #342 |") || status.contains("#342"));
     assert!(status.contains("phase_w_doc.rs"));
     assert!(status.contains("phase-w-plan.md"));
-    assert!(status.contains("RFC-0225") || status.contains("0225"));
-    assert!(status.contains("#342"));
+    assert!(status.contains("RFC-0215") || status.contains("0215"));
+    assert!(status.contains("QUEUE W closed"));
+    assert!(status.contains("#343"));
 }
 
 #[test]
@@ -485,15 +523,19 @@ fn phase_w_repair_package_1_honesty() {
     let text = std::fs::read_to_string(repo_root().join("docs/repair-package-1.md")).unwrap();
     for needle in [
         "RFC-0208",
-        "PARTIAL",
-        "phase-w-plan.md",
-        "#341",
-        "#342",
         "RFC-0215",
+        "QUEUE W closed",
+        "phase-w-plan.md",
+        "#342",
+        "#343",
         "RFC-0225",
     ] {
         assert!(text.contains(needle), "repair-package-1 missing: {needle}");
     }
+    assert!(
+        text.contains("**DONE** @ [AIRA-RFC-0215") || text.contains("residual D1–D6: **DONE**"),
+        "repair-package-1 must claim residual honesty DONE @ RFC-0215"
+    );
 }
 
 #[test]
