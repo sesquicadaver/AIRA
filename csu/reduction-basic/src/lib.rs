@@ -52,6 +52,14 @@ fn is_math_eval_safe(statement: &str) -> bool {
     is_pure_math_expression(&cleaned)
 }
 
+/// Public classifier for admission constraint gating (`#334` / RFC-0218).
+///
+/// Deterministic math (`math.eval.safe`) cannot honor model/placement LLM
+/// constraints — callers must reject those as unsupported.
+pub fn problem_binds_math_eval_safe(statement: &str) -> bool {
+    is_math_eval_safe(statement)
+}
+
 fn is_pure_math_expression(cleaned: &str) -> bool {
     !cleaned.is_empty()
         && cleaned.chars().any(|c| c.is_ascii_digit())

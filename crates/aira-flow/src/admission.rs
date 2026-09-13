@@ -193,6 +193,94 @@ impl AdmissionSnapshot {
         let bytes = serde_json::to_vec(&norm).ok()?;
         Some(ContentHash::sha256_bytes(&bytes).as_str().to_string())
     }
+
+    /// Fail closed when any non-default constraint is neither enforced nor
+    /// explicitly unsupported (`#334` / RFC-0218 / audit D2).
+    ///
+    /// Matrix (non-default → outcome):
+    /// - `reuse_policy` — **enforced** (reuse catalog key / skip)
+    /// - `placement=local|remote_allowed` — **enforced** (local execution permitted)
+    /// - `placement=remote_required` — **unsupported** (no remote cycle yet)
+    /// - `model_ref` / `allowed_model_refs` on math — **unsupported**
+    /// - `model_ref` / `allowed_model_refs` on generate — **enforced** at activate gate
+    /// - `model_version` / `model_content_hash` — **unsupported** until verified binding
+    /// - `generation.*` — **unsupported** (backends do not apply knobs yet)
+    /// - `privacy_class` / `resource_budget.*` — **unsupported**
+    /// - `fallback.allow_*=true` — **unsupported** (no silent substitute path)
+    /// - `fallback` both false — **enforced** (default honesty)
+    pub fn enforce_or_reject(&self, problem_text: &str) -> Result<(), String> {
+        if self.placement == PlacementPreference::RemoteRequired {
+            return Err(
+                "unsupported constraint: placement=remote_required (local-only runtime; not enforced)"
+                    .into(),
+            );
+        }
+        // Local | RemoteAllowed: local execution remains valid.
+
+        if self.generation.temperature.is_some()
+            || self.generation.top_p.is_some()
+            || self.generation.max_tokens.is_some()
+            || self.generation.seed.is_some()
+        {
+            return Err(
+                "unsupported constraint: generation parameters (not applied by current backends)"
+                    .into(),
+            );
+        }
+        if self.privacy_class.is_some() {
+            return Err("unsupported constraint: privacy_class".into());
+        }
+        if self.resource_budget.max_cost.is_some() || self.resource_budget.max_latency_ms.is_some()
+        {
+            return Err("unsupported constraint: resource_budget".into());
+        }
+        if self.fallback.allow_model_fallback || self.fallback.allow_placement_fallback {
+            return Err(
+                "unsupported constraint: fallback allow_* (silent substitute not implemented)"
+                    .into(),
+            );
+        }
+        if self.model_version.is_some() {
+            return Err("unsupported constraint: model_version".into());
+        }
+        if self.model_content_hash.is_some() {
+            return Err("unsupported constraint: model_content_hash".into());
+        }
+
+        let math = aira_csu_reduction_basic::problem_binds_math_eval_safe(problem_text);
+        if math {
+            if self.model_ref.is_some() {
+                return Err(
+                    "unsupported constraint: model_ref on deterministic math (execute with model or omit)"
+                        .into(),
+                );
+            }
+            if !self.allowed_model_refs.is_empty() {
+                return Err(
+                    "unsupported constraint: allowed_model_refs on deterministic math".into(),
+                );
+            }
+        } else {
+            if !self.allowed_model_refs.is_empty() && self.model_ref.is_none() {
+                return Err(
+                    "unsupported constraint: allowed_model_refs without model_ref (auto-within-set not implemented)"
+                        .into(),
+                );
+            }
+            if let Some(want) = self.model_ref.as_ref() {
+                if !self.allowed_model_refs.is_empty()
+                    && !self.allowed_model_refs.iter().any(|a| a == want)
+                {
+                    return Err(format!(
+                        "unsupported constraint: model_ref {want} not in allowed_model_refs"
+                    ));
+                }
+            }
+            // model_ref alone: enforced at activate gate (must match activated pointer).
+        }
+        // reuse_policy: always enforceable via catalog key (no reject branch).
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -322,5 +410,61 @@ mod tests {
     fn empty_constraints_object_ok() {
         let c: AdmissionConstraints = serde_json::from_str("{}").unwrap();
         assert_eq!(c, AdmissionConstraints::default());
+    }
+
+    #[test]
+    fn enforce_rejects_remote_required() {
+        let mut s = AdmissionSnapshot::default_for_text("hello world");
+        s.placement = PlacementPreference::RemoteRequired;
+        let err = s.enforce_or_reject("hello world").unwrap_err();
+        assert!(err.contains("remote_required"), "{err}");
+    }
+
+    #[test]
+    fn enforce_rejects_model_ref_on_math() {
+        let s = AdmissionSnapshot::from_text_and_constraints(
+            "Calculate 2 + 2",
+            &AdmissionConstraints {
+                model_ref: Some("aira:model:x".into()),
+                ..Default::default()
+            },
+        );
+        let err = s.enforce_or_reject("Calculate 2 + 2").unwrap_err();
+        assert!(err.contains("model_ref"), "{err}");
+    }
+
+    #[test]
+    fn enforce_allows_text_only_math() {
+        let s = AdmissionSnapshot::default_for_text("Calculate 2 + 2");
+        s.enforce_or_reject("Calculate 2 + 2").unwrap();
+    }
+
+    #[test]
+    fn enforce_rejects_generation_knobs() {
+        let s = AdmissionSnapshot::from_text_and_constraints(
+            "Summarize locally",
+            &AdmissionConstraints {
+                generation: GenerationParameters {
+                    temperature: Some(0.2),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
+        let err = s.enforce_or_reject("Summarize locally").unwrap_err();
+        assert!(err.contains("generation"), "{err}");
+    }
+
+    #[test]
+    fn enforce_allows_model_ref_on_generate_text() {
+        let s = AdmissionSnapshot::from_text_and_constraints(
+            "Summarize the local Problem Statement",
+            &AdmissionConstraints {
+                model_ref: Some("aira:model:x".into()),
+                ..Default::default()
+            },
+        );
+        s.enforce_or_reject("Summarize the local Problem Statement")
+            .unwrap();
     }
 }

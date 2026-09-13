@@ -45,6 +45,9 @@ pub enum FlowError {
     ResearchNonOperational(String),
     #[error("claim without evidence rejected as operational input: {0}")]
     EvidencePrimacy(String),
+    /// Required admission constraint cannot be enforced (`#334` / RFC-0218).
+    #[error("unsupported constraint: {0}")]
+    UnsupportedConstraint(String),
     #[error("flow: {0}")]
     Other(String),
 }
@@ -342,6 +345,9 @@ impl OperationalPlane {
         text: &str,
         admission: AdmissionSnapshot,
     ) -> Result<SubmitOutcome, FlowError> {
+        admission
+            .enforce_or_reject(text)
+            .map_err(FlowError::UnsupportedConstraint)?;
         if is_normative_split(text) {
             return self.emit_differentiated_field(text, admission);
         }

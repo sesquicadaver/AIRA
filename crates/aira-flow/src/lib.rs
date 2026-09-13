@@ -164,12 +164,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut plane = OperationalPlane::open(dir.path()).unwrap();
         let text = "Calculate 2 + 2";
+        // `#334`: math rejects model/generation; freeze via supported reuse_policy.
         let constraints = crate::AdmissionConstraints {
-            model_ref: Some("aira:model:chosen".into()),
-            generation: crate::GenerationParameters {
-                temperature: Some(0.3),
-                ..Default::default()
-            },
             reuse_policy: crate::ReusePolicy::RequireNewExecution,
             ..Default::default()
         };
@@ -178,21 +174,17 @@ mod tests {
             .submit_problem_with_admission(text, snap.clone())
             .unwrap();
         let (_, admitted) = plane.last_admission().expect("admission").clone();
-        assert_eq!(admitted.model_ref.as_deref(), Some("aira:model:chosen"));
-        assert_eq!(admitted.generation.temperature, Some(0.3));
         assert_eq!(
             admitted.reuse_policy,
             crate::ReusePolicy::RequireNewExecution
         );
-        // Simulate post-submit Settings / activated-pointer change: mutating a
-        // local constraints copy must not rewrite the plane's admitted snapshot.
+        // Simulate post-submit Settings change: mutating a local constraints
+        // copy must not rewrite the plane's admitted snapshot.
         let mut later = constraints;
-        later.model_ref = Some("aira:model:other".into());
-        later.generation.temperature = Some(0.9);
-        assert_ne!(later.model_ref, admitted.model_ref);
+        later.reuse_policy = crate::ReusePolicy::AllowReuse;
+        assert_ne!(later.reuse_policy, admitted.reuse_policy);
         let (_, still) = plane.last_admission().expect("admission");
-        assert_eq!(still.model_ref.as_deref(), Some("aira:model:chosen"));
-        assert_eq!(still.generation.temperature, Some(0.3));
+        assert_eq!(still.reuse_policy, crate::ReusePolicy::RequireNewExecution);
     }
 
     #[test]
@@ -1438,25 +1430,10 @@ mod tests {
                 ..Default::default()
             },
         );
-        let second = session
-            .submit_problem_with_admission(text, constrained)
-            .unwrap();
-        assert!(matches!(second, SubmitOutcome::Completed { .. }));
+        let second = session.submit_problem_with_admission(text, constrained);
         assert!(
-            session
-                .plane()
-                .events()
-                .iter()
-                .any(|e| e.event_type == EventType::CapsuleCompleted),
-            "different model_ref must not hit text-only reuse"
-        );
-        assert!(
-            !session
-                .plane()
-                .events()
-                .iter()
-                .any(|e| e.payload_ref.as_deref() == Some("reuse:ready_solution")),
-            "model-X admit must not reuse:ready_solution from default admit"
+            matches!(second, Err(FlowError::UnsupportedConstraint(_))),
+            "math + model_ref must reject (#334): {second:?}"
         );
     }
 

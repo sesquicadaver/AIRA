@@ -90,6 +90,7 @@ pub(super) async fn post_problem(
             }))
             .into_response()
         }
+        Err(aira_flow::FlowError::UnsupportedConstraint(msg)) => err(StatusCode::BAD_REQUEST, &msg),
         Err(e) => err(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

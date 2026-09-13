@@ -93,25 +93,10 @@ fn pack1_e2e_same_text_different_model_no_reuse() {
             ..Default::default()
         },
     );
-    let second = session
-        .submit_problem_with_admission(text, other_model)
-        .unwrap();
-    assert!(matches!(second, SubmitOutcome::Completed { .. }));
+    let second = session.submit_problem_with_admission(text, other_model);
     assert!(
-        session
-            .plane()
-            .events()
-            .iter()
-            .any(|e| e.event_type == EventType::CapsuleCompleted),
-        "different model_ref must re-execute"
-    );
-    assert!(
-        !session
-            .plane()
-            .events()
-            .iter()
-            .any(|e| e.payload_ref.as_deref() == Some("reuse:ready_solution")),
-        "reuse must not satisfy a different model admit"
+        matches!(second, Err(aira_flow::FlowError::UnsupportedConstraint(_))),
+        "math + model_ref must reject (#334), not silently ignore: {second:?}"
     );
 
     let require_new = AdmissionSnapshot::from_text_and_constraints(
@@ -142,33 +127,23 @@ fn pack1_e2e_settings_mid_run_keeps_admission_binding() {
     let dir = tempfile::tempdir().unwrap();
     let mut plane = OperationalPlane::open(dir.path()).unwrap();
     let text = "Calculate 2 + 2";
+    // `#334`: math cannot carry model/generation; freeze test uses supported reuse_policy.
     let constraints = AdmissionConstraints {
-        model_ref: Some("aira:model:pack1-chosen".into()),
-        generation: aira_flow::GenerationParameters {
-            temperature: Some(0.25),
-            ..Default::default()
-        },
-        reuse_policy: ReusePolicy::AllowReuse,
+        reuse_policy: ReusePolicy::RequireNewExecution,
         ..Default::default()
     };
     let snap = AdmissionSnapshot::from_text_and_constraints(text, &constraints);
     let _ = plane.submit_problem_with_admission(text, snap).unwrap();
     let (_, admitted) = plane.last_admission().expect("admission").clone();
-    assert_eq!(
-        admitted.model_ref.as_deref(),
-        Some("aira:model:pack1-chosen")
-    );
-    assert_eq!(admitted.generation.temperature, Some(0.25));
+    assert_eq!(admitted.reuse_policy, ReusePolicy::RequireNewExecution);
 
     // Post-admit Settings / UI mutation of a local copy (not re-admit).
     let mut settings_like = constraints;
-    settings_like.model_ref = Some("aira:model:pack1-switched".into());
-    settings_like.generation.temperature = Some(0.95);
-    assert_ne!(settings_like.model_ref, admitted.model_ref);
+    settings_like.reuse_policy = ReusePolicy::AllowReuse;
+    assert_ne!(settings_like.reuse_policy, admitted.reuse_policy);
 
     let (_, still) = plane.last_admission().expect("admission still frozen");
-    assert_eq!(still.model_ref.as_deref(), Some("aira:model:pack1-chosen"));
-    assert_eq!(still.generation.temperature, Some(0.25));
+    assert_eq!(still.reuse_policy, ReusePolicy::RequireNewExecution);
     assert_eq!(still, &admitted);
 }
 
