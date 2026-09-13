@@ -151,13 +151,7 @@ fn phase_w_rfc_0219_present() {
 fn phase_w_rfc_0223_present() {
     let path = repo_root().join("specs/rfc/AIRA-RFC-0223-backend-verified-binding.md");
     let text = std::fs::read_to_string(&path).expect("RFC-0223 missing");
-    for needle in [
-        "#339",
-        "used-model",
-        "BINDING_MISMATCH",
-        "Mock",
-        "RFC-0215",
-    ] {
+    for needle in ["#339", "used-model", "BINDING_MISMATCH", "Mock", "RFC-0215"] {
         assert!(text.contains(needle), "RFC-0223 missing: {needle}");
     }
 }
@@ -173,8 +167,8 @@ fn phase_w_backend_binding_runtime_present() {
         std::fs::read_to_string(repo_root().join("csu/execution-llm/src/process.rs")).unwrap();
     assert!(process.contains("BINDING_MISMATCH"));
     assert!(process.contains("with_expected_model_ref"));
-    let work = std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/work_view.rs"))
-        .unwrap();
+    let work =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/work_view.rs")).unwrap();
     assert!(work.contains("#339") || work.contains("backend==mock") || work.contains("\"mock\""));
 }
 
