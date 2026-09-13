@@ -4,7 +4,8 @@
 **Джерела:** пост-V аудит `p-only/AIRA-audit-d1115f2-2026-09-11.md` @ `d1115f2` (merge PR #295 / RFC-0208); Phase V **DONE** @ [`phase-v-plan.md`](phase-v-plan.md) / RFC-0208 (**QUEUE V closed**); Pack 0 **DONE** @ [`repair-package-0.md`](repair-package-0.md) / RFC-0207; trace [`product-requirements-trace.md`](product-requirements-trace.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase W `#331`–`#342`.  
 **Closure:** consolidating **RFC-0215** reserved file-free until `#342` (id confirmed free 2026-09-11).  
-**Не змінює:** анти-місію README; історію Phase V як never-DONE; C0/C1 `Calculate 2 + 2` як execution-basic для unconstrained math; `aira-core` ledger / LLM-in-Core; GUI stack (egui) rewrite; Pack 2 multi-model catalog / Work «Порівняти» (M1–M6); Pack 3–7; public bind / auto-trust як Desktop default.
+**Handoff (після `#342`):** Pack 2 GUI → Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` (**QUEUED**; RFC-0226 reserved; джерело GUI `p-only/aira-current.md` 2026-09-13).  
+**Не змінює:** анти-місію README; історію Phase V як never-DONE; C0/C1 `Calculate 2 + 2` як execution-basic для unconstrained math; `aira-core` ledger / LLM-in-Core; GUI stack (egui) rewrite; Pack 2 multi-model catalog / Work «Порівняти» (M1–M6) — **окремий Phase X**; Pack 3–7; public bind / auto-trust як Desktop default.
 
 > Примітка: аудит і `aira-repair.md` поза git-каноном (`p-only/`). Канон у репо = цей план + Pack 1 close + QUEUE + RFC-D.
 
@@ -184,5 +185,17 @@ QUEUE V closed @ RFC-0208
 | A9 reuse candidate | `#340` |
 | A10 / D6 result+verify binding | `#341` |
 | Close | `#342` |
-| M1–M6 / D7 GUI | **out of W** (Pack 2) |
+| M1–M6 / D7 GUI / aira-current.md | **out of W** → Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` |
 | S1–S18 | окремо коли блокують A7/A8; не весь список у W |
+
+---
+
+## 10. Handoff → Phase X (Pack 2)
+
+```text
+Не вставляти GUI-атоми в `#333`–`#342`.
+Після QUEUE W closed @ RFC-0215:
+  → first OPEN `#343` (Phase X wiring)
+  → Pack 2 local multi-model GUI per phase-x-plan.md
+Джерело скріншотів / UX-прогалин: p-only/aira-current.md (2026-09-13).
+```

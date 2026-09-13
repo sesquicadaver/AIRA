@@ -31,6 +31,8 @@ fn phase_w_plan_present() {
         "GPU marketplace",
         "Calculate 2 + 2",
         "M1–M6",
+        "phase-x-plan.md",
+        "Handoff",
         "public bind",
     ] {
         assert!(text.contains(needle), "phase-w-plan missing: {needle}");
@@ -78,10 +80,16 @@ fn phase_w_queue_332_done_333_open() {
         "Pack 1 residual",
         "first OPEN `#333`",
         "QUEUE V closed",
-        "desktop-ux.md",
-        "Math capsule",
+        "phase-x-plan.md",
+        "Pack 2",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
+    }
+    for n in 343..=358 {
+        assert!(
+            text.contains(&format!("| {n} | **OPEN**")),
+            "QUEUE #{n} must be OPEN (Phase X QUEUED)"
+        );
     }
 }
 
