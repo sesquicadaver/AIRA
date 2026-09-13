@@ -192,12 +192,55 @@ mod tests {
             "/v1/problems",
             Some(json!({
                 "text": "Calculate 2 + 2",
-                "admission": {"model_ref": "aira:model:x", "reuse_policy": "require_new_execution"}
+                "admission": {"reuse_policy": "require_new_execution"}
             })),
         )
         .await;
         assert_eq!(st, StatusCode::OK, "{v}");
         assert_eq!(v["status"], "completed");
+    }
+
+    #[tokio::test]
+    async fn http_post_problem_math_model_ref_is_4xx() {
+        let (_dir, state) = setup();
+        let (st, v) = json_req(
+            router(state),
+            "POST",
+            "/v1/problems",
+            Some(json!({
+                "text": "Calculate 2 + 2",
+                "admission": {"model_ref": "aira:model:x"}
+            })),
+        )
+        .await;
+        assert_eq!(st, StatusCode::BAD_REQUEST, "{v}");
+        assert!(
+            v["error"].as_str().unwrap_or("").contains("model_ref"),
+            "{v}"
+        );
+    }
+
+    #[tokio::test]
+    async fn http_post_problem_remote_required_is_4xx() {
+        let (_dir, state) = setup();
+        let (st, v) = json_req(
+            router(state),
+            "POST",
+            "/v1/problems",
+            Some(json!({
+                "text": "Calculate 2 + 2",
+                "admission": {"placement": "remote_required"}
+            })),
+        )
+        .await;
+        assert_eq!(st, StatusCode::BAD_REQUEST, "{v}");
+        assert!(
+            v["error"]
+                .as_str()
+                .unwrap_or("")
+                .contains("remote_required"),
+            "{v}"
+        );
     }
 
     fn write_activated_pointer(root: &std::path::Path) {
