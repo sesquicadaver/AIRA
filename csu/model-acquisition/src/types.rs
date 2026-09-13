@@ -20,6 +20,10 @@ pub const VERIFIED_POINTER_REL: &str = "models/verified.latest.json";
 pub const CACHE_REL: &str = "models/cache";
 /// Latest activation pointer.
 pub const ACTIVATED_POINTER_REL: &str = "models/activated.latest.json";
+/// Explicit fixture-trust marker for activate paths (`#337` / RFC-0221).
+///
+/// Written only by test fixture helpers. Production roots MUST NOT create this file.
+pub const ACTIVATION_TRUST_FIXTURE_REL: &str = "models/activation.trust.fixture";
 /// Latest local ShareOffer pointer.
 pub const SHARE_OFFER_POINTER_REL: &str = "models/share-offer.latest.json";
 /// Latest local capability advertisement pointer.

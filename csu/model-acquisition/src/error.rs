@@ -33,6 +33,9 @@ pub enum AcquisitionError {
     /// `#336` / RFC-0220: primary signed verify evidence missing, unsigned, or disagrees with locator.
     #[error("activate evidence authority failed (fail-closed): {detail}")]
     ActivateEvidenceAuthority { detail: String },
+    /// `#337` / RFC-0221: production activate path rejects implicit local-test / missing identity.
+    #[error("activate production trust failed (fail-closed): {detail}")]
+    ActivateProductionTrust { detail: String },
     #[error("model artifact missing or invalid: {0}")]
     BadArtifact(String),
     #[error("invalid share visibility (use local|opt_in): {0}")]

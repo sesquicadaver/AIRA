@@ -16,6 +16,8 @@
 //! (UI-safe); never `fs::read` full weights into a buffer. Admit stays full-hash.
 //! `#309` durable observe fail for the same pointer/cache version — UI refresh
 //! must not rehash-storm after a definitive mismatch/evidence failure.
+//! `#337` / RFC-0221: production activation never falls back to implicit local-test;
+//! fixture trust is opt-in via [`ACTIVATION_TRUST_FIXTURE_REL`].
 
 #[cfg(test)]
 use std::cell::Cell;
@@ -37,6 +39,21 @@ use aira_object::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+
+/// Marker written by [`ActivatedPointerGate::install_fixture`] (`#337` / RFC-0221).
+///
+/// Presence opts the root into fixture trust (local-test evidence allowed).
+/// Production Desktop/CLI roots MUST NOT write this file.
+pub const ACTIVATION_TRUST_FIXTURE_REL: &str = "models/activation.trust.fixture";
+
+/// Activation crypto policy for admit/observe (`#337`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActivationTrustMode {
+    /// Require loadable node identity; reject local-test issuer; no identity→local-test fallback.
+    Production,
+    /// Explicit test/CI fixture: local-test evidence allowed.
+    Fixture,
+}
 
 /// Pointer written by Phase D `activate_verified` (`models/activated.latest.json`).
 #[derive(Debug, Clone, Deserialize)]
@@ -102,16 +119,31 @@ pub struct ActivationObservation {
 pub struct ActivatedPointerGate {
     aira_root: PathBuf,
     pointer_path: PathBuf,
+    trust_mode: ActivationTrustMode,
 }
 
 impl ActivatedPointerGate {
     /// Pointer path relative to an `.aira` (or equivalent) root.
+    ///
+    /// Trust mode: [`ActivationTrustMode::Fixture`] iff
+    /// [`ACTIVATION_TRUST_FIXTURE_REL`] exists; otherwise production.
     pub fn from_aira_root(root: impl AsRef<Path>) -> Self {
         let aira_root = root.as_ref().to_path_buf();
+        let trust_mode = if aira_root.join(ACTIVATION_TRUST_FIXTURE_REL).is_file() {
+            ActivationTrustMode::Fixture
+        } else {
+            ActivationTrustMode::Production
+        };
         Self {
             pointer_path: aira_root.join("models/activated.latest.json"),
             aira_root,
+            trust_mode,
         }
+    }
+
+    /// Explicit trust mode for this root (`#337`).
+    pub fn trust_mode(&self) -> ActivationTrustMode {
+        self.trust_mode
     }
 
     fn observe_cache_path(&self) -> PathBuf {
@@ -223,6 +255,9 @@ impl ActivatedPointerGate {
     /// Signs under thread-local local-test crypto so parallel Desktop bootstrap
     /// cannot change process `primary_signer` mid-publish and poison later
     /// observe verify (`invalid artifact signature` → store open fail).
+    ///
+    /// `#337` / RFC-0221: writes [`ACTIVATION_TRUST_FIXTURE_REL`] so reopen via
+    /// [`Self::from_aira_root`] keeps fixture trust (local-test evidence allowed).
     pub fn install_fixture(aira_root: impl AsRef<Path>) -> Result<Self, String> {
         let _crypto = bind_thread_crypto(
             Keyring::with_local_test(),
@@ -262,6 +297,15 @@ impl ActivatedPointerGate {
         fs::write(
             &apath,
             serde_json::to_string_pretty(&pointer).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+        let marker = root.join(ACTIVATION_TRUST_FIXTURE_REL);
+        if let Some(parent) = marker.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::write(
+            &marker,
+            "# AIRA activation fixture trust marker (#337 / RFC-0221)\n# Test/CI only — not for production roots.\n",
         )
         .map_err(|e| e.to_string())?;
         Ok(Self::from_aira_root(root))
@@ -379,7 +423,7 @@ impl ActivatedPointerGate {
         // Do **not** sticky-fail on store/open/resolve I/O (`#309` / `#310` CI): background
         // warm threads can race tempdir teardown and recreate an empty store; poisoning
         // the version would break later fixture verifies on path reuse.
-        let (ring, primary) = verification_crypto(&self.aira_root);
+        let (ring, primary) = verification_crypto(&self.aira_root, self.trust_mode)?;
         let _crypto = bind_thread_crypto(ring, primary);
         let store = CasArtifactStore::open(self.aira_root.join("artifacts")).map_err(|e| {
             format!("activated evidence store missing (fail-closed; not VERIFIED): {e}")
@@ -389,6 +433,7 @@ impl ActivatedPointerGate {
         })?;
         match verify_activate_evidence(
             &self.aira_root,
+            self.trust_mode,
             &ev_bytes,
             &pointer.model_ref,
             claimed.as_str(),
@@ -597,28 +642,42 @@ fn signing_bytes_without_signature(artifact: &Value) -> Result<Vec<u8>, String> 
     serde_json::to_vec(&Value::Object(body)).map_err(|_| ACTIVATE_DENIED.to_string())
 }
 
-/// Keyring + primary used to verify activate evidence for this `.aira` root (`#278` / `#297`).
+/// Keyring + primary used to verify activate evidence for this `.aira` root (`#278` / `#297` / `#337`).
 ///
-/// Prefer on-disk node identity (already includes local-test for fixture descriptors);
-/// fall back to local-test-only ring for roots that never wrote `identity/`.
+/// Production: require on-disk node identity; strip local-test; no fallback.
+/// Fixture: load identity when present, else local-test-only ring.
 /// Does **not** mutate the process-global keyring.
-fn verification_crypto(aira_root: &Path) -> (Keyring, AiraRef) {
-    match Keyring::load_node_identity(aira_root) {
-        Ok((id, ring)) => (ring, id),
-        Err(_) => (
-            Keyring::with_local_test(),
-            AiraRef::parse(LOCAL_TEST_KEY_REF).expect("local-test ref"),
-        ),
+fn verification_crypto(
+    aira_root: &Path,
+    mode: ActivationTrustMode,
+) -> Result<(Keyring, AiraRef), String> {
+    match mode {
+        ActivationTrustMode::Production => {
+            let (id, ring) = Keyring::load_node_identity(aira_root).map_err(|e| {
+                format!(
+                    "production activation requires node identity (fail-closed; not VERIFIED): {e}"
+                )
+            })?;
+            Ok((ring.without_local_test(), id))
+        }
+        ActivationTrustMode::Fixture => match Keyring::load_node_identity(aira_root) {
+            Ok((id, ring)) => Ok((ring, id)),
+            Err(_) => Ok((
+                Keyring::with_local_test(),
+                AiraRef::parse(LOCAL_TEST_KEY_REF).expect("local-test ref"),
+            )),
+        },
     }
 }
 
-/// Keyring used to verify activate evidence payload for this `.aira` root (`#278`).
-fn verification_keyring(aira_root: &Path) -> Keyring {
-    verification_crypto(aira_root).0
+/// Keyring used to verify activate evidence payload for this `.aira` root (`#278` / `#337`).
+fn verification_keyring(aira_root: &Path, mode: ActivationTrustMode) -> Result<Keyring, String> {
+    Ok(verification_crypto(aira_root, mode)?.0)
 }
 
 fn verify_activate_evidence(
     aira_root: &Path,
+    mode: ActivationTrustMode,
     bytes: &[u8],
     model_ref: &str,
     content_hash: &str,
@@ -643,8 +702,15 @@ fn verify_activate_evidence(
             "activated evidence signature is not cryptographic (fail-closed; not VERIFIED)".into(),
         );
     }
+    if matches!(mode, ActivationTrustMode::Production) && sig.key_ref.as_str() == LOCAL_TEST_KEY_REF
+    {
+        return Err(
+            "production activation rejects local-test evidence issuer (fail-closed; not VERIFIED)"
+                .into(),
+        );
+    }
     let msg = signing_bytes_without_signature(&body)?;
-    let ring = verification_keyring(aira_root);
+    let ring = verification_keyring(aira_root, mode)?;
     ring.verify(&sig, &msg).map_err(|_| {
         "activated evidence signature verify failed (fail-closed; not VERIFIED)".to_string()
     })?;
@@ -1135,6 +1201,50 @@ mod tests {
         assert!(
             status.success(),
             "reopen child failed for identity {identity_id}: {status}"
+        );
+    }
+
+    /// `#337` / RFC-0221: install_fixture opts into fixture trust via marker.
+    #[test]
+    fn install_fixture_sets_fixture_trust_mode() {
+        let dir = tempfile::tempdir().unwrap();
+        let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        assert_eq!(gate.trust_mode(), ActivationTrustMode::Fixture);
+        assert!(dir.path().join(ACTIVATION_TRUST_FIXTURE_REL).is_file());
+        gate.check_activated(&dummy_payload()).unwrap();
+    }
+
+    /// `#337`: removing fixture marker forces production trust → local-test evidence denied.
+    #[test]
+    fn production_gate_rejects_fixture_evidence_without_marker() {
+        let dir = tempfile::tempdir().unwrap();
+        ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        fs::remove_file(dir.path().join(ACTIVATION_TRUST_FIXTURE_REL)).unwrap();
+        let gate = ActivatedPointerGate::from_aira_root(dir.path());
+        assert_eq!(gate.trust_mode(), ActivationTrustMode::Production);
+        let err = gate.check_activated(&dummy_payload()).unwrap_err();
+        assert!(
+            err.contains("node identity")
+                || err.contains("local-test")
+                || err.contains("fail-closed"),
+            "{err}"
+        );
+    }
+
+    /// `#337`: broken/missing identity has no local-test fallback on production path.
+    #[test]
+    fn production_gate_rejects_broken_identity_without_local_test_fallback() {
+        let dir = tempfile::tempdir().unwrap();
+        let (gate, _) = install_disk_identity_activate_fixture(dir.path());
+        assert_eq!(gate.trust_mode(), ActivationTrustMode::Production);
+        gate.check_activated(&dummy_payload()).unwrap();
+        // Corrupt identity so load fails.
+        fs::write(dir.path().join("identity/local.identity.json"), "{not-json").unwrap();
+        let gate = ActivatedPointerGate::from_aira_root(dir.path());
+        let err = gate.check_activated(&dummy_payload()).unwrap_err();
+        assert!(
+            err.contains("node identity") || err.contains("fail-closed"),
+            "{err}"
         );
     }
 }

@@ -342,10 +342,13 @@ dependencies = [
  "aira-event",
  "aira-object",
  "aira-schema",
+ "ed25519-dalek",
+ "rand",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror 1.0.69",
+ "uuid",
 ]
 
 [[package]]

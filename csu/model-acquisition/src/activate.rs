@@ -5,18 +5,19 @@ use aira_artifact::{ArtifactStore, ArtifactType, CasArtifactStore};
 use aira_csu::support::{json_bytes, make_artifact, make_event};
 use aira_event::EventType;
 use aira_object::{
-    active_signature, is_cryptographic_signature, utc_now_rfc3339, verify_ed25519, AiraRef,
-    ContentHash, Signature,
+    is_cryptographic_signature, utc_now_rfc3339, verify_ed25519, AiraRef, ContentHash, Keyring,
+    Signature, LOCAL_TEST_KEY_REF,
 };
 use serde_json::{json, Map, Value};
 
 use crate::error::AcquisitionError;
 use crate::types::{
-    ActivateOutcome, ActivatedPointer, VerifiedPointer, ACTIVATED_POINTER_REL, CACHE_REL, CSU_ID,
-    VERIFIED_POINTER_REL,
+    ActivateOutcome, ActivatedPointer, VerifiedPointer, ACTIVATED_POINTER_REL,
+    ACTIVATION_TRUST_FIXTURE_REL, CACHE_REL, CSU_ID, VERIFIED_POINTER_REL,
 };
 use crate::util::{
-    append_custom_event, ensure_under_models, sanitize_slot, signing_bytes_without_signature,
+    append_custom_event, ensure_under_models, sanitize_slot, sign_for_root,
+    signing_bytes_without_signature,
 };
 
 /// Authority extracted from primary signed `model-verify-evidence` (#336 / RFC-0220).
@@ -234,9 +235,30 @@ fn resolve_verify_evidence_authority(
         });
     }
     let msg = signing_bytes_without_signature(&body)?;
-    verify_ed25519(&sig, &msg).map_err(|e| AcquisitionError::ActivateEvidenceAuthority {
-        detail: format!("verify evidence signature verify failed: {e}"),
-    })?;
+    let fixture_trust = root.join(ACTIVATION_TRUST_FIXTURE_REL).is_file();
+    if fixture_trust {
+        verify_ed25519(&sig, &msg).map_err(|e| AcquisitionError::ActivateEvidenceAuthority {
+            detail: format!("verify evidence signature verify failed: {e}"),
+        })?;
+    } else {
+        if sig.key_ref.as_str() == LOCAL_TEST_KEY_REF {
+            return Err(AcquisitionError::ActivateProductionTrust {
+                detail: "production activate rejects local-test verify evidence issuer".into(),
+            });
+        }
+        let (_id, ring) = Keyring::load_node_identity(root).map_err(|e| {
+            AcquisitionError::ActivateProductionTrust {
+                detail: format!("production activate requires node identity: {e}"),
+            }
+        })?;
+        ring.without_local_test().verify(&sig, &msg).map_err(|e| {
+            AcquisitionError::ActivateProductionTrust {
+                detail: format!(
+                    "verify evidence signature verify failed under production trust: {e}"
+                ),
+            }
+        })?;
+    }
 
     // Locator integrity: unsigned pointer must not disagree with signed evidence.
     if pointer.model_ref != model_ref {
@@ -287,8 +309,7 @@ fn publish_activate_evidence(
     body.insert("reason_refs".into(), json!(["aira:reason:model-activated"]));
     let for_sign = Value::Object(body.clone());
     let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
-    let sig: Signature =
-        active_signature(&raw).map_err(|e| AcquisitionError::Other(e.to_string()))?;
+    let sig: Signature = sign_for_root(root, &raw)?;
     body.insert(
         "signature".into(),
         serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,

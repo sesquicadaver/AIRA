@@ -19,3 +19,6 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+ed25519-dalek = { workspace = true }
+rand = { workspace = true }
+uuid = { workspace = true }
