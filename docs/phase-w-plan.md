@@ -1,6 +1,6 @@
 # Phase W — Pack 1 residual honesty (post-V audit)
 
-**Статус:** **IN PROGRESS** (активовано 2026-09-11; `#331`–`#336` **DONE**; first OPEN `#337`).  
+**Статус:** **IN PROGRESS** (активовано 2026-09-11; `#331`–`#337` **DONE**; first OPEN `#338`).  
 **Джерела:** пост-V аудит `p-only/AIRA-audit-d1115f2-2026-09-11.md` @ `d1115f2` (merge PR #295 / RFC-0208); Phase V **DONE** @ [`phase-v-plan.md`](phase-v-plan.md) / RFC-0208 (**QUEUE V closed**); Pack 0 **DONE** @ [`repair-package-0.md`](repair-package-0.md) / RFC-0207; trace [`product-requirements-trace.md`](product-requirements-trace.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase W `#331`–`#342`.  
 **Closure:** consolidating **RFC-0215** reserved file-free until `#342` (id confirmed free 2026-09-11).  
@@ -110,7 +110,7 @@ W0 Wiring (+ A0 contract honesty tips)
 | `#334` | W1 | Constraints enforce-or-reject | **DONE** @ RFC-0218: matrix enforce-or-reject | admission boundary (#335) |
 | `#335` | W1 | Admission boundary verify | **DONE** @ RFC-0219: text/hash/kind/schema boundary | activate evidence (#336) |
 | `#336` | W1 | Activate evidence authority | **DONE** @ RFC-0220: pointer locator-only; primary evidence authority | production trust (#337) |
-| `#337` | W1 | Production activation trust | no implicit local-test; fixtures separate; RFC-0221 | materialize (#338) |
+| `#337` | W1 | Production activation trust | **DONE** @ RFC-0221: no implicit local-test; fixtures separate | materialize (#338) |
 | `#338` | W1 | Safe weights materialization | no-follow + post-copy + bounded buffer; RFC-0222 | backend binding (#339) |
 | `#339` | W1 | Backend verified binding | mismatch reject; mock ≠ used-model; RFC-0223 | reuse candidate (#340) |
 | `#340` | W1 | Reuse candidate independent check | чужий VRA у ключі ≠ Completed; RFC-0224 | result binding (#341) |
@@ -124,8 +124,8 @@ W0 Wiring (+ A0 contract honesty tips)
       → #334 W1 constraints enforce-or-reject DONE @ RFC-0218
         → #335 W1 admission boundary DONE @ RFC-0219
           → #336 W1 activate evidence DONE @ RFC-0220
-            → #337 W1 production trust (first OPEN)
-              → #338 W1 safe materialize
+            → #337 W1 production trust DONE @ RFC-0221
+              → #338 W1 safe materialize (first OPEN)
                 → #339 W1 backend binding
                   → #340 W1 reuse candidate
                     → #341 W1 result/verify binding
@@ -164,7 +164,7 @@ aira-core still has no GUI/ledger/LLM deps.
 QUEUE V closed @ RFC-0208
   + audit d1115f2 Pack 1 PARTIAL (D1–D6)
   + developer «активувати residual phase» (2026-09-11)
-  → wiring `#331` DONE; `#332`–`#336` DONE @ RFC-0220; план IN PROGRESS; first OPEN `#337`.
+  → wiring `#331` DONE; `#332`–`#337` DONE @ RFC-0221; план IN PROGRESS; first OPEN `#338`.
 ```
 
 ---

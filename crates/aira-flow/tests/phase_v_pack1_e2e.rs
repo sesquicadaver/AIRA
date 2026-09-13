@@ -34,6 +34,9 @@ fn isolated() -> std::sync::MutexGuard<'static, ()> {
 }
 
 fn init_acquisition_root(root: &Path) {
+    use ed25519_dalek::SigningKey;
+    use rand::rngs::OsRng;
+
     for d in ["artifacts", "events", "models", "identity"] {
         fs::create_dir_all(root.join(d)).unwrap();
     }
@@ -47,6 +50,22 @@ fn init_acquisition_root(root: &Path) {
         r#"{"node":{"mode":"local","profile":"C1"},"security":{"allow_network_for_csu":false,"allow_shell_for_csu":false,"require_signed_artifacts":true,"require_signed_events":true,"require_signed_csu_manifests":true},"storage":{"object_store":"sqlite","event_log":"json","artifact_store":"filesystem"},"csu":{"autoload":[]}}"#,
     )
     .unwrap();
+    // `#337` / RFC-0221: production verify/activate signing requires node identity.
+    let mut rng = OsRng;
+    let signing = SigningKey::generate(&mut rng);
+    let id = format!(
+        "aira:identity:pack1-e2e.{}",
+        uuid::Uuid::now_v7().as_simple()
+    );
+    aira_object::create_or_ensure_node_identity(
+        root,
+        &id,
+        "pack1-e2e",
+        signing,
+        aira_object::NodeIdentityCreatePolicy::Ensure,
+    )
+    .unwrap();
+    aira_object::register_node_identity(root).unwrap();
 }
 
 fn signed_model_artifact(model_id: &str, content_hash: &str) -> Value {

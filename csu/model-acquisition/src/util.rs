@@ -4,12 +4,15 @@ use std::path::Path;
 use aira_artifact::{ArtifactStore, ArtifactType, CasArtifactStore};
 use aira_csu::support::{json_bytes, make_artifact};
 use aira_event::EventDescriptor;
-use aira_object::{active_signature, AiraRef, ContentHash, Signature};
+use aira_object::{
+    active_signature, local_test_signature, AiraRef, ContentHash, Keyring, Signature,
+    LOCAL_TEST_KEY_REF,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
 use crate::error::AcquisitionError;
-use crate::types::{GateDecision, CSU_ID};
+use crate::types::{GateDecision, ACTIVATION_TRUST_FIXTURE_REL, CSU_ID};
 
 pub(crate) fn signing_bytes_without_signature(
     artifact: &Value,
@@ -24,6 +27,31 @@ pub(crate) fn signing_bytes_without_signature(
         }
     }
     serde_json::to_vec(&Value::Object(body)).map_err(|e| AcquisitionError::Other(e.to_string()))
+}
+
+/// Root-scoped signing for acquisition evidence (`#337` / RFC-0221).
+///
+/// Production: sign with on-disk node identity (no process-primary race; no local-test).
+/// Fixture marker: allow local-test signature for explicit test roots.
+pub(crate) fn sign_for_root(root: &Path, message: &[u8]) -> Result<Signature, AcquisitionError> {
+    if root.join(ACTIVATION_TRUST_FIXTURE_REL).is_file() {
+        return Ok(local_test_signature(message));
+    }
+    let (id, ring) = Keyring::load_node_identity(root).map_err(|e| {
+        AcquisitionError::ActivateProductionTrust {
+            detail: format!("production acquisition signing requires node identity: {e}"),
+        }
+    })?;
+    if id.as_str() == LOCAL_TEST_KEY_REF {
+        return Err(AcquisitionError::ActivateProductionTrust {
+            detail: "production acquisition refuses local-test as node identity".into(),
+        });
+    }
+    ring.without_local_test().sign(&id, message).map_err(|e| {
+        AcquisitionError::ActivateProductionTrust {
+            detail: format!("node identity sign failed: {e}"),
+        }
+    })
 }
 
 pub(crate) struct VerifyEvidenceInput<'a> {
@@ -56,8 +84,7 @@ pub(crate) fn publish_verify_evidence(
     body.insert("reason_refs".into(), json!([input.reason_ref]));
     let for_sign = Value::Object(body.clone());
     let raw = serde_json::to_vec(&for_sign).map_err(|e| AcquisitionError::Other(e.to_string()))?;
-    let sig: Signature =
-        active_signature(&raw).map_err(|e| AcquisitionError::Other(e.to_string()))?;
+    let sig: Signature = sign_for_root(root, &raw)?;
     body.insert(
         "signature".into(),
         serde_json::to_value(&sig).map_err(|e| AcquisitionError::Other(e.to_string()))?,

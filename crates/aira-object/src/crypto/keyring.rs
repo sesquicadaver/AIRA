@@ -42,6 +42,16 @@ impl Keyring {
         k
     }
 
+    /// Drop local-test verifying/signing material (`#337` / RFC-0221 production activation).
+    ///
+    /// Does not affect other keys. Use after [`Self::load_node_identity`] so activation
+    /// cannot admit evidence signed only by the implicit test key.
+    pub fn without_local_test(mut self) -> Self {
+        self.verifying.remove(LOCAL_TEST_KEY_REF);
+        self.signing.remove(LOCAL_TEST_KEY_REF);
+        self
+    }
+
     /// Replace verifying key(s) for `key_ref` with a single key.
     pub fn insert_verifying(&mut self, key_ref: AiraRef, verifying: VerifyingKey) {
         self.verifying

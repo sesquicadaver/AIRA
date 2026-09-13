@@ -27,7 +27,12 @@ mod tests {
     use std::path::Path;
 
     use aira_csu::CsuType;
-    use aira_object::{active_signature, ContentHash};
+    use aira_object::{
+        active_signature, create_or_ensure_node_identity, register_node_identity, ContentHash,
+        NodeIdentityCreatePolicy,
+    };
+    use ed25519_dalek::SigningKey;
+    use rand::rngs::OsRng;
     use serde_json::{json, Map, Value};
 
     use super::*;
@@ -46,6 +51,22 @@ mod tests {
             r#"{"node":{"mode":"local","profile":"C1"},"security":{"allow_network_for_csu":false,"allow_shell_for_csu":false,"require_signed_artifacts":true,"require_signed_events":true,"require_signed_csu_manifests":true},"storage":{"object_store":"sqlite","event_log":"json","artifact_store":"filesystem"},"csu":{"autoload":[]}}"#,
         )
         .unwrap();
+        // `#337`: production activate requires node identity (no implicit local-test).
+        let mut rng = OsRng;
+        let signing = SigningKey::generate(&mut rng);
+        let id = format!(
+            "aira:identity:acq-test.{}",
+            uuid::Uuid::now_v7().as_simple()
+        );
+        create_or_ensure_node_identity(
+            root,
+            &id,
+            "acq-test",
+            signing,
+            NodeIdentityCreatePolicy::Ensure,
+        )
+        .unwrap();
+        register_node_identity(root).unwrap();
     }
 
     fn weight_files(root: &Path) -> Vec<String> {
@@ -597,8 +618,111 @@ mod tests {
 
         let err = activate_verified(dir.path()).unwrap_err();
         assert!(
-            matches!(err, AcquisitionError::ActivateEvidenceAuthority { .. }),
-            "tampered evidence signature must ActivateEvidenceAuthority, got {err}"
+            matches!(
+                err,
+                AcquisitionError::ActivateEvidenceAuthority { .. }
+                    | AcquisitionError::ActivateProductionTrust { .. }
+            ),
+            "tampered evidence signature must fail closed, got {err}"
+        );
+        assert!(!dir.path().join(ACTIVATED_POINTER_REL).exists());
+    }
+
+    /// `#337` / RFC-0221: production activate rejects local-test verify evidence issuer.
+    #[test]
+    fn activate_rejects_local_test_evidence_under_production_trust() {
+        use aira_artifact::{ArtifactStore, ArtifactType, CasArtifactStore};
+        use aira_csu::support::{json_bytes, make_artifact};
+        use aira_object::{local_test_signature, AiraRef, ContentHash};
+        use serde_json::Map;
+
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("lt.gguf");
+        fs::write(&src, b"lt-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:lt", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"lt-bytes");
+        let art = signed_model_artifact("aira:model:lt", observed.as_str());
+        let art_path = dir.path().join("lt.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        let VerifyOutcome::Verified {
+            model_ref,
+            verified_path,
+            content_hash,
+            quarantine_path,
+            ..
+        } = verify_quarantine(dir.path(), &art_path).unwrap()
+        else {
+            panic!("expected Verified");
+        };
+
+        let mut body = Map::new();
+        body.insert("kind".into(), json!("model-verify-evidence"));
+        body.insert("model_ref".into(), json!(model_ref));
+        body.insert("verified".into(), json!(true));
+        body.insert("activated".into(), json!(false));
+        body.insert("quarantine_path".into(), json!(quarantine_path));
+        body.insert("verified_path".into(), json!(verified_path));
+        body.insert("observed_hash".into(), json!(content_hash));
+        body.insert("expected_hash".into(), json!(content_hash));
+        body.insert("reason_refs".into(), json!(["aira:reason:model-verified"]));
+        let for_sign = Value::Object(body.clone());
+        let raw = serde_json::to_vec(&for_sign).unwrap();
+        let sig = local_test_signature(&raw);
+        body.insert("signature".into(), serde_json::to_value(&sig).unwrap());
+        let payload = Value::Object(body);
+        let bytes = json_bytes(&payload);
+        let ch = ContentHash::sha256_bytes(&bytes);
+        let hash_hex = ch.as_str().trim_start_matches("sha256:");
+        let forged_id = format!("aira:artifact:acq-verify-ok:{hash_hex}");
+        let desc = make_artifact(
+            &forged_id,
+            ArtifactType::CustomArtifact,
+            &bytes,
+            vec![AiraRef::parse(CSU_ID).unwrap()],
+        );
+        let mut store = CasArtifactStore::open(dir.path().join("artifacts")).unwrap();
+        store.publish(desc, &bytes).unwrap();
+
+        let vpath = dir.path().join(VERIFIED_POINTER_REL);
+        let mut pointer: Value =
+            serde_json::from_str(&fs::read_to_string(&vpath).unwrap()).unwrap();
+        pointer
+            .as_object_mut()
+            .unwrap()
+            .insert("evidence_artifact_id".into(), json!(forged_id));
+        fs::write(&vpath, serde_json::to_string_pretty(&pointer).unwrap()).unwrap();
+
+        let err = activate_verified(dir.path()).unwrap_err();
+        assert!(
+            matches!(err, AcquisitionError::ActivateProductionTrust { .. }),
+            "local-test issuer must ActivateProductionTrust, got {err}"
+        );
+        assert!(!dir.path().join(ACTIVATED_POINTER_REL).exists());
+    }
+
+    /// `#337`: missing/broken identity fails closed (no local-test fallback).
+    #[test]
+    fn activate_rejects_missing_identity_under_production_trust() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+        let src = dir.path().join("noid.gguf");
+        fs::write(&src, b"noid-bytes").unwrap();
+        fetch_to_quarantine(dir.path(), "aira:model:noid", &src).unwrap();
+        let observed = ContentHash::sha256_bytes(b"noid-bytes");
+        let art = signed_model_artifact("aira:model:noid", observed.as_str());
+        let art_path = dir.path().join("noid.artifact.json");
+        fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+        verify_quarantine(dir.path(), &art_path).unwrap();
+        fs::remove_file(dir.path().join("identity/local.identity.json")).unwrap();
+        fs::remove_file(dir.path().join("identity/local.ed25519")).unwrap();
+
+        let err = activate_verified(dir.path()).unwrap_err();
+        assert!(
+            matches!(err, AcquisitionError::ActivateProductionTrust { .. }),
+            "missing identity must ActivateProductionTrust, got {err}"
         );
         assert!(!dir.path().join(ACTIVATED_POINTER_REL).exists());
     }
