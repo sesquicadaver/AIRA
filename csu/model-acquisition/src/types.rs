@@ -20,6 +20,14 @@ pub const VERIFIED_POINTER_REL: &str = "models/verified.latest.json";
 pub const CACHE_REL: &str = "models/cache";
 /// Latest activation pointer.
 pub const ACTIVATED_POINTER_REL: &str = "models/activated.latest.json";
+/// Per-model verified locator under `models/verified/<slot>/` (`#344` / RFC-0227).
+///
+/// Survives when another model becomes `verified.latest`; latest is default only.
+pub const VERIFIED_SLOT_POINTER_NAME: &str = "pointer.json";
+/// Per-model activated locator under `models/cache/<slot>/` (`#344` / RFC-0227).
+///
+/// Survives when another model becomes `activated.latest`; latest ≠ sole exec authority.
+pub const ACTIVATED_SLOT_POINTER_NAME: &str = "activated.json";
 /// Explicit fixture-trust marker for activate paths (`#337` / RFC-0221).
 ///
 /// Written only by test fixture helpers. Production roots MUST NOT create this file.
@@ -184,6 +192,21 @@ pub struct ActivateOutcome {
     pub evidence_artifact_id: String,
     /// Absolute path to `models/cache` for inventory scan orchestration.
     pub cache_scan_dir: String,
+}
+
+/// Independent per-model verified/available lifecycle (`#344` / RFC-0227).
+///
+/// `activated.latest` may point at another model; this entry still reflects slot state.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ModelLifecycleEntry {
+    pub model_ref: String,
+    /// Verified staging present for this model (slot pointer).
+    pub verified: bool,
+    /// Activated into local cache (slot activated record).
+    pub available: bool,
+    pub content_hash: Option<String>,
+    pub verified_path: Option<String>,
+    pub cache_path: Option<String>,
 }
 
 /// Result of quarantine hash/signature verification.

@@ -4,6 +4,7 @@
 
 mod activate;
 mod error;
+mod lifecycle;
 mod manifest;
 mod materialize;
 mod policy;
@@ -15,6 +16,7 @@ mod verify;
 
 pub use activate::*;
 pub use error::*;
+pub use lifecycle::*;
 pub use manifest::*;
 pub use policy::*;
 pub use publish::*;
@@ -1045,6 +1047,63 @@ mod tests {
             "source symlink must SymlinkRejected, got {err}"
         );
         assert!(!dir.path().join(ACTIVATED_POINTER_REL).exists());
+    }
+
+    #[test]
+    fn two_models_verified_and_available_independently_after_latest_moves() {
+        // `#344` / RFC-0227: A remains verified+available when B becomes *.latest.
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        write_default_deny_policy(dir.path(), true).unwrap();
+
+        let fetch_verify = |name: &str, bytes: &[u8]| {
+            let src = dir.path().join(format!("{name}.gguf"));
+            fs::write(&src, bytes).unwrap();
+            let model_ref = format!("aira:model:{name}");
+            fetch_to_quarantine(dir.path(), &model_ref, &src).unwrap();
+            let observed = ContentHash::sha256_bytes(bytes);
+            let art = signed_model_artifact(&model_ref, observed.as_str());
+            let art_path = dir.path().join(format!("{name}.artifact.json"));
+            fs::write(&art_path, serde_json::to_string_pretty(&art).unwrap()).unwrap();
+            match verify_quarantine(dir.path(), &art_path).unwrap() {
+                VerifyOutcome::Verified { model_ref, .. } => model_ref,
+                other => panic!("expected Verified, got {other:?}"),
+            }
+        };
+
+        let model_a = fetch_verify("life-a", b"lifecycle-a-bytes");
+        let model_b = fetch_verify("life-b", b"lifecycle-b-bytes-xx");
+
+        assert!(verified_slot_pointer_path(dir.path(), &model_a).is_file());
+        assert!(verified_slot_pointer_path(dir.path(), &model_b).is_file());
+        let latest_v: VerifiedPointer = serde_json::from_str(
+            &fs::read_to_string(dir.path().join(VERIFIED_POINTER_REL)).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(latest_v.model_ref, model_b);
+
+        activate_verified_model(dir.path(), &model_a).unwrap();
+        activate_verified_model(dir.path(), &model_b).unwrap();
+
+        assert!(activated_slot_pointer_path(dir.path(), &model_a).is_file());
+        assert!(activated_slot_pointer_path(dir.path(), &model_b).is_file());
+        let latest_a: ActivatedPointer = serde_json::from_str(
+            &fs::read_to_string(dir.path().join(ACTIVATED_POINTER_REL)).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(latest_a.model_ref, model_b, "latest tip is B");
+
+        let life = list_model_lifecycle(dir.path()).unwrap();
+        assert_eq!(life.len(), 2);
+        let a = life.iter().find(|e| e.model_ref == model_a).unwrap();
+        let b = life.iter().find(|e| e.model_ref == model_b).unwrap();
+        assert!(a.verified && a.available, "A stays available: {a:?}");
+        assert!(b.verified && b.available, "B available: {b:?}");
+
+        // Cold restart: only re-read disk.
+        let life2 = list_model_lifecycle(dir.path()).unwrap();
+        assert_eq!(life2.len(), 2);
+        assert!(life2.iter().all(|e| e.verified && e.available));
     }
 
     fn sanitize_slot_test(model_ref: &str) -> String {

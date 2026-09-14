@@ -18,6 +18,9 @@
 //! must not rehash-storm after a definitive mismatch/evidence failure.
 //! `#337` / RFC-0221: production activation never falls back to implicit local-test;
 //! fixture trust is opt-in via [`ACTIVATION_TRUST_FIXTURE_REL`].
+//! `#344` / RFC-0227: `activated.latest` is the default tip only. When
+//! `model_artifact_ref` is set, admit resolves `models/cache/<slot>/activated.json`
+//! so a non-latest available model can still execute.
 
 #[cfg(test)]
 use std::cell::Cell;
@@ -55,8 +58,9 @@ pub enum ActivationTrustMode {
     Fixture,
 }
 
-/// Pointer written by Phase D `activate_verified` (`models/activated.latest.json`).
-#[derive(Debug, Clone, Deserialize)]
+/// Pointer written by Phase D `activate_verified` (`models/activated.latest.json`
+/// and per-model `models/cache/<slot>/activated.json` after `#344`).
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct ActivatedPointer {
     updated_at: String,
     model_ref: String,
@@ -65,6 +69,9 @@ struct ActivatedPointer {
     content_hash: String,
     evidence_artifact_id: String,
 }
+
+/// Filename for per-model activated slot (`#344` / RFC-0227; mirrors acquisition).
+const ACTIVATED_SLOT_POINTER_NAME: &str = "activated.json";
 
 /// Versioned ready cache for light observe (`#277`).
 ///
@@ -299,6 +306,19 @@ impl ActivatedPointerGate {
             serde_json::to_string_pretty(&pointer).map_err(|e| e.to_string())?,
         )
         .map_err(|e| e.to_string())?;
+        // `#344`: slot record so requested model_ref admits even if latest tip moves.
+        let slot_path = root
+            .join("models/cache")
+            .join(sanitize_model_slot(model_ref))
+            .join(ACTIVATED_SLOT_POINTER_NAME);
+        if let Some(parent) = slot_path.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::write(
+            &slot_path,
+            serde_json::to_string_pretty(&pointer).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
         let marker = root.join(ACTIVATION_TRUST_FIXTURE_REL);
         if let Some(parent) = marker.parent() {
             fs::create_dir_all(parent).map_err(|e| e.to_string())?;
@@ -487,30 +507,88 @@ enum VerifyMode {
 
 impl ModelActivateGate for ActivatedPointerGate {
     fn check_activated(&self, payload: &GenerateLocalPayload) -> Result<ExecutorFacts, String> {
-        if !self.pointer_path.is_file() {
-            return Err(ACTIVATE_DENIED.into());
-        }
-        let raw =
-            fs::read_to_string(&self.pointer_path).map_err(|_| ACTIVATE_DENIED.to_string())?;
-        let pointer: ActivatedPointer = serde_json::from_str(&raw).map_err(|_| {
-            "activated pointer is not a Phase D activation record (fail-closed; not VERIFIED)"
-                .to_string()
-        })?;
-        if let Some(want) = &payload.model_artifact_ref {
-            if want.as_str() != pointer.model_ref {
-                return Err(format!(
-                    "model {} is not Phase D activated (activated {}; fail-closed; not VERIFIED)",
-                    want.as_str(),
-                    pointer.model_ref
-                ));
-            }
-        }
+        let pointer = self.resolve_admit_pointer(payload)?;
         self.verify_pointer_ready(&pointer, VerifyMode::AdmitFull)?;
         Ok(ExecutorFacts {
             model_ref: pointer.model_ref,
             content_hash: pointer.content_hash,
             cache_path: pointer.cache_path,
         })
+    }
+}
+
+impl ActivatedPointerGate {
+    /// Resolve admit locator: requested model slot first; else `activated.latest` tip.
+    ///
+    /// `#344` / RFC-0227: latest is default authority only when `model_artifact_ref`
+    /// is absent. A requested non-latest available model admits via slot record.
+    fn resolve_admit_pointer(
+        &self,
+        payload: &GenerateLocalPayload,
+    ) -> Result<ActivatedPointer, String> {
+        if let Some(want) = &payload.model_artifact_ref {
+            let slot_path = self
+                .aira_root
+                .join("models/cache")
+                .join(sanitize_model_slot(want.as_str()))
+                .join(ACTIVATED_SLOT_POINTER_NAME);
+            if slot_path.is_file() {
+                let raw =
+                    fs::read_to_string(&slot_path).map_err(|_| ACTIVATE_DENIED.to_string())?;
+                let pointer: ActivatedPointer = serde_json::from_str(&raw).map_err(|_| {
+                    "activated slot pointer is not a Phase D activation record (fail-closed; not VERIFIED)"
+                        .to_string()
+                })?;
+                if pointer.model_ref != want.as_str() {
+                    return Err(format!(
+                        "model {} is not Phase D activated (slot {}; fail-closed; not VERIFIED)",
+                        want.as_str(),
+                        pointer.model_ref
+                    ));
+                }
+                return Ok(pointer);
+            }
+            // Compat: pre-#344 roots with only activated.latest.
+            let latest = self.read_latest_pointer()?;
+            if latest.model_ref == want.as_str() {
+                return Ok(latest);
+            }
+            return Err(format!(
+                "model {} is not Phase D activated (activated {}; fail-closed; not VERIFIED)",
+                want.as_str(),
+                latest.model_ref
+            ));
+        }
+        self.read_latest_pointer()
+    }
+
+    fn read_latest_pointer(&self) -> Result<ActivatedPointer, String> {
+        if !self.pointer_path.is_file() {
+            return Err(ACTIVATE_DENIED.into());
+        }
+        let raw =
+            fs::read_to_string(&self.pointer_path).map_err(|_| ACTIVATE_DENIED.to_string())?;
+        serde_json::from_str(&raw).map_err(|_| {
+            "activated pointer is not a Phase D activation record (fail-closed; not VERIFIED)"
+                .to_string()
+        })
+    }
+}
+
+/// Slot directory name matching `model-acquisition::sanitize_slot` (`#344`).
+fn sanitize_model_slot(model_ref: &str) -> String {
+    let mut out = String::with_capacity(model_ref.len());
+    for c in model_ref.chars() {
+        if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' {
+            out.push(c);
+        } else {
+            out.push('_');
+        }
+    }
+    if out.is_empty() {
+        "model".into()
+    } else {
+        out
     }
 }
 
@@ -1245,6 +1323,39 @@ mod tests {
         let err = gate.check_activated(&dummy_payload()).unwrap_err();
         assert!(
             err.contains("node identity") || err.contains("fail-closed"),
+            "{err}"
+        );
+    }
+
+    /// `#344` / RFC-0227: requested non-latest available model admits via slot record.
+    #[test]
+    fn non_latest_available_model_admits_via_slot_not_latest_tip() {
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
+        let model_a = "aira:model:test-activated";
+        // Tip moves to B while A remains available via slot.
+        let tip = json!({
+            "updated_at": "2026-09-14T00:00:00Z",
+            "model_ref": "aira:model:other-latest",
+            "cache_path": "models/cache/other/weights.bin",
+            "verified_path": "models/verified/other/weights.bin",
+            "content_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "evidence_artifact_id": "aira:artifact:acq-activate:deadbeef",
+        });
+        fs::write(
+            dir.path().join("models/activated.latest.json"),
+            serde_json::to_string_pretty(&tip).unwrap(),
+        )
+        .unwrap();
+        let mut payload = dummy_payload();
+        payload.model_artifact_ref = Some(AiraRef::parse(model_a).unwrap());
+        let facts = gate.check_activated(&payload).unwrap();
+        assert_eq!(facts.model_ref, model_a);
+        // Default (no ref) follows tip and must fail-closed on incomplete tip.
+        let err = gate.check_activated(&dummy_payload()).unwrap_err();
+        assert!(
+            err.contains("fail-closed") || err.contains(ACTIVATE_DENIED) || err.contains("hash"),
             "{err}"
         );
     }
