@@ -47,6 +47,7 @@ fn phase_w_plan_present() {
         "public bind",
         "first OPEN `#343`",
         "first OPEN `#344`",
+        "first OPEN `#345`",
     ] {
         assert!(text.contains(needle), "phase-w-plan missing: {needle}");
     }
@@ -111,6 +112,7 @@ fn phase_w_queue_all_done() {
         "no OPEN W atoms",
         "first OPEN `#343`",
         "first OPEN `#344`",
+        "first OPEN `#345`",
         "QUEUE V closed",
         "phase-x-plan.md",
         "Pack 2",
@@ -118,17 +120,17 @@ fn phase_w_queue_all_done() {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
     assert!(
-        text.contains("| 343 | **DONE**"),
-        "QUEUE #343 must be DONE after Phase X wiring"
+        text.contains("| 343 | **DONE**") && text.contains("| 344 | **DONE**"),
+        "QUEUE #343–#344 must be DONE after inventory lifecycle"
     );
     assert!(
-        !text.contains("**Перший OPEN:** `#343`") && text.contains("**Перший OPEN:** `#344`"),
-        "QUEUE tip must advance from #343 to #344 after X wiring"
+        !text.contains("**Перший OPEN:** `#344`") && text.contains("**Перший OPEN:** `#345`"),
+        "QUEUE tip must advance from #344 to #345 after inventory lifecycle"
     );
-    for n in 344..=358 {
+    for n in 345..=358 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
-            "QUEUE #{n} must be OPEN (Phase X after wiring)"
+            "QUEUE #{n} must be OPEN (Phase X after #344)"
         );
     }
 }

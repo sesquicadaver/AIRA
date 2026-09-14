@@ -11,6 +11,7 @@ use aira_object::{
 use serde_json::{json, Map, Value};
 
 use crate::error::AcquisitionError;
+use crate::lifecycle::{load_verified_slot, write_activated_slot};
 use crate::materialize::{content_hash_nofollow, materialize_weights_nofollow};
 use crate::types::{
     ActivateOutcome, ActivatedPointer, VerifiedPointer, ACTIVATED_POINTER_REL,
@@ -27,7 +28,7 @@ struct VerifyEvidenceAuthority {
     content_hash: String,
 }
 
-/// Explicitly activate a verified model into local cache.
+/// Explicitly activate the model named by `verified.latest` into local cache.
 ///
 /// Copies `models/verified/…` → `models/cache/…`, publishes ModelInstalled-style
 /// Evidence + Event. Does **not** execute the model. Inventory refresh is left to
@@ -42,6 +43,9 @@ struct VerifyEvidenceAuthority {
 ///
 /// `#338` / RFC-0222: materialize with no-follow opens, bounded stream buffer, and
 /// post-copy hash of actual dest bytes (symlink/partial must not leave a ready model).
+///
+/// `#344` / RFC-0227: also writes per-model `models/cache/<slot>/activated.json`.
+/// `activated.latest` is the default tip only — other slot activations remain available.
 pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome, AcquisitionError> {
     let root = aira_root.as_ref();
     let _ = aira_object::register_node_identity(root);
@@ -54,7 +58,27 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
         &fs::read_to_string(&vpath).map_err(|e| AcquisitionError::Io(e.to_string()))?,
     )
     .map_err(|e| AcquisitionError::Other(e.to_string()))?;
+    activate_from_verified_pointer(root, pointer)
+}
 
+/// Activate a specific verified model by `model_ref` (`#344` / RFC-0227).
+///
+/// Uses the per-model verified slot when present so activating B does not erase A,
+/// and A can be activated while `verified.latest` points at B.
+pub fn activate_verified_model(
+    aira_root: impl AsRef<Path>,
+    model_ref: &str,
+) -> Result<ActivateOutcome, AcquisitionError> {
+    let root = aira_root.as_ref();
+    let _ = aira_object::register_node_identity(root);
+    let pointer = load_verified_slot(root, model_ref)?;
+    activate_from_verified_pointer(root, pointer)
+}
+
+fn activate_from_verified_pointer(
+    root: &Path,
+    pointer: VerifiedPointer,
+) -> Result<ActivateOutcome, AcquisitionError> {
     let authority = resolve_verify_evidence_authority(root, &pointer)?;
 
     let expected = ContentHash::parse(&authority.content_hash).map_err(|_| {
@@ -151,6 +175,8 @@ pub fn activate_verified(aira_root: impl AsRef<Path>) -> Result<ActivateOutcome,
         serde_json::to_string_pretty(&ap).map_err(|e| AcquisitionError::Other(e.to_string()))?,
     )
     .map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    // `#344`: slot record keeps this model available when latest tip moves.
+    write_activated_slot(root, &ap)?;
 
     let cache_scan = root.join(CACHE_REL);
     Ok(ActivateOutcome {

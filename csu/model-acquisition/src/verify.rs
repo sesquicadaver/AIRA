@@ -223,6 +223,8 @@ pub fn verify_quarantine(
             .map_err(|e| AcquisitionError::Other(e.to_string()))?,
     )
     .map_err(|e| AcquisitionError::Io(e.to_string()))?;
+    // `#344` / RFC-0227: per-model verified slot survives when latest advances.
+    crate::lifecycle::write_verified_slot(root, &vpointer)?;
 
     Ok(VerifyOutcome::Verified {
         model_ref: pointer.model_ref,

@@ -4,7 +4,7 @@
 **Джерела:** пост-V аудит `p-only/AIRA-audit-d1115f2-2026-09-11.md` @ `d1115f2` (merge PR #295 / RFC-0208); Phase V **DONE** @ [`phase-v-plan.md`](phase-v-plan.md) / RFC-0208 (**QUEUE V closed**); Pack 0 **DONE** @ [`repair-package-0.md`](repair-package-0.md) / RFC-0207; trace [`product-requirements-trace.md`](product-requirements-trace.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase W `#331`–`#342`.  
 **Closure:** consolidating **RFC-0215** **DONE** @ `#342` (id was confirmed free 2026-09-11 until close).  
-**Handoff:** Pack 2 GUI → Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` (**IN PROGRESS**; `#343` DONE; first OPEN `#344`; RFC-0226 reserved; джерело GUI `p-only/aira-current.md` 2026-09-13).  
+**Handoff:** Pack 2 GUI → Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` (**IN PROGRESS**; `#343`–`#344` DONE; first OPEN `#345`; RFC-0226 reserved; джерело GUI `p-only/aira-current.md` 2026-09-13).  
 **Не змінює:** анти-місію README; історію Phase V як never-DONE; C0/C1 `Calculate 2 + 2` як execution-basic для unconstrained math; `aira-core` ledger / LLM-in-Core; GUI stack (egui) rewrite; Pack 2 multi-model catalog / Work «Порівняти» (M1–M6) — **окремий Phase X**; Pack 3–7; public bind / auto-trust як Desktop default.
 
 > Примітка: аудит і `aira-repair.md` поза git-каноном (`p-only/`). Канон у репо = цей план + Pack 1 close + QUEUE + RFC-D.
@@ -130,7 +130,7 @@ W0 Wiring (+ A0 contract honesty tips)
                   → #340 W1 reuse candidate DONE @ RFC-0224
                     → #341 W1 result/verify binding DONE @ RFC-0225
                       → #342 W close RFC-0215 DONE
-                        → Phase X `#343` DONE; first OPEN `#344`
+                        → Phase X `#343`–`#344` DONE; first OPEN `#345`
 ```
 
 **Anti-merge:** не зливати math із strict HTTP; не зливати evidence authority з backend binding; не зливати close з runtime; не зливати M1–M6 у W.
@@ -166,6 +166,7 @@ QUEUE V closed @ RFC-0208
   + audit d1115f2 Pack 1 PARTIAL (D1–D6)
   + developer «активувати residual phase» (2026-09-11)
   → wiring `#331` DONE; `#332`–`#342` DONE @ RFC-0215; план **DONE**; **QUEUE W closed**; first OPEN `#343`.
+  → Phase X `#344` inventory DONE @ RFC-0227 (was first OPEN `#344` after wiring); first OPEN `#345`.
 ```
 
 ---
@@ -197,7 +198,8 @@ QUEUE V closed @ RFC-0208
 Не вставляти GUI-атоми в `#333`–`#342`.
 Після QUEUE W closed @ RFC-0215:
   → `#343` Phase X wiring DONE @ Analyze-380
-  → first OPEN `#344` (Per-model inventory lifecycle)
+  → `#344` inventory lifecycle DONE @ Analyze-381 / RFC-0227
+  → first OPEN `#345` (Model select API)
   → Pack 2 local multi-model GUI per phase-x-plan.md
 Джерело скріншотів / UX-прогалин: p-only/aira-current.md (2026-09-13).
 ```
