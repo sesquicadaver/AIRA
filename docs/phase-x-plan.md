@@ -1,6 +1,6 @@
 # Phase X — Pack 2: local multi-model GUI (post-W)
 
-**Статус:** **QUEUED** (записано 2026-09-13; **QUEUE W closed** @ RFC-0215; **перший OPEN репо** `#343` = Phase X wiring; активація плану = `#343`).  
+**Статус:** **IN PROGRESS** (активовано `#343` wiring; `#343` **DONE**; first OPEN `#344`; RFC-0226 reserved file-free until `#358`).  
 **Джерела:** GUI-аудит `p-only/aira-current.md` (2026-09-13, скріншоти Desktop); Repair Pack 2 `p-only/aira-repair.md` §«Пакет 2»; audit M1–M6 `p-only/AIRA-audit-d1115f2-2026-09-11.md`; trace [`product-requirements-trace.md`](product-requirements-trace.md) (PR-M1…PR-M4); Phase W residual honesty [`phase-w-plan.md`](phase-w-plan.md) `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed**.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase X `#343`–`#358`.  
 **Closure:** consolidating **RFC-0226** reserved file-free until `#358` (id confirmed free 2026-09-13).  
@@ -25,7 +25,7 @@ Phase W закриває **residual honesty** Pack 1 (D1–D6 / A1–A10). Ск�
 ```text
 QUEUE W (#331–#342 / RFC-0215) → close
   + aira-current.md + Pack 2 / M1–M6
-  → Phase X QUEUED: local multi-model GUI
+  → Phase X Pack 2: local multi-model GUI (IN PROGRESS @ `#343`)
     → не Pack 3 ratings; не Pack 4–5 share; не Core rewrite
 ```
 
@@ -52,7 +52,7 @@ QUEUE W (#331–#342 / RFC-0215) → close
 ## 2. Інваріанти
 
 1. Лінійність: `#N` після `#N-1`; один атом = один PR.
-2. First OPEN репо = `#343` після QUEUE W closed; лінійність `#N` після `#N-1`.
+2. First OPEN репо = `#344` після `#343` wiring; лінійність `#N` після `#N-1`.
 3. `aira-core` **не** отримує GUI / Help / egui / ledger / LLM runtime.
 4. Choice of executor **never** grants `VERIFIED`.
 5. Mock ≠ used-model; не маскувати mock як verified LLM.
@@ -108,7 +108,7 @@ X0 Wiring (після QUEUE W closed)
 
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
-| `#343` | X0 | Phase X wiring | план **IN PROGRESS**; QUEUE tip; `phase_x_doc`; RFC-0226 reserved; handoff з W | inventory (#344) |
+| `#343` | X0 | Phase X wiring | **DONE**: план IN PROGRESS; QUEUE tip; `phase_x_doc`; RFC-0226 reserved | inventory (#344) |
 | `#344` | X1 | Per-model inventory lifecycle (M1) | A/B verified/available незалежно; latest ≠ global exec authority; restart зберігає обидві; RFC-0227 | select API (#345) |
 | `#345` | X1 | Model select API Auto/required (M2) | Auto + required A/B; unready/removed → пояснена помилка; RFC-0228 | profile (#346) |
 | `#346` | X1 | Request profile → snapshot (M3) | overrides/excludes; mid-flight Settings ≠ admitted; RFC-0229 | CLI (#347) |
@@ -126,8 +126,8 @@ X0 Wiring (після QUEUE W closed)
 | `#358` | X | RFC-0226 + close | consolidating; QUEUE X closed; Pack 2 DONE | Pack 3+ |
 
 ```text
-#343 X0 wiring (після W close)
-  → #344 X1 inventory M1
+#343 X0 wiring DONE
+  → #344 X1 inventory M1 (first OPEN)
     → #345 X1 select API M2
       → #346 X1 profile→snapshot M3
         → #347 X1 CLI parity M4
@@ -175,10 +175,9 @@ aira-core still has no GUI/ledger/LLM deps.
 
 ```text
 QUEUE W closed @ RFC-0215
-  + developer / wiring `#343`
+  + developer / wiring `#343` DONE
   + джерела: aira-current.md + Pack 2 + M1–M6
-  → phase-x-plan IN PROGRESS; first OPEN `#344` (після `#343` DONE).
-До `#342` DONE: Phase X = QUEUED; first OPEN лишається `#337`.
+  → phase-x-plan **IN PROGRESS**; `#343` DONE; first OPEN `#344`.
 ```
 
 ---
