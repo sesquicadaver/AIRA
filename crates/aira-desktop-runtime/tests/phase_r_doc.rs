@@ -274,7 +274,11 @@ fn phase_r_connect_primary_outside_tech() {
     );
     assert!(
         text.contains("fn ui_network_advanced"),
-        "ui_network_advanced keeps P3/federation/discovery under tech"
+        "ui_network_advanced keeps dial/federation/discovery under tech"
+    );
+    assert!(
+        text.contains("settings_connection_edit_hint") || text.contains("open_settings_connection"),
+        "#352: Settings owns network profile edit; System links there"
     );
     assert!(
         !text.contains("fn ui_network_ops"),

@@ -21,9 +21,9 @@ A confirmed remote dial path is **opt-in** under **Technical details → Peer di
 Canonical setup scenario (no need to open Technical details for the basic path):
 
 1. **Import an invite** — on **System → Connection**, use **Import invite…** / Import JSON or QR (friend invite). That trusts a known peer; discovery alone is not trust (see help:network.trust).
-2. **Enable a peer profile** — choose **P1** or **P2** (private network with peer listen). P0 stays local-only. If the Connection button says **Enable private network**, use it.
-3. **Apply with Stop → Start** — if Settings or Connection shows **Restart needed**, open **System → Program**, press **Stop**, then **Start**. Closing the window does not stop AIRA.
-4. **Check status honestly** — read the human Connection summary and, if needed, press **Refresh**. Expect Saved ≠ Applied until runtime confirms; book growth without inventing live sessions. For observed reachability details, see help:network.reachability.
+2. **Enable a peer profile** — open **Settings → Connection** and choose **P1** or **P2** (private network with peer listen), or use the Connection CTA **Enable private network**. P0 stays local-only.
+3. **Apply with Stop node → Start node** — if Settings or Connection shows **Restart needed**, open **System → Program**, press **Stop node**, then **Start node**. Closing the window does not stop AIRA.
+4. **Check status honestly** — read the human Connection summary and, if needed, press **Refresh status**. Expect Saved ≠ Applied until runtime confirms; book growth without inventing live sessions. For observed reachability details, see help:network.reachability.
 
 ## What should happen?
 

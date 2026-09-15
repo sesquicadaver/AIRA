@@ -254,16 +254,16 @@ impl ErrorCode {
                 "Завдання вже надсилається. Дочекайтеся завершення."
             }
             (UiLang::En, Self::LifecycleBusy) => {
-                "Start or Stop is already in progress. Wait for it to finish before submitting or changing lifecycle."
+                "Start node or Stop node is already in progress. Wait for it to finish before submitting or changing lifecycle."
             }
             (UiLang::Uk, Self::LifecycleBusy) => {
-                "Старт або Стоп уже виконується. Дочекайтеся завершення перед надсиланням або зміною життєвого циклу."
+                "Запустити вузол або Зупинити вузол уже виконується. Дочекайтеся завершення перед надсиланням або зміною життєвого циклу."
             }
             (UiLang::En, Self::WorkBusyLifecycle) => {
-                "A task is being submitted. Wait for it to finish before Start or Stop."
+                "A task is being submitted. Wait for it to finish before Start node or Stop node."
             }
             (UiLang::Uk, Self::WorkBusyLifecycle) => {
-                "Завдання надсилається. Дочекайтеся завершення перед Старт або Стоп."
+                "Завдання надсилається. Дочекайтеся завершення перед «Запустити вузол» або «Зупинити вузол»."
             }
             (UiLang::En, Self::WorkSubmitFailed) => {
                 "Could not submit the task. Check that AIRA is running, then try again."
@@ -278,10 +278,10 @@ impl ErrorCode {
                 "Генерація тексту ще не готова. Увімкніть Auto tip або оберіть доступну модель — розрахунок працює і без неї. Вибір ≠ VERIFIED."
             }
             (UiLang::En, Self::StatusRefreshFailed) => {
-                "Could not refresh system status. Try Refresh again."
+                "Could not refresh system status. Try Refresh status again."
             }
             (UiLang::Uk, Self::StatusRefreshFailed) => {
-                "Не вдалося оновити стан системи. Натисніть «Оновити» ще раз."
+                "Не вдалося оновити стан системи. Натисніть «Оновити стан» ще раз."
             }
             (UiLang::En, Self::NodeStartFailed) => {
                 "Could not start AIRA. See technical details, then try Start again."
@@ -290,10 +290,10 @@ impl ErrorCode {
                 "Не вдалося запустити AIRA. Перегляньте технічні подробиці й спробуйте «Старт»."
             }
             (UiLang::En, Self::NodeStopFailed) => {
-                "Could not stop AIRA. See technical details, then try Stop again."
+                "Could not stop AIRA. See technical details, then try Stop node again."
             }
             (UiLang::Uk, Self::NodeStopFailed) => {
-                "Не вдалося зупинити AIRA. Перегляньте технічні подробиці й спробуйте «Стоп»."
+                "Не вдалося зупинити AIRA. Перегляньте технічні подробиці й спробуйте «Зупинити вузол»."
             }
             (UiLang::En, Self::SettingsPersistFailed) => {
                 "Could not save settings. Check the marked values and apply again."

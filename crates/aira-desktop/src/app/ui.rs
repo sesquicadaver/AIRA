@@ -885,7 +885,7 @@ impl AiraDesktopApp {
                 }
             }
         }
-        // Phase R `#288`: invite + P0–P2 path visible without opening Technical details.
+        // Phase R `#288` / Phase X `#352`: invites stay on System; profile edit → Settings.
         ui.separator();
         self.ui_connect_primary(ui, ctx);
         egui::CollapsingHeader::new(l.sys_tech_details)
@@ -938,48 +938,29 @@ impl AiraDesktopApp {
         }
     }
 
-    /// Primary connect path: P0–P2 profile + invite/QR (`#288`).
+    /// Primary connect path on System: observe + invites (`#288` / `#352`).
     ///
-    /// Rendered on Connection outside Technical details.
+    /// Network profile / peer listen edit lives in Settings → Connection.
     fn ui_connect_primary(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let l = self.labels();
-        let profile_h = ui.heading(l.network_profile);
-        if profile_h.hovered() {
-            self.note_help_focus(HelpId::NetworkConnect);
-        }
+        ui.small(l.sys_connection_observe_hint);
+        let profile_label = match self.settings.network_profile {
+            NetworkProfile::P0 => l.p0,
+            NetworkProfile::P1 => l.p1,
+            NetworkProfile::P2 => l.p2,
+            NetworkProfile::P3 => l.p3_relay,
+            NetworkProfile::P4 => l.p4_gossip,
+            NetworkProfile::P5 => l.federation,
+            NetworkProfile::P6 => l.discovery,
+        };
         ui.horizontal(|ui| {
-            if ui
-                .selectable_label(self.settings.network_profile == NetworkProfile::P0, l.p0)
-                .clicked()
-            {
-                self.apply_profile(NetworkProfile::P0);
-            }
-            if ui
-                .selectable_label(self.settings.network_profile == NetworkProfile::P1, l.p1)
-                .clicked()
-            {
-                self.apply_profile(NetworkProfile::P1);
-            }
-            if ui
-                .selectable_label(self.settings.network_profile == NetworkProfile::P2, l.p2)
-                .clicked()
-            {
-                self.apply_profile(NetworkProfile::P2);
-            }
+            ui.strong(l.network_profile);
+            ui.label(profile_label);
         });
-        if self.settings.network_profile.requires_peer_listen() {
-            ui.horizontal(|ui| {
-                ui.label(l.peer_listen);
-                let resp = ui.text_edit_singleline(&mut self.peer_listen_edit);
-                if ui.button(l.save_listen).clicked()
-                    || (resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)))
-                {
-                    self.save_peer_listen();
-                }
-            });
-            ui.small(l.peer_listen_loopback_hint);
+        if ui.button(l.open_settings_connection).clicked() {
+            self.note_help_focus(HelpId::NetworkConnect);
+            self.set_tab(MainTab::Settings);
         }
-        ui.small(l.addr_roles_hint);
 
         ui.separator();
         let invite_h = ui.heading(l.friend_invite);
@@ -1026,37 +1007,19 @@ impl AiraDesktopApp {
         }
     }
 
-    /// Advanced Connection ops kept under Technical details (`#288` / `#351`).
+    /// Advanced Connection ops under System Technical details (`#288` / `#351` / `#352`).
+    ///
+    /// P3|P4 profile edit moved to Settings → Connection; dial/discovery stay diagnostic.
     fn ui_network_advanced(&mut self, ui: &mut egui::Ui) {
         let l = self.labels();
         ui.heading(l.advanced);
         ui.label(l.advanced_hint);
         ui.small(l.p34_mutex_hint);
-        let relay_on = self.settings.network_profile.is_relay_profile();
-        let gossip_on = self.settings.network_profile.is_gossip_profile();
-        let base_on = !relay_on && !gossip_on;
-        ui.horizontal(|ui| {
-            if ui.selectable_label(base_on, l.p34_base).clicked() && !base_on {
-                // Leaving P3/P4 returns to peer-capable base (P2), matching prior toggle-off.
-                self.apply_profile(NetworkProfile::P2);
-            }
-            if ui.selectable_label(relay_on, l.p3_relay).clicked() && !relay_on {
-                self.apply_profile(NetworkProfile::P3);
-            }
-            if ui.selectable_label(gossip_on, l.p4_gossip).clicked() && !gossip_on {
-                self.apply_profile(NetworkProfile::P4);
-            }
-        });
+        ui.small(l.settings_connection_edit_hint);
+        if ui.button(l.open_settings_connection).clicked() {
+            self.set_tab(MainTab::Settings);
+        }
         if self.settings.network_profile.is_relay_profile() {
-            ui.horizontal(|ui| {
-                ui.label(l.relay_ttl);
-                let resp = ui.text_edit_singleline(&mut self.relay_ttl_edit);
-                if ui.button(l.save_ttl).clicked()
-                    || (resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)))
-                {
-                    self.save_relay_ttl();
-                }
-            });
             let ttl = self
                 .settings
                 .relay_ttl_days
@@ -1354,9 +1317,69 @@ impl AiraDesktopApp {
         ui.separator();
         let g = ui.strong(l.settings_group_connection);
         if g.hovered() {
-            self.note_help_focus(HelpId::SettingsApply);
+            self.note_help_focus(HelpId::NetworkConnect);
         }
+        // Phase X `#352`: network edit lives in Settings; System Connection observes.
+        ui.small(l.settings_connection_edit_hint);
         ui.small(l.addr_roles_hint);
+        ui.horizontal(|ui| {
+            if ui
+                .selectable_label(self.settings.network_profile == NetworkProfile::P0, l.p0)
+                .clicked()
+            {
+                self.apply_profile(NetworkProfile::P0);
+            }
+            if ui
+                .selectable_label(self.settings.network_profile == NetworkProfile::P1, l.p1)
+                .clicked()
+            {
+                self.apply_profile(NetworkProfile::P1);
+            }
+            if ui
+                .selectable_label(self.settings.network_profile == NetworkProfile::P2, l.p2)
+                .clicked()
+            {
+                self.apply_profile(NetworkProfile::P2);
+            }
+        });
+        if self.settings.network_profile.requires_peer_listen() {
+            ui.horizontal(|ui| {
+                ui.label(l.peer_listen);
+                let resp = ui.text_edit_singleline(&mut self.peer_listen_edit);
+                if ui.button(l.save_listen).clicked()
+                    || (resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)))
+                {
+                    self.save_peer_listen();
+                }
+            });
+            ui.small(l.peer_listen_loopback_hint);
+        }
+        ui.small(l.p34_mutex_hint);
+        let relay_on = self.settings.network_profile.is_relay_profile();
+        let gossip_on = self.settings.network_profile.is_gossip_profile();
+        let base_on = !relay_on && !gossip_on;
+        ui.horizontal(|ui| {
+            if ui.selectable_label(base_on, l.p34_base).clicked() && !base_on {
+                self.apply_profile(NetworkProfile::P2);
+            }
+            if ui.selectable_label(relay_on, l.p3_relay).clicked() && !relay_on {
+                self.apply_profile(NetworkProfile::P3);
+            }
+            if ui.selectable_label(gossip_on, l.p4_gossip).clicked() && !gossip_on {
+                self.apply_profile(NetworkProfile::P4);
+            }
+        });
+        if self.settings.network_profile.is_relay_profile() {
+            ui.horizontal(|ui| {
+                ui.label(l.relay_ttl);
+                let resp = ui.text_edit_singleline(&mut self.relay_ttl_edit);
+                if ui.button(l.save_ttl).clicked()
+                    || (resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)))
+                {
+                    self.save_relay_ttl();
+                }
+            });
+        }
         let profile_label = match self.settings.network_profile {
             NetworkProfile::P0 => l.p0,
             NetworkProfile::P1 => l.p1,
@@ -1409,7 +1432,6 @@ impl AiraDesktopApp {
             ui.strong(l.settings_applied);
             ui.monospace(applied_listen);
         });
-        ui.small(l.peer_listen_loopback_hint);
 
         ui.separator();
         let g = ui.strong(l.settings_group_advanced);
