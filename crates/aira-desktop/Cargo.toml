@@ -18,6 +18,7 @@ eframe = { version = "0.28", default-features = true }
 egui = "0.28"
 rfd = "0.14"
 aira-desktop-runtime = { path = "../aira-desktop-runtime" }
+aira-flow = { path = "../aira-flow" }
 aira-protocol = { path = "../aira-protocol" }
 aira-peer = { path = "../aira-peer" }
 serde_json = { workspace = true }

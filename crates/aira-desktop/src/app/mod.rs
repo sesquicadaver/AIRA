@@ -13,10 +13,11 @@ mod work;
 use std::path::PathBuf;
 
 use aira_desktop_runtime::{
-    load_or_create_settings, load_or_create_ui_prefs, load_system_snapshot,
+    evaluate_work_readiness, load_or_create_settings, load_or_create_ui_prefs, load_system_snapshot,
     sync_autostart_from_settings, write_ui_prefs, DesktopPaths, DesktopSettings, LifecycleStatus,
     ModelCatalogSnapshot, ModelFact, ModelTripleSnapshot, NetworkMeshSnapshot, SystemSnapshot,
-    UiLang, UiPrefs, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    UiLang, UiPrefs, WorkExecutorPreference, WorkReadiness, DEFAULT_PEER_LISTEN,
+    DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
@@ -96,6 +97,10 @@ pub struct AiraDesktopApp {
     pub(super) catalog_auto: bool,
     pub(super) catalog_add_ref: String,
     pub(super) catalog_msg: Option<String>,
+    /// Work executor Auto / specific + readiness (`#349` / RFC-0232).
+    pub(super) work_executor_auto: bool,
+    pub(super) work_required_ref: String,
+    pub(super) work_readiness: WorkReadiness,
     pub(super) peer_listen_edit: String,
     pub(super) relay_ttl_edit: String,
     pub(super) invite_msg: Option<String>,
@@ -171,6 +176,8 @@ impl AiraDesktopApp {
             .map(|d| d.to_string())
             .unwrap_or_else(|| DEFAULT_RELAY_TTL_DAYS.to_string());
         let applied_runtime = None;
+        let work_readiness =
+            evaluate_work_readiness(&paths.data_root, "", WorkExecutorPreference::Auto);
         let mut app = Self {
             paths,
             node_bin,
@@ -192,6 +199,9 @@ impl AiraDesktopApp {
             catalog_auto: true,
             catalog_add_ref: String::new(),
             catalog_msg: None,
+            work_executor_auto: true,
+            work_required_ref: String::new(),
+            work_readiness,
             peer_listen_edit,
             relay_ttl_edit,
             invite_msg: None,
@@ -223,6 +233,7 @@ impl AiraDesktopApp {
         ));
         let _ = app.refresh_status();
         app.refresh_model_catalog();
+        app.refresh_work_readiness();
         app.refresh_federation_detail();
         if auto_start {
             app.request_lifecycle(LifecycleJobKind::Start, &cc.egui_ctx);
@@ -350,6 +361,7 @@ impl AiraDesktopApp {
                     self.catalog_highlight = snap.tip_model_ref.clone();
                 }
                 self.model_catalog = snap;
+                self.refresh_work_readiness();
             }
             Err(e) => {
                 self.catalog_msg = Some(format!("{e:#}"));
@@ -364,6 +376,7 @@ impl AiraDesktopApp {
         }
         self.model_catalog = snap;
         self.refresh_model_triple();
+        self.refresh_work_readiness();
     }
 
     /// Request a background status refresh (no-op if one is already running).

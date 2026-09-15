@@ -10,11 +10,12 @@ use aira_desktop_runtime::{
     import_invite_file, import_invite_qr_file, import_invite_qr_luma,
     join_federation_descriptor_file, load_model_catalog, normalize_settings, prepare_model,
     read_federation_membership, run_discv_announce, run_discv_find, run_opt_in_peer_dial,
-    run_stun_query, scan_model_catalog, select_catalog_model, submit_desktop_problem,
-    write_settings, CatalogSelection, DesktopPaths, DesktopSettings, DialOutcome,
-    DiscoveryStunOutcome, ImportInviteOutcome, ModelCatalogSnapshot, NetworkProfile, PeerInvite,
-    DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    run_stun_query, scan_model_catalog, select_catalog_model,
+    submit_desktop_problem_with_admission, write_settings, CatalogSelection, DesktopPaths,
+    DesktopSettings, DialOutcome, DiscoveryStunOutcome, ImportInviteOutcome, ModelCatalogSnapshot,
+    NetworkProfile, PeerInvite, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
+use aira_flow::AdmissionConstraints;
 use aira_peer::DiscvFindReport;
 use aira_protocol::{FederationMembership, JoinOutcome};
 
@@ -156,16 +157,17 @@ pub fn apply_invite(paths: &DesktopPaths, invite: &PeerInvite) -> Result<ImportI
     import_invite(paths, invite)
 }
 
-/// Submit problem text to the supervised node (`POST /v1/problems`).
+/// Submit problem text with admit-time constraints (`#349` / RFC-0232).
 ///
 /// Returns a human-first Work view (`result.result` + status + verification),
-/// not a raw VRA dump.
-pub fn submit_problem(
+/// not a raw VRA dump. Pass [`AdmissionConstraints::default`] when no model bind.
+pub fn submit_problem_with_admission(
     paths: &DesktopPaths,
     settings: &DesktopSettings,
     text: &str,
+    admission: &AdmissionConstraints,
 ) -> Result<WorkResultView> {
-    let v = submit_desktop_problem(paths, settings, text)?;
+    let v = submit_desktop_problem_with_admission(paths, settings, text, admission)?;
     Ok(format_work_result(&v))
 }
 
@@ -398,9 +400,14 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let paths = DesktopPaths::for_data_root(tmp.path());
         let settings = load_or_create_settings(&paths).unwrap();
-        let err = submit_problem(&paths, &settings, "  \n")
-            .unwrap_err()
-            .to_string();
+        let err = submit_problem_with_admission(
+            &paths,
+            &settings,
+            "  \n",
+            &AdmissionConstraints::default(),
+        )
+        .unwrap_err()
+        .to_string();
         assert!(err.contains("non-empty"), "{err}");
     }
 

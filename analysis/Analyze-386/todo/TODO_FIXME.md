@@ -1,0 +1,4 @@
+- [x] work_readiness facade + math≠generate
+- [x] Work UI Auto/specific + pre-submit gate
+- [x] RFC-0232; tip → first OPEN `#350`
+- [ ] Mock honesty + result triple → `#350` / Analyze-387

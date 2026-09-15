@@ -22,6 +22,7 @@ aira-peer = { path = "../aira-peer" }
 aira-protocol = { path = "../aira-protocol" }
 aira-csu-model-acquisition = { path = "../../csu/model-acquisition" }
 aira-csu-model-inventory = { path = "../../csu/model-inventory" }
+aira-csu-reduction-basic = { path = "../../csu/reduction-basic" }
 tokio = { workspace = true }
 time = { workspace = true }
 qrcode = { version = "0.14.1", default-features = false, features = ["image"] }

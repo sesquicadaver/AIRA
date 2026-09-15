@@ -20,6 +20,7 @@ The Work screen moves to a waiting state, then shows an answer with status, chec
 ## If it failed?
 
 - Empty text → rejected with a clear problem (Help opens on `work.submit`).
+- Text generation not ready → Auto tip missing or specific model unavailable (`work.model_unready`); open Settings → Models to Scan/Prepare/Select. Calculation like `Calculate 2 + 2` still runs without a model. Choice ≠ VERIFIED.
 - Node stopped → Desktop may Start first; if Start fails, follow help:node.lifecycle.
 - Model missing for generation → see help:model.unavailable; calculation like `Calculate 2 + 2` can still work without an LLM.
 
@@ -27,4 +28,5 @@ The Work screen moves to a waiting state, then shows an answer with status, chec
 
 - help:work.waiting — while the run is in progress
 - help:work.result — how to read the answer and provenance
+- help:model.unavailable — when generate-local is blocked
 - help:node.lifecycle — Start the local program
