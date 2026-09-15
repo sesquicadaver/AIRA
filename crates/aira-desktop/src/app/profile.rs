@@ -39,16 +39,12 @@ impl AiraDesktopApp {
                 }
                 self.restart_hint = true;
                 if let Err(e) = self.persist_settings() {
-                    self.set_problem(
-                        crate::lexicon::ErrorCode::SettingsPersistFailed,
-                        format!("{e:#}"),
-                    );
+                    self.note_settings_apply_error(format!("{e:#}"));
+                } else {
+                    self.clear_settings_apply_error();
                 }
             }
-            Err(e) => self.set_problem(
-                crate::lexicon::ErrorCode::SettingsPersistFailed,
-                format!("{e:#}"),
-            ),
+            Err(e) => self.note_settings_apply_error(format!("{e:#}")),
         }
     }
 
@@ -76,16 +72,12 @@ impl AiraDesktopApp {
             Ok(()) => {
                 self.restart_hint = true;
                 if let Err(e) = self.persist_settings() {
-                    self.set_problem(
-                        crate::lexicon::ErrorCode::SettingsPersistFailed,
-                        format!("{e:#}"),
-                    );
+                    self.note_settings_apply_error(format!("{e:#}"));
+                } else {
+                    self.clear_settings_apply_error();
                 }
             }
-            Err(e) => self.set_problem(
-                crate::lexicon::ErrorCode::SettingsPersistFailed,
-                format!("{e:#}"),
-            ),
+            Err(e) => self.note_settings_apply_error(format!("{e:#}")),
         }
     }
 
@@ -107,16 +99,12 @@ impl AiraDesktopApp {
             Ok(()) => {
                 self.restart_hint = true;
                 if let Err(e) = self.persist_settings() {
-                    self.set_problem(
-                        crate::lexicon::ErrorCode::SettingsPersistFailed,
-                        format!("{e:#}"),
-                    );
+                    self.note_settings_apply_error(format!("{e:#}"));
+                } else {
+                    self.clear_settings_apply_error();
                 }
             }
-            Err(e) => self.set_problem(
-                crate::lexicon::ErrorCode::SettingsPersistFailed,
-                format!("{e:#}"),
-            ),
+            Err(e) => self.note_settings_apply_error(format!("{e:#}")),
         }
     }
 }

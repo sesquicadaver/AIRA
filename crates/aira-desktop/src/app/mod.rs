@@ -128,6 +128,8 @@ pub struct AiraDesktopApp {
     pub(super) qr_camera: Option<camera::InviteQrCamera>,
     pub(super) qr_camera_status: Option<String>,
     pub(super) restart_hint: bool,
+    /// Last Settings apply/persist error detail (`#356`); cleared on success.
+    pub(super) settings_apply_error: Option<String>,
     /// Confirmed runtime-applied network/listen subset (`#262`/`#268`).
     /// `None` = Explicitly Undefined (no Running confirmation yet).
     pub(super) applied_runtime: Option<crate::settings_apply::AppliedRuntimeSettings>,
@@ -233,6 +235,7 @@ impl AiraDesktopApp {
             qr_camera: None,
             qr_camera_status: None,
             restart_hint: false,
+            settings_apply_error: None,
             applied_runtime,
             async_jobs: AsyncDesktopJobs::new(),
             quit_after_stop: false,
@@ -579,17 +582,57 @@ impl AiraDesktopApp {
         }
     }
 
-    /// Settings lifecycle phase from saved disk vs runtime-applied (`#262`).
+    /// Settings lifecycle phase: draft Changed → disk Restart/Applied/Undefined (`#262` / `#356`).
     pub(super) fn settings_apply_phase(&self) -> crate::settings_apply::SettingsApplyPhase {
-        crate::settings_apply::settings_apply_phase(&self.settings, self.applied_runtime.as_ref())
+        let dirty = crate::settings_apply::settings_connection_draft_dirty(
+            &self.settings,
+            &self.peer_listen_edit,
+            &self.relay_ttl_edit,
+        );
+        crate::settings_apply::settings_apply_phase(
+            &self.settings,
+            self.applied_runtime.as_ref(),
+            dirty,
+        )
     }
 
     /// True when saved network/listen differ from applied (Stop→Start needed).
+    ///
+    /// Ignores unsaved draft (`#356`) — restart CTA is for disk vs runtime only.
     pub(super) fn settings_need_restart(&self) -> bool {
         matches!(
-            self.settings_apply_phase(),
+            crate::settings_apply::settings_apply_phase_disk(
+                &self.settings,
+                self.applied_runtime.as_ref(),
+            ),
             crate::settings_apply::SettingsApplyPhase::RestartNeeded
         ) || self.restart_hint
+    }
+
+    /// Record an apply/persist failure inline on Settings (`#356`).
+    pub(super) fn note_settings_apply_error(&mut self, detail: String) {
+        self.settings_apply_error = Some(detail.clone());
+        self.set_problem(crate::lexicon::ErrorCode::SettingsPersistFailed, detail);
+    }
+
+    /// Clear inline apply error after a successful save.
+    pub(super) fn clear_settings_apply_error(&mut self) {
+        self.settings_apply_error = None;
+    }
+
+    /// Restore Connection draft fields from disk-saved settings (`#356`).
+    pub(super) fn cancel_connection_draft(&mut self) {
+        self.peer_listen_edit = self
+            .settings
+            .peer_listen
+            .clone()
+            .unwrap_or_else(|| DEFAULT_PEER_LISTEN.to_string());
+        self.relay_ttl_edit = self
+            .settings
+            .relay_ttl_days
+            .map(|d| d.to_string())
+            .unwrap_or_else(|| DEFAULT_RELAY_TTL_DAYS.to_string());
+        self.clear_settings_apply_error();
     }
 
     /// Confirm applied values from a successful Start / attach outcome (`#268` / `#282`).

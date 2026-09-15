@@ -1226,6 +1226,32 @@ impl AiraDesktopApp {
                 );
                 ui.small(l.settings_restart_action);
             }
+            crate::settings_apply::SettingsApplyPhase::Changed => {
+                ui.colored_label(
+                    egui::Color32::from_rgb(40, 100, 180),
+                    l.settings_phase_changed,
+                );
+                ui.small(l.settings_phase_changed_hint);
+                ui.horizontal(|ui| {
+                    if ui.button(l.settings_draft_save).clicked() {
+                        if self.settings.network_profile.is_relay_profile() {
+                            self.save_relay_ttl();
+                        } else if self.settings.network_profile.requires_peer_listen() {
+                            self.save_peer_listen();
+                        }
+                    }
+                    if ui.button(l.settings_draft_cancel).clicked() {
+                        self.cancel_connection_draft();
+                    }
+                });
+            }
+        }
+        if let Some(err) = &self.settings_apply_error {
+            ui.colored_label(
+                egui::Color32::from_rgb(180, 60, 40),
+                format!("{}: {err}", l.settings_apply_error),
+            );
+            ui.small(l.settings_apply_error_hint);
         }
         ui.label(l.settings_close_not_stop);
 
@@ -1259,10 +1285,9 @@ impl AiraDesktopApp {
             .changed();
         if dirty {
             if let Err(e) = self.persist_settings() {
-                self.set_problem(
-                    crate::lexicon::ErrorCode::SettingsPersistFailed,
-                    format!("{e:#}"),
-                );
+                self.note_settings_apply_error(format!("{e:#}"));
+            } else {
+                self.clear_settings_apply_error();
             }
         }
 
