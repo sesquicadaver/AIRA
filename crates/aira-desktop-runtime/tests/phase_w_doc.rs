@@ -45,6 +45,7 @@ fn phase_w_plan_present() {
         "phase-x-plan.md",
         "Handoff",
         "public bind",
+        "QUEUE X closed",
         "first OPEN `#343`",
         "first OPEN `#344`",
         "first OPEN `#345`",
@@ -56,6 +57,7 @@ fn phase_w_plan_present() {
         "first OPEN `#351`",
         "first OPEN `#352`",
         "first OPEN `#353`",
+        "first OPEN `#358`",
     ] {
         assert!(text.contains(needle), "phase-w-plan missing: {needle}");
     }
@@ -155,16 +157,22 @@ fn phase_w_queue_all_done() {
             && text.contains("| 354 | **DONE**")
             && text.contains("| 355 | **DONE**")
             && text.contains("| 356 | **DONE**")
-            && text.contains("| 357 | **DONE**"),
-        "QUEUE #343–#357 must be DONE after M6 acceptance"
+            && text.contains("| 357 | **DONE**")
+            && text.contains("| 358 | **DONE**"),
+        "QUEUE #343–#358 must be DONE after Phase X close"
     );
     assert!(
-        !text.contains("**Перший OPEN:** `#357`") && text.contains("**Перший OPEN:** `#358`"),
-        "QUEUE tip must advance from #357 to #358 after M6 acceptance"
+        text.contains("QUEUE X closed") && text.contains("no OPEN X atoms"),
+        "QUEUE tip must claim QUEUE X closed after #358"
     );
     assert!(
-        text.contains("| 358 | **OPEN**"),
-        "QUEUE #358 must be OPEN (Phase X after #357)"
+        !text.contains("**Перший OPEN:** `#358`") && !text.contains("| 358 | **OPEN**"),
+        "QUEUE must not keep #358 as first-OPEN / OPEN after close"
+    );
+    // Historical tip preserved in #357 DONE row (do not mass-replace).
+    assert!(
+        text.contains("first OPEN `#358`"),
+        "QUEUE must retain historical first OPEN `#358` (e.g. in #357 DONE row)"
     );
 }
 

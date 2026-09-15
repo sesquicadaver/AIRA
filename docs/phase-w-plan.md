@@ -4,7 +4,7 @@
 **Джерела:** пост-V аудит `p-only/AIRA-audit-d1115f2-2026-09-11.md` @ `d1115f2` (merge PR #295 / RFC-0208); Phase V **DONE** @ [`phase-v-plan.md`](phase-v-plan.md) / RFC-0208 (**QUEUE V closed**); Pack 0 **DONE** @ [`repair-package-0.md`](repair-package-0.md) / RFC-0207; trace [`product-requirements-trace.md`](product-requirements-trace.md).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase W `#331`–`#342`.  
 **Closure:** consolidating **RFC-0215** **DONE** @ `#342` (id was confirmed free 2026-09-11 until close).  
-**Handoff:** Pack 2 GUI → Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` (**IN PROGRESS**; `#343`–`#357` DONE; first OPEN `#358`; RFC-0226 reserved; джерело GUI `p-only/aira-current.md` 2026-09-13).  
+**Handoff:** Pack 2 GUI → Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed**; no OPEN X atoms (джерело GUI `p-only/aira-current.md` 2026-09-13).  
 **Не змінює:** анти-місію README; історію Phase V як never-DONE; C0/C1 `Calculate 2 + 2` як execution-basic для unconstrained math; `aira-core` ledger / LLM-in-Core; GUI stack (egui) rewrite; Pack 2 multi-model catalog / Work «Порівняти» (M1–M6) — **окремий Phase X**; Pack 3–7; public bind / auto-trust як Desktop default.
 
 > Примітка: аудит і `aira-repair.md` поза git-каноном (`p-only/`). Канон у репо = цей план + Pack 1 close + QUEUE + RFC-D.
@@ -130,7 +130,7 @@ W0 Wiring (+ A0 contract honesty tips)
                   → #340 W1 reuse candidate DONE @ RFC-0224
                     → #341 W1 result/verify binding DONE @ RFC-0225
                       → #342 W close RFC-0215 DONE
-                        → Phase X `#343`–`#357` DONE; first OPEN `#358`
+                        → Phase X `#343`–`#358` DONE @ RFC-0226; QUEUE X closed
 ```
 
 **Anti-merge:** не зливати math із strict HTTP; не зливати evidence authority з backend binding; не зливати close з runtime; не зливати M1–M6 у W.
@@ -166,7 +166,7 @@ QUEUE V closed @ RFC-0208
   + audit d1115f2 Pack 1 PARTIAL (D1–D6)
   + developer «активувати residual phase» (2026-09-11)
   → wiring `#331` DONE; `#332`–`#342` DONE @ RFC-0215; план **DONE**; **QUEUE W closed**; first OPEN `#343`.
-  → Phase X `#344` inventory DONE @ RFC-0227 (was first OPEN `#344` after wiring); `#345` select DONE @ RFC-0228 (was first OPEN `#345`); `#346` profile DONE @ RFC-0229 (was first OPEN `#346`); `#347` CLI DONE @ RFC-0230 (was first OPEN `#347`); `#348` Settings Models DONE @ RFC-0231 (was first OPEN `#348`); `#349` Work executor DONE @ RFC-0232 (was first OPEN `#349`); `#350` Mock honesty DONE @ RFC-0233 (was first OPEN `#350`); `#351` Network/address honesty DONE @ RFC-0234 (was first OPEN `#351`); `#352` Human copy DONE @ RFC-0235 (was first OPEN `#352`); `#353` Help F1 DONE @ RFC-0236 (was first OPEN `#353`); `#354` Compare DONE @ RFC-0237 (was first OPEN `#354`); `#355` data paths DONE @ RFC-0238 (was first OPEN `#355`); `#356` apply-diff DONE @ RFC-0239; `#357` M6 DONE @ RFC-0240 (was first OPEN `#357`); first OPEN `#358`.
+  → Phase X `#344` inventory DONE @ RFC-0227 (was first OPEN `#344` after wiring); `#345` select DONE @ RFC-0228 (was first OPEN `#345`); `#346` profile DONE @ RFC-0229 (was first OPEN `#346`); `#347` CLI DONE @ RFC-0230 (was first OPEN `#347`); `#348` Settings Models DONE @ RFC-0231 (was first OPEN `#348`); `#349` Work executor DONE @ RFC-0232 (was first OPEN `#349`); `#350` Mock honesty DONE @ RFC-0233 (was first OPEN `#350`); `#351` Network/address honesty DONE @ RFC-0234 (was first OPEN `#351`); `#352` Human copy DONE @ RFC-0235 (was first OPEN `#352`); `#353` Help F1 DONE @ RFC-0236 (was first OPEN `#353`); `#354` Compare DONE @ RFC-0237 (was first OPEN `#354`); `#355` data paths DONE @ RFC-0238 (was first OPEN `#355`); `#356` apply-diff DONE @ RFC-0239; `#357` M6 DONE @ RFC-0240 (was first OPEN `#357`); `#358` close DONE @ RFC-0226 (was first OPEN `#358`); **QUEUE X closed**; no OPEN X atoms.
 ```
 
 ---
@@ -203,7 +203,7 @@ QUEUE V closed @ RFC-0208
   → `#346` profile snapshot DONE @ Analyze-383 / RFC-0229
   → `#347` CLI parity DONE @ Analyze-384 / RFC-0230
   → `#348` Settings Models DONE @ Analyze-385 / RFC-0231
-  → first OPEN `#358` (RFC-0226 close)
-  → Pack 2 local multi-model GUI per phase-x-plan.md
+  → `#358` RFC-0226 close DONE @ Analyze-395 (was first OPEN `#358`)
+  → Phase X DONE @ RFC-0226; **QUEUE X closed**; Pack 2 DONE; Pack 3+ still separate
 Джерело скріншотів / UX-прогалин: p-only/aira-current.md (2026-09-13).
 ```

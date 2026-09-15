@@ -1,9 +1,9 @@
 # Phase X — Pack 2: local multi-model GUI (post-W)
 
-**Статус:** **IN PROGRESS** (активовано `#343` wiring; `#343`–`#357` **DONE**; first OPEN `#358`; RFC-0226 reserved file-free until `#358`).  
+**Статус:** **DONE** @ [AIRA-RFC-0226](../specs/rfc/AIRA-RFC-0226-phase-x-pack2-multi-model-gui.md) (активовано `#343` wiring; `#343`–`#358` **DONE**; **QUEUE X closed**; no OPEN X atoms).  
 **Джерела:** GUI-аудит `p-only/aira-current.md` (2026-09-13, скріншоти Desktop); Repair Pack 2 `p-only/aira-repair.md` §«Пакет 2»; audit M1–M6 `p-only/AIRA-audit-d1115f2-2026-09-11.md`; trace [`product-requirements-trace.md`](product-requirements-trace.md) (PR-M1…PR-M4); Phase W residual honesty [`phase-w-plan.md`](phase-w-plan.md) `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed**.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase X `#343`–`#358`.  
-**Closure:** consolidating **RFC-0226** reserved file-free until `#358` (id confirmed free 2026-09-13).  
+**Closure:** consolidating **RFC-0226** **DONE** @ `#358` (id was confirmed free 2026-09-13 until close).  
 **Не змінює:** анти-місію README; Phase W / V історію; Pack 1 admission honesty; `aira-core` ledger / LLM-in-Core; egui stack rewrite; Pack 3 ratings evidence UI; Pack 4 remote compute quotas; Pack 5 weight-transfer ≠ inference; Pack 6–7; public bind / auto-trust як Desktop default.
 
 > Примітка: `p-only/aira-current.md` / `aira-repair.md` / аудити поза git-каноном. Канон у репо = цей план + QUEUE + RFC-D + tip у `phase-w-plan.md` §handoff.
@@ -25,7 +25,7 @@ Phase W закриває **residual honesty** Pack 1 (D1–D6 / A1–A10). Ск�
 ```text
 QUEUE W (#331–#342 / RFC-0215) → close
   + aira-current.md + Pack 2 / M1–M6
-  → Phase X Pack 2: local multi-model GUI (IN PROGRESS @ `#343`)
+  → Phase X Pack 2: local multi-model GUI (DONE @ RFC-0226)
     → не Pack 3 ratings; не Pack 4–5 share; не Core rewrite
 ```
 
@@ -52,7 +52,7 @@ QUEUE W (#331–#342 / RFC-0215) → close
 ## 2. Інваріанти
 
 1. Лінійність: `#N` після `#N-1`; один атом = один PR.
-2. First OPEN репо = `#358` після `#357` M6; лінійність `#N` після `#N-1`.
+2. First OPEN репо = closed band `#343`–`#358`; **QUEUE X closed**; no OPEN X atoms.
 3. `aira-core` **не** отримує GUI / Help / egui / ledger / LLM runtime.
 4. Choice of executor **never** grants `VERIFIED`.
 5. Mock ≠ used-model; не маскувати mock як verified LLM.
@@ -79,6 +79,7 @@ Public bind / auto-trust як default
 Weakening observe / activate admission hash
 Full resource-share permissions UI (aira-current «Надання ресурсів»)
 Inventing S1–S18 wholesale
+Inventing first OPEN #359 / Phase Y here
 ```
 
 ---
@@ -108,7 +109,7 @@ X0 Wiring (після QUEUE W closed)
 
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
-| `#343` | X0 | Phase X wiring | **DONE**: план IN PROGRESS; QUEUE tip; `phase_x_doc`; RFC-0226 reserved | inventory (#344) |
+| `#343` | X0 | Phase X wiring | **DONE**: plan IN PROGRESS; QUEUE tip; `phase_x_doc`; RFC-0226 reserved | inventory (#344) |
 | `#344` | X1 | Per-model inventory lifecycle (M1) | **DONE** @ RFC-0227: A/B slots; latest ≠ sole auth; restart; `phase_x_doc` | select API (#345) |
 | `#345` | X1 | Model select API Auto/required (M2) | **DONE** @ RFC-0228: `select_model` Auto/Required; explained unready/removed | profile (#346) |
 | `#346` | X1 | Request profile → snapshot (M3) | **DONE** @ RFC-0229: freeze allowed/excluded; mid-flight ≠ admitted | CLI (#347) |
@@ -123,7 +124,7 @@ X0 Wiring (після QUEUE W closed)
 | `#355` | X2 | Model data paths (light) | **DONE** @ RFC-0238: storage catalog + used/free (or unknown) in Settings | apply-diff (#356) |
 | `#356` | X2 | Apply-diff honesty | **DONE** @ RFC-0239: Changed/Saved/Applied/Restart + apply error | M6 (#357) |
 | `#357` | X3 | Two-model installed acceptance (M6) | **DONE** @ RFC-0240: GUI+CLI+HTTP; cold restart; fail-closed | close (#358) |
-| `#358` | X | RFC-0226 + close | consolidating; QUEUE X closed; Pack 2 DONE | Pack 3+ |
+| `#358` | X | RFC-0226 + close | **DONE** @ RFC-0226: consolidating; QUEUE X closed; Pack 2 DONE | Pack 3+ |
 
 ```text
 #343 X0 wiring DONE
@@ -141,8 +142,8 @@ X0 Wiring (після QUEUE W closed)
                         → #355 X2 model data paths DONE @ RFC-0238
                           → #356 X2 apply-diff honesty DONE @ RFC-0239
                             → #357 X3 M6 acceptance DONE @ RFC-0240
-                              → #358 X close (first OPEN)
-                              → #358 X close RFC-0226
+                              → #358 X close RFC-0226 DONE
+                              → QUEUE X closed; Pack 2 DONE; Pack 3+ still separate
 ```
 
 **Anti-merge:** не зливати inventory із Settings GUI; не зливати Work executor із Compare; не зливати M6 із close; не зливати Pack 3 ratings / Pack 4–5 у X; **не** вставляти X-атоми між `#333`–`#342`.
@@ -167,7 +168,7 @@ aira-core still has no GUI/ledger/LLM deps.
 
 ## 7. RFC
 
-- Consolidating (`#358`): **AIRA-RFC-0226** — reserved file-free until close (id confirmed free 2026-09-13).
+- Consolidating (`#358`): **AIRA-RFC-0226** **DONE** (id was confirmed free 2026-09-13 until close).
 - Per-atom RFC-D: `#344`→**0227** … `#356`→**0239**, `#357`→**0240** (на кожному PR); `#358`→0226 consolidating.
 
 ---
@@ -178,7 +179,7 @@ aira-core still has no GUI/ledger/LLM deps.
 QUEUE W closed @ RFC-0215
   + developer / wiring `#343` DONE
   + джерела: aira-current.md + Pack 2 + M1–M6
-  → phase-x-plan **IN PROGRESS**; `#343`–`#357` DONE; first OPEN `#358`.
+  → phase-x-plan **DONE** @ RFC-0226; `#343`–`#358` DONE; **QUEUE X closed**; no OPEN X atoms.
 ```
 
 ---
