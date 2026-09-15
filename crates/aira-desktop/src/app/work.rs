@@ -1,7 +1,8 @@
-use aira_desktop_runtime::{evaluate_work_readiness, WorkExecutorPreference};
+use aira_desktop_runtime::{evaluate_work_readiness, ModelFact, WorkExecutorPreference};
 
 use super::AiraDesktopApp;
 use crate::lexicon::{work_submit_gate, ErrorCode, UiProblem};
+use crate::work_view::WorkSubmitModelContext;
 
 impl AiraDesktopApp {
     /// Work-screen executor preference (`#349` / RFC-0232).
@@ -20,6 +21,20 @@ impl AiraDesktopApp {
             &self.problem_text,
             self.work_preference(),
         );
+    }
+
+    /// Submit-time requested/applied for the result triple (`#350`).
+    pub(super) fn work_submit_model_context(&self) -> WorkSubmitModelContext {
+        let requested = self.work_readiness.admission.model_ref.clone();
+        let applied = match &self.model_triple.selected {
+            ModelFact::Value(s) => Some(s.clone()),
+            ModelFact::Undefined | ModelFact::None => self
+                .model_catalog
+                .tip_model_ref
+                .clone()
+                .or_else(|| requested.clone()),
+        };
+        WorkSubmitModelContext { requested, applied }
     }
 
     /// Queue a background submit (`#257`). Does not block the egui thread.
@@ -61,6 +76,7 @@ impl AiraDesktopApp {
             return;
         }
         let admission = self.work_readiness.admission.clone();
+        let model_ctx = self.work_submit_model_context();
         let ensure_started = !self.node_running;
         let ctx = ctx.clone();
         let started = self.async_jobs.try_spawn_submit(
@@ -70,6 +86,7 @@ impl AiraDesktopApp {
             text,
             ensure_started,
             admission,
+            model_ctx,
             move || ctx.request_repaint(),
         );
         if !started {

@@ -372,6 +372,25 @@ impl AiraDesktopApp {
     fn ui_work(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let l = self.labels();
         ui.heading(l.work_heading);
+
+        if self.model_triple.executor_is_reference_mock() {
+            egui::Frame::none()
+                .fill(egui::Color32::from_rgb(255, 236, 179))
+                .stroke(egui::Stroke::new(
+                    1.0,
+                    egui::Color32::from_rgb(180, 120, 40),
+                ))
+                .inner_margin(egui::Margin::same(8.0))
+                .show(ui, |ui| {
+                    ui.colored_label(egui::Color32::from_rgb(120, 70, 10), l.work_mock_banner);
+                    if ui.button(l.work_mock_banner_cta).clicked() {
+                        self.set_tab(MainTab::Settings);
+                        self.note_help_focus(HelpId::ModelSelect);
+                    }
+                });
+            ui.add_space(6.0);
+        }
+
         ui.label(l.work_hint);
         ui.small(l.work_shortcut_hint);
 
@@ -544,6 +563,32 @@ impl AiraDesktopApp {
             ui.horizontal(|ui| {
                 ui.strong(l.work_provenance);
                 ui.label(self.work_provenance_label(view.provenance));
+            });
+            let none = l.work_triple_none;
+            let req = view.model_triple.requested.as_deref().unwrap_or(none);
+            let app = view.model_triple.applied.as_deref().unwrap_or(none);
+            let exec = match view.model_triple.executed.as_deref() {
+                Some(crate::work_view::EXECUTED_MOCK_LABEL) => l.work_triple_executed_mock,
+                Some(s) => s,
+                None => none,
+            };
+            ui.horizontal(|ui| {
+                ui.strong(l.work_triple_requested);
+                ui.monospace(req);
+            });
+            ui.horizontal(|ui| {
+                ui.strong(l.work_triple_applied);
+                ui.monospace(app);
+            });
+            ui.horizontal(|ui| {
+                ui.strong(l.work_triple_executed);
+                if view.model_triple.executed.as_deref()
+                    == Some(crate::work_view::EXECUTED_MOCK_LABEL)
+                {
+                    ui.colored_label(egui::Color32::from_rgb(180, 120, 40), exec);
+                } else {
+                    ui.monospace(exec);
+                }
             });
             let has_ids = view.problem_id.is_some()
                 || view.verified_artifact_id.is_some()

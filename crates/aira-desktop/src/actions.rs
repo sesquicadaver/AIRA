@@ -19,7 +19,7 @@ use aira_flow::AdmissionConstraints;
 use aira_peer::DiscvFindReport;
 use aira_protocol::{FederationMembership, JoinOutcome};
 
-use crate::work_view::{format_work_result, WorkResultView};
+use crate::work_view::{format_work_result_with_context, WorkResultView, WorkSubmitModelContext};
 
 /// Apply supported profile; fill defaults for `peer_listen` / `relay_ttl_days` on P1–P4.
 pub fn apply_network_profile(
@@ -161,14 +161,16 @@ pub fn apply_invite(paths: &DesktopPaths, invite: &PeerInvite) -> Result<ImportI
 ///
 /// Returns a human-first Work view (`result.result` + status + verification),
 /// not a raw VRA dump. Pass [`AdmissionConstraints::default`] when no model bind.
+/// `model_ctx` carries requested/applied for the result triple (`#350`).
 pub fn submit_problem_with_admission(
     paths: &DesktopPaths,
     settings: &DesktopSettings,
     text: &str,
     admission: &AdmissionConstraints,
+    model_ctx: &WorkSubmitModelContext,
 ) -> Result<WorkResultView> {
     let v = submit_desktop_problem_with_admission(paths, settings, text, admission)?;
-    Ok(format_work_result(&v))
+    Ok(format_work_result_with_context(&v, model_ctx))
 }
 
 /// Load Settings → Models catalog (`#348` / RFC-0231).
@@ -405,6 +407,7 @@ mod tests {
             &settings,
             "  \n",
             &AdmissionConstraints::default(),
+            &WorkSubmitModelContext::default(),
         )
         .unwrap_err()
         .to_string();
