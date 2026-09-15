@@ -341,7 +341,7 @@ fn phase_r_uk_mesh_i18n_parity_source() {
         std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/i18n.rs")).unwrap();
     for needle in [
         "uk_mesh_discovery_labels_not_english_shell",
-        "Виявлення (P6 Dev)",
+        "Виявлення STUN / discv / FIND (P6)",
         "Ідентичність:",
         "Доступність:",
         "mesh_identity: \"Ідентичність:\"",

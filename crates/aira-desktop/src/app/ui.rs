@@ -977,7 +977,9 @@ impl AiraDesktopApp {
                     self.save_peer_listen();
                 }
             });
+            ui.small(l.peer_listen_loopback_hint);
         }
+        ui.small(l.addr_roles_hint);
 
         ui.separator();
         let invite_h = ui.heading(l.friend_invite);
@@ -1024,15 +1026,27 @@ impl AiraDesktopApp {
         }
     }
 
-    /// Advanced Connection ops kept under Technical details (`#288`).
+    /// Advanced Connection ops kept under Technical details (`#288` / `#351`).
     fn ui_network_advanced(&mut self, ui: &mut egui::Ui) {
         let l = self.labels();
         ui.heading(l.advanced);
         ui.label(l.advanced_hint);
-        let mut relay_on = self.settings.network_profile.is_relay_profile();
-        if ui.checkbox(&mut relay_on, l.p3_relay).changed() {
-            self.toggle_relay_profile(relay_on);
-        }
+        ui.small(l.p34_mutex_hint);
+        let relay_on = self.settings.network_profile.is_relay_profile();
+        let gossip_on = self.settings.network_profile.is_gossip_profile();
+        let base_on = !relay_on && !gossip_on;
+        ui.horizontal(|ui| {
+            if ui.selectable_label(base_on, l.p34_base).clicked() && !base_on {
+                // Leaving P3/P4 returns to peer-capable base (P2), matching prior toggle-off.
+                self.apply_profile(NetworkProfile::P2);
+            }
+            if ui.selectable_label(relay_on, l.p3_relay).clicked() && !relay_on {
+                self.apply_profile(NetworkProfile::P3);
+            }
+            if ui.selectable_label(gossip_on, l.p4_gossip).clicked() && !gossip_on {
+                self.apply_profile(NetworkProfile::P4);
+            }
+        });
         if self.settings.network_profile.is_relay_profile() {
             ui.horizontal(|ui| {
                 ui.label(l.relay_ttl);
@@ -1048,10 +1062,6 @@ impl AiraDesktopApp {
                 .relay_ttl_days
                 .unwrap_or(DEFAULT_RELAY_TTL_DAYS);
             ui.label(format!("relay status: enabled · TTL {ttl} days"));
-        }
-        let mut gossip_on = self.settings.network_profile.is_gossip_profile();
-        if ui.checkbox(&mut gossip_on, l.p4_gossip).changed() {
-            self.toggle_gossip_profile(gossip_on);
         }
         if self.settings.network_profile.is_gossip_profile() {
             ui.label("gossip status: enabled (dht+apply-book+apply-trust)");
@@ -1115,6 +1125,8 @@ impl AiraDesktopApp {
                 self.run_discv_announce();
             }
         });
+        ui.small(l.addr_advertised);
+        ui.small(l.addr_roles_hint);
         ui.horizontal(|ui| {
             ui.label(l.find_key);
             ui.text_edit_singleline(&mut self.find_key_edit);
@@ -1344,19 +1356,38 @@ impl AiraDesktopApp {
         if g.hovered() {
             self.note_help_focus(HelpId::SettingsApply);
         }
-        let saved_profile = format!("{:?}", self.settings.network_profile);
+        ui.small(l.addr_roles_hint);
+        let profile_label = match self.settings.network_profile {
+            NetworkProfile::P0 => l.p0,
+            NetworkProfile::P1 => l.p1,
+            NetworkProfile::P2 => l.p2,
+            NetworkProfile::P3 => l.p3_relay,
+            NetworkProfile::P4 => l.p4_gossip,
+            NetworkProfile::P5 => l.federation,
+            NetworkProfile::P6 => l.discovery,
+        };
         let applied_profile = self
             .applied_runtime
             .as_ref()
-            .map(|a| format!("{:?}", a.network_profile))
-            .unwrap_or_else(|| l.settings_applied_undefined.to_string());
+            .map(|a| match a.network_profile {
+                NetworkProfile::P0 => l.p0,
+                NetworkProfile::P1 => l.p1,
+                NetworkProfile::P2 => l.p2,
+                NetworkProfile::P3 => l.p3_relay,
+                NetworkProfile::P4 => l.p4_gossip,
+                NetworkProfile::P5 => l.federation,
+                NetworkProfile::P6 => l.discovery,
+            })
+            .unwrap_or(l.settings_applied_undefined);
         ui.horizontal(|ui| {
+            ui.strong(l.network_profile);
             ui.strong(l.settings_saved);
-            ui.label(&saved_profile);
+            ui.label(profile_label);
         });
         ui.horizontal(|ui| {
+            ui.strong(l.network_profile);
             ui.strong(l.settings_applied);
-            ui.label(&applied_profile);
+            ui.label(applied_profile);
         });
         let saved_listen = self
             .settings
@@ -1369,16 +1400,16 @@ impl AiraDesktopApp {
             .map(|a| a.peer_listen.as_deref().unwrap_or(l.peer_off_p0))
             .unwrap_or(l.settings_applied_undefined);
         ui.horizontal(|ui| {
-            ui.label(l.peer_listen);
+            ui.label(l.addr_peer_listen);
             ui.strong(l.settings_saved);
             ui.monospace(saved_listen);
         });
         ui.horizontal(|ui| {
-            ui.label(l.peer_listen);
+            ui.label(l.addr_peer_listen);
             ui.strong(l.settings_applied);
             ui.monospace(applied_listen);
         });
-        ui.small(l.network_profile);
+        ui.small(l.peer_listen_loopback_hint);
 
         ui.separator();
         let g = ui.strong(l.settings_group_advanced);
@@ -1386,15 +1417,21 @@ impl AiraDesktopApp {
             self.note_help_focus(HelpId::SettingsApply);
         }
         ui.horizontal(|ui| {
+            ui.label(l.addr_http);
             ui.strong(l.settings_saved);
-            ui.label(format!("HTTP {}", self.settings.http_listen));
+            ui.monospace(&self.settings.http_listen);
         });
         ui.horizontal(|ui| {
+            ui.label(l.addr_http);
             ui.strong(l.settings_applied);
-            ui.label(match self.applied_runtime.as_ref() {
-                Some(a) => format!("HTTP {}", a.http_listen),
-                None => l.settings_applied_undefined.to_string(),
-            });
+            match self.applied_runtime.as_ref() {
+                Some(a) => {
+                    ui.monospace(&a.http_listen);
+                }
+                None => {
+                    ui.label(l.settings_applied_undefined);
+                }
+            }
         });
         ui.label(format!("instance: {}", self.settings.instance_id));
     }
