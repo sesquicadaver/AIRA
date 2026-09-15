@@ -1,0 +1,3 @@
+- [x] Rewrite model.select / model.unavailable EN+UK
+- [x] RFC-0236; tip → first OPEN `#354`
+- [ ] Work Compare → `#354` / Analyze-391
