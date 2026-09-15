@@ -468,6 +468,8 @@ name = "aira-desktop-runtime"
 version = "0.1.0"
 dependencies = [
  "aira-conformance",
+ "aira-csu-model-acquisition",
+ "aira-csu-model-inventory",
  "aira-flow",
  "aira-object",
  "aira-peer",

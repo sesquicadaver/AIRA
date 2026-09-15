@@ -6,7 +6,7 @@ Local models live in the model / execution layer. They are **not** part of `aira
 
 ## What to do?
 
-- Under **Settings → Models**, select/activate a **local** discovered compatible model when you need an LLM (RFC-0159 amendment 2026-09-10 — anti-usurpation of a single model).
+- Under **Settings → Models**, use **Scan / Add / Select / Prepare** on the local catalog when you need an LLM (RFC-0231 / RFC-0159 amd.).
 - CLI `aira models scan|list|activate` remains valid tooling.
 - Prefer built-in calculation when you only need deterministic math such as `Calculate 2 + 2`.
 
