@@ -140,9 +140,9 @@ fn volume_available_bytes_impl(path: &Path) -> Option<u64> {
         if libc::statvfs(c.as_ptr(), &mut buf) != 0 {
             return None;
         }
-        let frsize = u64::try_from(buf.f_frsize).ok()?;
-        let bavail = u64::try_from(buf.f_bavail).ok()?;
-        Some(frsize.saturating_mul(bavail))
+        // `f_frsize` / `f_bavail` are already `u64` on Linux glibc; width varies
+        // across libc targets — multiply in place without redundant casts.
+        Some(buf.f_frsize.saturating_mul(buf.f_bavail))
     }
 }
 
