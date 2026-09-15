@@ -1272,6 +1272,44 @@ impl AiraDesktopApp {
             self.note_help_focus(HelpId::ModelSelect);
         }
         ui.small(l.settings_models_catalog_hint);
+
+        ui.strong(l.settings_models_storage);
+        ui.small(l.settings_models_storage_hint);
+        ui.horizontal(|ui| {
+            ui.label(l.settings_models_storage_root);
+            ui.monospace(self.model_storage.models_root.display().to_string());
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.settings_models_storage_used);
+            ui.label(aira_desktop_runtime::format_bytes(
+                self.model_storage.used_bytes,
+            ));
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.settings_models_storage_free);
+            match self.model_storage.available_bytes {
+                Some(b) => ui.label(aira_desktop_runtime::format_bytes(b)),
+                None => ui.label(l.settings_models_storage_unknown),
+            };
+        });
+        egui::CollapsingHeader::new(l.settings_models_storage_subdirs)
+            .id_source("settings-models-storage-subdirs")
+            .default_open(false)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("quarantine");
+                    ui.monospace(self.model_storage.quarantine_dir.display().to_string());
+                });
+                ui.horizontal(|ui| {
+                    ui.label("verified");
+                    ui.monospace(self.model_storage.verified_dir.display().to_string());
+                });
+                ui.horizontal(|ui| {
+                    ui.label("cache");
+                    ui.monospace(self.model_storage.cache_dir.display().to_string());
+                });
+            });
+
         ui.horizontal(|ui| {
             ui.label(l.sys_model_selected);
             ui.monospace(self.model_triple.selected.as_display());

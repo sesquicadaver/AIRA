@@ -15,6 +15,7 @@ mod invite_qr;
 mod launcher;
 mod model_catalog;
 mod model_status;
+mod model_storage;
 mod network_mesh;
 mod node_http;
 mod paths;
@@ -64,6 +65,7 @@ pub use model_catalog::{
     select_catalog_model, CatalogEntry, CatalogSelection, ModelCatalogError, ModelCatalogSnapshot,
 };
 pub use model_status::{load_model_triple, ModelFact, ModelTripleConclusion, ModelTripleSnapshot};
+pub use model_storage::{format_bytes, load_model_storage, ModelStorageSnapshot};
 pub use network_mesh::{
     classify_network_quality, load_network_mesh_snapshot, load_system_snapshot, DataQuality,
     LocalBindProvenance, MeshTopLevel, NetworkMeshSnapshot, SystemSnapshot,
