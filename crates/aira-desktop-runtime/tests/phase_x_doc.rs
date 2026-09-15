@@ -15,7 +15,8 @@ fn phase_x_plan_present() {
         "local multi-model GUI",
         "#343",
         "#358",
-        "IN PROGRESS",
+        "QUEUE X closed",
+        "no OPEN X atoms",
         "Per-model inventory",
         "Model select API",
         "Settings Models",
@@ -40,7 +41,6 @@ fn phase_x_plan_present() {
         "RFC-0238",
         "RFC-0239",
         "RFC-0240",
-        "first OPEN `#358`",
         "M1",
         "M6",
         "GPU marketplace",
@@ -51,12 +51,16 @@ fn phase_x_plan_present() {
         assert!(text.contains(needle), "phase-x-plan missing: {needle}");
     }
     assert!(
-        !text.contains("**QUEUED** (записано") || text.contains("**IN PROGRESS**"),
-        "phase-x-plan must be activated (IN PROGRESS) after #343"
+        text.contains("**DONE** @ [AIRA-RFC-0226"),
+        "phase-x-plan must claim RFC-0226 DONE after #358"
     );
     assert!(
-        !text.contains("**DONE** @ [AIRA-RFC-0226"),
-        "phase-x-plan must not claim RFC-0226 DONE before #358"
+        !text.contains("**Статус:** **IN PROGRESS**"),
+        "phase-x-plan must not stay IN PROGRESS after #358"
+    );
+    assert!(
+        !text.contains("first OPEN `#358`") && !text.contains("**Перший OPEN:** `#358`"),
+        "phase-x-plan must not keep #358 as first-OPEN tip after close"
     );
     assert!(
         !text.contains("first OPEN `#343`")
@@ -73,26 +77,26 @@ fn phase_x_plan_present() {
             && !text.contains("first OPEN `#354`")
             && !text.contains("first OPEN `#355`")
             && !text.contains("first OPEN `#356`")
-            && !text.contains("first OPEN `#357`"),
-        "phase-x-plan must advance tip past #357"
+            && !text.contains("first OPEN `#357`")
+            && !text.contains("first OPEN `#359`"),
+        "phase-x-plan must not invent tips / keep prior first-OPEN tips"
     );
 }
 
 #[test]
-fn phase_x_queue_357_done_358_open() {
+fn phase_x_queue_all_done() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-x-plan.md"));
-    for n in 343..=357 {
+    for n in 343..=358 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
+        assert!(
+            !text.contains(&format!("| {n} | **OPEN**")),
+            "QUEUE #{n} must not stay OPEN"
+        );
     }
-    assert!(text.contains("| 358 | **OPEN**"), "QUEUE #358 must be OPEN");
-    assert!(
-        !text.contains("| 357 | **OPEN**"),
-        "QUEUE #357 must not stay OPEN"
-    );
     for needle in [
         "Analyze-380",
         "Analyze-381",
@@ -109,6 +113,7 @@ fn phase_x_queue_357_done_358_open() {
         "Analyze-392",
         "Analyze-393",
         "Analyze-394",
+        "Analyze-395",
         "RFC-0226",
         "RFC-0227",
         "RFC-0228",
@@ -126,6 +131,8 @@ fn phase_x_queue_357_done_358_open() {
         "RFC-0240",
         "RFC-0215",
         "QUEUE W closed",
+        "QUEUE X closed",
+        "no OPEN X atoms",
         "Pack 2",
         "first OPEN `#353`",
         "first OPEN `#354`",
@@ -138,22 +145,36 @@ fn phase_x_queue_357_done_358_open() {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
     assert!(
-        text.contains("**Перший OPEN:** `#358`"),
-        "QUEUE tip must be first OPEN #358 after #357"
+        text.contains("**QUEUE X closed**") || text.contains("QUEUE X closed"),
+        "QUEUE tip must claim QUEUE X closed after #358"
     );
     assert!(
-        !text.contains("**Перший OPEN:** `#357`"),
-        "QUEUE tip must not keep #357 as first-OPEN"
+        !text.contains("**Перший OPEN:** `#358`") && !text.contains("**Перший OPEN:** `#359`"),
+        "QUEUE tip must not keep #358 as first-OPEN or invent #359"
+    );
+    // Historical tip preserved in #357 DONE row (do not mass-replace).
+    assert!(
+        text.contains("| 357 | **DONE**") && text.contains("first OPEN `#358`"),
+        "QUEUE #357 DONE row must retain historical first OPEN `#358`"
     );
 }
 
 #[test]
-fn phase_x_rfc_0226_file_free() {
+fn phase_x_rfc_0226_present() {
     let path = repo_root().join("specs/rfc/AIRA-RFC-0226-phase-x-pack2-multi-model-gui.md");
-    assert!(
-        !path.exists(),
-        "RFC-0226 must stay file-free until #358 close"
-    );
+    let text = std::fs::read_to_string(&path).expect("RFC-0226 missing after #358 close");
+    for needle in [
+        "#358",
+        "QUEUE X closed",
+        "no OPEN X atoms",
+        "RFC-0240",
+        "RFC-0227",
+        "Pack 2",
+        "multi-model GUI",
+        "#343",
+    ] {
+        assert!(text.contains(needle), "RFC-0226 missing: {needle}");
+    }
 }
 
 #[test]
@@ -673,27 +694,44 @@ fn phase_x_desktop_ux_tip() {
         "#358",
         "RFC-0226",
         "QUEUE W closed",
+        "QUEUE X closed",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
+    assert!(
+        !text.contains("first OPEN `#358`"),
+        "desktop-ux must not keep #358 as first-OPEN tip"
+    );
 }
 
 #[test]
 fn phase_x_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-x-plan.md") || readme.contains("Phase X"));
-    assert!(readme.contains("#358") || readme.contains("first OPEN"));
+    assert!(readme.contains("QUEUE X closed") || readme.contains("RFC-0226"));
+    assert!(
+        !readme.contains("first OPEN `#358`"),
+        "README must not keep #358 as first-OPEN tip"
+    );
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-x-plan.md"));
-    assert!(docs.contains("IN PROGRESS") || docs.contains("#358"));
+    assert!(docs.contains("QUEUE X closed") || docs.contains("**DONE** @ RFC-0226"));
+    assert!(
+        !docs.contains("first OPEN `#358`"),
+        "docs/README must not keep #358 as first-OPEN tip"
+    );
 }
 
 #[test]
 fn phase_x_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-x-plan.md") || text.contains("Phase X"));
-    assert!(text.contains("#358") || text.contains("перший OPEN"));
+    assert!(text.contains("QUEUE X closed") || text.contains("RFC-0226"));
     assert!(text.contains("QUEUE W closed") || text.contains("RFC-0215"));
+    assert!(
+        !text.contains("first OPEN `#358`") && !text.contains("перший OPEN `#358`"),
+        "NEXT_PROBLEM must not keep #358 as first-OPEN tip"
+    );
 }
 
 #[test]
@@ -710,6 +748,8 @@ fn phase_x_status_row() {
     assert!(status.contains("#347"));
     assert!(status.contains("#348"));
     assert!(status.contains("#358"));
+    assert!(status.contains("QUEUE X closed"));
+    assert!(status.contains("RFC-0226") || status.contains("0226"));
     assert!(status.contains("RFC-0240") || status.contains("0240"));
     assert!(status.contains("RFC-0239") || status.contains("0239"));
     assert!(status.contains("RFC-0238") || status.contains("0238"));
@@ -719,4 +759,8 @@ fn phase_x_status_row() {
     assert!(status.contains("RFC-0234") || status.contains("0234"));
     assert!(status.contains("RFC-0233") || status.contains("0233"));
     assert!(status.contains("RFC-0231") || status.contains("0231"));
+    assert!(
+        !status.contains("first OPEN `#358`"),
+        "implementation-status must not keep #358 as first-OPEN tip"
+    );
 }
