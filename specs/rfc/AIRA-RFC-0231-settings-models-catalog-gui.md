@@ -42,7 +42,7 @@ Scan → inventory publish message
 Enable local add → policy auto_download
 Select Auto empty → explained fail-closed
 Prepare missing → explained
-Tip → first OPEN #349
+Tip → #349 DONE; first OPEN #350
 ```
 
 ## 8. References

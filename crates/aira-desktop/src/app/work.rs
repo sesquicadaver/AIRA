@@ -1,7 +1,27 @@
+use aira_desktop_runtime::{evaluate_work_readiness, WorkExecutorPreference};
+
 use super::AiraDesktopApp;
 use crate::lexicon::{work_submit_gate, ErrorCode, UiProblem};
 
 impl AiraDesktopApp {
+    /// Work-screen executor preference (`#349` / RFC-0232).
+    pub(super) fn work_preference(&self) -> WorkExecutorPreference {
+        if self.work_executor_auto {
+            WorkExecutorPreference::Auto
+        } else {
+            WorkExecutorPreference::Required(self.work_required_ref.clone())
+        }
+    }
+
+    /// Recompute pre-submit readiness (math ≠ generate).
+    pub(super) fn refresh_work_readiness(&mut self) {
+        self.work_readiness = evaluate_work_readiness(
+            &self.paths.data_root,
+            &self.problem_text,
+            self.work_preference(),
+        );
+    }
+
     /// Queue a background submit (`#257`). Does not block the egui thread.
     ///
     /// The draft (`problem_text`) is **not** cleared on validation errors, Help,
@@ -26,6 +46,21 @@ impl AiraDesktopApp {
             ));
             return;
         }
+        self.refresh_work_readiness();
+        if !self.work_readiness.ready {
+            let detail = self.work_readiness.reasons.join("; ");
+            self.last_problem = Some(UiProblem::new(
+                ErrorCode::WorkModelUnready,
+                self.ui_lang(),
+                if detail.is_empty() {
+                    None
+                } else {
+                    Some(detail)
+                },
+            ));
+            return;
+        }
+        let admission = self.work_readiness.admission.clone();
         let ensure_started = !self.node_running;
         let ctx = ctx.clone();
         let started = self.async_jobs.try_spawn_submit(
@@ -34,6 +69,7 @@ impl AiraDesktopApp {
             self.node_bin.clone(),
             text,
             ensure_started,
+            admission,
             move || ctx.request_repaint(),
         );
         if !started {

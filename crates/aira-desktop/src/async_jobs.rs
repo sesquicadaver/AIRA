@@ -157,6 +157,7 @@ pub fn run_submit_job(
     node_bin: Option<PathBuf>,
     text: &str,
     ensure_started: bool,
+    admission: &aira_flow::AdmissionConstraints,
 ) -> anyhow::Result<WorkResultView> {
     if ensure_started {
         let (st, _) = status(paths)?;
@@ -164,7 +165,7 @@ pub fn run_submit_job(
             let _ = start(paths, node_bin)?;
         }
     }
-    actions::submit_problem(paths, settings, text)
+    actions::submit_problem_with_admission(paths, settings, text, admission)
 }
 
 /// In-flight submit / refresh / dial slots (at most one of each).
@@ -205,6 +206,7 @@ impl AsyncDesktopJobs {
 
     /// Start at most one submit worker. Returns false if already in flight
     /// or a lifecycle op is running (`#302` — no parallel `start()`).
+    #[allow(clippy::too_many_arguments)] // paths/settings/admission + callback stay explicit for Desktop jobs
     pub fn try_spawn_submit(
         &mut self,
         paths: DesktopPaths,
@@ -212,6 +214,7 @@ impl AsyncDesktopJobs {
         node_bin: Option<PathBuf>,
         text: String,
         ensure_started: bool,
+        admission: aira_flow::AdmissionConstraints,
         on_done: impl FnOnce() + Send + 'static,
     ) -> bool {
         if !admit_submit_lifecycle(
@@ -224,8 +227,15 @@ impl AsyncDesktopJobs {
         let (tx, rx) = mpsc::channel();
         self.work_rx = Some(rx);
         thread::spawn(move || {
-            let outcome = run_submit_job(&paths, &settings, node_bin, &text, ensure_started)
-                .map_err(|e| format!("{e:#}"));
+            let outcome = run_submit_job(
+                &paths,
+                &settings,
+                node_bin,
+                &text,
+                ensure_started,
+                &admission,
+            )
+            .map_err(|e| format!("{e:#}"));
             let _ = tx.send(outcome);
             on_done();
         });
@@ -453,6 +463,7 @@ mod tests {
             None,
             "Calculate 2 + 2".into(),
             false,
+            aira_flow::AdmissionConstraints::default(),
             || {}
         ));
     }
@@ -477,6 +488,7 @@ mod tests {
             None,
             "Calculate 2 + 2".into(),
             true,
+            aira_flow::AdmissionConstraints::default(),
             || {}
         ));
     }
@@ -564,9 +576,16 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let paths = DesktopPaths::for_data_root(tmp.path());
         let settings = DesktopSettings::default_p0(&paths);
-        let err = run_submit_job(&paths, &settings, None, "  \n", false)
-            .unwrap_err()
-            .to_string();
+        let err = run_submit_job(
+            &paths,
+            &settings,
+            None,
+            "  \n",
+            false,
+            &aira_flow::AdmissionConstraints::default(),
+        )
+        .unwrap_err()
+        .to_string();
         assert!(err.contains("non-empty"), "{err}");
     }
 

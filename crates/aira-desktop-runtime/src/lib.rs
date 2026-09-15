@@ -23,6 +23,7 @@ mod peer_dial;
 mod process;
 mod settings;
 mod ui_prefs;
+mod work_readiness;
 
 pub use autostart::{
     autostart_desktop_entry, is_autostart_enabled, is_autostart_enabled_in,
@@ -84,6 +85,9 @@ pub use settings::{
     DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS, SETTINGS_SCHEMA_ID,
 };
 pub use ui_prefs::{detect_ui_lang, load_or_create_ui_prefs, write_ui_prefs, UiLang, UiPrefs};
+pub use work_readiness::{
+    evaluate_work_readiness, WorkCapabilityKind, WorkExecutorPreference, WorkReadiness,
+};
 
 /// Crate version for smoke tests.
 pub fn crate_version() -> &'static str {

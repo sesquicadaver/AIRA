@@ -374,6 +374,84 @@ impl AiraDesktopApp {
         ui.heading(l.work_heading);
         ui.label(l.work_hint);
         ui.small(l.work_shortcut_hint);
+
+        ui.horizontal(|ui| {
+            ui.strong(l.work_executor);
+            if ui
+                .selectable_label(self.work_executor_auto, l.work_executor_auto)
+                .clicked()
+            {
+                self.work_executor_auto = true;
+                self.refresh_work_readiness();
+            }
+            if ui
+                .selectable_label(!self.work_executor_auto, l.work_executor_specific)
+                .clicked()
+            {
+                self.work_executor_auto = false;
+                if self.work_required_ref.is_empty() {
+                    if let Some(h) = self.catalog_highlight.clone() {
+                        self.work_required_ref = h;
+                    } else if let Some(tip) = self.model_catalog.tip_model_ref.clone() {
+                        self.work_required_ref = tip;
+                    }
+                }
+                self.refresh_work_readiness();
+            }
+        });
+        ui.small(l.work_executor_hint);
+        if !self.work_executor_auto {
+            ui.horizontal(|ui| {
+                ui.label(l.settings_models_model_ref);
+                if ui
+                    .text_edit_singleline(&mut self.work_required_ref)
+                    .changed()
+                {
+                    self.refresh_work_readiness();
+                }
+            });
+            if !self.model_catalog.entries.is_empty() {
+                ui.horizontal_wrapped(|ui| {
+                    for entry in &self.model_catalog.entries.clone() {
+                        let selected = self.work_required_ref == entry.model_ref;
+                        let label = format!(
+                            "{}{}",
+                            entry.model_ref,
+                            if entry.available { " ✓" } else { "" }
+                        );
+                        if ui.selectable_label(selected, label).clicked() {
+                            self.work_required_ref = entry.model_ref.clone();
+                            self.work_executor_auto = false;
+                            self.refresh_work_readiness();
+                        }
+                    }
+                });
+            }
+        }
+
+        {
+            use aira_desktop_runtime::WorkCapabilityKind;
+            let cap = match self.work_readiness.kind {
+                WorkCapabilityKind::Math => l.work_capability_math,
+                WorkCapabilityKind::Generate => l.work_capability_generate,
+            };
+            ui.label(cap);
+            let ready_label = if self.work_readiness.ready {
+                l.work_readiness_ready
+            } else {
+                l.work_readiness_blocked
+            };
+            let color = if self.work_readiness.ready {
+                egui::Color32::from_rgb(40, 140, 70)
+            } else {
+                egui::Color32::from_rgb(180, 120, 40)
+            };
+            ui.colored_label(color, ready_label);
+            for reason in &self.work_readiness.reasons {
+                ui.small(reason);
+            }
+        }
+
         let editor = ui.add(
             egui::TextEdit::multiline(&mut self.problem_text)
                 .desired_rows(4)
@@ -381,6 +459,9 @@ impl AiraDesktopApp {
         );
         if editor.gained_focus() || editor.changed() {
             self.note_help_focus(HelpId::WorkSubmit);
+            if editor.changed() {
+                self.refresh_work_readiness();
+            }
         }
 
         // Ctrl+Enter / ⌘+Enter — Enter alone stays newline (`#260`).

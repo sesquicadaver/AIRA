@@ -174,6 +174,8 @@ pub enum ErrorCode {
     /// Phase S `#302`: Start/Stop blocked while Work submit is in flight.
     WorkBusyLifecycle,
     WorkSubmitFailed,
+    /// `#349` / RFC-0232: generate-local not ready (math still submits).
+    WorkModelUnready,
     StatusRefreshFailed,
     NodeStartFailed,
     NodeStopFailed,
@@ -192,6 +194,7 @@ impl ErrorCode {
             Self::LifecycleBusy => "desktop.lifecycle_busy",
             Self::WorkBusyLifecycle => "desktop.work_busy_lifecycle",
             Self::WorkSubmitFailed => "work.submit_failed",
+            Self::WorkModelUnready => "work.model_unready",
             Self::StatusRefreshFailed => "status.refresh_failed",
             Self::NodeStartFailed => "node.start_failed",
             Self::NodeStopFailed => "node.stop_failed",
@@ -207,6 +210,7 @@ impl ErrorCode {
             Self::WorkEmptyText | Self::WorkSubmitInFlight | Self::WorkSubmitFailed => {
                 HelpId::WorkSubmit
             }
+            Self::WorkModelUnready => HelpId::ModelUnavailable,
             Self::LifecycleBusy | Self::WorkBusyLifecycle => HelpId::NodeLifecycle,
             Self::StatusRefreshFailed | Self::MeshSnapshotFailed => HelpId::NetworkReachability,
             Self::NodeStartFailed | Self::NodeStopFailed | Self::AutostartSyncFailed => {
@@ -221,6 +225,7 @@ impl ErrorCode {
         match self {
             Self::WorkEmptyText => Some(ActionId::WorkSubmit),
             Self::WorkSubmitFailed => Some(ActionId::WorkSubmit),
+            Self::WorkModelUnready => Some(ActionId::WorkSubmit),
             Self::StatusRefreshFailed | Self::MeshSnapshotFailed => Some(ActionId::StatusRefresh),
             Self::NodeStartFailed => Some(ActionId::NodeStart),
             Self::NodeStopFailed => Some(ActionId::NodeStop),
@@ -265,6 +270,12 @@ impl ErrorCode {
             }
             (UiLang::Uk, Self::WorkSubmitFailed) => {
                 "Не вдалося надіслати завдання. Перевірте, що AIRA запущена, і спробуйте знову."
+            }
+            (UiLang::En, Self::WorkModelUnready) => {
+                "Text generation is not ready yet. Use Auto tip or pick an available model — calculation still works without one. Choice ≠ VERIFIED."
+            }
+            (UiLang::Uk, Self::WorkModelUnready) => {
+                "Генерація тексту ще не готова. Увімкніть Auto tip або оберіть доступну модель — розрахунок працює і без неї. Вибір ≠ VERIFIED."
             }
             (UiLang::En, Self::StatusRefreshFailed) => {
                 "Could not refresh system status. Try Refresh again."
@@ -398,6 +409,7 @@ mod tests {
             ErrorCode::LifecycleBusy,
             ErrorCode::WorkBusyLifecycle,
             ErrorCode::WorkSubmitFailed,
+            ErrorCode::WorkModelUnready,
             ErrorCode::StatusRefreshFailed,
             ErrorCode::NodeStartFailed,
             ErrorCode::NodeStopFailed,

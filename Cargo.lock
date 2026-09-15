@@ -447,6 +447,7 @@ name = "aira-desktop"
 version = "0.1.0"
 dependencies = [
  "aira-desktop-runtime",
+ "aira-flow",
  "aira-object",
  "aira-peer",
  "aira-protocol",
@@ -470,6 +471,7 @@ dependencies = [
  "aira-conformance",
  "aira-csu-model-acquisition",
  "aira-csu-model-inventory",
+ "aira-csu-reduction-basic",
  "aira-flow",
  "aira-object",
  "aira-peer",

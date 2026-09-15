@@ -1,6 +1,6 @@
 # Phase X — Pack 2: local multi-model GUI (post-W)
 
-**Статус:** **IN PROGRESS** (активовано `#343` wiring; `#343`–`#348` **DONE**; first OPEN `#349`; RFC-0226 reserved file-free until `#358`).  
+**Статус:** **IN PROGRESS** (активовано `#343` wiring; `#343`–`#349` **DONE**; first OPEN `#350`; RFC-0226 reserved file-free until `#358`).  
 **Джерела:** GUI-аудит `p-only/aira-current.md` (2026-09-13, скріншоти Desktop); Repair Pack 2 `p-only/aira-repair.md` §«Пакет 2»; audit M1–M6 `p-only/AIRA-audit-d1115f2-2026-09-11.md`; trace [`product-requirements-trace.md`](product-requirements-trace.md) (PR-M1…PR-M4); Phase W residual honesty [`phase-w-plan.md`](phase-w-plan.md) `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed**.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase X `#343`–`#358`.  
 **Closure:** consolidating **RFC-0226** reserved file-free until `#358` (id confirmed free 2026-09-13).  
@@ -52,7 +52,7 @@ QUEUE W (#331–#342 / RFC-0215) → close
 ## 2. Інваріанти
 
 1. Лінійність: `#N` після `#N-1`; один атом = один PR.
-2. First OPEN репо = `#349` після `#348` Settings Models; лінійність `#N` після `#N-1`.
+2. First OPEN репо = `#350` після `#349` Work executor; лінійність `#N` після `#N-1`.
 3. `aira-core` **не** отримує GUI / Help / egui / ledger / LLM runtime.
 4. Choice of executor **never** grants `VERIFIED`.
 5. Mock ≠ used-model; не маскувати mock як verified LLM.
@@ -114,7 +114,7 @@ X0 Wiring (після QUEUE W closed)
 | `#346` | X1 | Request profile → snapshot (M3) | **DONE** @ RFC-0229: freeze allowed/excluded; mid-flight ≠ admitted | CLI (#347) |
 | `#347` | X1 | CLI supported-contract parity (M4) | **DONE** @ RFC-0230: excluded flag; no unsupported no-op flags | Settings GUI (#348) |
 | `#348` | X2 | Settings Models catalog GUI | **DONE** @ RFC-0231: list/scan/add/select/prepare + ready reason | Work executor (#349) |
-| `#349` | X2 | Work executor + capability readiness | Авто/конкретна; math vs generate readiness; pre-submit умови; RFC-0232 | mock/result (#350) |
+| `#349` | X2 | Work executor + capability readiness | **DONE** @ RFC-0232: Auto/specific; math≠generate; pre-submit | mock/result (#350) |
 | `#350` | X2 | Mock honesty + result triple | помітний демо-виконавець; requested/applied/executed; RFC-0233 | network UX (#351) |
 | `#351` | X2 | Network/address honesty + P UX | loopback пояснено; HTTP≠peer≠advertised; P0–P6 назви; P3\|P4 radio; RFC-0234 | copy/IA (#352) |
 | `#352` | X2 | Human copy + Settings≠System IA | локалізація; Зупинити вузол/Оновити стан/Завершити AIRA; edit у Параметрах; RFC-0235 | Help (#353) |
@@ -132,8 +132,8 @@ X0 Wiring (після QUEUE W closed)
       → #346 X1 profile→snapshot M3 DONE @ RFC-0229
         → #347 X1 CLI parity M4 DONE @ RFC-0230
           → #348 X2 Settings Models GUI DONE @ RFC-0231
-            → #349 X2 Work executor + readiness (first OPEN)
-              → #350 X2 mock + result triple
+            → #349 X2 Work executor + readiness DONE @ RFC-0232
+              → #350 X2 mock + result (first OPEN)
                 → #351 X2 network/address + P UX
                   → #352 X2 copy + IA
                     → #353 X2 Help F1 model
@@ -177,7 +177,7 @@ aira-core still has no GUI/ledger/LLM deps.
 QUEUE W closed @ RFC-0215
   + developer / wiring `#343` DONE
   + джерела: aira-current.md + Pack 2 + M1–M6
-  → phase-x-plan **IN PROGRESS**; `#343`–`#348` DONE; first OPEN `#349`.
+  → phase-x-plan **IN PROGRESS**; `#343`–`#349` DONE; first OPEN `#350`.
 ```
 
 ---
@@ -191,7 +191,8 @@ QUEUE W closed @ RFC-0215
 | M3 profile→snapshot | `#346` |
 | M4 CLI parity | `#347` |
 | High: Параметри→Моделі GUI | `#348` |
-| High: Робота виконавець + readiness math≠generate | `#349` |
+| High: Робота виконавець + readiness math≠generate | `#349` **DONE** |
+| High: Mock honesty + result triple | `#350` |
 | High: mock помітний; result triple | `#350` |
 | High: peer_listen 127.0.0.1 honesty; address roles; P UX | `#351` |
 | Med: локалізація; Стоп/Вийти; Settings≠System | `#352` |
