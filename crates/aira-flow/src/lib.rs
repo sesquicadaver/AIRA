@@ -166,28 +166,34 @@ mod tests {
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
         let mut plane = OperationalPlane::open(dir.path()).unwrap();
-        let text = "Calculate 2 + 2";
-        // `#334`: math rejects model/generation; freeze via supported reuse_policy.
+        let text = "Summarize the local Problem Statement";
+        // `#346`: freeze Auto-within-set; post-submit Settings must not rewrite it.
         let constraints = crate::AdmissionConstraints {
-            reuse_policy: crate::ReusePolicy::RequireNewExecution,
+            allowed_model_refs: vec!["aira:model:keep".into(), "aira:model:drop".into()],
+            excluded_model_refs: vec!["aira:model:drop".into()],
             ..Default::default()
         };
         let snap = crate::AdmissionSnapshot::from_text_and_constraints(text, &constraints);
-        let _ = plane
-            .submit_problem_with_admission(text, snap.clone())
-            .unwrap();
+        assert_eq!(snap.model_ref.as_deref(), Some("aira:model:keep"));
+        // Generate-local may fail without an activated model; snapshot must still freeze.
+        let _ = plane.submit_problem_with_admission(text, snap.clone());
         let (_, admitted) = plane.last_admission().expect("admission").clone();
+        assert_eq!(admitted.model_ref.as_deref(), Some("aira:model:keep"));
         assert_eq!(
-            admitted.reuse_policy,
-            crate::ReusePolicy::RequireNewExecution
+            admitted.excluded_model_refs,
+            vec!["aira:model:drop".to_string()]
         );
-        // Simulate post-submit Settings change: mutating a local constraints
-        // copy must not rewrite the plane's admitted snapshot.
         let mut later = constraints;
-        later.reuse_policy = crate::ReusePolicy::AllowReuse;
-        assert_ne!(later.reuse_policy, admitted.reuse_policy);
+        later.allowed_model_refs = vec!["aira:model:later".into()];
+        later.excluded_model_refs.clear();
+        later.model_ref = Some("aira:model:later".into());
+        assert_ne!(later.model_ref, admitted.model_ref);
         let (_, still) = plane.last_admission().expect("admission");
-        assert_eq!(still.reuse_policy, crate::ReusePolicy::RequireNewExecution);
+        assert_eq!(still.model_ref.as_deref(), Some("aira:model:keep"));
+        assert_eq!(
+            still.excluded_model_refs,
+            vec!["aira:model:drop".to_string()]
+        );
     }
 
     #[test]

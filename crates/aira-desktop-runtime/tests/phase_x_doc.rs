@@ -28,7 +28,8 @@ fn phase_x_plan_present() {
         "RFC-0226",
         "RFC-0227",
         "RFC-0228",
-        "first OPEN `#346`",
+        "RFC-0229",
+        "first OPEN `#347`",
         "M1",
         "M6",
         "GPU marketplace",
@@ -49,31 +50,32 @@ fn phase_x_plan_present() {
     assert!(
         !text.contains("first OPEN `#343`")
             && !text.contains("first OPEN `#344`")
-            && !text.contains("first OPEN `#345`"),
-        "phase-x-plan must advance tip past #345"
+            && !text.contains("first OPEN `#345`")
+            && !text.contains("first OPEN `#346`"),
+        "phase-x-plan must advance tip past #346"
     );
 }
 
 #[test]
-fn phase_x_queue_345_done_346_open() {
+fn phase_x_queue_346_done_347_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-x-plan.md"));
-    for n in 343..=345 {
+    for n in 343..=346 {
         assert!(
             text.contains(&format!("| {n} | **DONE**")),
             "QUEUE #{n} must be DONE"
         );
     }
-    assert!(text.contains("| 346 | **OPEN**"), "QUEUE #346 must be OPEN");
-    for n in 346..=358 {
+    assert!(text.contains("| 347 | **OPEN**"), "QUEUE #347 must be OPEN");
+    for n in 347..=358 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     assert!(
-        !text.contains("| 345 | **OPEN**"),
-        "QUEUE #345 must not stay OPEN"
+        !text.contains("| 346 | **OPEN**"),
+        "QUEUE #346 must not stay OPEN"
     );
     for needle in [
         "Analyze-380",
@@ -83,21 +85,23 @@ fn phase_x_queue_345_done_346_open() {
         "RFC-0226",
         "RFC-0227",
         "RFC-0228",
+        "RFC-0229",
         "RFC-0215",
         "QUEUE W closed",
         "Pack 2",
         "first OPEN `#346`",
+        "first OPEN `#347`",
         "phase_x_doc",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
     assert!(
-        text.contains("**Перший OPEN:** `#346`"),
-        "QUEUE tip must be first OPEN #346 after #345"
+        text.contains("**Перший OPEN:** `#347`"),
+        "QUEUE tip must be first OPEN #347 after #346"
     );
     assert!(
-        !text.contains("**Перший OPEN:** `#345`"),
-        "QUEUE tip must not keep #345 as first-OPEN"
+        !text.contains("**Перший OPEN:** `#346`"),
+        "QUEUE tip must not keep #346 as first-OPEN"
     );
 }
 
@@ -144,6 +148,21 @@ fn phase_x_rfc_0228_present() {
 }
 
 #[test]
+fn phase_x_rfc_0229_present() {
+    let path = repo_root().join("specs/rfc/AIRA-RFC-0229-request-profile-snapshot.md");
+    let text = std::fs::read_to_string(&path).expect("RFC-0229 missing after #346");
+    for needle in [
+        "#346",
+        "excluded_model_refs",
+        "freeze",
+        "first OPEN #347",
+        "RFC-0228",
+    ] {
+        assert!(text.contains(needle), "RFC-0229 missing: {needle}");
+    }
+}
+
+#[test]
 fn phase_x_inventory_lifecycle_runtime_present() {
     let life = std::fs::read_to_string(repo_root().join("csu/model-acquisition/src/lifecycle.rs"))
         .unwrap();
@@ -175,6 +194,21 @@ fn phase_x_select_api_runtime_present() {
 }
 
 #[test]
+fn phase_x_profile_snapshot_runtime_present() {
+    let admission =
+        std::fs::read_to_string(repo_root().join("crates/aira-flow/src/admission.rs")).unwrap();
+    assert!(admission.contains("excluded_model_refs"));
+    assert!(admission.contains("freeze_auto_within_set"));
+    assert!(admission.contains("#346") || admission.contains("RFC-0229"));
+    let sel =
+        std::fs::read_to_string(repo_root().join("csu/model-acquisition/src/select.rs")).unwrap();
+    assert!(sel.contains("select_model_with_profile"));
+    assert!(sel.contains("ModelSelectProfile"));
+    let lib = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/lib.rs")).unwrap();
+    assert!(lib.contains("submit_with_admission_keeps_snapshot_after_settings_like_mutation"));
+}
+
+#[test]
 fn phase_w_still_closed_canon() {
     let text = std::fs::read_to_string(repo_root().join("docs/phase-w-plan.md")).unwrap();
     assert!(
@@ -194,6 +228,7 @@ fn phase_x_desktop_ux_tip() {
         "phase-x-plan.md",
         "#345",
         "#346",
+        "#347",
         "RFC-0226",
         "QUEUE W closed",
     ] {
@@ -205,7 +240,7 @@ fn phase_x_desktop_ux_tip() {
 fn phase_x_readme_and_docs_index() {
     let readme = std::fs::read_to_string(repo_root().join("README.md")).unwrap();
     assert!(readme.contains("phase-x-plan.md") || readme.contains("Phase X"));
-    assert!(readme.contains("#346") || readme.contains("first OPEN"));
+    assert!(readme.contains("#347") || readme.contains("first OPEN"));
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-x-plan.md"));
     assert!(docs.contains("IN PROGRESS") || docs.contains("#346"));
@@ -215,7 +250,7 @@ fn phase_x_readme_and_docs_index() {
 fn phase_x_next_problem() {
     let text = std::fs::read_to_string(repo_root().join("NEXT_PROBLEM.md")).unwrap();
     assert!(text.contains("phase-x-plan.md") || text.contains("Phase X"));
-    assert!(text.contains("#346") || text.contains("перший OPEN"));
+    assert!(text.contains("#347") || text.contains("перший OPEN"));
     assert!(text.contains("QUEUE W closed") || text.contains("RFC-0215"));
 }
 
@@ -227,5 +262,7 @@ fn phase_x_status_row() {
     assert!(status.contains("phase_x_doc.rs"));
     assert!(status.contains("phase-x-plan.md"));
     assert!(status.contains("RFC-0228") || status.contains("0228"));
+    assert!(status.contains("RFC-0229") || status.contains("0229"));
     assert!(status.contains("#346"));
+    assert!(status.contains("#347"));
 }

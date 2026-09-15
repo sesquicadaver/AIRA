@@ -3,4 +3,4 @@
 - [x] select_model Auto/Required
 - [x] explained unready/removed
 - [x] RFC-0228; tip → first OPEN `#346`
-- [ ] Request profile → snapshot → `#346` / Analyze-383
+- [x] Request profile → snapshot → `#346` / Analyze-383

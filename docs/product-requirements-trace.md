@@ -44,5 +44,5 @@ Status vocabulary matches [`implementation-status.md`](implementation-status.md)
 ## Next packages
 
 Pack 1 — admission snapshot + reuse/binding integrity — structural **DONE** @ Phase V / RFC-0208; product honesty **DONE** @ Phase W / RFC-0215 (`#331`–`#342`; **QUEUE W closed**).  
-Pack 2 — local multi-model GUI (first user-complete result; audit M1–M6; `aira-current.md` 2026-09-13) → Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` **IN PROGRESS** (`#343`–`#345` DONE @ RFC-0227…0228; first OPEN `#346`; RFC-0226 reserved).  
+Pack 2 — local multi-model GUI (first user-complete result; audit M1–M6; `aira-current.md` 2026-09-13) → Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` **IN PROGRESS** (`#343`–`#346` DONE @ RFC-0227…0229; first OPEN `#347`; RFC-0226 reserved).  
 See [`repair-package-0.md`](repair-package-0.md).

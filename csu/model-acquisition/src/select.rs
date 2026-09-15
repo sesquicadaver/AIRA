@@ -22,6 +22,15 @@ pub enum ModelSelection {
     Required(String),
 }
 
+/// Admit-time Auto profile: allowed set and excludes (`#346` / RFC-0229).
+///
+/// Empty `allowed_model_refs` = unconstrained available set. Excludes always apply.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct ModelSelectProfile {
+    pub allowed_model_refs: Vec<String>,
+    pub excluded_model_refs: Vec<String>,
+}
+
 /// Successful select result (ready for admission `model_ref` / gate).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SelectedModel {
@@ -59,6 +68,8 @@ pub enum ModelSelectError {
     },
     #[error("required model {model_ref} is removed or unknown (fail-closed)")]
     ModelRemoved { model_ref: String },
+    #[error("required model {model_ref} is excluded from this admit (fail-closed)")]
+    ModelExcluded { model_ref: String },
     #[error("model select io: {0}")]
     Io(String),
 }
@@ -70,12 +81,25 @@ pub fn select_model(
     aira_root: impl AsRef<Path>,
     selection: ModelSelection,
 ) -> Result<SelectedModel, ModelSelectError> {
+    select_model_with_profile(aira_root, selection, &ModelSelectProfile::default())
+}
+
+/// Resolve selection honoring frozen allowed/excluded profile (`#346` / RFC-0229).
+pub fn select_model_with_profile(
+    aira_root: impl AsRef<Path>,
+    selection: ModelSelection,
+    profile: &ModelSelectProfile,
+) -> Result<SelectedModel, ModelSelectError> {
     let root = aira_root.as_ref();
     let life = list_model_lifecycle(root).map_err(|e| ModelSelectError::Io(e.to_string()))?;
 
     match selection {
         ModelSelection::Auto => {
-            let available: Vec<_> = life.into_iter().filter(|e| e.available).collect();
+            let available: Vec<_> = life
+                .into_iter()
+                .filter(|e| e.available)
+                .filter(|e| profile_allows(&e.model_ref, profile))
+                .collect();
             if available.is_empty() {
                 return Err(ModelSelectError::NoAvailableModels);
             }
@@ -89,7 +113,7 @@ pub fn select_model(
                     });
                 }
             }
-            // Deterministic among A/B when tip missing or tip not available.
+            // Deterministic among A/B when tip missing, excluded, or tip not available.
             let first = &available[0];
             Ok(SelectedModel {
                 model_ref: first.model_ref.clone(),
@@ -99,6 +123,14 @@ pub fn select_model(
             })
         }
         ModelSelection::Required(want) => {
+            if profile.excluded_model_refs.iter().any(|e| e == &want) {
+                return Err(ModelSelectError::ModelExcluded { model_ref: want });
+            }
+            if !profile.allowed_model_refs.is_empty()
+                && !profile.allowed_model_refs.iter().any(|a| a == &want)
+            {
+                return Err(ModelSelectError::ModelRemoved { model_ref: want });
+            }
             let Some(entry) = life.iter().find(|e| e.model_ref == want) else {
                 return Err(ModelSelectError::ModelRemoved { model_ref: want });
             };
@@ -117,6 +149,18 @@ pub fn select_model(
             })
         }
     }
+}
+
+fn profile_allows(model_ref: &str, profile: &ModelSelectProfile) -> bool {
+    if profile.excluded_model_refs.iter().any(|e| e == model_ref) {
+        return false;
+    }
+    if !profile.allowed_model_refs.is_empty()
+        && !profile.allowed_model_refs.iter().any(|a| a == model_ref)
+    {
+        return false;
+    }
+    true
 }
 
 fn read_latest_tip(root: &Path) -> Result<Option<ActivatedPointer>, ModelSelectError> {
@@ -286,6 +330,57 @@ mod tests {
         // Lifecycle still has the other model — select must not return it.
         let life = list_model_lifecycle(dir.path()).unwrap();
         assert!(life.iter().any(|e: &ModelLifecycleEntry| e.available));
+    }
+
+    #[test]
+    fn auto_profile_excludes_tip_and_picks_remaining() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write_slot_activated(root, "aira:model:alpha", "a");
+        write_slot_activated(root, "aira:model:beta", "b");
+        let tip = ActivatedPointer {
+            updated_at: "2026-09-15T00:00:00Z".into(),
+            model_ref: "aira:model:beta".into(),
+            cache_path: activated_slot_pointer_path_display(root, "aira:model:beta"),
+            verified_path: "models/verified/x".into(),
+            content_hash: "sha256:bb".into(),
+            evidence_artifact_id: "aira:artifact:acq-activate:tip".into(),
+        };
+        fs::write(
+            root.join(ACTIVATED_POINTER_REL),
+            serde_json::to_string_pretty(&tip).unwrap(),
+        )
+        .unwrap();
+        let profile = ModelSelectProfile {
+            allowed_model_refs: vec![],
+            excluded_model_refs: vec!["aira:model:beta".into()],
+        };
+        let sel = select_model_with_profile(root, ModelSelection::Auto, &profile).unwrap();
+        assert_eq!(sel.model_ref, "aira:model:alpha");
+        assert_ne!(sel.model_ref, "aira:model:beta");
+    }
+
+    #[test]
+    fn required_excluded_is_explained_not_substituted() {
+        let dir = tempfile::tempdir().unwrap();
+        write_slot_activated(dir.path(), "aira:model:keep", "k");
+        write_slot_activated(dir.path(), "aira:model:drop", "d");
+        let profile = ModelSelectProfile {
+            allowed_model_refs: vec![],
+            excluded_model_refs: vec!["aira:model:drop".into()],
+        };
+        let err = select_model_with_profile(
+            dir.path(),
+            ModelSelection::Required("aira:model:drop".into()),
+            &profile,
+        )
+        .unwrap_err();
+        assert_eq!(
+            err,
+            ModelSelectError::ModelExcluded {
+                model_ref: "aira:model:drop".into()
+            }
+        );
     }
 
     fn activated_slot_pointer_path_display(root: &Path, model_ref: &str) -> String {
