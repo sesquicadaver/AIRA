@@ -170,6 +170,7 @@ pub fn run_submit_job(
 }
 
 /// Sequential Compare: A then B; B failure does not rewrite A (`#354` / RFC-0237).
+#[allow(clippy::too_many_arguments)] // dual admission + dual model_ctx stay explicit
 pub fn run_compare_submit_job(
     paths: &DesktopPaths,
     settings: &DesktopSettings,
