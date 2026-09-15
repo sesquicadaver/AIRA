@@ -53,6 +53,7 @@ fn phase_w_plan_present() {
         "first OPEN `#348`",
         "first OPEN `#349`",
         "first OPEN `#350`",
+        "first OPEN `#351`",
     ] {
         assert!(text.contains(needle), "phase-w-plan missing: {needle}");
     }
@@ -124,6 +125,7 @@ fn phase_w_queue_all_done() {
         "first OPEN `#349`",
         "first OPEN `#350`",
         "first OPEN `#351`",
+        "first OPEN `#352`",
         "QUEUE V closed",
         "phase-x-plan.md",
         "Pack 2",
@@ -138,17 +140,18 @@ fn phase_w_queue_all_done() {
             && text.contains("| 347 | **DONE**")
             && text.contains("| 348 | **DONE**")
             && text.contains("| 349 | **DONE**")
-            && text.contains("| 350 | **DONE**"),
-        "QUEUE #343–#350 must be DONE after Mock honesty"
+            && text.contains("| 350 | **DONE**")
+            && text.contains("| 351 | **DONE**"),
+        "QUEUE #343–#351 must be DONE after Network/address honesty"
     );
     assert!(
-        !text.contains("**Перший OPEN:** `#350`") && text.contains("**Перший OPEN:** `#351`"),
-        "QUEUE tip must advance from #350 to #351 after Mock honesty"
+        !text.contains("**Перший OPEN:** `#351`") && text.contains("**Перший OPEN:** `#352`"),
+        "QUEUE tip must advance from #351 to #352 after Network/address honesty"
     );
-    for n in 351..=358 {
+    for n in 352..=358 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
-            "QUEUE #{n} must be OPEN (Phase X after #350)"
+            "QUEUE #{n} must be OPEN (Phase X after #351)"
         );
     }
 }

@@ -10,6 +10,8 @@ Use this topic for the **setup** path: invite → peer-capable profile → Stop/
 
 - **Setup ≠ remote session.** Import invite + P1/P2 + Stop/Start applies local settings and may grow the address book. Live sessions appear only when a session is actually observed — not because the setup steps finished.
 - **Loopback ≠ dial address.** Desktop default listen is loopback-bound. An exported listener endpoint on loopback is **not** an address another computer can dial. Do not treat Stop/Start success as “connected to someone else.”
+- **Three address roles.** **HTTP listen** (local API) ≠ **peer listen** (Noise peer bind) ≠ **advertised discovery address** (what discv announce publishes). Do not paste one role into another field.
+- **P3 | P4 radio.** Relay (P3) and gossip trust (P4) are mutually exclusive under Technical details — pick Base (P0–P2), P3, or P4; not both P3 and P4.
 - Public bind and auto-trust stay opt-in advanced/CLI paths — Help never enables them as the default.
 
 A confirmed remote dial path is **opt-in** under **Technical details → Peer dial**: trusted peer identity + **explicit** dial address. The dial attempt runs **off the UI thread** so Help (F1) and navigation stay available while it is in progress. A failed dial **restores** the previous AddressBook entry (trial address does not quietly replace a known-good one). Success stores handshake evidence and may show a **last confirmed handshake** (session closed after the check) — it does **not** invent a live session or DIRECT reachability from setup alone, and Desktop listen stays loopback by default.

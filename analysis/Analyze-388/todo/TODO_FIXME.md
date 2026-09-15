@@ -1,0 +1,5 @@
+- [x] Loopback peer listen honesty hint
+- [x] Address roles HTTP ≠ peer ≠ advertised
+- [x] Human P0–P6 + P3|P4 radio
+- [x] RFC-0234; tip → first OPEN `#352`
+- [ ] Human copy + Settings≠System IA → `#352` / Analyze-389

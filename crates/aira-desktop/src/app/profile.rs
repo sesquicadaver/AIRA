@@ -119,20 +119,4 @@ impl AiraDesktopApp {
             ),
         }
     }
-
-    pub(super) fn toggle_relay_profile(&mut self, enable: bool) {
-        if enable {
-            self.apply_profile(NetworkProfile::P3);
-        } else if self.settings.network_profile == NetworkProfile::P3 {
-            self.apply_profile(NetworkProfile::P2);
-        }
-    }
-
-    pub(super) fn toggle_gossip_profile(&mut self, enable: bool) {
-        if enable {
-            self.apply_profile(NetworkProfile::P4);
-        } else if self.settings.network_profile == NetworkProfile::P4 {
-            self.apply_profile(NetworkProfile::P2);
-        }
-    }
 }

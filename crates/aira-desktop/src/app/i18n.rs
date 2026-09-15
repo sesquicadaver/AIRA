@@ -184,11 +184,16 @@ pub struct Labels {
     pub p1: &'static str,
     pub p2: &'static str,
     pub peer_listen: &'static str,
+    /// `#351`: peer listen is loopback-bound by default — not a dial target for another PC.
+    pub peer_listen_loopback_hint: &'static str,
     pub save_listen: &'static str,
     pub advanced: &'static str,
     pub advanced_hint: &'static str,
     pub p3_relay: &'static str,
     pub p4_gossip: &'static str,
+    /// `#351`: neither P3 nor P4 — keep base P0–P2 selection.
+    pub p34_base: &'static str,
+    pub p34_mutex_hint: &'static str,
     pub relay_ttl: &'static str,
     pub save_ttl: &'static str,
     pub federation: &'static str,
@@ -212,6 +217,11 @@ pub struct Labels {
     pub find_key: &'static str,
     pub find_to: &'static str,
     pub discv_find: &'static str,
+    /// `#351`: HTTP ≠ peer listen ≠ advertised address roles.
+    pub addr_roles_hint: &'static str,
+    pub addr_http: &'static str,
+    pub addr_peer_listen: &'static str,
+    pub addr_advertised: &'static str,
     pub settings_heading: &'static str,
     pub settings_phase_applied: &'static str,
     pub settings_phase_restart: &'static str,
@@ -412,21 +422,24 @@ static EN: Labels = Labels {
     mesh_yes: "yes",
     mesh_no: "no",
     network_profile: "Network profile",
-    p0: "P0 local HTTP",
-    p1: "P1 + peer listen",
-    p2: "P2 + DHT book",
+    p0: "Local only (P0)",
+    p1: "Private network — trusted (P1)",
+    p2: "Private + auto address book (P2)",
     peer_listen: "peer_listen:",
+    peer_listen_loopback_hint: "Desktop binds peer listen on loopback by default (this PC only). It is not an address another computer can dial.",
     save_listen: "Save listen",
     advanced: "Advanced",
-    advanced_hint: "P3 relay hub (--relay) and P4 gossip (--gossip) are mutually exclusive on one peer listen.",
-    p3_relay: "P3 relay hub",
-    p4_gossip: "P4 gossip trust",
-    relay_ttl: "relay_ttl_days:",
+    advanced_hint: "Relay (P3) and gossip trust (P4) are mutually exclusive — pick one radio option.",
+    p3_relay: "Relay (P3)",
+    p4_gossip: "Gossip trust (P4)",
+    p34_base: "Base profile (P0–P2)",
+    p34_mutex_hint: "P3 | P4 radio — not both. Turning either off returns to the base peer profile (P2 when peer was on).",
+    relay_ttl: "Relay TTL (days):",
     save_ttl: "Save TTL",
-    federation: "Federation (P5)",
+    federation: "Federation pin (P5)",
     federation_hint: "Local pin: import signed federation descriptor JSON (no remote handshake).",
     import_federation: "Import federation descriptor…",
-    discovery: "Discovery (P6 Dev)",
+    discovery: "STUN / discv / FIND (P6)",
     discovery_hint: "Operator shortcuts only — explicit STUN server; no public STUN default; no auto-trust.",
     peer_dial: "Peer dial (opt-in)",
     peer_dial_hint: "Trusted peer + explicit dial address required. Dial runs off the UI thread (F1/nav stay available). Completing setup alone is not a remote session; success stores handshake evidence without inventing DIRECT reachability.",
@@ -442,6 +455,10 @@ static EN: Labels = Labels {
     find_key: "find key:",
     find_to: "seed to:",
     discv_find: "discv FIND",
+    addr_roles_hint: "Three different roles: HTTP API listen ≠ peer listen ≠ advertised discovery address. Do not mix them.",
+    addr_http: "HTTP listen:",
+    addr_peer_listen: "Peer listen:",
+    addr_advertised: "Advertised (discovery):",
     settings_heading: "Settings",
     settings_phase_applied: "Saved values are applied.",
     settings_phase_restart: "Saved on disk — restart needed (Stop, then Start) to apply network/listen.",
@@ -633,21 +650,24 @@ static UK: Labels = Labels {
     mesh_yes: "так",
     mesh_no: "ні",
     network_profile: "Мережевий профіль",
-    p0: "P0 лише локальний HTTP",
-    p1: "P1 + слухання peer",
-    p2: "P2 + DHT-книга",
+    p0: "Лише локально (P0)",
+    p1: "Приватна мережа — довірені (P1)",
+    p2: "Приватна + авто-книга (P2)",
     peer_listen: "peer_listen:",
+    peer_listen_loopback_hint: "За замовчуванням Desktop прив’язує peer listen до loopback (лише цей ПК). Це не адреса, на яку інший комп’ютер може зробити dial.",
     save_listen: "Зберегти listen",
     advanced: "Додатково",
-    advanced_hint: "P3 relay (--relay) і P4 gossip (--gossip) взаємовиключні на одному peer listen.",
-    p3_relay: "P3 relay-хаб",
-    p4_gossip: "P4 gossip-довіра",
-    relay_ttl: "relay_ttl_days:",
+    advanced_hint: "Relay (P3) і gossip-довіра (P4) взаємовиключні — оберіть один radio-варіант.",
+    p3_relay: "Relay (P3)",
+    p4_gossip: "Gossip-довіра (P4)",
+    p34_base: "Базовий профіль (P0–P2)",
+    p34_mutex_hint: "Radio P3 | P4 — не обидва. Вимкнення повертає базовий peer-профіль (P2, якщо peer був увімкнений).",
+    relay_ttl: "TTL relay (дні):",
     save_ttl: "Зберегти TTL",
-    federation: "Федерація (P5)",
+    federation: "Федерація — pin (P5)",
     federation_hint: "Локальний pin: імпорт підписаного JSON-дескриптора (без віддаленого handshake).",
     import_federation: "Імпорт дескриптора федерації…",
-    discovery: "Виявлення (P6 Dev)",
+    discovery: "Виявлення STUN / discv / FIND (P6)",
     discovery_hint: "Лише операторські скорочення — явний STUN; без публічного STUN за замовчуванням; без auto-trust.",
     peer_dial: "Dial до піра (opt-in)",
     peer_dial_hint: "Потрібні довірений peer і явна dial-адреса. Dial виконується поза UI-потоком (F1/навігація доступні). Саме налаштування — не віддалена сесія; успіх зберігає evidence handshake без вигаданого DIRECT.",
@@ -664,6 +684,10 @@ static UK: Labels = Labels {
     find_key: "find key:",
     find_to: "seed to:",
     discv_find: "discv FIND",
+    addr_roles_hint: "Три різні ролі: HTTP API listen ≠ слухання peer ≠ оголошена discovery-адреса. Не змішуйте їх.",
+    addr_http: "HTTP listen:",
+    addr_peer_listen: "Слухання peer:",
+    addr_advertised: "Оголошена (discovery):",
     settings_heading: "Параметри",
     settings_phase_applied: "Збережені значення застосовано.",
     settings_phase_restart: "Збережено на диск — потрібен перезапуск (Стоп, потім Старт), щоб застосувати мережу/listen.",
@@ -830,6 +854,23 @@ mod tests {
         assert!(Labels::get(UiLang::Uk)
             .help_search_miss
             .contains("поза цим пошуком"));
+        // #351 — address honesty + human P names + P3|P4 radio copy
+        assert!(Labels::get(UiLang::En)
+            .peer_listen_loopback_hint
+            .contains("loopback"));
+        assert!(Labels::get(UiLang::En)
+            .addr_roles_hint
+            .contains("HTTP API listen"));
+        assert!(Labels::get(UiLang::En).p0.contains("Local only"));
+        assert!(Labels::get(UiLang::En).p34_base.contains("P0–P2"));
+        assert!(Labels::get(UiLang::Uk)
+            .peer_listen_loopback_hint
+            .contains("loopback"));
+        assert!(Labels::get(UiLang::Uk).addr_roles_hint.contains("HTTP API"));
+        assert_ne!(
+            Labels::get(UiLang::Uk).addr_advertised,
+            Labels::get(UiLang::En).addr_advertised
+        );
     }
 
     /// Phase R `#292`: mesh/discovery chrome UK ≠ leftover EN labels.

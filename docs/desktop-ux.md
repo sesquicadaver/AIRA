@@ -1,7 +1,7 @@
 # AIRA Desktop UX — канон рішень
 
 **Статус:** Phase E `#75`–`#106` **DONE** (2026-08-22); Phase F `#107`–`#119` **DONE** (2026-08-24).  
-**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) (runtime-honest) `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed. Phase Q [`phase-q-plan.md`](phase-q-plan.md) `#275`–`#285` **DONE** @ [`AIRA-RFC-0164`](../specs/rfc/AIRA-RFC-0164-phase-q-cross-install-integrity.md); **QUEUE Q closed**; no OPEN Q atoms. Phase R [`phase-r-plan.md`](phase-r-plan.md) `#286`–`#294` **DONE** @ [`AIRA-RFC-0174`](../specs/rfc/AIRA-RFC-0174-phase-r-actionable-connection-ux.md) (`connection_cta` / `ui_connect_primary` / `mesh_language` / `problem_action` / Help connect / UK mesh / cold-start @ RFC-0175…RFC-0181; **QUEUE R closed**; no OPEN R atoms). Phase T [`phase-t-plan.md`](phase-t-plan.md) `#306`–`#312` **DONE** @ [`AIRA-RFC-0192`](../specs/rfc/AIRA-RFC-0192-phase-t-operation-lifecycle-honesty.md) (**QUEUE T closed**; no OPEN T atoms). Phase U [`phase-u-plan.md`](phase-u-plan.md) `#313`–`#322` **DONE** @ [`AIRA-RFC-0198`](../specs/rfc/AIRA-RFC-0198-phase-u-cross-path-contract-honesty.md) (**QUEUE U closed**; no OPEN U atoms). Phase V [`phase-v-plan.md`](phase-v-plan.md) `#323`–`#330` **DONE** @ RFC-0208 (**QUEUE V closed**; no OPEN V atoms; [`repair-package-1.md`](repair-package-1.md)). Phase W [`phase-w-plan.md`](phase-w-plan.md) `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed**. Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` **IN PROGRESS** (Pack 2 GUI; `#343`–`#350` DONE including `#345`/`#346`/`#347`/`#348`/`#349`; first OPEN `#351`; RFC-0226 reserved; `aira-current.md` 2026-09-13). Phase S [`phase-s-plan.md`](phase-s-plan.md) `#295`–`#305` **DONE** @ [AIRA-RFC-0182](../specs/rfc/AIRA-RFC-0182-phase-s-cross-boundary-integrity.md) (**QUEUE S closed**; RFC-0183…RFC-0191; no OPEN S atoms; `#304` no joint atomic); post-R `aira-current.md` @ `e5aee86`).
+**Черга:** Phase O [`phase-o-plan.md`](phase-o-plan.md) `#255`–`#265` **DONE** @ [`AIRA-RFC-0146`](../specs/rfc/AIRA-RFC-0146-phase-o-desktop-ux-help.md); QUEUE O closed. Phase P [`phase-p-plan.md`](phase-p-plan.md) (runtime-honest) `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed. Phase Q [`phase-q-plan.md`](phase-q-plan.md) `#275`–`#285` **DONE** @ [`AIRA-RFC-0164`](../specs/rfc/AIRA-RFC-0164-phase-q-cross-install-integrity.md); **QUEUE Q closed**; no OPEN Q atoms. Phase R [`phase-r-plan.md`](phase-r-plan.md) `#286`–`#294` **DONE** @ [`AIRA-RFC-0174`](../specs/rfc/AIRA-RFC-0174-phase-r-actionable-connection-ux.md) (`connection_cta` / `ui_connect_primary` / `mesh_language` / `problem_action` / Help connect / UK mesh / cold-start @ RFC-0175…RFC-0181; **QUEUE R closed**; no OPEN R atoms). Phase T [`phase-t-plan.md`](phase-t-plan.md) `#306`–`#312` **DONE** @ [`AIRA-RFC-0192`](../specs/rfc/AIRA-RFC-0192-phase-t-operation-lifecycle-honesty.md) (**QUEUE T closed**; no OPEN T atoms). Phase U [`phase-u-plan.md`](phase-u-plan.md) `#313`–`#322` **DONE** @ [`AIRA-RFC-0198`](../specs/rfc/AIRA-RFC-0198-phase-u-cross-path-contract-honesty.md) (**QUEUE U closed**; no OPEN U atoms). Phase V [`phase-v-plan.md`](phase-v-plan.md) `#323`–`#330` **DONE** @ RFC-0208 (**QUEUE V closed**; no OPEN V atoms; [`repair-package-1.md`](repair-package-1.md)). Phase W [`phase-w-plan.md`](phase-w-plan.md) `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed**. Phase X [`phase-x-plan.md`](phase-x-plan.md) `#343`–`#358` **IN PROGRESS** (Pack 2 GUI; `#343`–`#351` DONE including `#345`/`#346`/`#347`/`#348`/`#349`/`#350`/`#351`; first OPEN `#352`; RFC-0226 reserved; `aira-current.md` 2026-09-13). Phase S [`phase-s-plan.md`](phase-s-plan.md) `#295`–`#305` **DONE** @ [AIRA-RFC-0182](../specs/rfc/AIRA-RFC-0182-phase-s-cross-boundary-integrity.md) (**QUEUE S closed**; RFC-0183…RFC-0191; no OPEN S atoms; `#304` no joint atomic); post-R `aira-current.md` @ `e5aee86`).
 **Provenance:** [`NEXT_PROBLEM.md`](../NEXT_PROBLEM.md) (**RESOLVED** → E); UX/Help draft 2026-09-06 (`aira-gui.md` + `aira-desktop-ux-help-draft.md`, поза git).  
 **Не змінює** Book 0–IV / C0–C1 / Core / `aira-core` ledger.  
 **Posture:** Linux E1 = **Developer Preview** над local reference plane.
@@ -141,15 +141,17 @@ GUI-state зберігає лише вкладку/фокус/чернетку/�
 
 ## 8. Network profiles (E1–E4, без змін семантики)
 
-| ID | Назва | Поведінка | Desktop |
-|----|-------|-----------|---------|
-| **P0** | Лише локально | тільки `aira-node --http` loopback | **E1 default** |
-| **P1** | Приватна мережа (довірені) | + `peer listen --recv`; trust + address book | **E1.1+** |
-| **P2** | Приватна + авто-книга | P1 + `--dht --apply-book` | **E4** |
-| **P3** | Relay | `--relay` (+ TTL); dial `via` | **E4** Advanced |
-| **P4** | Gossip trust | `--gossip` (не з `--relay` одночасно) | **E4** Advanced |
-| **P5** | Федерація (pin) | wizard `federation join` | **E4** |
-| **P6** | STUN / discv / FIND | discovery prototypes | **E4** Dev / Advanced |
+| ID | Назва (UI) | Поведінка | Desktop |
+|----|------------|-----------|---------|
+| **P0** | Лише локально (P0) | тільки `aira-node --http` loopback | **E1 default** |
+| **P1** | Приватна мережа — довірені (P1) | + `peer listen --recv`; trust + address book | **E1.1+** |
+| **P2** | Приватна + авто-книга (P2) | P1 + `--dht --apply-book` | **E4** |
+| **P3** | Relay (P3) | `--relay` (+ TTL); dial `via` | **E4** Advanced |
+| **P4** | Gossip-довіра (P4) | `--gossip` (не з `--relay` одночасно) | **E4** Advanced |
+| **P5** | Федерація — pin (P5) | wizard `federation join` | **E4** |
+| **P6** | STUN / discv / FIND (P6) | discovery prototypes | **E4** Dev / Advanced |
+
+**Address roles (`#351` @ RFC-0234):** HTTP listen ≠ peer listen ≠ advertised discovery address. Desktop default peer listen is **loopback** — not a dial address for another PC. Advanced P3|P4 is a **radio** (mutex), not dual checkboxes.
 
 Заборонено в default Desktop: `--allow-public-bind`, публічний STUN default, авто-trust невідомих peers, прихований auto-increment порту.
 
