@@ -14,8 +14,9 @@ Canonical Desktop path (no CLI required):
 2. **Scan** the local lifecycle catalog (or **Enable local add** → **Add file…** for a local weight file).
 3. **Select** Auto or a specific row. Selection is **not** VERIFIED.
 4. **Prepare** when the row is not ready yet; read the ready reason on the catalog row.
-5. On **Work**, choose executor **Auto** or **Specific model**, then **Run**. Built-in calculation (for example `Calculate 2 + 2`) does **not** need a model.
-6. If Work shows the **demo / reference mock** banner, open **Settings → Models** — mock text generation is not a real local LLM run (see help:work.result).
+5. On **Work**, choose executor **Auto**, **Specific model**, or **Compare**. Built-in calculation (for example `Calculate 2 + 2`) does **not** need a model and cannot use Compare.
+6. **Compare** needs two **different** available catalog models (A and B). Both must be ready before Run. A and B run sequentially on the same draft; if B fails, A’s result stays — there is **no silent substitute** of tip or another model.
+7. If Work shows the **demo / reference mock** banner, open **Settings → Models** — mock text generation is not a real local LLM run (see help:work.result).
 
 Optional tooling (not required for the GUI path): `aira models scan|list|activate`.
 
@@ -24,13 +25,14 @@ Optional tooling (not required for the GUI path): `aira models scan|list|activat
 - Missing a model does **not** block tasks that do not need an LLM (math readiness ≠ generate readiness).
 - Desktop keeps **selected ≠ ready ≠ used** honest — never invent a model name or copy selected into used.
 - Choice / Prepare / Select never silently mean VERIFIED free-form text.
+- Compare never silently swaps an unready model for the tip or another catalog row.
 
 ## If it failed?
 
 - Generation blocked because nothing is ready → follow help:model.unavailable (same Settings → Models steps).
+- Compare blocked because A or B is empty, identical, or unready → fix that leg in Settings → Models; do not expect Auto tip to fill the gap.
 - Blank or “no model selected” is not a successful local LLM.
 - If the node is Running, the failure is about model capability — not “AIRA is stopped” (help:node.lifecycle only if Start node itself failed).
-- Do **not** look for a Work **Compare** mode in this Help topic — that path is separate.
 
 ## Related
 

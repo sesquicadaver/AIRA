@@ -23,7 +23,7 @@ use aira_desktop_runtime::{
 };
 
 use crate::actions;
-use crate::work_view::{WorkResultView, WorkSubmitModelContext};
+use crate::work_view::{WorkJobResult, WorkResultView, WorkSubmitModelContext};
 
 /// Interval for light status polling while the window is open.
 pub const STATUS_REFRESH_INTERVAL: Duration = Duration::from_secs(2);
@@ -169,10 +169,38 @@ pub fn run_submit_job(
     actions::submit_problem_with_admission(paths, settings, text, admission, model_ctx)
 }
 
+/// Sequential Compare: A then B; B failure does not rewrite A (`#354` / RFC-0237).
+#[allow(clippy::too_many_arguments)] // dual admission + dual model_ctx stay explicit
+pub fn run_compare_submit_job(
+    paths: &DesktopPaths,
+    settings: &DesktopSettings,
+    node_bin: Option<PathBuf>,
+    text: &str,
+    ensure_started: bool,
+    admission_a: &aira_flow::AdmissionConstraints,
+    model_ctx_a: &WorkSubmitModelContext,
+    admission_b: &aira_flow::AdmissionConstraints,
+    model_ctx_b: &WorkSubmitModelContext,
+) -> anyhow::Result<WorkJobResult> {
+    let a = run_submit_job(
+        paths,
+        settings,
+        node_bin.clone(),
+        text,
+        ensure_started,
+        admission_a,
+        model_ctx_a,
+    )?;
+    // A succeeded — run B without ensure_started again (node already up if needed).
+    let b = run_submit_job(paths, settings, None, text, false, admission_b, model_ctx_b)
+        .map_err(|e| format!("{e:#}"));
+    Ok(WorkJobResult::compare(a, b))
+}
+
 /// In-flight submit / refresh / dial slots (at most one of each).
 #[derive(Debug, Default)]
 pub struct AsyncDesktopJobs {
-    work_rx: Option<Receiver<Result<WorkResultView, String>>>,
+    work_rx: Option<Receiver<Result<WorkJobResult, String>>>,
     refresh_rx: Option<Receiver<(u64, Result<StatusSnapshot, String>)>>,
     lifecycle_rx: Option<Receiver<(LifecycleJobKind, Result<LifecycleJobResult, String>)>>,
     /// Phase T `#308`: at most one opt-in peer dial worker.
@@ -238,6 +266,50 @@ impl AsyncDesktopJobs {
                 &admission,
                 &model_ctx,
             )
+            .map(WorkJobResult::single)
+            .map_err(|e| format!("{e:#}"));
+            let _ = tx.send(outcome);
+            on_done();
+        });
+        true
+    }
+
+    /// Sequential dual-model Compare in one worker slot (`#354` / RFC-0237).
+    #[allow(clippy::too_many_arguments)]
+    pub fn try_spawn_compare_submit(
+        &mut self,
+        paths: DesktopPaths,
+        settings: DesktopSettings,
+        node_bin: Option<PathBuf>,
+        text: String,
+        ensure_started: bool,
+        admission_a: aira_flow::AdmissionConstraints,
+        model_ctx_a: WorkSubmitModelContext,
+        admission_b: aira_flow::AdmissionConstraints,
+        model_ctx_b: WorkSubmitModelContext,
+        on_done: impl FnOnce() + Send + 'static,
+    ) -> bool {
+        if !admit_submit_lifecycle(
+            ExclusiveJobKind::Submit,
+            self.work_rx.is_some(),
+            self.lifecycle_inflight(),
+        ) {
+            return false;
+        }
+        let (tx, rx) = mpsc::channel();
+        self.work_rx = Some(rx);
+        thread::spawn(move || {
+            let outcome = run_compare_submit_job(
+                &paths,
+                &settings,
+                node_bin,
+                &text,
+                ensure_started,
+                &admission_a,
+                &model_ctx_a,
+                &admission_b,
+                &model_ctx_b,
+            )
             .map_err(|e| format!("{e:#}"));
             let _ = tx.send(outcome);
             on_done();
@@ -289,8 +361,8 @@ impl AsyncDesktopJobs {
         self.try_spawn_refresh(paths, settings, on_done)
     }
 
-    /// Non-blocking poll for a finished submit.
-    pub fn poll_submit(&mut self) -> Option<Result<WorkResultView, String>> {
+    /// Non-blocking poll for a finished submit (single or Compare).
+    pub fn poll_submit(&mut self) -> Option<Result<WorkJobResult, String>> {
         let rx = self.work_rx.as_ref()?;
         match rx.try_recv() {
             Ok(v) => {

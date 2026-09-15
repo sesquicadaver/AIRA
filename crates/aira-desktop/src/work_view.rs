@@ -33,6 +33,33 @@ pub struct WorkSubmitModelContext {
     pub applied: Option<String>,
 }
 
+/// One Work job outcome: single run or Compare dual (`#354` / RFC-0237).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkJobResult {
+    /// Auto/Specific result, or Compare leg A.
+    pub primary: WorkResultView,
+    /// Compare leg B (`Ok` or explicit failure). `None` for single submit.
+    pub compare_b: Option<Result<WorkResultView, String>>,
+}
+
+impl WorkJobResult {
+    /// Single-leg submit (Auto / Specific / math).
+    pub fn single(primary: WorkResultView) -> Self {
+        Self {
+            primary,
+            compare_b: None,
+        }
+    }
+
+    /// Dual Compare: A always present; B may fail without rewriting A.
+    pub fn compare(a: WorkResultView, b: Result<WorkResultView, String>) -> Self {
+        Self {
+            primary: a,
+            compare_b: Some(b),
+        }
+    }
+}
+
 /// Honest requested ≠ applied ≠ executed projection for one Work result (`#350`).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ResultModelTriple {

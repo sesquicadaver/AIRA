@@ -3,7 +3,7 @@ use aira_desktop_runtime::{CatalogSelection, NetworkProfile, UiLang, DEFAULT_REL
 use crate::actions;
 use crate::lexicon::HelpId;
 
-use super::{AiraDesktopApp, MainTab};
+use super::{work, AiraDesktopApp, MainTab};
 
 impl eframe::App for AiraDesktopApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -397,17 +397,23 @@ impl AiraDesktopApp {
         ui.horizontal(|ui| {
             ui.strong(l.work_executor);
             if ui
-                .selectable_label(self.work_executor_auto, l.work_executor_auto)
+                .selectable_label(
+                    self.work_executor_mode == work::WorkExecutorUiMode::Auto,
+                    l.work_executor_auto,
+                )
                 .clicked()
             {
-                self.work_executor_auto = true;
+                self.work_executor_mode = work::WorkExecutorUiMode::Auto;
                 self.refresh_work_readiness();
             }
             if ui
-                .selectable_label(!self.work_executor_auto, l.work_executor_specific)
+                .selectable_label(
+                    self.work_executor_mode == work::WorkExecutorUiMode::Specific,
+                    l.work_executor_specific,
+                )
                 .clicked()
             {
-                self.work_executor_auto = false;
+                self.work_executor_mode = work::WorkExecutorUiMode::Specific;
                 if self.work_required_ref.is_empty() {
                     if let Some(h) = self.catalog_highlight.clone() {
                         self.work_required_ref = h;
@@ -417,9 +423,26 @@ impl AiraDesktopApp {
                 }
                 self.refresh_work_readiness();
             }
+            if ui
+                .selectable_label(
+                    self.work_executor_mode == work::WorkExecutorUiMode::Compare,
+                    l.work_executor_compare,
+                )
+                .clicked()
+            {
+                self.work_executor_mode = work::WorkExecutorUiMode::Compare;
+                if self.work_compare_a.is_empty() {
+                    if let Some(tip) = self.model_catalog.tip_model_ref.clone() {
+                        self.work_compare_a = tip;
+                    } else if let Some(h) = self.catalog_highlight.clone() {
+                        self.work_compare_a = h;
+                    }
+                }
+                self.refresh_work_readiness();
+            }
         });
         ui.small(l.work_executor_hint);
-        if !self.work_executor_auto {
+        if self.work_executor_mode == work::WorkExecutorUiMode::Specific {
             ui.horizontal(|ui| {
                 ui.label(l.settings_models_model_ref);
                 if ui
@@ -440,7 +463,53 @@ impl AiraDesktopApp {
                         );
                         if ui.selectable_label(selected, label).clicked() {
                             self.work_required_ref = entry.model_ref.clone();
-                            self.work_executor_auto = false;
+                            self.work_executor_mode = work::WorkExecutorUiMode::Specific;
+                            self.refresh_work_readiness();
+                        }
+                    }
+                });
+            }
+        }
+        if self.work_executor_mode == work::WorkExecutorUiMode::Compare {
+            ui.horizontal(|ui| {
+                ui.label(l.work_compare_a);
+                if ui.text_edit_singleline(&mut self.work_compare_a).changed() {
+                    self.refresh_work_readiness();
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.label(l.work_compare_b);
+                if ui.text_edit_singleline(&mut self.work_compare_b).changed() {
+                    self.refresh_work_readiness();
+                }
+            });
+            if !self.model_catalog.entries.is_empty() {
+                ui.label(l.work_compare_pick_a);
+                ui.horizontal_wrapped(|ui| {
+                    for entry in &self.model_catalog.entries.clone() {
+                        let selected = self.work_compare_a == entry.model_ref;
+                        let label = format!(
+                            "{}{}",
+                            entry.model_ref,
+                            if entry.available { " ✓" } else { "" }
+                        );
+                        if ui.selectable_label(selected, label).clicked() {
+                            self.work_compare_a = entry.model_ref.clone();
+                            self.refresh_work_readiness();
+                        }
+                    }
+                });
+                ui.label(l.work_compare_pick_b);
+                ui.horizontal_wrapped(|ui| {
+                    for entry in &self.model_catalog.entries.clone() {
+                        let selected = self.work_compare_b == entry.model_ref;
+                        let label = format!(
+                            "{}{}",
+                            entry.model_ref,
+                            if entry.available { " ✓" } else { "" }
+                        );
+                        if ui.selectable_label(selected, label).clicked() {
+                            self.work_compare_b = entry.model_ref.clone();
                             self.refresh_work_readiness();
                         }
                     }
@@ -522,116 +591,145 @@ impl AiraDesktopApp {
             .show(ui, |ui| {
                 ui.label(l.work_tech_details);
             });
-        if self.work_result.is_some() {
+        if self.work_result.is_some()
+            || self.work_result_b.is_some()
+            || self.work_compare_b_error.is_some()
+        {
             ui.separator();
             let ans = ui.strong(l.work_answer);
             if ans.hovered() {
                 self.note_help_focus(HelpId::WorkResult);
             }
         }
-        if let Some(view) = &self.work_result {
-            let answer = if view.answer.is_empty() {
-                l.work_no_answer
-            } else {
-                view.answer.as_str()
-            };
-            ui.heading(answer);
-            let status_human = if view.status.eq_ignore_ascii_case("completed") {
-                l.work_status_completed
-            } else if view.status.eq_ignore_ascii_case("executed") {
-                l.work_status_executed
-            } else if view.status.eq_ignore_ascii_case("needs_human_collapse") {
-                l.work_status_needs_human
-            } else {
-                view.status.as_str()
-            };
-            ui.horizontal(|ui| {
-                ui.strong(l.work_run_status);
-                ui.label(status_human);
-            });
-            if let Some(vs) = &view.verification_status {
-                ui.horizontal(|ui| {
-                    ui.strong(l.work_verification);
-                    let color = if vs.eq_ignore_ascii_case("VERIFIED") {
-                        egui::Color32::from_rgb(40, 140, 70)
-                    } else {
-                        egui::Color32::from_rgb(180, 120, 40)
-                    };
-                    ui.colored_label(color, vs);
-                });
+        if let Some(view) = self.work_result.clone() {
+            if self.work_result_b.is_some() || self.work_compare_b_error.is_some() {
+                ui.strong(l.work_compare_leg_a);
             }
+            self.ui_work_result_panel(ui, &view, "a");
+        }
+        if let Some(view) = self.work_result_b.clone() {
+            ui.separator();
+            ui.strong(l.work_compare_leg_b);
+            self.ui_work_result_panel(ui, &view, "b");
+        } else if let Some(err) = &self.work_compare_b_error {
+            ui.separator();
+            ui.strong(l.work_compare_leg_b);
+            ui.colored_label(
+                egui::Color32::from_rgb(180, 80, 40),
+                format!("{}: {err}", l.work_compare_b_failed),
+            );
+            ui.small(l.work_compare_no_substitute);
+        }
+    }
+
+    /// One result panel (answer → status → verification → provenance → triple → details).
+    fn ui_work_result_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        view: &crate::work_view::WorkResultView,
+        id_suffix: &str,
+    ) {
+        let l = self.labels();
+        let answer = if view.answer.is_empty() {
+            l.work_no_answer
+        } else {
+            view.answer.as_str()
+        };
+        ui.heading(answer);
+        let status_human = if view.status.eq_ignore_ascii_case("completed") {
+            l.work_status_completed
+        } else if view.status.eq_ignore_ascii_case("executed") {
+            l.work_status_executed
+        } else if view.status.eq_ignore_ascii_case("needs_human_collapse") {
+            l.work_status_needs_human
+        } else {
+            view.status.as_str()
+        };
+        ui.horizontal(|ui| {
+            ui.strong(l.work_run_status);
+            ui.label(status_human);
+        });
+        if let Some(vs) = &view.verification_status {
             ui.horizontal(|ui| {
-                ui.strong(l.work_provenance);
-                ui.label(self.work_provenance_label(view.provenance));
-            });
-            let none = l.work_triple_none;
-            let req = view.model_triple.requested.as_deref().unwrap_or(none);
-            let app = view.model_triple.applied.as_deref().unwrap_or(none);
-            let exec = match view.model_triple.executed.as_deref() {
-                Some(crate::work_view::EXECUTED_MOCK_LABEL) => l.work_triple_executed_mock,
-                Some(s) => s,
-                None => none,
-            };
-            ui.horizontal(|ui| {
-                ui.strong(l.work_triple_requested);
-                ui.monospace(req);
-            });
-            ui.horizontal(|ui| {
-                ui.strong(l.work_triple_applied);
-                ui.monospace(app);
-            });
-            ui.horizontal(|ui| {
-                ui.strong(l.work_triple_executed);
-                if view.model_triple.executed.as_deref()
-                    == Some(crate::work_view::EXECUTED_MOCK_LABEL)
-                {
-                    ui.colored_label(egui::Color32::from_rgb(180, 120, 40), exec);
+                ui.strong(l.work_verification);
+                let color = if vs.eq_ignore_ascii_case("VERIFIED") {
+                    egui::Color32::from_rgb(40, 140, 70)
                 } else {
-                    ui.monospace(exec);
-                }
+                    egui::Color32::from_rgb(180, 120, 40)
+                };
+                ui.colored_label(color, vs);
             });
-            let has_ids = view.problem_id.is_some()
-                || view.verified_artifact_id.is_some()
-                || view.execution_artifact_id.is_some()
-                || view.field_artifact_id.is_some();
-            if has_ids {
-                egui::CollapsingHeader::new(l.work_ids)
-                    .id_source("work-ids")
-                    .default_open(false)
-                    .show(ui, |ui| {
-                        if let Some(id) = &view.problem_id {
-                            ui.horizontal(|ui| {
-                                ui.strong(l.work_problem_id);
-                                ui.monospace(id);
-                            });
-                        }
-                        if let Some(id) = &view.verified_artifact_id {
-                            ui.horizontal(|ui| {
-                                ui.strong(l.work_artifact_id);
-                                ui.monospace(id);
-                            });
-                        }
-                        if let Some(id) = &view.execution_artifact_id {
-                            ui.horizontal(|ui| {
-                                ui.strong(l.work_execution_id);
-                                ui.monospace(id);
-                            });
-                        }
-                        if let Some(id) = &view.field_artifact_id {
-                            ui.horizontal(|ui| {
-                                ui.strong(l.work_field_id);
-                                ui.monospace(id);
-                            });
-                        }
-                    });
+        }
+        ui.horizontal(|ui| {
+            ui.strong(l.work_provenance);
+            ui.label(self.work_provenance_label(view.provenance));
+        });
+        let none = l.work_triple_none;
+        let req = view.model_triple.requested.as_deref().unwrap_or(none);
+        let app = view.model_triple.applied.as_deref().unwrap_or(none);
+        let exec = match view.model_triple.executed.as_deref() {
+            Some(crate::work_view::EXECUTED_MOCK_LABEL) => l.work_triple_executed_mock,
+            Some(s) => s,
+            None => none,
+        };
+        ui.horizontal(|ui| {
+            ui.strong(l.work_triple_requested);
+            ui.monospace(req);
+        });
+        ui.horizontal(|ui| {
+            ui.strong(l.work_triple_applied);
+            ui.monospace(app);
+        });
+        ui.horizontal(|ui| {
+            ui.strong(l.work_triple_executed);
+            if view.model_triple.executed.as_deref() == Some(crate::work_view::EXECUTED_MOCK_LABEL)
+            {
+                ui.colored_label(egui::Color32::from_rgb(180, 120, 40), exec);
+            } else {
+                ui.monospace(exec);
             }
-            egui::CollapsingHeader::new(l.work_details)
-                .id_source("work-details")
+        });
+        let has_ids = view.problem_id.is_some()
+            || view.verified_artifact_id.is_some()
+            || view.execution_artifact_id.is_some()
+            || view.field_artifact_id.is_some();
+        if has_ids {
+            egui::CollapsingHeader::new(l.work_ids)
+                .id_source(format!("work-ids-{id_suffix}"))
                 .default_open(false)
                 .show(ui, |ui| {
-                    ui.monospace(&view.details_json);
+                    if let Some(id) = &view.problem_id {
+                        ui.horizontal(|ui| {
+                            ui.strong(l.work_problem_id);
+                            ui.monospace(id);
+                        });
+                    }
+                    if let Some(id) = &view.verified_artifact_id {
+                        ui.horizontal(|ui| {
+                            ui.strong(l.work_artifact_id);
+                            ui.monospace(id);
+                        });
+                    }
+                    if let Some(id) = &view.execution_artifact_id {
+                        ui.horizontal(|ui| {
+                            ui.strong(l.work_execution_id);
+                            ui.monospace(id);
+                        });
+                    }
+                    if let Some(id) = &view.field_artifact_id {
+                        ui.horizontal(|ui| {
+                            ui.strong(l.work_field_id);
+                            ui.monospace(id);
+                        });
+                    }
                 });
         }
+        egui::CollapsingHeader::new(l.work_details)
+            .id_source(format!("work-details-{id_suffix}"))
+            .default_open(false)
+            .show(ui, |ui| {
+                ui.monospace(&view.details_json);
+            });
     }
 
     fn work_provenance_label(&self, kind: crate::work_view::ProvenanceKind) -> &'static str {
