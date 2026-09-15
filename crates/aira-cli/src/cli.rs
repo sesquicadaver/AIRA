@@ -401,29 +401,28 @@ pub(crate) enum CsuCommands {
 #[derive(Subcommand, Debug)]
 pub(crate) enum ProblemCommands {
     /// Submit a problem statement and run the local pipeline.
+    ///
+    /// `#347` / RFC-0230: only flags that map to enforced or explicit fail-closed
+    /// admission fields. Unsupported knobs (temperature, privacy, fallback allow_*)
+    /// are not exposed as CLI flags.
     Submit {
         #[arg(long)]
         text: String,
         /// Preferred model_ref frozen at admit (#325).
         #[arg(long)]
         model_ref: Option<String>,
-        /// Allowed model_ref (repeatable).
+        /// Allowed model_ref (repeatable; Auto-within-set with excludes).
         #[arg(long = "allowed-model-ref")]
         allowed_model_refs: Vec<String>,
-        /// Placement: local | remote_allowed | remote_required.
+        /// Excluded model_ref (repeatable; `#346` / RFC-0229).
+        #[arg(long = "excluded-model-ref")]
+        excluded_model_refs: Vec<String>,
+        /// Placement: local | remote_allowed | remote_required (remote_required fails closed).
         #[arg(long)]
         placement: Option<String>,
         /// Reuse policy: allow_reuse | require_new_execution.
         #[arg(long)]
         reuse_policy: Option<String>,
-        #[arg(long)]
-        temperature: Option<f64>,
-        #[arg(long)]
-        privacy_class: Option<String>,
-        #[arg(long)]
-        allow_model_fallback: bool,
-        #[arg(long)]
-        allow_placement_fallback: bool,
     },
     /// Show status for a problem ref.
     Status { problem_ref: String },

@@ -3,4 +3,4 @@
 - [x] excluded_model_refs + Auto-within-set freeze
 - [x] mid-flight Settings ≠ admitted snapshot
 - [x] RFC-0229; tip → first OPEN `#347`
-- [ ] CLI supported-contract parity → `#347` / Analyze-384
+- [x] CLI supported-contract parity → `#347` / Analyze-384

@@ -109,3 +109,93 @@ mod phase_n_cli_parse {
         }
     }
 }
+
+#[cfg(test)]
+mod problem_submit_cli_parity {
+    //! `#347` / RFC-0230: supported-contract flags only; no unsupported no-op knobs.
+    use super::*;
+    use clap::Parser;
+    use cli::{Commands, ProblemCommands};
+
+    #[test]
+    fn parses_allowed_and_excluded_model_refs() {
+        let cli = Cli::try_parse_from([
+            "aira",
+            "problem",
+            "submit",
+            "--text",
+            "Summarize the local Problem Statement",
+            "--allowed-model-ref",
+            "aira:model:a",
+            "--allowed-model-ref",
+            "aira:model:b",
+            "--excluded-model-ref",
+            "aira:model:a",
+            "--placement",
+            "local",
+            "--reuse-policy",
+            "allow_reuse",
+        ])
+        .expect("supported submit flags must parse");
+        match cli.command {
+            Commands::Problem {
+                command:
+                    ProblemCommands::Submit {
+                        allowed_model_refs,
+                        excluded_model_refs,
+                        model_ref,
+                        placement,
+                        reuse_policy,
+                        text,
+                    },
+            } => {
+                assert_eq!(text, "Summarize the local Problem Statement");
+                assert!(model_ref.is_none());
+                assert_eq!(
+                    allowed_model_refs,
+                    vec!["aira:model:a".to_string(), "aira:model:b".to_string()]
+                );
+                assert_eq!(excluded_model_refs, vec!["aira:model:a".to_string()]);
+                assert_eq!(placement.as_deref(), Some("local"));
+                assert_eq!(reuse_policy.as_deref(), Some("allow_reuse"));
+            }
+            _ => panic!("expected problem submit"),
+        }
+    }
+
+    #[test]
+    fn rejects_removed_temperature_flag() {
+        let err = Cli::try_parse_from([
+            "aira",
+            "problem",
+            "submit",
+            "--text",
+            "hello",
+            "--temperature",
+            "0.2",
+        ])
+        .unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("unexpected argument") || msg.contains("--temperature"),
+            "{msg}"
+        );
+    }
+
+    #[test]
+    fn rejects_removed_privacy_and_fallback_flags() {
+        for flag in [
+            "--privacy-class",
+            "--allow-model-fallback",
+            "--allow-placement-fallback",
+        ] {
+            let err = Cli::try_parse_from(["aira", "problem", "submit", "--text", "hello", flag])
+                .unwrap_err();
+            let msg = err.to_string();
+            assert!(
+                msg.contains("unexpected argument") || msg.contains(flag),
+                "flag {flag}: {msg}"
+            );
+        }
+    }
+}
