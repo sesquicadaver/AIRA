@@ -1,11 +1,13 @@
-//! Settings apply lifecycle (`#262` / `#268` / `desktop-ux` §5).
+//! Settings apply lifecycle (`#262` / `#268` / `#356` / `desktop-ux` §5).
 //!
 //! Disk-saved values and runtime-applied values are tracked separately.
 //! Applied values come only from confirmed runtime (Start/attach/status).
 //! When unconfirmed → [`SettingsApplyPhase::Undefined`], never fake Applied from settings.
+//! Draft edits that are not yet saved → [`SettingsApplyPhase::Changed`] (`#356` / RFC-0239).
 
 use aira_desktop_runtime::{
     DesktopSettings, LifecycleStatus, NetworkProfile, PidRecordView, StartOutcome,
+    DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
 /// Coarse apply phase shown on the Settings screen.
@@ -17,6 +19,8 @@ pub enum SettingsApplyPhase {
     Applied,
     /// Saved to disk; confirmed runtime still uses previous network/listen values.
     RestartNeeded,
+    /// Connection draft in the UI differs from disk-saved values (`#356`).
+    Changed,
 }
 
 /// Subset of settings that bind into a started node / peer listen.
@@ -93,16 +97,54 @@ impl AppliedRuntimeSettings {
     }
 }
 
-/// Compute the Settings lifecycle badge from saved vs confirmed applied.
+/// True when Connection draft fields differ from disk-saved values (`#356`).
+pub fn settings_connection_draft_dirty(
+    saved: &DesktopSettings,
+    peer_listen_edit: &str,
+    relay_ttl_edit: &str,
+) -> bool {
+    if saved.network_profile.requires_peer_listen() {
+        let disk = saved.peer_listen.as_deref().unwrap_or(DEFAULT_PEER_LISTEN);
+        if peer_listen_edit.trim() != disk.trim() {
+            return true;
+        }
+    }
+    if saved.network_profile.is_relay_profile() {
+        let disk = saved
+            .relay_ttl_days
+            .map(|d| d.to_string())
+            .unwrap_or_else(|| DEFAULT_RELAY_TTL_DAYS.to_string());
+        if relay_ttl_edit.trim() != disk.trim() {
+            return true;
+        }
+    }
+    false
+}
+
+/// Compute the Settings lifecycle badge from draft + saved vs confirmed applied.
+///
+/// Priority: Changed (unsaved draft) → RestartNeeded → Applied → Undefined.
 pub fn settings_apply_phase(
     saved: &DesktopSettings,
     applied: Option<&AppliedRuntimeSettings>,
+    draft_dirty: bool,
 ) -> SettingsApplyPhase {
+    if draft_dirty {
+        return SettingsApplyPhase::Changed;
+    }
     match applied {
         None => SettingsApplyPhase::Undefined,
         Some(a) if a.differs_restart_relevant(saved) => SettingsApplyPhase::RestartNeeded,
         Some(_) => SettingsApplyPhase::Applied,
     }
+}
+
+/// Disk-only phase (ignore UI draft) — for restart CTA (`#356`).
+pub fn settings_apply_phase_disk(
+    saved: &DesktopSettings,
+    applied: Option<&AppliedRuntimeSettings>,
+) -> SettingsApplyPhase {
+    settings_apply_phase(saved, applied, false)
 }
 
 #[cfg(test)]
@@ -125,7 +167,7 @@ mod tests {
     fn unconfirmed_is_undefined_not_applied() {
         let s = sample_settings(NetworkProfile::P0);
         assert_eq!(
-            settings_apply_phase(&s, None),
+            settings_apply_phase(&s, None, false),
             SettingsApplyPhase::Undefined
         );
     }
@@ -135,7 +177,7 @@ mod tests {
         let s = sample_settings(NetworkProfile::P0);
         let applied = AppliedRuntimeSettings::from_settings(&s);
         assert_eq!(
-            settings_apply_phase(&s, Some(&applied)),
+            settings_apply_phase(&s, Some(&applied), false),
             SettingsApplyPhase::Applied
         );
     }
@@ -147,12 +189,12 @@ mod tests {
         saved.network_profile = NetworkProfile::P1;
         saved.peer_listen = Some("127.0.0.1:4001".into());
         assert_eq!(
-            settings_apply_phase(&saved, Some(&applied)),
+            settings_apply_phase(&saved, Some(&applied), false),
             SettingsApplyPhase::RestartNeeded
         );
         let applied2 = AppliedRuntimeSettings::from_settings(&saved);
         assert_eq!(
-            settings_apply_phase(&saved, Some(&applied2)),
+            settings_apply_phase(&saved, Some(&applied2), false),
             SettingsApplyPhase::Applied
         );
     }
@@ -164,9 +206,42 @@ mod tests {
         let applied = AppliedRuntimeSettings::from_settings(&saved);
         saved.open_ui_on_start = !saved.open_ui_on_start;
         assert_eq!(
-            settings_apply_phase(&saved, Some(&applied)),
+            settings_apply_phase(&saved, Some(&applied), false),
             SettingsApplyPhase::Applied
         );
+    }
+
+    #[test]
+    fn draft_dirty_is_changed_before_restart() {
+        let mut saved = sample_settings(NetworkProfile::P1);
+        saved.peer_listen = Some("127.0.0.1:4001".into());
+        let applied = AppliedRuntimeSettings::from_settings(&saved);
+        // Disk already matches applied, but draft differs.
+        assert!(settings_connection_draft_dirty(
+            &saved,
+            "127.0.0.1:4111",
+            "7"
+        ));
+        assert_eq!(
+            settings_apply_phase(&saved, Some(&applied), true),
+            SettingsApplyPhase::Changed
+        );
+        // Disk-only phase stays Applied (restart CTA must not fire on draft alone).
+        assert_eq!(
+            settings_apply_phase_disk(&saved, Some(&applied)),
+            SettingsApplyPhase::Applied
+        );
+    }
+
+    #[test]
+    fn draft_dirty_false_when_edits_match_disk() {
+        let mut saved = sample_settings(NetworkProfile::P1);
+        saved.peer_listen = Some("127.0.0.1:4001".into());
+        assert!(!settings_connection_draft_dirty(
+            &saved,
+            "127.0.0.1:4001",
+            "7"
+        ));
     }
 
     #[test]
@@ -206,7 +281,7 @@ mod tests {
         assert!(applied.peer_listen.is_none());
         let saved = sample_settings(NetworkProfile::P1);
         assert_eq!(
-            settings_apply_phase(&saved, Some(&applied)),
+            settings_apply_phase(&saved, Some(&applied), false),
             SettingsApplyPhase::RestartNeeded
         );
     }
@@ -272,7 +347,7 @@ mod tests {
         assert_eq!(applied.network_profile, NetworkProfile::P0);
         assert_ne!(applied.network_profile, ui_later.network_profile);
         assert_eq!(
-            settings_apply_phase(&ui_later, Some(&applied)),
+            settings_apply_phase(&ui_later, Some(&applied), false),
             SettingsApplyPhase::RestartNeeded
         );
     }
