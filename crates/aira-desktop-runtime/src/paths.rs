@@ -156,6 +156,26 @@ impl DesktopPaths {
         self.settings_file.with_file_name("ui-prefs.json")
     }
 
+    /// Local model inventory scoped root (`#355` / RFC-0238).
+    pub fn models_dir(&self) -> PathBuf {
+        self.data_root.join("models")
+    }
+
+    /// Quarantine staging under `models/` (`#355`).
+    pub fn models_quarantine_dir(&self) -> PathBuf {
+        self.models_dir().join("quarantine")
+    }
+
+    /// Verified staging under `models/` (`#355`).
+    pub fn models_verified_dir(&self) -> PathBuf {
+        self.models_dir().join("verified")
+    }
+
+    /// Activated cache under `models/` (`#355`).
+    pub fn models_cache_dir(&self) -> PathBuf {
+        self.models_dir().join("cache")
+    }
+
     pub fn ensure_dirs(&self) -> std::io::Result<()> {
         std::fs::create_dir_all(&self.data_root)?;
         if let Some(p) = self.settings_file.parent() {

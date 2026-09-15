@@ -15,9 +15,9 @@ use std::path::PathBuf;
 use aira_desktop_runtime::{
     evaluate_work_readiness, load_or_create_settings, load_or_create_ui_prefs,
     load_system_snapshot, sync_autostart_from_settings, write_ui_prefs, DesktopPaths,
-    DesktopSettings, LifecycleStatus, ModelCatalogSnapshot, ModelFact, ModelTripleSnapshot,
-    NetworkMeshSnapshot, SystemSnapshot, UiLang, UiPrefs, WorkExecutorPreference, WorkReadiness,
-    DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    DesktopSettings, LifecycleStatus, ModelCatalogSnapshot, ModelFact, ModelStorageSnapshot,
+    ModelTripleSnapshot, NetworkMeshSnapshot, SystemSnapshot, UiLang, UiPrefs,
+    WorkExecutorPreference, WorkReadiness, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
@@ -97,6 +97,8 @@ pub struct AiraDesktopApp {
     pub(super) model_triple: ModelTripleSnapshot,
     /// Settings → Models catalog (`#348` / RFC-0231).
     pub(super) model_catalog: ModelCatalogSnapshot,
+    /// Settings → Models storage paths + space (`#355` / RFC-0238).
+    pub(super) model_storage: ModelStorageSnapshot,
     pub(super) catalog_highlight: Option<String>,
     pub(super) catalog_auto: bool,
     pub(super) catalog_add_ref: String,
@@ -203,6 +205,7 @@ impl AiraDesktopApp {
             system_snapshot: SystemSnapshot::unavailable(),
             model_triple: ModelTripleSnapshot::undefined(),
             model_catalog: ModelCatalogSnapshot::default(),
+            model_storage: ModelStorageSnapshot::default(),
             catalog_highlight: None,
             catalog_auto: true,
             catalog_add_ref: String::new(),
@@ -363,8 +366,9 @@ impl AiraDesktopApp {
             ModelTripleSnapshot::load(&self.paths.data_root).with_used(self.used_model_fact());
     }
 
-    /// Reload Settings → Models catalog (`#348`).
+    /// Reload Settings → Models catalog (`#348`) and storage snapshot (`#355`).
     pub(super) fn refresh_model_catalog(&mut self) {
+        self.model_storage = actions::models_storage_load(&self.paths);
         match actions::models_catalog_load(&self.paths) {
             Ok(snap) => {
                 if self.catalog_highlight.is_none() {
@@ -385,6 +389,7 @@ impl AiraDesktopApp {
             self.catalog_highlight = snap.tip_model_ref.clone();
         }
         self.model_catalog = snap;
+        self.model_storage = actions::models_storage_load(&self.paths);
         self.refresh_model_triple();
         self.refresh_work_readiness();
     }

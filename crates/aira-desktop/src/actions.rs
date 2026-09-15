@@ -8,12 +8,12 @@ use aira_desktop_runtime::{
     add_model_file, build_local_invite, decode_invite_luma, enable_local_model_add,
     encode_invite_rgba, ensure_bootstrap, export_invite_file, export_invite_qr_png, import_invite,
     import_invite_file, import_invite_qr_file, import_invite_qr_luma,
-    join_federation_descriptor_file, load_model_catalog, normalize_settings, prepare_model,
-    read_federation_membership, run_discv_announce, run_discv_find, run_opt_in_peer_dial,
-    run_stun_query, scan_model_catalog, select_catalog_model,
+    join_federation_descriptor_file, load_model_catalog, load_model_storage, normalize_settings,
+    prepare_model, read_federation_membership, run_discv_announce, run_discv_find,
+    run_opt_in_peer_dial, run_stun_query, scan_model_catalog, select_catalog_model,
     submit_desktop_problem_with_admission, write_settings, CatalogSelection, DesktopPaths,
     DesktopSettings, DialOutcome, DiscoveryStunOutcome, ImportInviteOutcome, ModelCatalogSnapshot,
-    NetworkProfile, PeerInvite, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    ModelStorageSnapshot, NetworkProfile, PeerInvite, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 use aira_flow::AdmissionConstraints;
 use aira_peer::DiscvFindReport;
@@ -176,6 +176,11 @@ pub fn submit_problem_with_admission(
 /// Load Settings → Models catalog (`#348` / RFC-0231).
 pub fn models_catalog_load(paths: &DesktopPaths) -> Result<ModelCatalogSnapshot> {
     load_model_catalog(&paths.data_root).map_err(|e| anyhow::anyhow!("{e}"))
+}
+
+/// Load model storage paths + used/available space (`#355` / RFC-0238).
+pub fn models_storage_load(paths: &DesktopPaths) -> ModelStorageSnapshot {
+    load_model_storage(&paths.data_root)
 }
 
 /// Scan local models dir and refresh inventory.

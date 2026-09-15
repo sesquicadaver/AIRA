@@ -480,6 +480,7 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "image",
+ "libc",
  "qrcode",
  "rand",
  "rqrr",
