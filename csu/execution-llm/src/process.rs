@@ -102,6 +102,9 @@ pub const ENV_PROCESS_BIN: &str = "AIRA_LLM_PROCESS_BIN";
 /// Extra argv tokens, whitespace-split. Not passed to a shell.
 pub const ENV_PROCESS_ARGS: &str = "AIRA_LLM_PROCESS_ARGS";
 
+/// When set, must equal activate binding `model_ref` or generate fail-closes (`#339`).
+pub const ENV_EXPECTED_MODEL_REF: &str = "AIRA_LLM_EXPECTED_MODEL_REF";
+
 /// Child wait timeout in milliseconds (default 30000).
 pub const ENV_PROCESS_TIMEOUT_MS: &str = "AIRA_LLM_PROCESS_TIMEOUT_MS";
 
@@ -256,6 +259,12 @@ impl ProcessBackend {
         }
         if let Ok(raw) = env::var(ENV_PROCESS_ARGS) {
             backend = backend.with_args(raw.split_whitespace().map(str::to_string));
+        }
+        if let Ok(want) = env::var(ENV_EXPECTED_MODEL_REF) {
+            let want = want.trim();
+            if !want.is_empty() {
+                backend = backend.with_expected_model_ref(want);
+            }
         }
         if let Ok(ms) = env::var(ENV_PROCESS_TIMEOUT_MS) {
             if let Ok(n) = ms.parse::<u64>() {

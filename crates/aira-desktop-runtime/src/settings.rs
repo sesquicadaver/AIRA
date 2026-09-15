@@ -161,6 +161,7 @@ impl DesktopSettings {
 const ENV_LLM_BACKEND: &str = "AIRA_LLM_BACKEND";
 const ENV_PROCESS_BIN: &str = "AIRA_LLM_PROCESS_BIN";
 const ENV_PROCESS_ARGS: &str = "AIRA_LLM_PROCESS_ARGS";
+const ENV_EXPECTED_MODEL_REF: &str = "AIRA_LLM_EXPECTED_MODEL_REF";
 const ENV_PROCESS_TIMEOUT_MS: &str = "AIRA_LLM_PROCESS_TIMEOUT_MS";
 
 /// Apply LLM env for a spawned `aira-node` so staff submit follows Settings.
@@ -172,6 +173,7 @@ pub fn apply_node_llm_env(cmd: &mut Command, settings: &DesktopSettings) {
     cmd.env_remove(ENV_LLM_BACKEND);
     cmd.env_remove(ENV_PROCESS_BIN);
     cmd.env_remove(ENV_PROCESS_ARGS);
+    cmd.env_remove(ENV_EXPECTED_MODEL_REF);
     cmd.env_remove(ENV_PROCESS_TIMEOUT_MS);
 
     match settings.llm_backend {
@@ -183,6 +185,17 @@ pub fn apply_node_llm_env(cmd: &mut Command, settings: &DesktopSettings) {
             cmd.env(ENV_PROCESS_BIN, settings.effective_llm_process_bin());
             if let Some(args) = settings.llm_process_args() {
                 cmd.env(ENV_PROCESS_ARGS, args);
+            }
+            if let Some(model) = settings
+                .llm_ollama_model
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+            {
+                cmd.env(
+                    ENV_EXPECTED_MODEL_REF,
+                    aira_flow::host_ollama_model_ref(model),
+                );
             }
         }
     }
@@ -477,6 +490,9 @@ mod unit {
         apply_node_llm_env(&mut cmd, &s);
         // Command debug formatting includes env for inspection on Unix.
         let dbg = format!("{cmd:?}");
-        assert!(dbg.contains("AIRA_LLM_BACKEND") || dbg.contains("process"), "{dbg}");
+        assert!(
+            dbg.contains("AIRA_LLM_BACKEND") || dbg.contains("process"),
+            "{dbg}"
+        );
     }
 }

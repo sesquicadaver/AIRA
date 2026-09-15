@@ -36,6 +36,7 @@ Changing C1 math path
 | Select mock | `llm_backend=mock`; node env forces mock after restart |
 | Select process + model from `ollama list` | `llm_backend=process`, `AIRA_LLM_PROCESS_ARGS=run <model>` after restart |
 | Generate without Phase D activate | fail-closed CapsuleFailed (unchanged) |
+| Bind Ollama in Settings | Also writes host-ollama Phase D tip (node-signed bind marker; evidence `verified=false`) |
 | Generate with process | status **executed**, never silent VERIFIED |
 
 RestartNeeded when saved LLM fields ≠ pidfile-applied facts.

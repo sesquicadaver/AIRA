@@ -9,3 +9,4 @@
 | LS394-005 | LLM change → RestartNeeded | `settings_apply` | `llm_backend_change_needs_restart` | **DONE** |
 | LS394-006 | executor from node facts | `model_status` / `collect_status_snapshot` | `process_executor_is_not_reference_mock` | **DONE** |
 | LS394-007 | no VERIFIED claim | docs/help + UI copy | help model.select | **DONE** |
+| LS394-008 | host-ollama Phase D tip | `install_host_ollama_bind` | `host_ollama_bind_is_production_trust_ready_not_fixture` | **DONE** |

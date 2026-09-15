@@ -427,26 +427,53 @@ impl AiraDesktopApp {
     }
 
     /// Persist Ollama process bind; requires node restart to apply (`RestartNeeded`).
+    ///
+    /// Also writes Phase D tip via host-ollama bind (node-signed marker; `verified=false`
+    /// in evidence — executed ≠ VERIFIED).
     pub(super) fn bind_ollama_process(&mut self, model: Option<String>) {
         match model {
             Some(m) => {
-                self.settings.llm_backend = LlmBackend::Process;
-                self.settings.llm_ollama_model = Some(m);
-                if self.settings.llm_process_bin.is_none() {
-                    self.settings.llm_process_bin = Some("ollama".into());
+                match aira_flow::ActivatedPointerGate::install_host_ollama_bind(
+                    &self.paths.data_root,
+                    &m,
+                ) {
+                    Ok((_gate, model_ref)) => {
+                        self.settings.llm_backend = LlmBackend::Process;
+                        self.settings.llm_ollama_model = Some(m);
+                        if self.settings.llm_process_bin.is_none() {
+                            self.settings.llm_process_bin = Some("ollama".into());
+                        }
+                        if let Err(e) = self.persist_settings() {
+                            self.note_settings_apply_error(format!("{e:#}"));
+                        } else {
+                            self.clear_settings_apply_error();
+                            self.refresh_model_triple();
+                            self.refresh_model_catalog();
+                            self.ollama_msg = Some(format!(
+                                "{} ({model_ref})",
+                                self.labels().settings_ollama_bound
+                            ));
+                        }
+                    }
+                    Err(e) => {
+                        self.note_settings_apply_error(format!(
+                            "Phase D host-ollama activate failed: {e}"
+                        ));
+                        self.ollama_msg = Some(e.to_string());
+                    }
                 }
             }
             None => {
                 self.settings.llm_backend = LlmBackend::Mock;
-                // Keep last model name for re-bind convenience.
+                // Keep last model name for re-bind convenience; tip left as-is.
+                if let Err(e) = self.persist_settings() {
+                    self.note_settings_apply_error(format!("{e:#}"));
+                } else {
+                    self.clear_settings_apply_error();
+                    self.refresh_model_triple();
+                    self.ollama_msg = Some(self.labels().settings_ollama_bound.into());
+                }
             }
-        }
-        if let Err(e) = self.persist_settings() {
-            self.note_settings_apply_error(format!("{e:#}"));
-        } else {
-            self.clear_settings_apply_error();
-            self.refresh_model_triple();
-            self.ollama_msg = Some(self.labels().settings_ollama_bound.into());
         }
     }
 

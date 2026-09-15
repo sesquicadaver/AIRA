@@ -1399,12 +1399,7 @@ impl AiraDesktopApp {
         });
         ui.horizontal(|ui| {
             ui.label(l.settings_ollama_bound_model);
-            ui.monospace(
-                self.settings
-                    .llm_ollama_model
-                    .as_deref()
-                    .unwrap_or("—"),
-            );
+            ui.monospace(self.settings.llm_ollama_model.as_deref().unwrap_or("—"));
         });
         if matches!(
             self.settings_apply_phase(),
@@ -1423,7 +1418,8 @@ impl AiraDesktopApp {
                 .id_source("settings-ollama-list")
                 .show(ui, |ui| {
                     for name in self.ollama_models.clone() {
-                        let selected = self.settings.llm_ollama_model.as_deref() == Some(name.as_str());
+                        let selected =
+                            self.settings.llm_ollama_model.as_deref() == Some(name.as_str());
                         if ui.selectable_label(selected, &name).clicked() {
                             self.bind_ollama_process(Some(name));
                         }

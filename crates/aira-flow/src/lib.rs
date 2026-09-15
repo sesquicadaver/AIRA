@@ -14,8 +14,8 @@ mod plane;
 mod reuse;
 
 pub use activate_gate::{
-    ActivatedPointerGate, ActivationObservation, ActivationTrustMode, ACTIVATION_TRUST_FIXTURE_REL,
-    OBSERVE_HASH_PENDING,
+    host_ollama_model_ref, ActivatedPointerGate, ActivationObservation, ActivationTrustMode,
+    ACTIVATION_TRUST_FIXTURE_REL, OBSERVE_HASH_PENDING,
 };
 pub use admission::{
     AdmissionConstraints, AdmissionSnapshot, FallbackRules, GenerationParameters,
