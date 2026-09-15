@@ -10,6 +10,7 @@ mod materialize;
 mod policy;
 mod publish;
 mod quarantine;
+mod select;
 mod types;
 mod util;
 mod verify;
@@ -21,6 +22,7 @@ pub use manifest::*;
 pub use policy::*;
 pub use publish::*;
 pub use quarantine::*;
+pub use select::*;
 pub use types::*;
 pub use verify::*;
 
