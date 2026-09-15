@@ -118,6 +118,10 @@ pub struct Labels {
     /// Phase T `#310`: Quit pressed while submit is in flight.
     pub quit_waiting_submit: &'static str,
     pub restart_hint: &'static str,
+    /// Phase X `#352`: System Connection → open Settings edit surface.
+    pub open_settings_connection: &'static str,
+    pub settings_connection_edit_hint: &'static str,
+    pub sys_connection_observe_hint: &'static str,
     pub work_heading: &'static str,
     pub work_hint: &'static str,
     pub work_submit: &'static str,
@@ -327,8 +331,8 @@ static EN: Labels = Labels {
     sys_conn_offline: "No mesh path is available.",
     cta_enable_private_network: "Enable private network",
     cta_import_invite: "Import invite…",
-    cta_stop_to_apply: "Stop to apply network",
-    cta_start_to_apply: "Start to apply network",
+    cta_stop_to_apply: "Stop node to apply network",
+    cta_start_to_apply: "Start node to apply network",
     conn_cold_start_guidance: "Local-only profile so far — no participant network yet. Enable a private network, then import an invite. Setup alone is not a remote session; status stays unverified until then (not Connected; Applied only after a confirmed Start).",
     conn_boundary_guidance: "Setup is not a remote session. Loopback or listen address is not a peer dial address — Connect Help explains the boundary.",
     sys_saved_participants: "Saved participants (address book):",
@@ -342,7 +346,7 @@ static EN: Labels = Labels {
     strip_work_ready: "ready",
     strip_work_busy: "running",
     strip_work_action: "needs attention",
-    strip_model_none: "none selected",
+    strip_model_none: "no model selected",
     strip_model_not_ready: "selected · not ready",
     strip_model_ready: "ready",
     strip_model_ready_reference: "ready · reference mock",
@@ -354,12 +358,15 @@ static EN: Labels = Labels {
     strip_net_offline: "no mesh path",
     status: "Status:",
     peer: "Peer:",
-    start: "Start",
-    stop: "Stop",
-    refresh: "Refresh",
-    quit: "Quit",
-    quit_waiting_submit: "Quit deferred — waiting for the task to finish, then Stop→Close.",
-    restart_hint: "Profile/listen changed — Stop then Start to apply peer.",
+    start: "Start node",
+    stop: "Stop node",
+    refresh: "Refresh status",
+    quit: "Exit AIRA",
+    quit_waiting_submit: "Exit deferred — waiting for the task to finish, then Stop node→Close.",
+    restart_hint: "Profile/listen changed — Stop node, then Start node to apply peer.",
+    open_settings_connection: "Change in Settings → Connection…",
+    settings_connection_edit_hint: "Edit network profile and peer listen here. System → Connection shows observed status only.",
+    sys_connection_observe_hint: "Observed status and invites. Change profile or listen in Settings → Connection.",
     work_heading: "What do you need done?",
     work_hint: "Describe the task. Example: Calculate 2 + 2. Enter starts a new line.",
     work_submit: "Run",
@@ -461,7 +468,7 @@ static EN: Labels = Labels {
     addr_advertised: "Advertised (discovery):",
     settings_heading: "Settings",
     settings_phase_applied: "Saved values are applied.",
-    settings_phase_restart: "Saved on disk — restart needed (Stop, then Start) to apply network/listen.",
+    settings_phase_restart: "Saved on disk — restart needed (Stop node, then Start node) to apply network/listen.",
     settings_phase_undefined: "Applied values are not confirmed yet (node not verified running).",
     settings_group_general: "General",
     settings_group_models: "Models",
@@ -481,8 +488,8 @@ static EN: Labels = Labels {
     settings_saved: "Saved:",
     settings_applied: "Applied:",
     settings_applied_undefined: "not confirmed",
-    settings_close_not_stop: "Closing this window does not stop AIRA. Use Stop on System → Program.",
-    settings_restart_action: "To apply: open System → Program, Stop, then Start.",
+    settings_close_not_stop: "Closing this window does not stop AIRA. Use Stop node on System → Program.",
+    settings_restart_action: "To apply: open System → Program, Stop node, then Start node.",
     language: "Language",
     lang_uk: "Українська",
     lang_en: "English",
@@ -555,8 +562,8 @@ static UK: Labels = Labels {
     sys_conn_offline: "Немає доступного шляху mesh.",
     cta_enable_private_network: "Увімкнути приватну мережу",
     cta_import_invite: "Імпортувати запрошення…",
-    cta_stop_to_apply: "Стоп, щоб застосувати мережу",
-    cta_start_to_apply: "Старт, щоб застосувати мережу",
+    cta_stop_to_apply: "Зупинити вузол, щоб застосувати мережу",
+    cta_start_to_apply: "Запустити вузол, щоб застосувати мережу",
     conn_cold_start_guidance: "Поки що лише локальний профіль — мережі учасників ще немає. Увімкніть приватну мережу, потім імпортуйте запрошення. Саме налаштування — не віддалена сесія; стан лишається неперевіреним (це не Connected; Applied лише після підтвердженого Старт).",
     conn_boundary_guidance: "Налаштування — не віддалена сесія. Loopback чи listen-адреса — не адреса dial до піра; межа пояснена в Connect Help.",
     sys_saved_participants: "Збережені учасники (адресна книга):",
@@ -570,7 +577,7 @@ static UK: Labels = Labels {
     strip_work_ready: "готова",
     strip_work_busy: "виконується",
     strip_work_action: "потрібна дія",
-    strip_model_none: "не вибрано",
+    strip_model_none: "модель не вибрано",
     strip_model_not_ready: "вибрано · не готово",
     strip_model_ready: "готово",
     strip_model_ready_reference: "готово · reference mock",
@@ -582,12 +589,15 @@ static UK: Labels = Labels {
     strip_net_offline: "немає шляху mesh",
     status: "Стан:",
     peer: "Учасник (peer):",
-    start: "Старт",
-    stop: "Стоп",
-    refresh: "Оновити",
-    quit: "Вийти",
-    quit_waiting_submit: "Вихід відкладено — чекаємо завершення завдання, далі Стоп→Закрити.",
-    restart_hint: "Профіль/listen змінено — Стоп, потім Старт, щоб застосувати peer.",
+    start: "Запустити вузол",
+    stop: "Зупинити вузол",
+    refresh: "Оновити стан",
+    quit: "Завершити AIRA",
+    quit_waiting_submit: "Вихід відкладено — чекаємо завершення завдання, далі Зупинити вузол→Закрити.",
+    restart_hint: "Профіль/listen змінено — Зупинити вузол, потім Запустити вузол, щоб застосувати peer.",
+    open_settings_connection: "Змінити в Параметри → З’єднання…",
+    settings_connection_edit_hint: "Редагуйте мережевий профіль і peer listen тут. Стан системи → З’єднання показує лише спостережуваний стан.",
+    sys_connection_observe_hint: "Спостережуваний стан і запрошення. Профіль або listen змінюйте в Параметри → З’єднання.",
     work_heading: "Що потрібно зробити?",
     work_hint: "Опишіть задачу. Приклад: Calculate 2 + 2. Enter — новий рядок.",
     work_submit: "Виконати",
@@ -690,7 +700,7 @@ static UK: Labels = Labels {
     addr_advertised: "Оголошена (discovery):",
     settings_heading: "Параметри",
     settings_phase_applied: "Збережені значення застосовано.",
-    settings_phase_restart: "Збережено на диск — потрібен перезапуск (Стоп, потім Старт), щоб застосувати мережу/listen.",
+    settings_phase_restart: "Збережено на диск — потрібен перезапуск (Зупинити вузол, потім Запустити вузол), щоб застосувати мережу/listen.",
     settings_phase_undefined: "Застосовані значення ще не підтверджено (вузол не перевірено як запущений).",
     settings_group_general: "Загальні",
     settings_group_models: "Моделі",
@@ -710,8 +720,8 @@ static UK: Labels = Labels {
     settings_saved: "Збережено:",
     settings_applied: "Застосовано:",
     settings_applied_undefined: "не підтверджено",
-    settings_close_not_stop: "Закриття вікна не зупиняє AIRA. Використовуйте Стоп у «Стан системи → Програма».",
-    settings_restart_action: "Щоб застосувати: «Стан системи → Програма» — Стоп, потім Старт.",
+    settings_close_not_stop: "Закриття вікна не зупиняє AIRA. Використовуйте «Зупинити вузол» у «Стан системи → Програма».",
+    settings_restart_action: "Щоб застосувати: «Стан системи → Програма» — Зупинити вузол, потім Запустити вузол.",
     language: "Мова",
     lang_uk: "Українська",
     lang_en: "English",
@@ -815,8 +825,23 @@ mod tests {
         assert!(Labels::get(UiLang::Uk)
             .cta_import_invite
             .contains("запрошення"));
-        assert!(Labels::get(UiLang::En).cta_stop_to_apply.contains("Stop"));
-        assert!(Labels::get(UiLang::Uk).cta_start_to_apply.contains("Старт"));
+        assert!(Labels::get(UiLang::En)
+            .cta_stop_to_apply
+            .contains("Stop node"));
+        assert!(Labels::get(UiLang::Uk)
+            .cta_start_to_apply
+            .contains("Запустити вузол"));
+        assert!(Labels::get(UiLang::En).stop.contains("Stop node"));
+        assert!(Labels::get(UiLang::Uk).quit.contains("Завершити AIRA"));
+        assert!(Labels::get(UiLang::En)
+            .open_settings_connection
+            .contains("Settings"));
+        assert!(Labels::get(UiLang::Uk)
+            .sys_connection_observe_hint
+            .contains("Параметри"));
+        assert!(!Labels::get(UiLang::En)
+            .strip_model_none
+            .contains("none selected"));
         assert!(Labels::get(UiLang::En)
             .conn_cold_start_guidance
             .contains("Local-only"));

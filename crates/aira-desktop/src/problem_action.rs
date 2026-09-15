@@ -12,18 +12,18 @@ pub fn action_next_step(action: ActionId, lang: UiLang) -> &'static str {
     match (lang, action) {
         (UiLang::En, ActionId::WorkSubmit) => "Next: enter a task and press Run",
         (UiLang::Uk, ActionId::WorkSubmit) => "Далі: введіть завдання і натисніть «Виконати»",
-        (UiLang::En, ActionId::NodeStart) => "Next: press Start",
-        (UiLang::Uk, ActionId::NodeStart) => "Далі: натисніть «Старт»",
-        (UiLang::En, ActionId::NodeStop) => "Next: press Stop",
-        (UiLang::Uk, ActionId::NodeStop) => "Далі: натисніть «Стоп»",
-        (UiLang::En, ActionId::StatusRefresh) => "Next: press Refresh",
-        (UiLang::Uk, ActionId::StatusRefresh) => "Далі: натисніть «Оновити»",
+        (UiLang::En, ActionId::NodeStart) => "Next: press Start node",
+        (UiLang::Uk, ActionId::NodeStart) => "Далі: натисніть «Запустити вузол»",
+        (UiLang::En, ActionId::NodeStop) => "Next: press Stop node",
+        (UiLang::Uk, ActionId::NodeStop) => "Далі: натисніть «Зупинити вузол»",
+        (UiLang::En, ActionId::StatusRefresh) => "Next: press Refresh status",
+        (UiLang::Uk, ActionId::StatusRefresh) => "Далі: натисніть «Оновити стан»",
         (UiLang::En, ActionId::SettingsPersist) => "Next: fix the marked fields and save again",
         (UiLang::Uk, ActionId::SettingsPersist) => {
             "Далі: виправте позначені поля й збережіть знову"
         }
-        (UiLang::En, ActionId::Quit) => "Next: quit AIRA if you need a clean exit",
-        (UiLang::Uk, ActionId::Quit) => "Далі: вийдіть з AIRA для чистого завершення",
+        (UiLang::En, ActionId::Quit) => "Next: Exit AIRA if you need a clean exit",
+        (UiLang::Uk, ActionId::Quit) => "Далі: Завершити AIRA для чистого виходу",
     }
 }
 
@@ -32,16 +32,16 @@ pub fn action_strip_hint(action: ActionId, lang: UiLang) -> &'static str {
     match (lang, action) {
         (UiLang::En, ActionId::WorkSubmit) => "needs Run",
         (UiLang::Uk, ActionId::WorkSubmit) => "потрібно «Виконати»",
-        (UiLang::En, ActionId::NodeStart) => "needs Start",
-        (UiLang::Uk, ActionId::NodeStart) => "потрібен Старт",
-        (UiLang::En, ActionId::NodeStop) => "needs Stop",
-        (UiLang::Uk, ActionId::NodeStop) => "потрібен Стоп",
-        (UiLang::En, ActionId::StatusRefresh) => "needs Refresh",
-        (UiLang::Uk, ActionId::StatusRefresh) => "потрібно Оновити",
+        (UiLang::En, ActionId::NodeStart) => "needs Start node",
+        (UiLang::Uk, ActionId::NodeStart) => "потрібен Запустити вузол",
+        (UiLang::En, ActionId::NodeStop) => "needs Stop node",
+        (UiLang::Uk, ActionId::NodeStop) => "потрібен Зупинити вузол",
+        (UiLang::En, ActionId::StatusRefresh) => "needs Refresh status",
+        (UiLang::Uk, ActionId::StatusRefresh) => "потрібно Оновити стан",
         (UiLang::En, ActionId::SettingsPersist) => "needs Save",
         (UiLang::Uk, ActionId::SettingsPersist) => "потрібно Зберегти",
-        (UiLang::En, ActionId::Quit) => "needs Quit",
-        (UiLang::Uk, ActionId::Quit) => "потрібен Вихід",
+        (UiLang::En, ActionId::Quit) => "needs Exit AIRA",
+        (UiLang::Uk, ActionId::Quit) => "потрібен Завершити AIRA",
     }
 }
 
@@ -98,7 +98,7 @@ mod tests {
         assert!(!step.contains("node.start"));
         assert!(!step.starts_with("try:"));
         let uk = action_next_step(ActionId::NodeStart, UiLang::Uk);
-        assert!(uk.contains("Старт"));
+        assert!(uk.contains("Запустити вузол"));
         assert!(!uk.contains("node.start"));
     }
 
@@ -130,7 +130,7 @@ mod tests {
     fn strip_uses_action_hint_not_only_generic() {
         let p = UiProblem::new(ErrorCode::StatusRefreshFailed, UiLang::En, None);
         let hint = strip_work_from_problem(&p, UiLang::En, "needs attention");
-        assert_eq!(hint, "needs Refresh");
+        assert_eq!(hint, "needs Refresh status");
         assert_ne!(hint, "needs attention");
         assert!(!hint.contains("status.refresh"));
     }
