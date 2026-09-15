@@ -1,11 +1,15 @@
 //! Problem / result / artifact / event (Analyze-81).
+//!
+//! `#347` / RFC-0230: CLI `problem submit` exposes only supported admission
+//! fields (model_ref / allowed / excluded / placement / reuse). No temperature,
+//! privacy, or fallback allow_* flags — those were unsupported (RFC-0218) no-ops.
 
 use std::path::Path;
 use std::process::ExitCode;
 
 use aira_flow::{
-    AdmissionConstraints, AdmissionSnapshot, FallbackRules, GenerationParameters, LocalSession,
-    PlacementPreference, ReusePolicy, SubmitOutcome,
+    AdmissionConstraints, AdmissionSnapshot, LocalSession, PlacementPreference, ReusePolicy,
+    SubmitOutcome,
 };
 use anyhow::Result;
 
@@ -33,18 +37,39 @@ fn parse_reuse_policy(s: &str) -> Result<ReusePolicy> {
     }
 }
 
+/// Build admit constraints from supported CLI submit fields (`#347` / RFC-0230).
+pub(crate) fn constraints_from_submit_flags(
+    model_ref: Option<String>,
+    allowed_model_refs: Vec<String>,
+    excluded_model_refs: Vec<String>,
+    placement: Option<&str>,
+    reuse_policy: Option<&str>,
+) -> Result<AdmissionConstraints> {
+    Ok(AdmissionConstraints {
+        model_ref,
+        allowed_model_refs,
+        excluded_model_refs,
+        placement: match placement {
+            Some(p) => parse_placement(p)?,
+            None => PlacementPreference::default(),
+        },
+        reuse_policy: match reuse_policy {
+            Some(p) => parse_reuse_policy(p)?,
+            None => ReusePolicy::default(),
+        },
+        ..Default::default()
+    })
+}
+
 pub(crate) fn problem(root: &Path, command: ProblemCommands) -> Result<ExitCode> {
     match command {
         ProblemCommands::Submit {
             text,
             model_ref,
             allowed_model_refs,
+            excluded_model_refs,
             placement,
             reuse_policy,
-            temperature,
-            privacy_class,
-            allow_model_fallback,
-            allow_placement_fallback,
         } => {
             ensure_init(root)?;
             // #319 / RFC-0204: label executor before outcome so mock ≠ configured LLM.
@@ -55,28 +80,13 @@ pub(crate) fn problem(root: &Path, command: ProblemCommands) -> Result<ExitCode>
             } else {
                 println!("executor {executor}");
             }
-            let constraints = AdmissionConstraints {
+            let constraints = constraints_from_submit_flags(
                 model_ref,
                 allowed_model_refs,
-                generation: GenerationParameters {
-                    temperature,
-                    ..Default::default()
-                },
-                placement: match placement {
-                    Some(p) => parse_placement(&p)?,
-                    None => PlacementPreference::default(),
-                },
-                privacy_class,
-                fallback: FallbackRules {
-                    allow_model_fallback,
-                    allow_placement_fallback,
-                },
-                reuse_policy: match reuse_policy {
-                    Some(p) => parse_reuse_policy(&p)?,
-                    None => ReusePolicy::default(),
-                },
-                ..Default::default()
-            };
+                excluded_model_refs,
+                placement.as_deref(),
+                reuse_policy.as_deref(),
+            )?;
             let snap = AdmissionSnapshot::from_text_and_constraints(&text, &constraints);
             let mut session = LocalSession::open(root).map_err(|e| anyhow::anyhow!("{e}"))?;
             let out = session
@@ -191,5 +201,67 @@ pub(crate) fn event(root: &Path, command: EventCommands) -> Result<ExitCode> {
             }
             Ok(ExitCode::SUCCESS)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn allowed_minus_excluded_freezes_into_snapshot() {
+        let c = constraints_from_submit_flags(
+            None,
+            vec!["aira:model:b".into(), "aira:model:a".into()],
+            vec!["aira:model:a".into()],
+            None,
+            None,
+        )
+        .unwrap();
+        let snap = AdmissionSnapshot::from_text_and_constraints(
+            "Summarize the local Problem Statement",
+            &c,
+        );
+        assert_eq!(snap.model_ref.as_deref(), Some("aira:model:b"));
+        assert_eq!(snap.excluded_model_refs, vec!["aira:model:a".to_string()]);
+        snap.enforce_or_reject("Summarize the local Problem Statement")
+            .unwrap();
+    }
+
+    #[test]
+    fn empty_auto_within_set_after_exclude_rejects() {
+        let c = constraints_from_submit_flags(
+            None,
+            vec!["aira:model:a".into()],
+            vec!["aira:model:a".into()],
+            None,
+            None,
+        )
+        .unwrap();
+        let snap = AdmissionSnapshot::from_text_and_constraints(
+            "Summarize the local Problem Statement",
+            &c,
+        );
+        assert!(snap.model_ref.is_none());
+        let err = snap
+            .enforce_or_reject("Summarize the local Problem Statement")
+            .unwrap_err();
+        assert!(err.contains("empty after excludes"), "{err}");
+    }
+
+    #[test]
+    fn omit_exclude_leaves_empty_excluded_vec() {
+        let c = constraints_from_submit_flags(
+            Some("aira:model:x".into()),
+            vec![],
+            vec![],
+            Some("local"),
+            Some("require_new_execution"),
+        )
+        .unwrap();
+        assert!(c.excluded_model_refs.is_empty());
+        assert_eq!(c.model_ref.as_deref(), Some("aira:model:x"));
+        assert_eq!(c.placement, PlacementPreference::Local);
+        assert_eq!(c.reuse_policy, ReusePolicy::RequireNewExecution);
     }
 }
