@@ -51,6 +51,7 @@ fn phase_w_plan_present() {
         "first OPEN `#346`",
         "first OPEN `#347`",
         "first OPEN `#348`",
+        "first OPEN `#349`",
     ] {
         assert!(text.contains(needle), "phase-w-plan missing: {needle}");
     }
@@ -119,6 +120,7 @@ fn phase_w_queue_all_done() {
         "first OPEN `#346`",
         "first OPEN `#347`",
         "first OPEN `#348`",
+        "first OPEN `#349`",
         "QUEUE V closed",
         "phase-x-plan.md",
         "Pack 2",
@@ -130,17 +132,18 @@ fn phase_w_queue_all_done() {
             && text.contains("| 344 | **DONE**")
             && text.contains("| 345 | **DONE**")
             && text.contains("| 346 | **DONE**")
-            && text.contains("| 347 | **DONE**"),
-        "QUEUE #343–#347 must be DONE after CLI parity"
+            && text.contains("| 347 | **DONE**")
+            && text.contains("| 348 | **DONE**"),
+        "QUEUE #343–#348 must be DONE after Settings Models"
     );
     assert!(
-        !text.contains("**Перший OPEN:** `#347`") && text.contains("**Перший OPEN:** `#348`"),
-        "QUEUE tip must advance from #347 to #348 after CLI parity"
+        !text.contains("**Перший OPEN:** `#348`") && text.contains("**Перший OPEN:** `#349`"),
+        "QUEUE tip must advance from #348 to #349 after Settings Models"
     );
-    for n in 348..=358 {
+    for n in 349..=358 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
-            "QUEUE #{n} must be OPEN (Phase X after #347)"
+            "QUEUE #{n} must be OPEN (Phase X after #348)"
         );
     }
 }

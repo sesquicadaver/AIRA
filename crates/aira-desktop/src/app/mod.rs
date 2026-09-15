@@ -15,8 +15,8 @@ use std::path::PathBuf;
 use aira_desktop_runtime::{
     load_or_create_settings, load_or_create_ui_prefs, load_system_snapshot,
     sync_autostart_from_settings, write_ui_prefs, DesktopPaths, DesktopSettings, LifecycleStatus,
-    ModelFact, ModelTripleSnapshot, NetworkMeshSnapshot, SystemSnapshot, UiLang, UiPrefs,
-    DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    ModelCatalogSnapshot, ModelFact, ModelTripleSnapshot, NetworkMeshSnapshot, SystemSnapshot,
+    UiLang, UiPrefs, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
@@ -90,6 +90,12 @@ pub struct AiraDesktopApp {
     pub(super) system_snapshot: SystemSnapshot,
     /// Model selected ≠ ready ≠ used (`#269`).
     pub(super) model_triple: ModelTripleSnapshot,
+    /// Settings → Models catalog (`#348` / RFC-0231).
+    pub(super) model_catalog: ModelCatalogSnapshot,
+    pub(super) catalog_highlight: Option<String>,
+    pub(super) catalog_auto: bool,
+    pub(super) catalog_add_ref: String,
+    pub(super) catalog_msg: Option<String>,
     pub(super) peer_listen_edit: String,
     pub(super) relay_ttl_edit: String,
     pub(super) invite_msg: Option<String>,
@@ -181,6 +187,11 @@ impl AiraDesktopApp {
             mesh_snapshot: NetworkMeshSnapshot::unavailable(),
             system_snapshot: SystemSnapshot::unavailable(),
             model_triple: ModelTripleSnapshot::undefined(),
+            model_catalog: ModelCatalogSnapshot::default(),
+            catalog_highlight: None,
+            catalog_auto: true,
+            catalog_add_ref: String::new(),
+            catalog_msg: None,
             peer_listen_edit,
             relay_ttl_edit,
             invite_msg: None,
@@ -211,6 +222,7 @@ impl AiraDesktopApp {
             Labels::get(app.ui_lang()).window_title.to_string(),
         ));
         let _ = app.refresh_status();
+        app.refresh_model_catalog();
         app.refresh_federation_detail();
         if auto_start {
             app.request_lifecycle(LifecycleJobKind::Start, &cc.egui_ctx);
@@ -328,6 +340,30 @@ impl AiraDesktopApp {
     pub(super) fn refresh_model_triple(&mut self) {
         self.model_triple =
             ModelTripleSnapshot::load(&self.paths.data_root).with_used(self.used_model_fact());
+    }
+
+    /// Reload Settings → Models catalog (`#348`).
+    pub(super) fn refresh_model_catalog(&mut self) {
+        match actions::models_catalog_load(&self.paths) {
+            Ok(snap) => {
+                if self.catalog_highlight.is_none() {
+                    self.catalog_highlight = snap.tip_model_ref.clone();
+                }
+                self.model_catalog = snap;
+            }
+            Err(e) => {
+                self.catalog_msg = Some(format!("{e:#}"));
+            }
+        }
+    }
+
+    pub(super) fn apply_catalog_snapshot(&mut self, snap: ModelCatalogSnapshot) {
+        self.catalog_msg = snap.last_message.clone();
+        if self.catalog_highlight.is_none() {
+            self.catalog_highlight = snap.tip_model_ref.clone();
+        }
+        self.model_catalog = snap;
+        self.refresh_model_triple();
     }
 
     /// Request a background status refresh (no-op if one is already running).

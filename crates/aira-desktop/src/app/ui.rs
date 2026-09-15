@@ -1,5 +1,6 @@
-use aira_desktop_runtime::{NetworkProfile, UiLang, DEFAULT_RELAY_TTL_DAYS};
+use aira_desktop_runtime::{CatalogSelection, NetworkProfile, UiLang, DEFAULT_RELAY_TTL_DAYS};
 
+use crate::actions;
 use crate::lexicon::HelpId;
 
 use super::{AiraDesktopApp, MainTab};
@@ -1071,6 +1072,7 @@ impl AiraDesktopApp {
         if g.hovered() {
             self.note_help_focus(HelpId::ModelSelect);
         }
+        ui.small(l.settings_models_catalog_hint);
         ui.horizontal(|ui| {
             ui.label(l.sys_model_selected);
             ui.monospace(self.model_triple.selected.as_display());
@@ -1094,13 +1096,121 @@ impl AiraDesktopApp {
         if self.model_triple.executor_is_reference_mock() {
             ui.small(l.sys_model_executor_mock_hint);
         }
-        ui.small(l.settings_models_observe_only);
+
+        ui.horizontal(|ui| {
+            if ui.button(l.settings_models_scan).clicked() {
+                match actions::models_catalog_scan(&self.paths) {
+                    Ok((_n, snap)) => self.apply_catalog_snapshot(snap),
+                    Err(e) => self.catalog_msg = Some(format!("{e:#}")),
+                }
+            }
+            if ui
+                .selectable_label(self.catalog_auto, l.settings_models_auto)
+                .clicked()
+            {
+                self.catalog_auto = true;
+            }
+            if ui.button(l.settings_models_select).clicked() {
+                let selection = if self.catalog_auto {
+                    Some(CatalogSelection::Auto)
+                } else if let Some(r) = self.catalog_highlight.clone() {
+                    Some(CatalogSelection::Required(r))
+                } else {
+                    self.catalog_msg = Some("select a catalog row or Auto".into());
+                    None
+                };
+                if let Some(selection) = selection {
+                    match actions::models_catalog_select(&self.paths, selection) {
+                        Ok((chosen, snap)) => {
+                            self.catalog_highlight = Some(chosen);
+                            self.catalog_auto = false;
+                            self.apply_catalog_snapshot(snap);
+                        }
+                        Err(e) => self.catalog_msg = Some(format!("{e:#}")),
+                    }
+                }
+            }
+            if ui.button(l.settings_models_prepare).clicked() {
+                if let Some(r) = self.catalog_highlight.clone() {
+                    match actions::models_catalog_prepare(&self.paths, &r) {
+                        Ok(snap) => self.apply_catalog_snapshot(snap),
+                        Err(e) => self.catalog_msg = Some(format!("{e:#}")),
+                    }
+                } else {
+                    self.catalog_msg = Some("select a catalog row before Prepare".into());
+                }
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label(l.settings_models_model_ref);
+            ui.text_edit_singleline(&mut self.catalog_add_ref);
+            if !self.model_catalog.local_add_allowed {
+                if ui.button(l.settings_models_enable_add).clicked() {
+                    match actions::models_catalog_enable_local_add(&self.paths) {
+                        Ok(snap) => self.apply_catalog_snapshot(snap),
+                        Err(e) => self.catalog_msg = Some(format!("{e:#}")),
+                    }
+                }
+            }
+            if ui.button(l.settings_models_add).clicked() {
+                let path = rfd::FileDialog::new()
+                    .add_filter("weights", &["bin", "gguf", "ggml", "safetensors"])
+                    .pick_file();
+                if let Some(path) = path {
+                    match actions::models_catalog_add(&self.paths, &self.catalog_add_ref, &path) {
+                        Ok(snap) => self.apply_catalog_snapshot(snap),
+                        Err(e) => self.catalog_msg = Some(format!("{e:#}")),
+                    }
+                }
+            }
+        });
+
+        if self.model_catalog.entries.is_empty() {
+            ui.small(l.settings_models_empty);
+        } else {
+            egui::ScrollArea::vertical()
+                .max_height(160.0)
+                .show(ui, |ui| {
+                    for entry in &self.model_catalog.entries.clone() {
+                        let selected =
+                            self.catalog_highlight.as_deref() == Some(entry.model_ref.as_str());
+                        let tip = self.model_catalog.tip_model_ref.as_deref()
+                            == Some(entry.model_ref.as_str());
+                        let flags = match (entry.verified, entry.available) {
+                            (true, true) => format!(
+                                "{}/{}",
+                                l.settings_models_verified, l.settings_models_available
+                            ),
+                            (true, false) => l.settings_models_verified.to_string(),
+                            (false, true) => l.settings_models_available.to_string(),
+                            (false, false) => "-".into(),
+                        };
+                        let mut label =
+                            format!("{} [{}] — {}", entry.model_ref, flags, entry.ready_reason);
+                        if tip {
+                            label.push_str(" (tip)");
+                        }
+                        if ui.selectable_label(selected, label).clicked() {
+                            self.catalog_highlight = Some(entry.model_ref.clone());
+                            self.catalog_auto = false;
+                            self.catalog_add_ref = entry.model_ref.clone();
+                        }
+                    }
+                });
+        }
+        if let Some(msg) = &self.catalog_msg {
+            ui.small(msg);
+        }
         egui::CollapsingHeader::new(l.sys_tech_details)
             .id_source("settings-models-tech")
             .default_open(false)
             .show(ui, |ui| {
                 ui.label(l.not_llm);
                 ui.label(format!("ready_detail: {}", self.model_triple.ready_detail));
+                if let Some(tip) = &self.model_catalog.tip_model_ref {
+                    ui.label(format!("tip: {tip}"));
+                }
             });
 
         ui.separator();

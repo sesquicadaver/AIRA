@@ -13,6 +13,7 @@ mod health;
 mod invite;
 mod invite_qr;
 mod launcher;
+mod model_catalog;
 mod model_status;
 mod network_mesh;
 mod node_http;
@@ -56,6 +57,10 @@ pub use launcher::{
     validate_desktop_entry, validate_desktop_file, validate_gui_desktop_entry,
     validate_gui_desktop_file, AIRA_DESKTOP_ENTRY, AIRA_DESKTOP_FILENAME, AIRA_GUI_DESKTOP_ENTRY,
     AIRA_GUI_DESKTOP_FILENAME,
+};
+pub use model_catalog::{
+    add_model_file, enable_local_model_add, load_model_catalog, prepare_model, scan_model_catalog,
+    select_catalog_model, CatalogEntry, CatalogSelection, ModelCatalogError, ModelCatalogSnapshot,
 };
 pub use model_status::{load_model_triple, ModelFact, ModelTripleConclusion, ModelTripleSnapshot};
 pub use network_mesh::{

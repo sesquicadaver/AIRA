@@ -5,13 +5,15 @@ use std::path::Path;
 use anyhow::Result;
 
 use aira_desktop_runtime::{
-    build_local_invite, decode_invite_luma, encode_invite_rgba, ensure_bootstrap,
-    export_invite_file, export_invite_qr_png, import_invite, import_invite_file,
-    import_invite_qr_file, import_invite_qr_luma, join_federation_descriptor_file,
-    normalize_settings, read_federation_membership, run_discv_announce, run_discv_find,
-    run_opt_in_peer_dial, run_stun_query, submit_desktop_problem, write_settings, DesktopPaths,
-    DesktopSettings, DialOutcome, DiscoveryStunOutcome, ImportInviteOutcome, NetworkProfile,
-    PeerInvite, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    add_model_file, build_local_invite, decode_invite_luma, enable_local_model_add,
+    encode_invite_rgba, ensure_bootstrap, export_invite_file, export_invite_qr_png, import_invite,
+    import_invite_file, import_invite_qr_file, import_invite_qr_luma,
+    join_federation_descriptor_file, load_model_catalog, normalize_settings, prepare_model,
+    read_federation_membership, run_discv_announce, run_discv_find, run_opt_in_peer_dial,
+    run_stun_query, scan_model_catalog, select_catalog_model, submit_desktop_problem,
+    write_settings, CatalogSelection, DesktopPaths, DesktopSettings, DialOutcome,
+    DiscoveryStunOutcome, ImportInviteOutcome, ModelCatalogSnapshot, NetworkProfile, PeerInvite,
+    DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 use aira_peer::DiscvFindReport;
 use aira_protocol::{FederationMembership, JoinOutcome};
@@ -165,6 +167,46 @@ pub fn submit_problem(
 ) -> Result<WorkResultView> {
     let v = submit_desktop_problem(paths, settings, text)?;
     Ok(format_work_result(&v))
+}
+
+/// Load Settings → Models catalog (`#348` / RFC-0231).
+pub fn models_catalog_load(paths: &DesktopPaths) -> Result<ModelCatalogSnapshot> {
+    load_model_catalog(&paths.data_root).map_err(|e| anyhow::anyhow!("{e}"))
+}
+
+/// Scan local models dir and refresh inventory.
+pub fn models_catalog_scan(paths: &DesktopPaths) -> Result<(usize, ModelCatalogSnapshot)> {
+    scan_model_catalog(&paths.data_root).map_err(|e| anyhow::anyhow!("{e}"))
+}
+
+/// Enable local-file Add (acquisition policy auto_download=true).
+pub fn models_catalog_enable_local_add(paths: &DesktopPaths) -> Result<ModelCatalogSnapshot> {
+    enable_local_model_add(&paths.data_root).map_err(|e| anyhow::anyhow!("{e}"))
+}
+
+/// Quarantine a local weight file under `model_ref`.
+pub fn models_catalog_add(
+    paths: &DesktopPaths,
+    model_ref: &str,
+    source: &Path,
+) -> Result<ModelCatalogSnapshot> {
+    add_model_file(&paths.data_root, model_ref, source).map_err(|e| anyhow::anyhow!("{e}"))
+}
+
+/// Activate verified model (Prepare).
+pub fn models_catalog_prepare(
+    paths: &DesktopPaths,
+    model_ref: &str,
+) -> Result<ModelCatalogSnapshot> {
+    prepare_model(&paths.data_root, model_ref).map_err(|e| anyhow::anyhow!("{e}"))
+}
+
+/// Select Auto or Required; activate tip when available.
+pub fn models_catalog_select(
+    paths: &DesktopPaths,
+    selection: CatalogSelection,
+) -> Result<(String, ModelCatalogSnapshot)> {
+    select_catalog_model(&paths.data_root, selection).map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 #[cfg(test)]
@@ -360,5 +402,16 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(err.contains("non-empty"), "{err}");
+    }
+
+    #[test]
+    fn models_catalog_load_empty_root() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = DesktopPaths::for_data_root(tmp.path());
+        paths.ensure_dirs().unwrap();
+        std::fs::create_dir_all(paths.data_root.join("models")).unwrap();
+        let snap = models_catalog_load(&paths).unwrap();
+        assert!(snap.entries.is_empty());
+        assert!(!snap.local_add_allowed);
     }
 }
