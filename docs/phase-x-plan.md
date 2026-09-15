@@ -52,7 +52,7 @@ QUEUE W (#331–#342 / RFC-0215) → close
 ## 2. Інваріанти
 
 1. Лінійність: `#N` після `#N-1`; один атом = один PR.
-2. First OPEN репо = `#358` після `#357` M6; лінійність `#N` після `#N-1` (історично first OPEN `#357` після `#356`).
+2. First OPEN репо = `#358` після `#357` M6; лінійність `#N` після `#N-1`.
 3. `aira-core` **не** отримує GUI / Help / egui / ledger / LLM runtime.
 4. Choice of executor **never** grants `VERIFIED`.
 5. Mock ≠ used-model; не маскувати mock як verified LLM.
