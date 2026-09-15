@@ -133,6 +133,7 @@ fn phase_w_queue_all_done() {
         "first OPEN `#355`",
         "first OPEN `#356`",
         "first OPEN `#357`",
+        "first OPEN `#358`",
         "QUEUE V closed",
         "phase-x-plan.md",
         "Pack 2",
@@ -153,19 +154,18 @@ fn phase_w_queue_all_done() {
             && text.contains("| 353 | **DONE**")
             && text.contains("| 354 | **DONE**")
             && text.contains("| 355 | **DONE**")
-            && text.contains("| 356 | **DONE**"),
-        "QUEUE #343–#356 must be DONE after Apply-diff honesty"
+            && text.contains("| 356 | **DONE**")
+            && text.contains("| 357 | **DONE**"),
+        "QUEUE #343–#357 must be DONE after M6 acceptance"
     );
     assert!(
-        !text.contains("**Перший OPEN:** `#356`") && text.contains("**Перший OPEN:** `#357`"),
-        "QUEUE tip must advance from #356 to #357 after Apply-diff honesty"
+        !text.contains("**Перший OPEN:** `#357`") && text.contains("**Перший OPEN:** `#358`"),
+        "QUEUE tip must advance from #357 to #358 after M6 acceptance"
     );
-    for n in 357..=358 {
-        assert!(
-            text.contains(&format!("| {n} | **OPEN**")),
-            "QUEUE #{n} must be OPEN (Phase X after #356)"
-        );
-    }
+    assert!(
+        text.contains("| 358 | **OPEN**"),
+        "QUEUE #358 must be OPEN (Phase X after #357)"
+    );
 }
 
 #[test]
