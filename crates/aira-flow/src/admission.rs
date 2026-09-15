@@ -7,6 +7,10 @@
 //! Reuse catalog keys are derived from this snapshot (`reuse_catalog_key`, `#326`).
 //! Request constraint structs use `deny_unknown_fields` so typos do not silently
 //! become defaults (audit D3). Persisted [`AdmissionSnapshot`] stays permissive.
+//!
+//! `#346` / RFC-0229: request profile overrides/excludes freeze into the snapshot
+//! at admit. Auto-within-set (`allowed_model_refs` minus `excluded_model_refs`)
+//! becomes a concrete `model_ref`. Live Settings after submit must not rewrite it.
 
 use aira_object::ContentHash;
 use serde::{Deserialize, Serialize};
@@ -87,6 +91,9 @@ pub struct AdmissionConstraints {
     pub model_ref: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub allowed_model_refs: Vec<String>,
+    /// Models never chosen by Auto-within-set (`#346` / RFC-0229).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub excluded_model_refs: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -116,6 +123,9 @@ pub struct AdmissionSnapshot {
     /// Allowed set for auto-selection within this admit (empty = unconstrained set).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub allowed_model_refs: Vec<String>,
+    /// Excluded from Auto-within-set; frozen at admit (`#346` / RFC-0229).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub excluded_model_refs: Vec<String>,
     /// Content identity of the admitted problem statement text.
     pub statement_content_hash: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -141,12 +151,22 @@ impl AdmissionSnapshot {
     ///
     /// Always recomputes `statement_content_hash` from `text` (caller cannot
     /// forge a mismatched hash). Schema/kind are fixed.
+    ///
+    /// `#346` / RFC-0229: when `model_ref` is omitted and `allowed_model_refs` is
+    /// non-empty, freeze Auto-within-set to the first remaining candidate
+    /// (`allowed` minus `excluded`, sorted). Empty remainder stays unresolved so
+    /// [`Self::enforce_or_reject`] can fail closed.
     pub fn from_text_and_constraints(text: &str, c: &AdmissionConstraints) -> Self {
+        let mut model_ref = c.model_ref.clone();
+        if model_ref.is_none() && !c.allowed_model_refs.is_empty() {
+            model_ref = freeze_auto_within_set(&c.allowed_model_refs, &c.excluded_model_refs);
+        }
         Self {
             payload_schema: ADMISSION_SNAPSHOT_SCHEMA.into(),
             kind: ADMISSION_SNAPSHOT_KIND.into(),
-            model_ref: c.model_ref.clone(),
+            model_ref,
             allowed_model_refs: c.allowed_model_refs.clone(),
+            excluded_model_refs: c.excluded_model_refs.clone(),
             statement_content_hash: ContentHash::sha256_bytes(text.as_bytes())
                 .as_str()
                 .to_string(),
@@ -241,6 +261,7 @@ impl AdmissionSnapshot {
         }
         let mut norm = self.clone();
         norm.allowed_model_refs.sort();
+        norm.excluded_model_refs.sort();
         // Policy is AllowReuse if we reached here; keep it explicit in the bytes.
         norm.reuse_policy = ReusePolicy::AllowReuse;
         let bytes = serde_json::to_vec(&norm).ok()?;
@@ -254,8 +275,11 @@ impl AdmissionSnapshot {
     /// - `reuse_policy` — **enforced** (reuse catalog key / skip)
     /// - `placement=local|remote_allowed` — **enforced** (local execution permitted)
     /// - `placement=remote_required` — **unsupported** (no remote cycle yet)
-    /// - `model_ref` / `allowed_model_refs` on math — **unsupported**
-    /// - `model_ref` / `allowed_model_refs` on generate — **enforced** at activate gate
+    /// - `model_ref` / `allowed_model_refs` / `excluded_model_refs` on math — **unsupported**
+    /// - `model_ref` on generate — **enforced** at activate gate
+    /// - `allowed_model_refs` without `model_ref` on generate — **enforced** as Auto-within-set (`#346`)
+    /// - `excluded_model_refs` on generate — **enforced** (must not pick excluded; required∩excluded reject)
+    /// - empty Auto-within-set after excludes — **unsupported** (fail closed)
     /// - `model_version` / `model_content_hash` — **unsupported** until verified binding
     /// - `generation.*` — **unsupported** (backends do not apply knobs yet)
     /// - `privacy_class` / `resource_budget.*` — **unsupported**
@@ -313,14 +337,18 @@ impl AdmissionSnapshot {
                     "unsupported constraint: allowed_model_refs on deterministic math".into(),
                 );
             }
-        } else {
-            if !self.allowed_model_refs.is_empty() && self.model_ref.is_none() {
+            if !self.excluded_model_refs.is_empty() {
                 return Err(
-                    "unsupported constraint: allowed_model_refs without model_ref (auto-within-set not implemented)"
-                        .into(),
+                    "unsupported constraint: excluded_model_refs on deterministic math".into(),
                 );
             }
+        } else {
             if let Some(want) = self.model_ref.as_ref() {
+                if self.excluded_model_refs.iter().any(|e| e == want) {
+                    return Err(format!(
+                        "unsupported constraint: model_ref {want} is excluded (fail-closed)"
+                    ));
+                }
                 if !self.allowed_model_refs.is_empty()
                     && !self.allowed_model_refs.iter().any(|a| a == want)
                 {
@@ -328,12 +356,28 @@ impl AdmissionSnapshot {
                         "unsupported constraint: model_ref {want} not in allowed_model_refs"
                     ));
                 }
+            } else if !self.allowed_model_refs.is_empty() {
+                return Err(
+                    "unsupported constraint: allowed_model_refs Auto-within-set empty after excludes (fail-closed)"
+                        .into(),
+                );
             }
-            // model_ref alone: enforced at activate gate (must match activated pointer).
+            // model_ref alone (or frozen Auto-within-set): enforced at activate gate.
         }
         // reuse_policy: always enforceable via catalog key (no reject branch).
         Ok(())
     }
+}
+
+/// Deterministic Auto-within-set: sorted `allowed` minus `excluded` (`#346`).
+fn freeze_auto_within_set(allowed: &[String], excluded: &[String]) -> Option<String> {
+    let mut candidates: Vec<&String> = allowed
+        .iter()
+        .filter(|a| !excluded.iter().any(|e| e == *a))
+        .collect();
+    candidates.sort();
+    candidates.dedup();
+    candidates.first().map(|s| (*s).clone())
 }
 
 #[cfg(test)]
@@ -551,5 +595,73 @@ mod tests {
         });
         let err = AdmissionSnapshot::verify_context_factor(&v).unwrap_err();
         assert!(err.contains("payload_schema"), "{err}");
+    }
+
+    #[test]
+    fn freeze_auto_within_set_picks_first_remaining_after_excludes() {
+        let c = AdmissionConstraints {
+            allowed_model_refs: vec!["aira:model:b".into(), "aira:model:a".into()],
+            excluded_model_refs: vec!["aira:model:a".into()],
+            ..Default::default()
+        };
+        let s = AdmissionSnapshot::from_text_and_constraints("Summarize locally", &c);
+        assert_eq!(s.model_ref.as_deref(), Some("aira:model:b"));
+        assert_eq!(s.excluded_model_refs, vec!["aira:model:a".to_string()]);
+        s.enforce_or_reject("Summarize locally").unwrap();
+    }
+
+    #[test]
+    fn freeze_auto_within_set_empty_after_excludes_is_rejected() {
+        let c = AdmissionConstraints {
+            allowed_model_refs: vec!["aira:model:a".into()],
+            excluded_model_refs: vec!["aira:model:a".into()],
+            ..Default::default()
+        };
+        let s = AdmissionSnapshot::from_text_and_constraints("Summarize locally", &c);
+        assert!(s.model_ref.is_none());
+        let err = s.enforce_or_reject("Summarize locally").unwrap_err();
+        assert!(err.contains("empty after excludes"), "{err}");
+    }
+
+    #[test]
+    fn required_model_in_excluded_is_rejected() {
+        let c = AdmissionConstraints {
+            model_ref: Some("aira:model:a".into()),
+            excluded_model_refs: vec!["aira:model:a".into()],
+            ..Default::default()
+        };
+        let s = AdmissionSnapshot::from_text_and_constraints("Summarize locally", &c);
+        let err = s.enforce_or_reject("Summarize locally").unwrap_err();
+        assert!(err.contains("excluded"), "{err}");
+    }
+
+    #[test]
+    fn excluded_on_math_is_unsupported() {
+        let c = AdmissionConstraints {
+            excluded_model_refs: vec!["aira:model:a".into()],
+            ..Default::default()
+        };
+        let s = AdmissionSnapshot::from_text_and_constraints("Calculate 2 + 2", &c);
+        let err = s.enforce_or_reject("Calculate 2 + 2").unwrap_err();
+        assert!(err.contains("excluded_model_refs"), "{err}");
+    }
+
+    #[test]
+    fn mutating_constraints_after_freeze_does_not_change_snapshot() {
+        let mut c = AdmissionConstraints {
+            allowed_model_refs: vec!["aira:model:keep".into(), "aira:model:drop".into()],
+            excluded_model_refs: vec!["aira:model:drop".into()],
+            ..Default::default()
+        };
+        let snap = AdmissionSnapshot::from_text_and_constraints("Summarize locally", &c);
+        assert_eq!(snap.model_ref.as_deref(), Some("aira:model:keep"));
+        c.allowed_model_refs = vec!["aira:model:later".into()];
+        c.excluded_model_refs.clear();
+        c.model_ref = Some("aira:model:later".into());
+        assert_eq!(snap.model_ref.as_deref(), Some("aira:model:keep"));
+        assert_eq!(
+            snap.excluded_model_refs,
+            vec!["aira:model:drop".to_string()]
+        );
     }
 }
