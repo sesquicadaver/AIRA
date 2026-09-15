@@ -53,9 +53,7 @@ pub fn evaluate_work_readiness(
         return WorkReadiness {
             kind: WorkCapabilityKind::Math,
             ready: true,
-            reasons: vec![
-                "deterministic math — local model not required (omit model_ref)".into(),
-            ],
+            reasons: vec!["deterministic math — local model not required (omit model_ref)".into()],
             preference,
             resolved_model_ref: None,
             admission: AdmissionConstraints::default(),
@@ -201,11 +199,8 @@ mod tests {
         let _g = isolated();
         let dir = tempdir().unwrap();
         fs::create_dir_all(dir.path().join("models")).unwrap();
-        let r = evaluate_work_readiness(
-            dir.path(),
-            "Calculate 2 + 2",
-            WorkExecutorPreference::Auto,
-        );
+        let r =
+            evaluate_work_readiness(dir.path(), "Calculate 2 + 2", WorkExecutorPreference::Auto);
         assert_eq!(r.kind, WorkCapabilityKind::Math);
         assert!(r.ready);
         assert!(r.admission.model_ref.is_none());

@@ -227,9 +227,15 @@ impl AsyncDesktopJobs {
         let (tx, rx) = mpsc::channel();
         self.work_rx = Some(rx);
         thread::spawn(move || {
-            let outcome =
-                run_submit_job(&paths, &settings, node_bin, &text, ensure_started, &admission)
-                    .map_err(|e| format!("{e:#}"));
+            let outcome = run_submit_job(
+                &paths,
+                &settings,
+                node_bin,
+                &text,
+                ensure_started,
+                &admission,
+            )
+            .map_err(|e| format!("{e:#}"));
             let _ = tx.send(outcome);
             on_done();
         });

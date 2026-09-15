@@ -15,7 +15,6 @@ mod invite_qr;
 mod launcher;
 mod model_catalog;
 mod model_status;
-mod work_readiness;
 mod network_mesh;
 mod node_http;
 mod paths;
@@ -24,6 +23,7 @@ mod peer_dial;
 mod process;
 mod settings;
 mod ui_prefs;
+mod work_readiness;
 
 pub use autostart::{
     autostart_desktop_entry, is_autostart_enabled, is_autostart_enabled_in,
@@ -64,9 +64,6 @@ pub use model_catalog::{
     select_catalog_model, CatalogEntry, CatalogSelection, ModelCatalogError, ModelCatalogSnapshot,
 };
 pub use model_status::{load_model_triple, ModelFact, ModelTripleConclusion, ModelTripleSnapshot};
-pub use work_readiness::{
-    evaluate_work_readiness, WorkCapabilityKind, WorkExecutorPreference, WorkReadiness,
-};
 pub use network_mesh::{
     classify_network_quality, load_network_mesh_snapshot, load_system_snapshot, DataQuality,
     LocalBindProvenance, MeshTopLevel, NetworkMeshSnapshot, SystemSnapshot,
@@ -88,6 +85,9 @@ pub use settings::{
     DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS, SETTINGS_SCHEMA_ID,
 };
 pub use ui_prefs::{detect_ui_lang, load_or_create_ui_prefs, write_ui_prefs, UiLang, UiPrefs};
+pub use work_readiness::{
+    evaluate_work_readiness, WorkCapabilityKind, WorkExecutorPreference, WorkReadiness,
+};
 
 /// Crate version for smoke tests.
 pub fn crate_version() -> &'static str {

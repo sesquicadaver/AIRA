@@ -13,11 +13,11 @@ mod work;
 use std::path::PathBuf;
 
 use aira_desktop_runtime::{
-    evaluate_work_readiness, load_or_create_settings, load_or_create_ui_prefs, load_system_snapshot,
-    sync_autostart_from_settings, write_ui_prefs, DesktopPaths, DesktopSettings, LifecycleStatus,
-    ModelCatalogSnapshot, ModelFact, ModelTripleSnapshot, NetworkMeshSnapshot, SystemSnapshot,
-    UiLang, UiPrefs, WorkExecutorPreference, WorkReadiness, DEFAULT_PEER_LISTEN,
-    DEFAULT_RELAY_TTL_DAYS,
+    evaluate_work_readiness, load_or_create_settings, load_or_create_ui_prefs,
+    load_system_snapshot, sync_autostart_from_settings, write_ui_prefs, DesktopPaths,
+    DesktopSettings, LifecycleStatus, ModelCatalogSnapshot, ModelFact, ModelTripleSnapshot,
+    NetworkMeshSnapshot, SystemSnapshot, UiLang, UiPrefs, WorkExecutorPreference, WorkReadiness,
+    DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
