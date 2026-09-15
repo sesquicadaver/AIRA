@@ -140,8 +140,8 @@ fn volume_available_bytes_impl(path: &Path) -> Option<u64> {
         if libc::statvfs(c.as_ptr(), &mut buf) != 0 {
             return None;
         }
-        let frsize = buf.f_frsize as u64;
-        let bavail = buf.f_bavail as u64;
+        let frsize = u64::try_from(buf.f_frsize).ok()?;
+        let bavail = u64::try_from(buf.f_bavail).ok()?;
         Some(frsize.saturating_mul(bavail))
     }
 }
