@@ -347,6 +347,9 @@ mod tests {
             http_token_ref: None,
             peer_listen: Some(DEFAULT_PEER_LISTEN.into()),
             relay_ttl_days: None,
+            llm_backend: aira_desktop_runtime::LlmBackend::Mock,
+            llm_process_bin: None,
+            llm_ollama_model: None,
         };
         apply_network_profile(&mut s, NetworkProfile::P0, DEFAULT_PEER_LISTEN, None).unwrap();
         assert_eq!(s.network_profile, NetworkProfile::P0);

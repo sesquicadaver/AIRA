@@ -13,7 +13,9 @@ use crate::bootstrap::{ensure_bootstrap, read_http_token};
 use crate::health::{health_ok, port_in_use, wait_healthy};
 use crate::paths::DesktopPaths;
 use crate::peer::{ensure_peer, peer_status, stop_peer};
-use crate::settings::{load_or_create_settings, resolve_token_path, DesktopSettings};
+use crate::settings::{
+    apply_node_llm_env, load_or_create_settings, resolve_token_path, DesktopSettings, LlmBackend,
+};
 
 const HEALTH_TIMEOUT: Duration = Duration::from_secs(15);
 const STOP_GRACE: Duration = Duration::from_secs(5);
@@ -36,6 +38,13 @@ struct PidRecord {
     root: String,
     listen: String,
     node_bin: String,
+    /// Staff executor applied at spawn (`mock` default when absent — legacy pidfiles).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    llm_backend: Option<LlmBackend>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    llm_process_bin: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    llm_ollama_model: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -92,8 +101,8 @@ pub fn start(paths: &DesktopPaths, node_bin: Option<PathBuf>) -> Result<StartOut
     let stdout = File::create(paths.log_dir.join("aira-node.stdout.log"))?;
     let stderr = File::create(paths.log_dir.join("aira-node.stderr.log"))?;
 
-    let mut child = Command::new(&node_bin)
-        .arg("--root")
+    let mut cmd = Command::new(&node_bin);
+    cmd.arg("--root")
         .arg(&paths.data_root)
         .arg("--http")
         .arg("--listen")
@@ -102,7 +111,9 @@ pub fn start(paths: &DesktopPaths, node_bin: Option<PathBuf>) -> Result<StartOut
         .arg(&token)
         .stdin(Stdio::null())
         .stdout(Stdio::from(stdout))
-        .stderr(Stdio::from(stderr))
+        .stderr(Stdio::from(stderr));
+    apply_node_llm_env(&mut cmd, &settings);
+    let mut child = cmd
         .spawn()
         .with_context(|| format!("spawn {}", node_bin.display()))?;
 
@@ -115,6 +126,9 @@ pub fn start(paths: &DesktopPaths, node_bin: Option<PathBuf>) -> Result<StartOut
             root: paths.data_root.display().to_string(),
             listen: listen.clone(),
             node_bin: node_bin.display().to_string(),
+            llm_backend: Some(settings.llm_backend),
+            llm_process_bin: settings.llm_process_bin.clone(),
+            llm_ollama_model: settings.llm_ollama_model.clone(),
         },
     )?;
 
@@ -211,6 +225,9 @@ pub fn status(paths: &DesktopPaths) -> Result<(LifecycleStatus, Option<PidRecord
         peer_listen: peer.as_ref().map(|p| p.listen.clone()),
         peer_network_profile: peer.as_ref().map(|p| p.network_profile),
         peer_relay_ttl_days: peer.as_ref().and_then(|p| p.relay_ttl_days),
+        llm_backend: rec.llm_backend.unwrap_or(LlmBackend::Mock),
+        llm_process_bin: rec.llm_process_bin.clone(),
+        llm_ollama_model: rec.llm_ollama_model.clone(),
     };
 
     if !pid_alive(rec.pid) {
@@ -235,6 +252,10 @@ pub struct PidRecordView {
     /// Confirmed peer profile from peer pid record (`#268`).
     pub peer_network_profile: Option<crate::settings::NetworkProfile>,
     pub peer_relay_ttl_days: Option<u32>,
+    /// Staff executor recorded at node spawn (legacy pidfile → mock).
+    pub llm_backend: LlmBackend,
+    pub llm_process_bin: Option<String>,
+    pub llm_ollama_model: Option<String>,
 }
 
 fn try_attach(paths: &DesktopPaths, settings: &DesktopSettings) -> Result<Option<StartOutcome>> {
@@ -245,6 +266,11 @@ fn try_attach(paths: &DesktopPaths, settings: &DesktopSettings) -> Result<Option
             && rec.listen == settings.http_listen
         {
             if health_ok(&rec.listen, Duration::from_millis(500)).unwrap_or(false) {
+                // LLM env is fixed at spawn — report pidfile facts, not later disk edits.
+                let mut used = settings.clone();
+                used.llm_backend = rec.llm_backend.unwrap_or(LlmBackend::Mock);
+                used.llm_process_bin = rec.llm_process_bin.clone();
+                used.llm_ollama_model = rec.llm_ollama_model.clone();
                 return Ok(Some(StartOutcome {
                     status: LifecycleStatus::Running,
                     attached: true,
@@ -255,7 +281,7 @@ fn try_attach(paths: &DesktopPaths, settings: &DesktopSettings) -> Result<Option
                     peer_pid: None,
                     peer_listen: None,
                     peer_attached: false,
-                    used_settings: settings.clone(),
+                    used_settings: used,
                 }));
             }
             // Stale unhealthy — stop and continue to fresh start.

@@ -47,7 +47,7 @@ instance_id (string)
 http_auth_mode ∈ {bearer_token, desktop_ipc}
 ```
 
-Optional: `http_token_ref` (path/ref placeholder, not the secret), `peer_listen` (string|null). `additionalProperties: false`. Missing `instance_id` MUST fail.
+Optional: `http_token_ref` (path/ref placeholder, not the secret), `peer_listen` (string|null), `relay_ttl_days`, `llm_backend` ∈ {mock, process}, `llm_process_bin`, `llm_ollama_model` (RFC-0241). `additionalProperties: false`. Missing `instance_id` MUST fail.
 
 ## 8. Affected Books / Schemas / Tests
 

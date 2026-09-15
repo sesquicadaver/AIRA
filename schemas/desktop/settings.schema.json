@@ -57,6 +57,20 @@
       "type": ["integer", "null"],
       "minimum": 1,
       "description": "Relay hub offline registry TTL days; P3 only (runtime default 31)."
+    },
+    "llm_backend": {
+      "type": "string",
+      "enum": ["mock", "process"],
+      "description": "Staff submit executor for aira-node: mock (CI/default) or process (host CLI such as ollama). Applied only after node restart. Never grants VERIFIED."
+    },
+    "llm_process_bin": {
+      "type": ["string", "null"],
+      "description": "Process backend program (PATH name or path). Default ollama when llm_backend=process and unset."
+    },
+    "llm_ollama_model": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "Host ollama model name from `ollama list` (argv: run <model>). Required when llm_backend=process. Not an AIRA model_ref and not VERIFIED."
     }
   }
 }

@@ -13,11 +13,11 @@ mod work;
 use std::path::PathBuf;
 
 use aira_desktop_runtime::{
-    evaluate_work_readiness, load_or_create_settings, load_or_create_ui_prefs,
-    load_system_snapshot, sync_autostart_from_settings, write_ui_prefs, DesktopPaths,
-    DesktopSettings, LifecycleStatus, ModelCatalogSnapshot, ModelFact, ModelStorageSnapshot,
-    ModelTripleSnapshot, NetworkMeshSnapshot, SystemSnapshot, UiLang, UiPrefs,
-    WorkExecutorPreference, WorkReadiness, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    evaluate_work_readiness, list_ollama_models, load_or_create_settings, load_or_create_ui_prefs,
+    load_system_snapshot, resolve_ollama_bin, sync_autostart_from_settings, write_ui_prefs,
+    DesktopPaths, DesktopSettings, LifecycleStatus, LlmBackend, ModelCatalogSnapshot, ModelFact,
+    ModelStorageSnapshot, ModelTripleSnapshot, NetworkMeshSnapshot, SystemSnapshot, UiLang,
+    UiPrefs, WorkExecutorPreference, WorkReadiness, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
@@ -103,6 +103,9 @@ pub struct AiraDesktopApp {
     pub(super) catalog_auto: bool,
     pub(super) catalog_add_ref: String,
     pub(super) catalog_msg: Option<String>,
+    /// Host `ollama list` names for Settings process bind (not AIRA catalog).
+    pub(super) ollama_models: Vec<String>,
+    pub(super) ollama_msg: Option<String>,
     /// Work executor Auto / Specific / Compare + readiness (`#349` / `#354`).
     pub(super) work_executor_mode: work::WorkExecutorUiMode,
     pub(super) work_required_ref: String,
@@ -212,6 +215,8 @@ impl AiraDesktopApp {
             catalog_auto: true,
             catalog_add_ref: String::new(),
             catalog_msg: None,
+            ollama_models: Vec::new(),
+            ollama_msg: None,
             work_executor_mode: work::WorkExecutorUiMode::Auto,
             work_required_ref: String::new(),
             work_compare_a: String::new(),
@@ -365,8 +370,13 @@ impl AiraDesktopApp {
 
     /// Reload selected/ready from disk; preserve used from last Work result.
     pub(super) fn refresh_model_triple(&mut self) {
-        self.model_triple =
-            ModelTripleSnapshot::load(&self.paths.data_root).with_used(self.used_model_fact());
+        let executor = self
+            .applied_runtime
+            .as_ref()
+            .map(|a| a.llm_backend.as_env_str())
+            .unwrap_or_else(|| self.settings.llm_backend.as_env_str());
+        self.model_triple = ModelTripleSnapshot::load(&self.paths.data_root, executor)
+            .with_used(self.used_model_fact());
     }
 
     /// Reload Settings → Models catalog (`#348`) and storage snapshot (`#355`).
@@ -395,6 +405,76 @@ impl AiraDesktopApp {
         self.model_storage = actions::models_storage_load(&self.paths);
         self.refresh_model_triple();
         self.refresh_work_readiness();
+    }
+
+    /// Probe host `ollama list` into Settings UI (observe-only; not VERIFIED).
+    pub(super) fn refresh_ollama_list(&mut self) {
+        let bin = resolve_ollama_bin(self.settings.llm_process_bin.as_deref());
+        match list_ollama_models(&bin) {
+            Ok(rows) => {
+                self.ollama_models = rows.into_iter().map(|e| e.name).collect();
+                self.ollama_msg = Some(format!(
+                    "{} ({})",
+                    self.labels().settings_ollama_listed,
+                    self.ollama_models.len()
+                ));
+            }
+            Err(e) => {
+                self.ollama_models.clear();
+                self.ollama_msg = Some(format!("{e:#}"));
+            }
+        }
+    }
+
+    /// Persist Ollama process bind; requires node restart to apply (`RestartNeeded`).
+    ///
+    /// Also writes Phase D tip via host-ollama bind (node-signed marker; `verified=false`
+    /// in evidence — executed ≠ VERIFIED).
+    pub(super) fn bind_ollama_process(&mut self, model: Option<String>) {
+        match model {
+            Some(m) => {
+                match aira_flow::ActivatedPointerGate::install_host_ollama_bind(
+                    &self.paths.data_root,
+                    &m,
+                ) {
+                    Ok((_gate, model_ref)) => {
+                        self.settings.llm_backend = LlmBackend::Process;
+                        self.settings.llm_ollama_model = Some(m);
+                        if self.settings.llm_process_bin.is_none() {
+                            self.settings.llm_process_bin = Some("ollama".into());
+                        }
+                        if let Err(e) = self.persist_settings() {
+                            self.note_settings_apply_error(format!("{e:#}"));
+                        } else {
+                            self.clear_settings_apply_error();
+                            self.refresh_model_triple();
+                            self.refresh_model_catalog();
+                            self.ollama_msg = Some(format!(
+                                "{} ({model_ref})",
+                                self.labels().settings_ollama_bound
+                            ));
+                        }
+                    }
+                    Err(e) => {
+                        self.note_settings_apply_error(format!(
+                            "Phase D host-ollama activate failed: {e}"
+                        ));
+                        self.ollama_msg = Some(e.to_string());
+                    }
+                }
+            }
+            None => {
+                self.settings.llm_backend = LlmBackend::Mock;
+                // Keep last model name for re-bind convenience; tip left as-is.
+                if let Err(e) = self.persist_settings() {
+                    self.note_settings_apply_error(format!("{e:#}"));
+                } else {
+                    self.clear_settings_apply_error();
+                    self.refresh_model_triple();
+                    self.ollama_msg = Some(self.labels().settings_ollama_bound.into());
+                }
+            }
+        }
     }
 
     /// Request a background status refresh (no-op if one is already running).

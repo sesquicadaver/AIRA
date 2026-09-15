@@ -331,6 +331,96 @@ impl ActivatedPointerGate {
         Ok(Self::from_aira_root(root))
     }
 
+    /// Phase D-shaped tip for **host Ollama process bind** (Developer Preview).
+    ///
+    /// Writes a bind-marker under `models/cache/…` (not marketplace weights),
+    /// activates tip with `model_ref = aira:model:ollama-…`, and signs evidence
+    /// with the **on-disk node identity** (production trust — no fixture marker).
+    ///
+    /// Honesty: activate tip becomes **ready** for generate admission; result
+    /// status remains **executed**, never a Verified Result. Evidence uses
+    /// `verified=false` and reason `aira:reason:host-ollama-bound`.
+    pub fn install_host_ollama_bind(
+        aira_root: impl AsRef<Path>,
+        ollama_model: &str,
+    ) -> Result<(Self, String), String> {
+        let root = aira_root.as_ref();
+        let ollama_model = ollama_model.trim();
+        if ollama_model.is_empty() {
+            return Err("ollama model name empty (fail-closed; not VERIFIED)".into());
+        }
+        let model_ref = host_ollama_model_ref(ollama_model);
+        let slot = sanitize_model_slot(&model_ref);
+        let cache_rel = PathBuf::from(format!("models/cache/{slot}/host-ollama.bind"));
+        let cache_abs = root.join(&cache_rel);
+        if let Some(parent) = cache_abs.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        // Marker bytes encode the host name — not AIRA weight VERIFIED.
+        let bytes = format!("aira-host-ollama-bind\nmodel={ollama_model}\nmodel_ref={model_ref}\n")
+            .into_bytes();
+        fs::write(&cache_abs, &bytes).map_err(|e| e.to_string())?;
+        let content_hash = ContentHash::sha256_bytes(&bytes);
+        let verified_rel = format!("models/host-ollama/{slot}.bind");
+        // Locator-only path (no weight file required on disk by the gate).
+        let mut body = Map::new();
+        body.insert("kind".into(), json!("model-installed-evidence"));
+        body.insert("model_ref".into(), json!(&model_ref));
+        body.insert("verified".into(), json!(false));
+        body.insert("activated".into(), json!(true));
+        body.insert("executed".into(), json!(false));
+        body.insert("verified_path".into(), json!(&verified_rel));
+        body.insert("cache_path".into(), json!(cache_abs.display().to_string()));
+        body.insert("content_hash".into(), json!(content_hash.as_str()));
+        body.insert(
+            "reason_refs".into(),
+            json!(["aira:reason:host-ollama-bound"]),
+        );
+        body.insert("host_ollama_model".into(), json!(ollama_model));
+        let raw = serde_json::to_vec(&Value::Object(body.clone())).map_err(|e| e.to_string())?;
+        let (loaded_id, ring) = Keyring::load_node_identity(root).map_err(|e| {
+            format!("host ollama bind requires node identity (fail-closed; not VERIFIED): {e}")
+        })?;
+        let sig = ring
+            .sign(&loaded_id, &raw)
+            .map_err(|e| format!("sign host ollama bind evidence: {e}"))?;
+        let _publish_crypto = bind_thread_crypto(ring, loaded_id);
+        let evidence_id = publish_activate_evidence_signed(root, body, sig)?;
+        drop(_publish_crypto);
+        let updated_at = utc_now_rfc3339().map_err(|e| e.to_string())?;
+        let pointer = json!({
+            "updated_at": updated_at,
+            "model_ref": model_ref,
+            "cache_path": cache_rel.to_string_lossy(),
+            "verified_path": verified_rel,
+            "content_hash": content_hash.as_str(),
+            "evidence_artifact_id": evidence_id,
+        });
+        let apath = root.join("models/activated.latest.json");
+        if let Some(parent) = apath.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::write(
+            &apath,
+            serde_json::to_string_pretty(&pointer).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+        let slot_path = root
+            .join("models/cache")
+            .join(slot)
+            .join(ACTIVATED_SLOT_POINTER_NAME);
+        if let Some(parent) = slot_path.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::write(
+            &slot_path,
+            serde_json::to_string_pretty(&pointer).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+        // Explicitly do NOT write ACTIVATION_TRUST_FIXTURE_REL — production trust.
+        Ok((Self::from_aira_root(root), model_ref))
+    }
+
     fn verify_pointer_ready(
         &self,
         pointer: &ActivatedPointer,
@@ -590,6 +680,12 @@ fn sanitize_model_slot(model_ref: &str) -> String {
     } else {
         out
     }
+}
+
+/// Stable `aira:model:…` for a host `ollama list` name (ProcessBackend expected bind).
+pub fn host_ollama_model_ref(ollama_model: &str) -> String {
+    let slot = sanitize_model_slot(ollama_model.trim());
+    format!("aira:model:ollama-{slot}")
 }
 
 fn pointer_fingerprint(pointer: &ActivatedPointer) -> String {
@@ -1290,6 +1386,50 @@ mod tests {
         let gate = ActivatedPointerGate::install_fixture(dir.path()).unwrap();
         assert_eq!(gate.trust_mode(), ActivationTrustMode::Fixture);
         assert!(dir.path().join(ACTIVATION_TRUST_FIXTURE_REL).is_file());
+        gate.check_activated(&dummy_payload()).unwrap();
+    }
+
+    #[test]
+    fn host_ollama_bind_is_production_trust_ready_not_fixture() {
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let mut rng = OsRng;
+        let signing = SigningKey::generate(&mut rng);
+        let verifying = signing.verifying_key();
+        let secret_hex = hex::encode(signing.to_bytes());
+        let public_hex = hex::encode(verifying.to_bytes());
+        let identity_id = format!("aira:identity:desktop.{}", uuid::Uuid::now_v7().as_simple());
+        let id_ref = AiraRef::parse(&identity_id).unwrap();
+        let id_dir = dir.path().join("identity");
+        fs::create_dir_all(&id_dir).unwrap();
+        fs::write(id_dir.join("local.ed25519"), format!("{secret_hex}\n")).unwrap();
+        let id_sig = aira_object::sign_with_key(id_ref, &signing, identity_id.as_bytes());
+        let desc = json!({
+            "identity_id": identity_id,
+            "identity_type": "local",
+            "display_name": "desktop",
+            "public_key": { "algorithm": "ed25519", "key_hex": public_hex },
+            "created_at": "2026-09-08T00:00:00Z",
+            "key_path": "identity/local.ed25519",
+            "signature": id_sig,
+        });
+        fs::write(
+            id_dir.join("local.identity.json"),
+            serde_json::to_string_pretty(&desc).unwrap(),
+        )
+        .unwrap();
+
+        let (gate, model_ref) =
+            ActivatedPointerGate::install_host_ollama_bind(dir.path(), "llama3:latest").unwrap();
+        assert_eq!(model_ref, "aira:model:ollama-llama3_latest");
+        assert_eq!(gate.trust_mode(), ActivationTrustMode::Production);
+        assert!(!dir.path().join(ACTIVATION_TRUST_FIXTURE_REL).is_file());
+        let obs = gate.observe_verify_now();
+        assert!(obs.ready, "detail={}", obs.detail);
+        assert_eq!(obs.selected_model_ref.as_deref(), Some(model_ref.as_str()));
         gate.check_activated(&dummy_payload()).unwrap();
     }
 
