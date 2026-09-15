@@ -1145,12 +1145,12 @@ impl AiraDesktopApp {
         ui.horizontal(|ui| {
             ui.label(l.settings_models_model_ref);
             ui.text_edit_singleline(&mut self.catalog_add_ref);
-            if !self.model_catalog.local_add_allowed {
-                if ui.button(l.settings_models_enable_add).clicked() {
-                    match actions::models_catalog_enable_local_add(&self.paths) {
-                        Ok(snap) => self.apply_catalog_snapshot(snap),
-                        Err(e) => self.catalog_msg = Some(format!("{e:#}")),
-                    }
+            if !self.model_catalog.local_add_allowed
+                && ui.button(l.settings_models_enable_add).clicked()
+            {
+                match actions::models_catalog_enable_local_add(&self.paths) {
+                    Ok(snap) => self.apply_catalog_snapshot(snap),
+                    Err(e) => self.catalog_msg = Some(format!("{e:#}")),
                 }
             }
             if ui.button(l.settings_models_add).clicked() {
