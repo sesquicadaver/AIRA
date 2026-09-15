@@ -364,7 +364,8 @@ fn phase_x_work_compare_runtime_present() {
     assert!(wr.contains("WorkExecutorPreference::Compare") || wr.contains("Compare {"));
     assert!(wr.contains("RequireNewExecution"));
     assert!(wr.contains("admission_b"));
-    let ui = std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/ui.rs")).unwrap();
+    let ui =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/ui.rs")).unwrap();
     assert!(ui.contains("work_executor_compare") || ui.contains("WorkExecutorUiMode::Compare"));
     let jobs =
         std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/async_jobs.rs")).unwrap();

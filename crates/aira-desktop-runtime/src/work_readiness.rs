@@ -22,10 +22,7 @@ pub enum WorkExecutorPreference {
     /// Exact local model_ref required.
     Required(String),
     /// Two distinct Required models; sequential dual run (`#354` / RFC-0237).
-    Compare {
-        a: String,
-        b: String,
-    },
+    Compare { a: String, b: String },
 }
 
 /// Capability class of the draft text.
@@ -220,7 +217,10 @@ fn evaluate_compare_generate(
         return empty_readiness(
             WorkCapabilityKind::Generate,
             false,
-            vec!["Compare needs two model refs (A and B) — pick catalog rows; no silent substitute".into()],
+            vec![
+                "Compare needs two model refs (A and B) — pick catalog rows; no silent substitute"
+                    .into(),
+            ],
             preference,
         );
     }
@@ -240,7 +240,9 @@ fn evaluate_compare_generate(
 
     let mut reasons = Vec::new();
     if ready_a {
-        reasons.push(format!("Compare A {a} available; choice ≠ VERIFIED; RequireNewExecution"));
+        reasons.push(format!(
+            "Compare A {a} available; choice ≠ VERIFIED; RequireNewExecution"
+        ));
     } else {
         reasons.push(format!("Compare A {a} not ready — no silent substitute"));
         reasons.append(&mut reasons_a);
@@ -249,7 +251,9 @@ fn evaluate_compare_generate(
         }
     }
     if ready_b {
-        reasons.push(format!("Compare B {b} available; choice ≠ VERIFIED; RequireNewExecution"));
+        reasons.push(format!(
+            "Compare B {b} available; choice ≠ VERIFIED; RequireNewExecution"
+        ));
     } else {
         reasons.push(format!("Compare B {b} not ready — no silent substitute"));
         reasons.append(&mut reasons_b);
@@ -528,6 +532,9 @@ mod tests {
             r.admission_b.as_ref().map(|c| c.reuse_policy),
             Some(ReusePolicy::RequireNewExecution)
         );
-        assert_ne!(r.admission.model_ref, r.admission_b.as_ref().and_then(|c| c.model_ref.clone()));
+        assert_ne!(
+            r.admission.model_ref,
+            r.admission_b.as_ref().and_then(|c| c.model_ref.clone())
+        );
     }
 }

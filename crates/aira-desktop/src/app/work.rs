@@ -102,10 +102,7 @@ impl AiraDesktopApp {
         let ctx = ctx.clone();
         let on_done = move || ctx.request_repaint();
 
-        let started = if matches!(
-            self.work_executor_mode,
-            WorkExecutorUiMode::Compare
-        ) {
+        let started = if matches!(self.work_executor_mode, WorkExecutorUiMode::Compare) {
             let admission_a = self.work_readiness.admission.clone();
             let Some(admission_b) = self.work_readiness.admission_b.clone() else {
                 self.last_problem = Some(UiProblem::new(

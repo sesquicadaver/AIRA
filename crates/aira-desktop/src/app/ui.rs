@@ -473,19 +473,13 @@ impl AiraDesktopApp {
         if self.work_executor_mode == work::WorkExecutorUiMode::Compare {
             ui.horizontal(|ui| {
                 ui.label(l.work_compare_a);
-                if ui
-                    .text_edit_singleline(&mut self.work_compare_a)
-                    .changed()
-                {
+                if ui.text_edit_singleline(&mut self.work_compare_a).changed() {
                     self.refresh_work_readiness();
                 }
             });
             ui.horizontal(|ui| {
                 ui.label(l.work_compare_b);
-                if ui
-                    .text_edit_singleline(&mut self.work_compare_b)
-                    .changed()
-                {
+                if ui.text_edit_singleline(&mut self.work_compare_b).changed() {
                     self.refresh_work_readiness();
                 }
             });
@@ -688,8 +682,7 @@ impl AiraDesktopApp {
         });
         ui.horizontal(|ui| {
             ui.strong(l.work_triple_executed);
-            if view.model_triple.executed.as_deref()
-                == Some(crate::work_view::EXECUTED_MOCK_LABEL)
+            if view.model_triple.executed.as_deref() == Some(crate::work_view::EXECUTED_MOCK_LABEL)
             {
                 ui.colored_label(egui::Color32::from_rgb(180, 120, 40), exec);
             } else {
