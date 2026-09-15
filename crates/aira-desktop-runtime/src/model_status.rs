@@ -1,9 +1,13 @@
 //! Model selected ≠ ready ≠ used (`#269`).
 //! Executor kind ≠ activate-ready (`#319` / RFC-0204).
+//! Desktop Ollama bind: pass the **node** executor (`mock`/`process`) explicitly —
+//! do not read the GUI process env (submit runs in `aira-node`).
 
 use std::path::Path;
 
-use aira_flow::{staff_executor_kind, ActivatedPointerGate, ActivationObservation};
+use aira_flow::{ActivatedPointerGate, ActivationObservation};
+
+use crate::settings::LlmBackend;
 
 /// One slot of the model triple (never invent a name).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,7 +49,7 @@ pub struct ModelTripleSnapshot {
     pub ready_detail: String,
     pub used: ModelFact,
     pub activation: ActivationObservation,
-    /// Staff executor from env (`mock` default). Activate-ready does not imply process.
+    /// Staff executor for submit host (`mock` default). Activate-ready does not imply process.
     pub executor_kind: String,
 }
 
@@ -63,7 +67,7 @@ impl ModelTripleSnapshot {
                 ready: false,
                 detail: "not observed".into(),
             },
-            executor_kind: staff_executor_kind().to_string(),
+            executor_kind: LlmBackend::Mock.as_env_str().to_string(),
         }
     }
 
@@ -71,7 +75,9 @@ impl ModelTripleSnapshot {
     ///
     /// Uses UI-safe [`ActivatedPointerGate::observe`] (`#303` / `#309`): cache miss
     /// defers streaming weight hash; durable fail for a version does not rehash-storm.
-    pub fn load(root: impl AsRef<Path>) -> Self {
+    ///
+    /// `executor_kind` must reflect the running/configured **node** backend.
+    pub fn load(root: impl AsRef<Path>, executor_kind: impl Into<String>) -> Self {
         let obs = ActivatedPointerGate::from_aira_root(root).observe();
         let selected = if obs.pointer_present {
             ModelFact::from_optional_ref(obs.selected_model_ref.clone())
@@ -84,7 +90,7 @@ impl ModelTripleSnapshot {
             ready_detail: obs.detail.clone(),
             used: ModelFact::Undefined,
             activation: obs,
-            executor_kind: staff_executor_kind().to_string(),
+            executor_kind: executor_kind.into(),
         }
     }
 
@@ -96,13 +102,16 @@ impl ModelTripleSnapshot {
 
     /// True when staff submit uses reference MockBackend (#319).
     pub fn executor_is_reference_mock(&self) -> bool {
-        self.executor_kind == "mock"
+        self.executor_kind == LlmBackend::Mock.as_env_str()
     }
 }
 
 /// Load [`ModelTripleSnapshot`] (selected/ready; used left Undefined).
-pub fn load_model_triple(root: impl AsRef<Path>) -> ModelTripleSnapshot {
-    ModelTripleSnapshot::load(root)
+pub fn load_model_triple(
+    root: impl AsRef<Path>,
+    executor_kind: impl Into<String>,
+) -> ModelTripleSnapshot {
+    ModelTripleSnapshot::load(root, executor_kind)
 }
 
 /// Strip / System coarse conclusion from the triple (`#269`).
@@ -182,7 +191,7 @@ mod tests {
     fn load_without_pointer_is_none_not_ready() {
         let _lock = isolated_activate();
         let dir = tempdir().unwrap();
-        let snap = ModelTripleSnapshot::load(dir.path());
+        let snap = ModelTripleSnapshot::load(dir.path(), "mock");
         assert_eq!(snap.selected, ModelFact::None);
         assert!(!snap.ready);
         assert_eq!(snap.used, ModelFact::Undefined);
@@ -192,6 +201,14 @@ mod tests {
         );
         assert_eq!(snap.executor_kind, "mock");
         assert!(snap.executor_is_reference_mock());
+    }
+
+    #[test]
+    fn process_executor_is_not_reference_mock() {
+        let dir = tempdir().unwrap();
+        let snap = ModelTripleSnapshot::load(dir.path(), "process");
+        assert_eq!(snap.executor_kind, "process");
+        assert!(!snap.executor_is_reference_mock());
     }
 
     #[test]
@@ -208,7 +225,7 @@ mod tests {
             "fixture observe_verify_now detail={}",
             obs.detail
         );
-        let snap = ModelTripleSnapshot::load(dir.path());
+        let snap = ModelTripleSnapshot::load(dir.path(), "mock");
         assert!(matches!(snap.selected, ModelFact::Value(_)));
         assert!(snap.ready);
         assert_eq!(snap.used, ModelFact::Undefined);
@@ -237,7 +254,7 @@ mod tests {
         let dir = tempdir().unwrap();
         aira_object::reset_primary_signer();
         ActivatedPointerGate::install_fixture(dir.path()).unwrap();
-        let snap = ModelTripleSnapshot::load(dir.path());
+        let snap = ModelTripleSnapshot::load(dir.path(), "mock");
         assert!(matches!(snap.selected, ModelFact::Value(_)));
         assert!(!snap.ready);
         assert!(
@@ -255,7 +272,7 @@ mod tests {
         aira_object::reset_primary_signer();
         ActivatedPointerGate::install_fixture(dir.path()).unwrap();
         std::fs::remove_file(dir.path().join("models/cache/l218/weights.bin")).unwrap();
-        let snap = ModelTripleSnapshot::load(dir.path());
+        let snap = ModelTripleSnapshot::load(dir.path(), "mock");
         assert!(matches!(snap.selected, ModelFact::Value(_)));
         assert!(!snap.ready);
         assert_eq!(

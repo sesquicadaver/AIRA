@@ -1359,6 +1359,81 @@ impl AiraDesktopApp {
             ui.small(l.sys_model_executor_mock_hint);
         }
 
+        ui.separator();
+        ui.strong(l.settings_ollama_heading);
+        ui.small(l.settings_ollama_hint);
+        ui.horizontal(|ui| {
+            let process_on = matches!(
+                self.settings.llm_backend,
+                aira_desktop_runtime::LlmBackend::Process
+            );
+            if ui
+                .selectable_label(process_on, l.settings_ollama_use_process)
+                .clicked()
+            {
+                if let Some(m) = self
+                    .settings
+                    .llm_ollama_model
+                    .clone()
+                    .or_else(|| self.ollama_models.first().cloned())
+                {
+                    self.bind_ollama_process(Some(m));
+                } else {
+                    self.refresh_ollama_list();
+                    if let Some(m) = self.ollama_models.first().cloned() {
+                        self.bind_ollama_process(Some(m));
+                    } else {
+                        self.ollama_msg = Some(l.settings_ollama_empty.into());
+                    }
+                }
+            }
+            if ui
+                .selectable_label(!process_on, l.settings_ollama_use_mock)
+                .clicked()
+            {
+                self.bind_ollama_process(None);
+            }
+            if ui.button(l.settings_ollama_refresh).clicked() {
+                self.refresh_ollama_list();
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.settings_ollama_bound_model);
+            ui.monospace(
+                self.settings
+                    .llm_ollama_model
+                    .as_deref()
+                    .unwrap_or("—"),
+            );
+        });
+        if matches!(
+            self.settings_apply_phase(),
+            crate::settings_apply::SettingsApplyPhase::RestartNeeded
+        ) && matches!(
+            self.settings.llm_backend,
+            aira_desktop_runtime::LlmBackend::Process
+        ) {
+            ui.small(l.settings_ollama_restart_hint);
+        }
+        if self.ollama_models.is_empty() {
+            ui.small(l.settings_ollama_empty);
+        } else {
+            egui::ScrollArea::vertical()
+                .max_height(140.0)
+                .id_source("settings-ollama-list")
+                .show(ui, |ui| {
+                    for name in self.ollama_models.clone() {
+                        let selected = self.settings.llm_ollama_model.as_deref() == Some(name.as_str());
+                        if ui.selectable_label(selected, &name).clicked() {
+                            self.bind_ollama_process(Some(name));
+                        }
+                    }
+                });
+        }
+        if let Some(msg) = &self.ollama_msg {
+            ui.small(msg);
+        }
+
         ui.horizontal(|ui| {
             if ui.button(l.settings_models_scan).clicked() {
                 match actions::models_catalog_scan(&self.paths) {

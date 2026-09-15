@@ -6,7 +6,7 @@
 //! Draft edits that are not yet saved → [`SettingsApplyPhase::Changed`] (`#356` / RFC-0239).
 
 use aira_desktop_runtime::{
-    DesktopSettings, LifecycleStatus, NetworkProfile, PidRecordView, StartOutcome,
+    DesktopSettings, LifecycleStatus, LlmBackend, NetworkProfile, PidRecordView, StartOutcome,
     DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
@@ -30,6 +30,9 @@ pub struct AppliedRuntimeSettings {
     pub peer_listen: Option<String>,
     pub relay_ttl_days: Option<u32>,
     pub http_listen: String,
+    pub llm_backend: LlmBackend,
+    pub llm_process_bin: Option<String>,
+    pub llm_ollama_model: Option<String>,
 }
 
 impl AppliedRuntimeSettings {
@@ -40,12 +43,15 @@ impl AppliedRuntimeSettings {
             peer_listen: s.peer_listen.clone(),
             relay_ttl_days: s.relay_ttl_days,
             http_listen: s.http_listen.clone(),
+            llm_backend: s.llm_backend,
+            llm_process_bin: s.llm_process_bin.clone(),
+            llm_ollama_model: s.llm_ollama_model.clone(),
         }
     }
 
     /// Confirmed values after a successful Start / attach outcome (`#268`).
     ///
-    /// Listens come from the outcome; profile/TTL are those used for the successful start.
+    /// Listens come from the outcome; profile/TTL/LLM are those used for the successful start.
     pub fn from_start_outcome(outcome: &StartOutcome, used: &DesktopSettings) -> Self {
         let mut applied = Self::from_settings(used);
         applied.http_listen = outcome.listen.clone();
@@ -78,12 +84,18 @@ impl AppliedRuntimeSettings {
                 peer_listen: Some(pl.clone()),
                 relay_ttl_days: rec.peer_relay_ttl_days,
                 http_listen: rec.listen.clone(),
+                llm_backend: rec.llm_backend,
+                llm_process_bin: rec.llm_process_bin.clone(),
+                llm_ollama_model: rec.llm_ollama_model.clone(),
             }),
             _ => Some(Self {
                 network_profile: NetworkProfile::P0,
                 peer_listen: None,
                 relay_ttl_days: None,
                 http_listen: rec.listen.clone(),
+                llm_backend: rec.llm_backend,
+                llm_process_bin: rec.llm_process_bin.clone(),
+                llm_ollama_model: rec.llm_ollama_model.clone(),
             }),
         }
     }
@@ -94,6 +106,9 @@ impl AppliedRuntimeSettings {
             || self.peer_listen != saved.peer_listen
             || self.relay_ttl_days != saved.relay_ttl_days
             || self.http_listen != saved.http_listen
+            || self.llm_backend != saved.llm_backend
+            || self.llm_process_bin != saved.llm_process_bin
+            || self.llm_ollama_model != saved.llm_ollama_model
     }
 }
 
@@ -212,6 +227,18 @@ mod tests {
     }
 
     #[test]
+    fn llm_backend_change_needs_restart() {
+        let mut saved = sample_settings(NetworkProfile::P0);
+        let applied = AppliedRuntimeSettings::from_settings(&saved);
+        saved.llm_backend = LlmBackend::Process;
+        saved.llm_ollama_model = Some("llama3:latest".into());
+        assert_eq!(
+            settings_apply_phase(&saved, Some(&applied), false),
+            SettingsApplyPhase::RestartNeeded
+        );
+    }
+
+    #[test]
     fn draft_dirty_is_changed_before_restart() {
         let mut saved = sample_settings(NetworkProfile::P1);
         saved.peer_listen = Some("127.0.0.1:4001".into());
@@ -256,6 +283,9 @@ mod tests {
             peer_listen: None,
             peer_network_profile: None,
             peer_relay_ttl_days: None,
+            llm_backend: LlmBackend::Mock,
+            llm_process_bin: None,
+            llm_ollama_model: None,
         };
         assert!(
             AppliedRuntimeSettings::from_status(LifecycleStatus::Stopped, Some(&view)).is_none()
@@ -273,12 +303,16 @@ mod tests {
             peer_listen: None,
             peer_network_profile: None,
             peer_relay_ttl_days: None,
+            llm_backend: LlmBackend::Mock,
+            llm_process_bin: None,
+            llm_ollama_model: None,
         };
         let applied =
             AppliedRuntimeSettings::from_status(LifecycleStatus::Running, Some(&view)).unwrap();
         assert_eq!(applied.network_profile, NetworkProfile::P0);
         assert_eq!(applied.http_listen, "127.0.0.1:8787");
         assert!(applied.peer_listen.is_none());
+        assert_eq!(applied.llm_backend, LlmBackend::Mock);
         let saved = sample_settings(NetworkProfile::P1);
         assert_eq!(
             settings_apply_phase(&saved, Some(&applied), false),
@@ -297,11 +331,16 @@ mod tests {
             peer_listen: Some("127.0.0.1:4001".into()),
             peer_network_profile: Some(NetworkProfile::P1),
             peer_relay_ttl_days: None,
+            llm_backend: LlmBackend::Process,
+            llm_process_bin: Some("ollama".into()),
+            llm_ollama_model: Some("llama3:latest".into()),
         };
         let applied =
             AppliedRuntimeSettings::from_status(LifecycleStatus::Running, Some(&view)).unwrap();
         assert_eq!(applied.network_profile, NetworkProfile::P1);
         assert_eq!(applied.peer_listen.as_deref(), Some("127.0.0.1:4001"));
+        assert_eq!(applied.llm_backend, LlmBackend::Process);
+        assert_eq!(applied.llm_ollama_model.as_deref(), Some("llama3:latest"));
     }
 
     #[test]

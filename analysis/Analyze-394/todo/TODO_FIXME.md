@@ -1,4 +1,5 @@
-# Analyze-394 TODO
+# TODO_FIXME — Analyze-394
 
-- [x] `#357` M6 green (RFC-0240)
-- [x] `#358` RFC-0226 consolidating close (DONE @ Analyze-395)
+- [x] Settings schema + env spawn + ollama list UI + honest executor
+- [ ] Optional follow-up: `AIRA_LLM_EXPECTED_MODEL_REF` from activate tip when binding ollama (RFC-0223)
+- [ ] Optional: surface applied llm_backend next to Saved/Applied network lines

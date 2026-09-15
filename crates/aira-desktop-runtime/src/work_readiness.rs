@@ -111,7 +111,7 @@ pub fn evaluate_work_readiness(
     }
 
     let catalog = load_model_catalog(root).unwrap_or_default();
-    let triple = load_model_triple(root);
+    let triple = load_model_triple(root, crate::settings::LlmBackend::Mock.as_env_str());
 
     match &preference {
         WorkExecutorPreference::Auto | WorkExecutorPreference::Required(_) => {

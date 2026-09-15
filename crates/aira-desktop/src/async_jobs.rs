@@ -140,7 +140,12 @@ pub fn collect_status_snapshot(
     let (lifecycle, record) = status(paths)?;
     let system = load_system_snapshot(&paths.data_root, settings.peer_listen.as_deref())?;
     let mesh = system.network.clone();
-    let model = ModelTripleSnapshot::load(&paths.data_root);
+    // Honest executor: running node pidfile wins; otherwise configured Settings.
+    let executor = match (lifecycle, record.as_ref()) {
+        (LifecycleStatus::Running, Some(r)) => r.llm_backend.as_env_str().to_string(),
+        _ => settings.llm_backend.as_env_str().to_string(),
+    };
+    let model = ModelTripleSnapshot::load(&paths.data_root, executor);
     Ok(StatusSnapshot {
         lifecycle,
         record,

@@ -17,9 +17,10 @@ Canonical Desktop path (no CLI required):
 5. **Prepare** when the row is not ready yet; read the ready reason on the catalog row.
 6. On **Work**, choose executor **Auto**, **Specific model**, or **Compare**. Built-in calculation (for example `Calculate 2 + 2`) does **not** need a model and cannot use Compare.
 7. **Compare** needs two **different** available catalog models (A and B). Both must be ready before Run. A and B run sequentially on the same draft; if B fails, A’s result stays — there is **no silent substitute** of tip or another model.
-8. If Work shows the **demo / reference mock** banner, open **Settings → Models** — mock text generation is not a real local LLM run (see help:work.result).
+8. **Ollama (process executor):** under Settings → Models, **Refresh ollama list**, pick a host model name, and choose **Use Ollama process**. This sets `AIRA_LLM_BACKEND=process` for the **next** node start (`run <model>`). It is **not** the AIRA catalog, **not** VERIFIED, and does **not** replace Phase D Prepare/activate. Until you **Stop** then **Start** the node, Apply may show Restart needed and the running executor may still be mock.
+9. If Work shows the **demo / reference mock** banner, open **Settings → Models** — either bind Ollama (then restart) or accept mock text generation (see help:work.result).
 
-Optional tooling (not required for the GUI path): `aira models scan|list|activate`.
+Optional tooling (not required for the GUI path): `aira models scan|list|activate`; env `AIRA_LLM_BACKEND=process` for Dev.
 
 ## What should happen?
 

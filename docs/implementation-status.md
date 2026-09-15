@@ -161,7 +161,7 @@ CI: `cargo run -p aira-cli -- schema validate --fixtures fixtures` (QUEUE #38).
 | `aira:schema:settlement:receipt:0.1` | `settlement/receipt.schema.json` | valid + unsigned + raw_prompt invalid | **DONE** (#172) |
 | `aira:schema:research:promotion-candidate:0.1` | `research/promotion-candidate.schema.json` | valid + unsigned + missing-source invalid | **DONE** (#178) |
 | `aira:schema:identity:identity-descriptor:0.1` | `identity/identity-descriptor.schema.json` | valid | **DONE** |
-| `aira:schema:desktop:settings:0.1` | `desktop/settings.schema.json` | valid + missing-instance-id invalid | **DONE** |
+| `aira:schema:desktop:settings:0.1` | `desktop/settings.schema.json` | valid + ollama-process + missing-instance-id invalid | **DONE** (RFC-0241 LLM optional) |
 
 Duplicate policy schema files share the same `$id`; they are not two contracts.
 
