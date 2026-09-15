@@ -84,6 +84,10 @@ pub struct AiraDesktopApp {
     pub(super) lifecycle: LifecycleStatus,
     pub(super) problem_text: String,
     pub(super) work_result: Option<crate::work_view::WorkResultView>,
+    /// Compare leg B (`#354`); cleared on single submit.
+    pub(super) work_result_b: Option<crate::work_view::WorkResultView>,
+    /// Explicit Compare B failure (A kept); never silent substitute.
+    pub(super) work_compare_b_error: Option<String>,
     pub(super) status_label: String,
     pub(super) detail: String,
     pub(super) peer_detail: String,
@@ -97,9 +101,11 @@ pub struct AiraDesktopApp {
     pub(super) catalog_auto: bool,
     pub(super) catalog_add_ref: String,
     pub(super) catalog_msg: Option<String>,
-    /// Work executor Auto / specific + readiness (`#349` / RFC-0232).
-    pub(super) work_executor_auto: bool,
+    /// Work executor Auto / Specific / Compare + readiness (`#349` / `#354`).
+    pub(super) work_executor_mode: work::WorkExecutorUiMode,
     pub(super) work_required_ref: String,
+    pub(super) work_compare_a: String,
+    pub(super) work_compare_b: String,
     pub(super) work_readiness: WorkReadiness,
     pub(super) peer_listen_edit: String,
     pub(super) relay_ttl_edit: String,
@@ -188,6 +194,8 @@ impl AiraDesktopApp {
             lifecycle: LifecycleStatus::Stopped,
             problem_text: String::new(),
             work_result: None,
+            work_result_b: None,
+            work_compare_b_error: None,
             status_label: Labels::get(UiLang::En).st_stopped.into(),
             detail: String::new(),
             peer_detail: String::new(),
@@ -199,8 +207,10 @@ impl AiraDesktopApp {
             catalog_auto: true,
             catalog_add_ref: String::new(),
             catalog_msg: None,
-            work_executor_auto: true,
+            work_executor_mode: work::WorkExecutorUiMode::Auto,
             work_required_ref: String::new(),
+            work_compare_a: String::new(),
+            work_compare_b: String::new(),
             work_readiness,
             peer_listen_edit,
             relay_ttl_edit,
@@ -423,8 +433,22 @@ impl AiraDesktopApp {
         }
         if let Some(outcome) = self.async_jobs.poll_submit() {
             match outcome {
-                Ok(view) => {
-                    self.work_result = Some(view);
+                Ok(job) => {
+                    self.work_result = Some(job.primary);
+                    match job.compare_b {
+                        None => {
+                            self.work_result_b = None;
+                            self.work_compare_b_error = None;
+                        }
+                        Some(Ok(b)) => {
+                            self.work_result_b = Some(b);
+                            self.work_compare_b_error = None;
+                        }
+                        Some(Err(e)) => {
+                            self.work_result_b = None;
+                            self.work_compare_b_error = Some(e);
+                        }
+                    }
                     self.model_triple.used = self.used_model_fact();
                     self.clear_problem();
                     // Lifecycle may have changed if submit started the node.
@@ -510,7 +534,9 @@ impl AiraDesktopApp {
         resolve_help_routing(
             self.help_focus,
             self.tab,
-            self.work_result.is_some(),
+            self.work_result.is_some()
+                || self.work_result_b.is_some()
+                || self.work_compare_b_error.is_some(),
             self.async_jobs.work_inflight(),
         )
     }
