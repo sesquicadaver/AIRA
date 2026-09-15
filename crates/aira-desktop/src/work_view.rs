@@ -1,7 +1,8 @@
 //! Human-first view of `POST /v1/problems` JSON (Work screen).
 //!
-//! Product order: answer → run status → verification → provenance → technical details.
-//! Never invent VERIFIED or a model name when the payload does not say so (`#260`).
+//! Product order: answer → run status → verification → provenance → model triple →
+//! technical details. Never invent VERIFIED or a model name when the payload does
+//! not say so (`#260`). Mock ≠ used-model (`#339` / `#350`).
 
 use serde_json::Value;
 
@@ -20,6 +21,27 @@ pub enum ProvenanceKind {
     NeedsAttention,
 }
 
+/// Wire label for an explicit mock executor (never a `model_ref`).
+pub const EXECUTED_MOCK_LABEL: &str = "mock";
+
+/// Submit-time model facts that HTTP may not echo (`#350` / RFC-0233).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct WorkSubmitModelContext {
+    /// What Work asked for (`AdmissionConstraints.model_ref`).
+    pub requested: Option<String>,
+    /// Activate/selected tip observed at submit (may differ from requested).
+    pub applied: Option<String>,
+}
+
+/// Honest requested ≠ applied ≠ executed projection for one Work result (`#350`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ResultModelTriple {
+    pub requested: Option<String>,
+    pub applied: Option<String>,
+    /// Model that ran, or [`EXECUTED_MOCK_LABEL`] when backend is mock.
+    pub executed: Option<String>,
+}
+
 /// Parsed Work result: lead with the human answer; keep VRA JSON secondary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkResultView {
@@ -33,6 +55,8 @@ pub struct WorkResultView {
     pub provenance: ProvenanceKind,
     /// Model identity used in this result only (`#269` / `#283`) — never a backend id.
     pub used_model: Option<String>,
+    /// Requested / applied / executed honesty (`#350`).
+    pub model_triple: ResultModelTriple,
     pub problem_id: Option<String>,
     pub verified_artifact_id: Option<String>,
     pub execution_artifact_id: Option<String>,
@@ -59,8 +83,8 @@ impl WorkResultView {
     }
 }
 
-/// Format a `/v1/problems` JSON value for the Desktop Work screen.
-pub fn format_work_result(v: &Value) -> WorkResultView {
+/// Format a `/v1/problems` JSON value for the Desktop Work screen (`#350`).
+pub fn format_work_result_with_context(v: &Value, ctx: &WorkSubmitModelContext) -> WorkResultView {
     let status = opt_str(v, "status").unwrap_or_else(|| "unknown".into());
     let problem_id = opt_str(v, "problem_id");
     let verified_artifact_id = opt_str(v, "verified_artifact_id");
@@ -70,6 +94,7 @@ pub fn format_work_result(v: &Value) -> WorkResultView {
     let answer = extract_answer(v).map(summarize_value).unwrap_or_default();
     let provenance = classify_provenance(v, &status, verification_status.as_deref(), &answer);
     let used_model = extract_used_model(v, provenance);
+    let model_triple = assemble_result_model_triple(ctx, provenance, used_model.as_deref());
     let details_json = serde_json::to_string_pretty(v).unwrap_or_else(|_| v.to_string());
     WorkResultView {
         answer,
@@ -77,11 +102,32 @@ pub fn format_work_result(v: &Value) -> WorkResultView {
         verification_status,
         provenance,
         used_model,
+        model_triple,
         problem_id,
         verified_artifact_id,
         execution_artifact_id,
         field_artifact_id,
         details_json,
+    }
+}
+
+/// Build requested ≠ applied ≠ executed without inventing a real model for mock.
+pub fn assemble_result_model_triple(
+    ctx: &WorkSubmitModelContext,
+    provenance: ProvenanceKind,
+    used_model: Option<&str>,
+) -> ResultModelTriple {
+    let executed = match provenance {
+        ProvenanceKind::MockGenerate => Some(EXECUTED_MOCK_LABEL.to_string()),
+        ProvenanceKind::LocalGenerateExecuted => used_model.map(str::to_string),
+        ProvenanceKind::VerifiedLocalCompute
+        | ProvenanceKind::ModelUndefined
+        | ProvenanceKind::NeedsAttention => None,
+    };
+    ResultModelTriple {
+        requested: ctx.requested.clone(),
+        applied: ctx.applied.clone(),
+        executed,
     }
 }
 
@@ -216,6 +262,10 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    fn fmt_default(v: &Value) -> WorkResultView {
+        format_work_result_with_context(v, &WorkSubmitModelContext::default())
+    }
+
     /// Envelope shaped like the Work-tab dump: human answer buried as `result.result`.
     fn completed_vra_like_user_paste() -> Value {
         json!({
@@ -251,7 +301,7 @@ mod tests {
     #[test]
     fn completed_vra_leads_with_answer_and_verified_not_hashes() {
         let v = completed_vra_like_user_paste();
-        let view = format_work_result(&v);
+        let view = fmt_default(&v);
         let lead = view.human_lead();
 
         assert!(
@@ -296,12 +346,13 @@ mod tests {
             .as_deref()
             .unwrap_or("")
             .starts_with("aira:artifact:"));
+        assert!(view.model_triple.executed.is_none());
     }
 
     #[test]
     fn primitive_result_still_surfaces_answer() {
         let v = json!({ "status": "completed", "result": 4.0 });
-        let view = format_work_result(&v);
+        let view = fmt_default(&v);
         assert!(view.answer.contains('4'));
         assert_eq!(view.status, "completed");
         assert!(view.verification_status.is_none());
@@ -315,7 +366,7 @@ mod tests {
             "problem_id": "aira:problem:x",
             "field_artifact_id": "aira:artifact:field"
         });
-        let view = format_work_result(&v);
+        let view = fmt_default(&v);
         assert!(view.answer.is_empty());
         assert_eq!(view.status, "needs_human_collapse");
         assert_eq!(view.provenance, ProvenanceKind::NeedsAttention);
@@ -343,7 +394,7 @@ mod tests {
     #[test]
     fn executed_generate_local_leads_with_result_not_verified() {
         let v = executed_generate_local_like_http();
-        let view = format_work_result(&v);
+        let view = fmt_default(&v);
         let lead = view.human_lead();
 
         assert!(
@@ -357,6 +408,10 @@ mod tests {
             view.used_model.is_none(),
             "mock backend must not fill used model (#283), got {:?}",
             view.used_model
+        );
+        assert_eq!(
+            view.model_triple.executed.as_deref(),
+            Some(EXECUTED_MOCK_LABEL)
         );
         assert!(
             view.verification_status.is_none(),
@@ -386,12 +441,64 @@ mod tests {
     }
 
     #[test]
+    fn mock_result_triple_keeps_requested_applied_distinct_from_executed() {
+        let ctx = WorkSubmitModelContext {
+            requested: Some("aira:model:want".into()),
+            applied: Some("aira:model:tip".into()),
+        };
+        let view = format_work_result_with_context(&executed_generate_local_like_http(), &ctx);
+        assert_eq!(
+            view.model_triple.requested.as_deref(),
+            Some("aira:model:want")
+        );
+        assert_eq!(view.model_triple.applied.as_deref(), Some("aira:model:tip"));
+        assert_eq!(
+            view.model_triple.executed.as_deref(),
+            Some(EXECUTED_MOCK_LABEL)
+        );
+        assert!(view.used_model.is_none());
+        assert_ne!(
+            view.model_triple.requested.as_deref(),
+            view.model_triple.executed.as_deref()
+        );
+    }
+
+    #[test]
+    fn process_result_triple_uses_payload_model_as_executed() {
+        let ctx = WorkSubmitModelContext {
+            requested: Some("aira:model:want".into()),
+            applied: Some("aira:model:want".into()),
+        };
+        let view = format_work_result_with_context(
+            &json!({
+                "status": "executed",
+                "result": {
+                    "result": "hi",
+                    "action": "text.generate.local",
+                    "backend": "process",
+                    "model_ref": "aira:model:fixture"
+                }
+            }),
+            &ctx,
+        );
+        assert_eq!(view.used_model.as_deref(), Some("aira:model:fixture"));
+        assert_eq!(
+            view.model_triple.executed.as_deref(),
+            Some("aira:model:fixture")
+        );
+        assert_eq!(
+            view.model_triple.requested.as_deref(),
+            Some("aira:model:want")
+        );
+    }
+
+    #[test]
     fn used_model_never_takes_backend_id() {
-        let mock = format_work_result(&executed_generate_local_like_http());
+        let mock = fmt_default(&executed_generate_local_like_http());
         assert!(mock.used_model.is_none());
         assert_eq!(mock.provenance, ProvenanceKind::MockGenerate);
 
-        let process_only = format_work_result(&json!({
+        let process_only = fmt_default(&json!({
             "status": "executed",
             "result": {
                 "result": "hi",
@@ -409,7 +516,7 @@ mod tests {
             ProvenanceKind::LocalGenerateExecuted
         );
 
-        let with_ref = format_work_result(&json!({
+        let with_ref = fmt_default(&json!({
             "status": "executed",
             "result": {
                 "result": "hi",
@@ -428,7 +535,7 @@ mod tests {
             "used model must not be a backend id"
         );
 
-        let forged_backend_as_ref = format_work_result(&json!({
+        let forged_backend_as_ref = fmt_default(&json!({
             "status": "executed",
             "result": {
                 "result": "hi",
@@ -441,7 +548,7 @@ mod tests {
             "model_ref starting with backend: is rejected (#283)"
         );
 
-        let verified = format_work_result(&completed_vra_like_user_paste());
+        let verified = fmt_default(&completed_vra_like_user_paste());
         assert!(
             verified.used_model.is_none(),
             "C1 VERIFIED without model evidence → no used model, got {:?}",
@@ -459,21 +566,21 @@ mod tests {
                 "action": "text.generate.local"
             }
         });
-        let view = format_work_result(&v);
+        let view = fmt_default(&v);
         assert_eq!(view.provenance, ProvenanceKind::ModelUndefined);
         assert!(view.verification_status.is_none());
     }
 
     #[test]
     fn string_and_object_answers_are_summarized() {
-        let s = format_work_result(&json!({
+        let s = fmt_default(&json!({
             "status": "completed",
             "result": { "result": "hello", "verification_status": "VERIFIED" }
         }));
         assert_eq!(s.answer, "hello");
         assert_eq!(s.provenance, ProvenanceKind::VerifiedLocalCompute);
 
-        let obj = format_work_result(&json!({
+        let obj = fmt_default(&json!({
             "status": "completed",
             "result": {
                 "result": { "a": 1, "b": 2, "c": 3, "d": 4 },

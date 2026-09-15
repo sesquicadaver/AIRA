@@ -1,0 +1,4 @@
+- [x] Work mock banner + Settings CTA
+- [x] Result requested/applied/executed triple
+- [x] RFC-0233; tip → first OPEN `#351`
+- [ ] Network/address honesty → `#351` / Analyze-388

@@ -23,7 +23,7 @@ use aira_desktop_runtime::{
 };
 
 use crate::actions;
-use crate::work_view::WorkResultView;
+use crate::work_view::{WorkResultView, WorkSubmitModelContext};
 
 /// Interval for light status polling while the window is open.
 pub const STATUS_REFRESH_INTERVAL: Duration = Duration::from_secs(2);
@@ -158,6 +158,7 @@ pub fn run_submit_job(
     text: &str,
     ensure_started: bool,
     admission: &aira_flow::AdmissionConstraints,
+    model_ctx: &WorkSubmitModelContext,
 ) -> anyhow::Result<WorkResultView> {
     if ensure_started {
         let (st, _) = status(paths)?;
@@ -165,7 +166,7 @@ pub fn run_submit_job(
             let _ = start(paths, node_bin)?;
         }
     }
-    actions::submit_problem_with_admission(paths, settings, text, admission)
+    actions::submit_problem_with_admission(paths, settings, text, admission, model_ctx)
 }
 
 /// In-flight submit / refresh / dial slots (at most one of each).
@@ -206,7 +207,7 @@ impl AsyncDesktopJobs {
 
     /// Start at most one submit worker. Returns false if already in flight
     /// or a lifecycle op is running (`#302` — no parallel `start()`).
-    #[allow(clippy::too_many_arguments)] // paths/settings/admission + callback stay explicit for Desktop jobs
+    #[allow(clippy::too_many_arguments)] // paths/settings/admission/model_ctx + callback stay explicit
     pub fn try_spawn_submit(
         &mut self,
         paths: DesktopPaths,
@@ -215,6 +216,7 @@ impl AsyncDesktopJobs {
         text: String,
         ensure_started: bool,
         admission: aira_flow::AdmissionConstraints,
+        model_ctx: WorkSubmitModelContext,
         on_done: impl FnOnce() + Send + 'static,
     ) -> bool {
         if !admit_submit_lifecycle(
@@ -234,6 +236,7 @@ impl AsyncDesktopJobs {
                 &text,
                 ensure_started,
                 &admission,
+                &model_ctx,
             )
             .map_err(|e| format!("{e:#}"));
             let _ = tx.send(outcome);
@@ -464,6 +467,7 @@ mod tests {
             "Calculate 2 + 2".into(),
             false,
             aira_flow::AdmissionConstraints::default(),
+            WorkSubmitModelContext::default(),
             || {}
         ));
     }
@@ -489,6 +493,7 @@ mod tests {
             "Calculate 2 + 2".into(),
             true,
             aira_flow::AdmissionConstraints::default(),
+            WorkSubmitModelContext::default(),
             || {}
         ));
     }
@@ -583,6 +588,7 @@ mod tests {
             "  \n",
             false,
             &aira_flow::AdmissionConstraints::default(),
+            &WorkSubmitModelContext::default(),
         )
         .unwrap_err()
         .to_string();

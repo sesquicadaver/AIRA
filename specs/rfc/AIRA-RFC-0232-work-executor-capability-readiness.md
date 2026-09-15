@@ -42,7 +42,7 @@ generate Auto without tip → not ready; submit blocked
 generate Required empty → not ready
 generate Auto/Required available → ready; admission.model_ref set
 UI shows Auto/specific + readiness; choice ≠ VERIFIED
-Tip → first OPEN #350
+Tip → #350 DONE; first OPEN #351
 ```
 
 ## 8. References
