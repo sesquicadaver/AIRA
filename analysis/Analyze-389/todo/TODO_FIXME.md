@@ -1,4 +1,4 @@
 - [x] Human Program button labels EN/UK
 - [x] Settings≠System Connection IA
 - [x] RFC-0235; tip → first OPEN `#353`
-- [ ] Help F1 model path → `#353` / Analyze-390
+- [x] Help F1 model path → `#353` / Analyze-390 **DONE** @ RFC-0236
