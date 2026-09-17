@@ -74,6 +74,7 @@ impl AiraDesktopApp {
         let gate = work_submit_gate(
             self.async_jobs.work_inflight(),
             self.async_jobs.lifecycle_inflight(),
+            self.async_jobs.catalog_mutate_inflight(),
         );
         if !gate.available {
             if let Some(code) = gate.reason {
@@ -167,6 +168,8 @@ impl AiraDesktopApp {
         if !started {
             let code = if self.async_jobs.lifecycle_inflight() {
                 ErrorCode::LifecycleBusy
+            } else if self.async_jobs.catalog_mutate_inflight() {
+                ErrorCode::CatalogBusy
             } else {
                 ErrorCode::WorkSubmitInFlight
             };

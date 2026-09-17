@@ -14,6 +14,7 @@ Settings → Models: bind host Ollama as process executor; choose model from `ol
 - **RFC-0243:** per-request `host_cli_model` argv; lifecycle/attach honesty; Verify after quarantine; async catalog; timeouts; Work result binding; M6 ≠ installed-product
 - **Re-audit P0 (ef0503a):** R1 Work readiness uses GUI/`DesktopPaths` settings (no load-or-create under data_root); R2 `host_cli_model` from signed evidence; R3 file weights fail-closed on ollama ProcessBackend
 - **Re-audit P1:** R4 admitted `model_ref` forces `text.generate.local` (no math/echo/upper escape); R5 bounded binder read; R6 exclusive unique materialize temps + concurrent test
+- **Re-audit P2:** bidirectional Work↔catalog lock; async Add; `ollama list` kill+wait; Stop confirms death before pidfile clear; Compare A via `WorkJobEvent::ComparePrimary`; timeout GUI + pidfile + `work.timed_out`
 
 ## Canon
 
@@ -22,3 +23,4 @@ Settings → Models: bind host Ollama as process executor; choose model from `ol
 - C1/alpha/C0 causality use process `Executed` ≠ VERIFIED
 - Settings tip ≠ sole executor; admission binding drives per-request ollama model
 - Executed ≠ VERIFIED; Choice ≠ VERIFIED; activated ≠ weight-verified
+- Catalog mutate and Work submit are mutually exclusive; Cancel honesty (no Esc-as-cancel)

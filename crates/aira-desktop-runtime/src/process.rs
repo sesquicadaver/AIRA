@@ -45,6 +45,9 @@ struct PidRecord {
     llm_process_bin: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     llm_ollama_model: Option<String>,
+    /// Process generate deadline applied at spawn (P2 / RFC-0243).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    llm_process_timeout_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -130,6 +133,7 @@ pub fn start(paths: &DesktopPaths, node_bin: Option<PathBuf>) -> Result<StartOut
             llm_backend: Some(settings.llm_backend),
             llm_process_bin: settings.llm_process_bin.clone(),
             llm_ollama_model: settings.llm_ollama_model.clone(),
+            llm_process_timeout_ms: settings.llm_process_timeout_ms,
         },
     )?;
 
@@ -190,6 +194,22 @@ pub fn stop(paths: &DesktopPaths) -> Result<LifecycleStatus> {
         std::thread::sleep(Duration::from_millis(100));
     }
     signal_kill(rec.pid)?;
+    // P2 / audit #10: confirm death before clearing records (no casual wipe).
+    let kill_deadline = std::time::Instant::now();
+    const KILL_WAIT: Duration = Duration::from_secs(2);
+    while kill_deadline.elapsed() < KILL_WAIT {
+        if !pid_alive(rec.pid) {
+            clear_runtime_files(paths);
+            return Ok(LifecycleStatus::Stopped);
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    if pid_alive(rec.pid) {
+        bail!(
+            "Stop failed: pid {} still alive after SIGKILL — pidfile kept; Retry Stop",
+            rec.pid
+        );
+    }
     clear_runtime_files(paths);
     Ok(LifecycleStatus::Stopped)
 }
@@ -229,6 +249,7 @@ pub fn status(paths: &DesktopPaths) -> Result<(LifecycleStatus, Option<PidRecord
         llm_backend: rec.llm_backend.unwrap_or(LlmBackend::Mock),
         llm_process_bin: rec.llm_process_bin.clone(),
         llm_ollama_model: rec.llm_ollama_model.clone(),
+        llm_process_timeout_ms: rec.llm_process_timeout_ms,
     };
 
     if !pid_alive(rec.pid) {
@@ -257,6 +278,8 @@ pub struct PidRecordView {
     pub llm_backend: LlmBackend,
     pub llm_process_bin: Option<String>,
     pub llm_ollama_model: Option<String>,
+    /// Applied process generate timeout from pidfile (P2).
+    pub llm_process_timeout_ms: Option<u64>,
 }
 
 fn try_attach(paths: &DesktopPaths, settings: &DesktopSettings) -> Result<Option<StartOutcome>> {
@@ -272,6 +295,7 @@ fn try_attach(paths: &DesktopPaths, settings: &DesktopSettings) -> Result<Option
                 used.llm_backend = rec.llm_backend.unwrap_or(LlmBackend::Mock);
                 used.llm_process_bin = rec.llm_process_bin.clone();
                 used.llm_ollama_model = rec.llm_ollama_model.clone();
+                used.llm_process_timeout_ms = rec.llm_process_timeout_ms;
                 return Ok(Some(StartOutcome {
                     status: LifecycleStatus::Running,
                     attached: true,
@@ -287,7 +311,16 @@ fn try_attach(paths: &DesktopPaths, settings: &DesktopSettings) -> Result<Option
             }
             // Stale unhealthy — stop and continue to fresh start.
             let _ = signal_kill(rec.pid);
-            clear_runtime_files(paths);
+            let kill_deadline = std::time::Instant::now();
+            while kill_deadline.elapsed() < Duration::from_secs(2) {
+                if !pid_alive(rec.pid) {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            if !pid_alive(rec.pid) {
+                clear_runtime_files(paths);
+            }
             return Ok(None);
         }
         if pid_alive(rec.pid) {
@@ -378,13 +411,19 @@ fn clear_runtime_files(paths: &DesktopPaths) {
 }
 
 pub(crate) fn pid_alive(pid: u32) -> bool {
-    Command::new("kill")
-        .args(["-0", &pid.to_string()])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+    // Prefer /proc: `kill -0` stays true for zombies until reaped, which would
+    // falsely block Stop confirmation after SIGKILL (P2).
+    match fs::read_to_string(format!("/proc/{pid}/stat")) {
+        Ok(stat) => {
+            // `pid (comm) state ...` — comm may contain spaces/parens; state follows last `)`.
+            let Some(idx) = stat.rfind(')') else {
+                return true;
+            };
+            let state = stat[idx + 1..].trim_start().chars().next().unwrap_or('?');
+            state != 'Z'
+        }
+        Err(_) => false,
+    }
 }
 
 pub(crate) fn signal_term(pid: u32) -> Result<()> {

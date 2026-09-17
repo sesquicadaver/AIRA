@@ -33,6 +33,7 @@ pub struct AppliedRuntimeSettings {
     pub llm_backend: LlmBackend,
     pub llm_process_bin: Option<String>,
     pub llm_ollama_model: Option<String>,
+    pub llm_process_timeout_ms: Option<u64>,
 }
 
 impl AppliedRuntimeSettings {
@@ -46,6 +47,7 @@ impl AppliedRuntimeSettings {
             llm_backend: s.llm_backend,
             llm_process_bin: s.llm_process_bin.clone(),
             llm_ollama_model: s.llm_ollama_model.clone(),
+            llm_process_timeout_ms: s.llm_process_timeout_ms,
         }
     }
 
@@ -87,6 +89,7 @@ impl AppliedRuntimeSettings {
                 llm_backend: rec.llm_backend,
                 llm_process_bin: rec.llm_process_bin.clone(),
                 llm_ollama_model: rec.llm_ollama_model.clone(),
+                llm_process_timeout_ms: rec.llm_process_timeout_ms,
             }),
             _ => Some(Self {
                 network_profile: NetworkProfile::P0,
@@ -96,6 +99,7 @@ impl AppliedRuntimeSettings {
                 llm_backend: rec.llm_backend,
                 llm_process_bin: rec.llm_process_bin.clone(),
                 llm_ollama_model: rec.llm_ollama_model.clone(),
+                llm_process_timeout_ms: rec.llm_process_timeout_ms,
             }),
         }
     }
@@ -109,6 +113,7 @@ impl AppliedRuntimeSettings {
             || self.llm_backend != saved.llm_backend
             || self.llm_process_bin != saved.llm_process_bin
             || self.llm_ollama_model != saved.llm_ollama_model
+            || self.llm_process_timeout_ms != saved.llm_process_timeout_ms
     }
 }
 
@@ -304,6 +309,7 @@ mod tests {
             llm_backend: LlmBackend::Mock,
             llm_process_bin: None,
             llm_ollama_model: None,
+            llm_process_timeout_ms: None,
         };
         assert!(
             AppliedRuntimeSettings::from_status(LifecycleStatus::Stopped, Some(&view)).is_none()
@@ -324,6 +330,7 @@ mod tests {
             llm_backend: LlmBackend::Mock,
             llm_process_bin: None,
             llm_ollama_model: None,
+            llm_process_timeout_ms: None,
         };
         let applied =
             AppliedRuntimeSettings::from_status(LifecycleStatus::Running, Some(&view)).unwrap();
@@ -352,6 +359,7 @@ mod tests {
             llm_backend: LlmBackend::Process,
             llm_process_bin: Some("ollama".into()),
             llm_ollama_model: Some("llama3:latest".into()),
+            llm_process_timeout_ms: Some(120_000),
         };
         let applied =
             AppliedRuntimeSettings::from_status(LifecycleStatus::Running, Some(&view)).unwrap();

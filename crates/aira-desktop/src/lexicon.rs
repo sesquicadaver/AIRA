@@ -138,12 +138,19 @@ impl ActionGate {
     }
 }
 
-/// Gate for Work submit: at most one in-flight job (`#257`); blocked during lifecycle (`#302`).
-pub fn work_submit_gate(work_inflight: bool, lifecycle_inflight: bool) -> ActionGate {
+/// Gate for Work submit: at most one in-flight job (`#257`); blocked during
+/// lifecycle (`#302`) or catalog mutate (P2 reverse lock).
+pub fn work_submit_gate(
+    work_inflight: bool,
+    lifecycle_inflight: bool,
+    catalog_mutate_inflight: bool,
+) -> ActionGate {
     if work_inflight {
         ActionGate::blocked(ActionId::WorkSubmit, ErrorCode::WorkSubmitInFlight)
     } else if lifecycle_inflight {
         ActionGate::blocked(ActionId::WorkSubmit, ErrorCode::LifecycleBusy)
+    } else if catalog_mutate_inflight {
+        ActionGate::blocked(ActionId::WorkSubmit, ErrorCode::CatalogBusy)
     } else {
         ActionGate::open(ActionId::WorkSubmit)
     }
@@ -174,6 +181,10 @@ pub enum ErrorCode {
     /// Phase S `#302`: Start/Stop blocked while Work submit is in flight.
     WorkBusyLifecycle,
     WorkSubmitFailed,
+    /// P2: process generate deadline exceeded (`TIMED_OUT`).
+    WorkTimedOut,
+    /// P2: Work blocked while catalog Prepare/Select/Verify/Add runs.
+    CatalogBusy,
     /// `#349` / RFC-0232: generate-local not ready (math still submits).
     WorkModelUnready,
     StatusRefreshFailed,
@@ -194,6 +205,8 @@ impl ErrorCode {
             Self::LifecycleBusy => "desktop.lifecycle_busy",
             Self::WorkBusyLifecycle => "desktop.work_busy_lifecycle",
             Self::WorkSubmitFailed => "work.submit_failed",
+            Self::WorkTimedOut => "work.timed_out",
+            Self::CatalogBusy => "desktop.catalog_busy",
             Self::WorkModelUnready => "work.model_unready",
             Self::StatusRefreshFailed => "status.refresh_failed",
             Self::NodeStartFailed => "node.start_failed",
@@ -207,10 +220,11 @@ impl ErrorCode {
 
     pub fn help_id(self) -> HelpId {
         match self {
-            Self::WorkEmptyText | Self::WorkSubmitInFlight | Self::WorkSubmitFailed => {
-                HelpId::WorkSubmit
-            }
-            Self::WorkModelUnready => HelpId::ModelUnavailable,
+            Self::WorkEmptyText
+            | Self::WorkSubmitInFlight
+            | Self::WorkSubmitFailed
+            | Self::WorkTimedOut => HelpId::WorkSubmit,
+            Self::WorkModelUnready | Self::CatalogBusy => HelpId::ModelUnavailable,
             Self::LifecycleBusy | Self::WorkBusyLifecycle => HelpId::NodeLifecycle,
             Self::StatusRefreshFailed | Self::MeshSnapshotFailed => HelpId::NetworkReachability,
             Self::NodeStartFailed | Self::NodeStopFailed | Self::AutostartSyncFailed => {
@@ -224,7 +238,7 @@ impl ErrorCode {
     pub fn corrective_action(self) -> Option<ActionId> {
         match self {
             Self::WorkEmptyText => Some(ActionId::WorkSubmit),
-            Self::WorkSubmitFailed => Some(ActionId::WorkSubmit),
+            Self::WorkSubmitFailed | Self::WorkTimedOut => Some(ActionId::WorkSubmit),
             Self::WorkModelUnready => Some(ActionId::WorkSubmit),
             Self::StatusRefreshFailed | Self::MeshSnapshotFailed => Some(ActionId::StatusRefresh),
             Self::NodeStartFailed => Some(ActionId::NodeStart),
@@ -233,6 +247,7 @@ impl ErrorCode {
             Self::WorkSubmitInFlight
             | Self::LifecycleBusy
             | Self::WorkBusyLifecycle
+            | Self::CatalogBusy
             | Self::AutostartSyncFailed
             | Self::Generic => None,
         }
@@ -270,6 +285,18 @@ impl ErrorCode {
             }
             (UiLang::Uk, Self::WorkSubmitFailed) => {
                 "Не вдалося надіслати завдання. Перевірте, що AIRA запущена, і спробуйте знову."
+            }
+            (UiLang::En, Self::WorkTimedOut) => {
+                "The model did not finish before the process timeout. Raise llm_process_timeout_ms or retry."
+            }
+            (UiLang::Uk, Self::WorkTimedOut) => {
+                "Модель не встигла до таймауту процесу. Збільште llm_process_timeout_ms або спробуйте знову."
+            }
+            (UiLang::En, Self::CatalogBusy) => {
+                "A catalog change (Add/Prepare/Select/Verify) is running. Wait before submitting Work."
+            }
+            (UiLang::Uk, Self::CatalogBusy) => {
+                "Триває зміна каталогу (Add/Prepare/Select/Verify). Дочекайтеся перед надсиланням Work."
             }
             (UiLang::En, Self::WorkModelUnready) => {
                 "Text generation is not ready yet. Use Auto tip or pick an available model — calculation still works without one. Choice ≠ VERIFIED."
@@ -349,6 +376,8 @@ impl UiProblem {
         let lower = err.to_ascii_lowercase();
         let code = if lower.contains("non-empty") {
             ErrorCode::WorkEmptyText
+        } else if lower.contains("timed out") || lower.contains("timeout") {
+            ErrorCode::WorkTimedOut
         } else {
             ErrorCode::WorkSubmitFailed
         };
@@ -409,6 +438,8 @@ mod tests {
             ErrorCode::LifecycleBusy,
             ErrorCode::WorkBusyLifecycle,
             ErrorCode::WorkSubmitFailed,
+            ErrorCode::WorkTimedOut,
+            ErrorCode::CatalogBusy,
             ErrorCode::WorkModelUnready,
             ErrorCode::StatusRefreshFailed,
             ErrorCode::NodeStartFailed,
@@ -437,14 +468,27 @@ mod tests {
 
     #[test]
     fn work_submit_gate_blocks_when_inflight() {
-        assert!(work_submit_gate(false, false).available);
-        let g = work_submit_gate(true, false);
+        assert!(work_submit_gate(false, false, false).available);
+        let g = work_submit_gate(true, false, false);
         assert!(!g.available);
         assert_eq!(g.reason, Some(ErrorCode::WorkSubmitInFlight));
         assert_eq!(g.action.as_str(), "work.submit");
-        let g2 = work_submit_gate(false, true);
+        let g2 = work_submit_gate(false, true, false);
         assert!(!g2.available);
         assert_eq!(g2.reason, Some(ErrorCode::LifecycleBusy));
+        let g3 = work_submit_gate(false, false, true);
+        assert!(!g3.available);
+        assert_eq!(g3.reason, Some(ErrorCode::CatalogBusy));
+    }
+
+    #[test]
+    fn timed_out_submit_classifies_to_work_timed_out() {
+        let p = UiProblem::from_submit_err(
+            "generate process timed out (fail-closed; not VERIFIED)",
+            UiLang::En,
+        );
+        assert_eq!(p.code, ErrorCode::WorkTimedOut);
+        assert_eq!(p.corrective, Some(ActionId::WorkSubmit));
     }
 
     #[test]

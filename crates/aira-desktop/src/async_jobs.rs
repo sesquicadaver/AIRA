@@ -125,12 +125,28 @@ pub fn quit_arm_policy(work_inflight: bool) -> QuitArm {
     }
 }
 
-/// Pack D: Prepare/Select/materialize must not run while Work is in flight.
+/// Pack D / P2: Prepare/Select/Verify/Add must not run while Work is in flight.
 pub fn catalog_mutate_allowed(work_inflight: bool) -> bool {
     !work_inflight
 }
 
-/// Background catalog / ollama-list job kinds (Pack D / audit #3).
+/// P2 reverse lock: Work submit must not run while catalog mutate is in flight.
+pub fn work_allowed_during_catalog(catalog_mutate_inflight: bool) -> bool {
+    !catalog_mutate_inflight
+}
+
+/// Whether a catalog job kind mutates weights / tip (locks Work).
+pub fn catalog_job_mutates(kind: CatalogJobKind) -> bool {
+    matches!(
+        kind,
+        CatalogJobKind::Prepare
+            | CatalogJobKind::Select
+            | CatalogJobKind::Verify
+            | CatalogJobKind::Add
+    )
+}
+
+/// Background catalog / ollama-list job kinds (Pack D / audit #3 / P2 Add).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CatalogJobKind {
     Scan,
@@ -138,6 +154,7 @@ pub enum CatalogJobKind {
     Select,
     OllamaList,
     Verify,
+    Add,
 }
 
 /// Result of a background catalog mutation.
@@ -151,6 +168,16 @@ pub enum CatalogJobResult {
     },
     OllamaList(Vec<String>),
     Verify(ModelCatalogSnapshot),
+    Add(ModelCatalogSnapshot),
+}
+
+/// Progressive Work job events (P2: Compare shows A before B finishes).
+#[derive(Debug)]
+pub enum WorkJobEvent {
+    /// Compare leg A finished; B still running (slot stays open).
+    ComparePrimary(Box<WorkResultView>),
+    /// Terminal outcome (single submit or full Compare).
+    Done(Box<Result<WorkJobResult, String>>),
 }
 
 /// Authoritative status payload collected off the UI thread.
@@ -205,7 +232,8 @@ pub fn run_submit_job(
     actions::submit_problem_with_admission(paths, settings, text, admission, model_ctx)
 }
 
-/// Sequential Compare: A then B; B failure does not rewrite A (`#354` / RFC-0237).
+/// Sequential Compare: A then B; emit A immediately; B failure does not rewrite A
+/// (`#354` / RFC-0237 / P2).
 #[allow(clippy::too_many_arguments)] // dual admission + dual model_ctx stay explicit
 pub fn run_compare_submit_job(
     paths: &DesktopPaths,
@@ -217,6 +245,7 @@ pub fn run_compare_submit_job(
     model_ctx_a: &WorkSubmitModelContext,
     admission_b: &aira_flow::AdmissionConstraints,
     model_ctx_b: &WorkSubmitModelContext,
+    on_primary: impl FnOnce(WorkResultView),
 ) -> anyhow::Result<WorkJobResult> {
     let a = run_submit_job(
         paths,
@@ -227,6 +256,7 @@ pub fn run_compare_submit_job(
         admission_a,
         model_ctx_a,
     )?;
+    on_primary(a.clone());
     // A succeeded — run B without ensure_started again (node already up if needed).
     let b = run_submit_job(paths, settings, None, text, false, admission_b, model_ctx_b)
         .map_err(|e| format!("{e:#}"));
@@ -236,13 +266,15 @@ pub fn run_compare_submit_job(
 /// In-flight submit / refresh / dial slots (at most one of each).
 #[derive(Debug, Default)]
 pub struct AsyncDesktopJobs {
-    work_rx: Option<Receiver<Result<WorkJobResult, String>>>,
+    work_rx: Option<Receiver<WorkJobEvent>>,
     refresh_rx: Option<Receiver<(u64, Result<StatusSnapshot, String>)>>,
     lifecycle_rx: Option<Receiver<(LifecycleJobKind, Result<LifecycleJobResult, String>)>>,
     /// Phase T `#308`: at most one opt-in peer dial worker.
     dial_rx: Option<Receiver<Result<DialOutcome, String>>>,
-    /// Pack D: catalog Scan/Prepare/Select/Verify/OllamaList off the UI thread.
+    /// Pack D: catalog Scan/Prepare/Select/Verify/Add/OllamaList off the UI thread.
     catalog_rx: Option<Receiver<Result<CatalogJobResult, String>>>,
+    /// Kind of in-flight catalog job (for mutate ↔ Work lock).
+    catalog_kind: Option<CatalogJobKind>,
     /// Kind of in-flight lifecycle job (for Starting/Stopping UI).
     lifecycle_kind: Option<LifecycleJobKind>,
     /// Monotonic generation so a stale refresh cannot overwrite a newer one.
@@ -271,8 +303,8 @@ impl AsyncDesktopJobs {
         self.lifecycle_revision
     }
 
-    /// Start at most one submit worker. Returns false if already in flight
-    /// or a lifecycle op is running (`#302` — no parallel `start()`).
+    /// Start at most one submit worker. Returns false if already in flight,
+    /// a lifecycle op is running (`#302`), or catalog mutate is in flight (P2).
     #[allow(clippy::too_many_arguments)] // paths/settings/admission/model_ctx + callback stay explicit
     pub fn try_spawn_submit(
         &mut self,
@@ -285,6 +317,9 @@ impl AsyncDesktopJobs {
         model_ctx: WorkSubmitModelContext,
         on_done: impl FnOnce() + Send + 'static,
     ) -> bool {
+        if !work_allowed_during_catalog(self.catalog_mutate_inflight()) {
+            return false;
+        }
         if !admit_submit_lifecycle(
             ExclusiveJobKind::Submit,
             self.work_rx.is_some(),
@@ -306,13 +341,15 @@ impl AsyncDesktopJobs {
             )
             .map(WorkJobResult::single)
             .map_err(|e| format!("{e:#}"));
-            let _ = tx.send(outcome);
+            let _ = tx.send(WorkJobEvent::Done(Box::new(outcome)));
             on_done();
         });
         true
     }
 
-    /// Sequential dual-model Compare in one worker slot (`#354` / RFC-0237).
+    /// Sequential dual-model Compare in one worker slot (`#354` / RFC-0237 / P2).
+    ///
+    /// Emits [`WorkJobEvent::ComparePrimary`] after A so the UI can show A while B runs.
     #[allow(clippy::too_many_arguments)]
     pub fn try_spawn_compare_submit(
         &mut self,
@@ -325,8 +362,11 @@ impl AsyncDesktopJobs {
         model_ctx_a: WorkSubmitModelContext,
         admission_b: aira_flow::AdmissionConstraints,
         model_ctx_b: WorkSubmitModelContext,
-        on_done: impl FnOnce() + Send + 'static,
+        on_done: impl Fn() + Send + Sync + 'static,
     ) -> bool {
+        if !work_allowed_during_catalog(self.catalog_mutate_inflight()) {
+            return false;
+        }
         if !admit_submit_lifecycle(
             ExclusiveJobKind::Submit,
             self.work_rx.is_some(),
@@ -336,7 +376,10 @@ impl AsyncDesktopJobs {
         }
         let (tx, rx) = mpsc::channel();
         self.work_rx = Some(rx);
+        let on_done = std::sync::Arc::new(on_done);
+        let on_primary_done = on_done.clone();
         thread::spawn(move || {
+            let tx_primary = tx.clone();
             let outcome = run_compare_submit_job(
                 &paths,
                 &settings,
@@ -347,9 +390,13 @@ impl AsyncDesktopJobs {
                 &model_ctx_a,
                 &admission_b,
                 &model_ctx_b,
+                move |primary| {
+                    let _ = tx_primary.send(WorkJobEvent::ComparePrimary(Box::new(primary)));
+                    on_primary_done();
+                },
             )
             .map_err(|e| format!("{e:#}"));
-            let _ = tx.send(outcome);
+            let _ = tx.send(WorkJobEvent::Done(Box::new(outcome)));
             on_done();
         });
         true
@@ -399,18 +446,24 @@ impl AsyncDesktopJobs {
         self.try_spawn_refresh(paths, settings, on_done)
     }
 
-    /// Non-blocking poll for a finished submit (single or Compare).
-    pub fn poll_submit(&mut self) -> Option<Result<WorkJobResult, String>> {
+    /// Non-blocking poll for submit progress / completion (single or Compare).
+    ///
+    /// [`WorkJobEvent::ComparePrimary`] keeps the slot open; [`WorkJobEvent::Done`]
+    /// clears it.
+    pub fn poll_submit(&mut self) -> Option<WorkJobEvent> {
         let rx = self.work_rx.as_ref()?;
         match rx.try_recv() {
-            Ok(v) => {
+            Ok(ev @ WorkJobEvent::ComparePrimary(_)) => Some(ev),
+            Ok(ev @ WorkJobEvent::Done(_)) => {
                 self.work_rx = None;
-                Some(v)
+                Some(ev)
             }
             Err(TryRecvError::Empty) => None,
             Err(TryRecvError::Disconnected) => {
                 self.work_rx = None;
-                Some(Err("submit worker disconnected".into()))
+                Some(WorkJobEvent::Done(Box::new(Err(
+                    "submit worker disconnected".into(),
+                ))))
             }
         }
     }
@@ -561,9 +614,14 @@ impl AsyncDesktopJobs {
         self.catalog_rx.is_some()
     }
 
-    /// Spawn Scan / Prepare / Select / Verify / OllamaList off the UI thread.
+    /// True while Prepare/Select/Verify/Add is in flight (P2 reverse Work lock).
+    pub fn catalog_mutate_inflight(&self) -> bool {
+        self.catalog_kind.is_some_and(catalog_job_mutates)
+    }
+
+    /// Spawn Scan / Prepare / Select / Verify / Add / OllamaList off the UI thread.
     ///
-    /// Prepare/Select/Verify rejected when `work_inflight` (immutable weights).
+    /// Mutating kinds rejected when `work_inflight` (immutable weights).
     #[allow(clippy::too_many_arguments)] // kind/paths/selection/artifact stay explicit
     pub fn try_spawn_catalog(
         &mut self,
@@ -579,15 +637,12 @@ impl AsyncDesktopJobs {
         if self.catalog_rx.is_some() {
             return false;
         }
-        let mutates = matches!(
-            kind,
-            CatalogJobKind::Prepare | CatalogJobKind::Select | CatalogJobKind::Verify
-        );
-        if mutates && !catalog_mutate_allowed(work_inflight) {
+        if catalog_job_mutates(kind) && !catalog_mutate_allowed(work_inflight) {
             return false;
         }
         let (tx, rx) = mpsc::channel();
         self.catalog_rx = Some(rx);
+        self.catalog_kind = Some(kind);
         thread::spawn(move || {
             let outcome = (|| -> Result<CatalogJobResult, String> {
                 match kind {
@@ -615,6 +670,14 @@ impl AsyncDesktopJobs {
                             .map_err(|e| format!("{e:#}"))?;
                         Ok(CatalogJobResult::Verify(snap))
                     }
+                    CatalogJobKind::Add => {
+                        let r = model_ref.ok_or_else(|| "model_ref required".to_string())?;
+                        let src =
+                            artifact_path.ok_or_else(|| "source path required".to_string())?;
+                        let snap = actions::models_catalog_add(&paths, &r, &src)
+                            .map_err(|e| format!("{e:#}"))?;
+                        Ok(CatalogJobResult::Add(snap))
+                    }
                     CatalogJobKind::OllamaList => {
                         let bin = resolve_ollama_bin(llm_process_bin.as_deref());
                         let rows = list_ollama_models(&bin).map_err(|e| format!("{e:#}"))?;
@@ -636,11 +699,13 @@ impl AsyncDesktopJobs {
         match rx.try_recv() {
             Ok(v) => {
                 self.catalog_rx = None;
+                self.catalog_kind = None;
                 Some(v)
             }
             Err(TryRecvError::Empty) => None,
             Err(TryRecvError::Disconnected) => {
                 self.catalog_rx = None;
+                self.catalog_kind = None;
                 Some(Err("catalog worker disconnected".into()))
             }
         }
@@ -884,7 +949,7 @@ mod tests {
         let paths = DesktopPaths::for_data_root(std::env::temp_dir().join("aira-async-catalog-d"));
         assert!(!jobs.try_spawn_catalog(
             CatalogJobKind::Prepare,
-            paths,
+            paths.clone(),
             true,
             Some("aira:model:x".into()),
             None,
@@ -892,6 +957,71 @@ mod tests {
             None,
             || {}
         ));
+        assert!(!jobs.try_spawn_catalog(
+            CatalogJobKind::Add,
+            paths,
+            true,
+            Some("aira:model:x".into()),
+            None,
+            Some(std::path::PathBuf::from("/tmp/x.bin")),
+            None,
+            || {}
+        ));
+    }
+
+    /// P2: Work submit blocked while catalog mutate is in flight.
+    #[test]
+    fn work_blocked_during_catalog_mutate() {
+        assert!(!work_allowed_during_catalog(true));
+        assert!(work_allowed_during_catalog(false));
+        let mut jobs = AsyncDesktopJobs::new();
+        let (_hold_tx, hold_rx) = mpsc::channel();
+        jobs.catalog_rx = Some(hold_rx);
+        jobs.catalog_kind = Some(CatalogJobKind::Prepare);
+        assert!(jobs.catalog_mutate_inflight());
+        let paths =
+            DesktopPaths::for_data_root(std::env::temp_dir().join("aira-async-catalog-rev"));
+        let settings = DesktopSettings::default_p0(&paths);
+        assert!(!jobs.try_spawn_submit(
+            paths,
+            settings,
+            None,
+            "Summarize locally".into(),
+            false,
+            aira_flow::AdmissionConstraints::default(),
+            WorkSubmitModelContext::default(),
+            || {}
+        ));
+    }
+
+    /// P2: Scan/OllamaList do not reverse-lock Work.
+    #[test]
+    fn work_allowed_during_catalog_scan() {
+        let mut jobs = AsyncDesktopJobs::new();
+        let (_hold_tx, hold_rx) = mpsc::channel();
+        jobs.catalog_rx = Some(hold_rx);
+        jobs.catalog_kind = Some(CatalogJobKind::Scan);
+        assert!(!jobs.catalog_mutate_inflight());
+        let paths =
+            DesktopPaths::for_data_root(std::env::temp_dir().join("aira-async-catalog-scan"));
+        let settings = DesktopSettings::default_p0(&paths);
+        // Empty text fails closed off-thread; spawn itself must succeed.
+        assert!(jobs.try_spawn_submit(
+            paths,
+            settings,
+            None,
+            "  ".into(),
+            false,
+            aira_flow::AdmissionConstraints::default(),
+            WorkSubmitModelContext::default(),
+            || {}
+        ));
+        for _ in 0..200 {
+            if matches!(jobs.poll_submit(), Some(WorkJobEvent::Done(_))) {
+                break;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
     }
 
     #[test]
