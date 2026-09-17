@@ -113,9 +113,19 @@ fn pack1_e2e_same_text_different_model_no_reuse() {
         },
     );
     let second = session.submit_problem_with_admission(text, other_model);
+    // Re-audit R4: model_ref forces Generate — not #334 UnsupportedConstraint.
+    // Without an activated model the generate path fails closed (no VRA), and must
+    // not Complecte via reuse of the prior math result.
     assert!(
-        matches!(second, Err(aira_flow::FlowError::UnsupportedConstraint(_))),
-        "math + model_ref must reject (#334), not silently ignore: {second:?}"
+        !matches!(second, Err(aira_flow::FlowError::UnsupportedConstraint(_))),
+        "R4: model_ref must not reject as math constraint: {second:?}"
+    );
+    assert!(
+        matches!(
+            second,
+            Err(aira_flow::FlowError::Other(ref m)) if m.contains("no verified result")
+        ),
+        "must not Complecte via math reuse under different model_ref: {second:?}"
     );
 
     let require_new = AdmissionSnapshot::from_text_and_constraints(
@@ -146,7 +156,7 @@ fn pack1_e2e_settings_mid_run_keeps_admission_binding() {
     let dir = tempfile::tempdir().unwrap();
     let mut plane = OperationalPlane::open(dir.path()).unwrap();
     let text = "Calculate 2 + 2";
-    // `#334`: math cannot carry model/generation; freeze test uses supported reuse_policy.
+    // Re-audit R4: math+model_ref is Generate; freeze test uses supported reuse_policy.
     let constraints = AdmissionConstraints {
         reuse_policy: ReusePolicy::RequireNewExecution,
         ..Default::default()
