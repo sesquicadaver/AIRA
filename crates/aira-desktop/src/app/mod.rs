@@ -24,7 +24,7 @@ use crate::actions;
 use crate::async_jobs::{
     quit_arm_policy, quit_followup_after_lifecycle, quit_followup_after_submit, AsyncDesktopJobs,
     CatalogJobKind, CatalogJobResult, LifecycleJobKind, LifecycleJobResult, QuitArm, QuitFollowup,
-    StatusSnapshot,
+    StatusSnapshot, WorkJobEvent,
 };
 use crate::camera;
 use crate::lexicon::{ActionId, ErrorCode, HelpId, UiProblem};
@@ -109,6 +109,8 @@ pub struct AiraDesktopApp {
     /// Host `ollama list` names for Settings process bind (not AIRA catalog).
     pub(super) ollama_models: Vec<String>,
     pub(super) ollama_msg: Option<String>,
+    /// Draft for `llm_process_timeout_ms` (empty = unset / default).
+    pub(super) llm_timeout_edit: String,
     /// Work executor Auto / Specific / Compare + readiness (`#349` / `#354`).
     pub(super) work_executor_mode: work::WorkExecutorUiMode,
     pub(super) work_required_ref: String,
@@ -191,6 +193,10 @@ impl AiraDesktopApp {
             .relay_ttl_days
             .map(|d| d.to_string())
             .unwrap_or_else(|| DEFAULT_RELAY_TTL_DAYS.to_string());
+        let llm_timeout_edit = settings
+            .llm_process_timeout_ms
+            .map(|ms| ms.to_string())
+            .unwrap_or_default();
         let applied_runtime = None;
         let work_readiness = evaluate_work_readiness(
             &paths.data_root,
@@ -225,6 +231,7 @@ impl AiraDesktopApp {
             catalog_artifact_edit: String::new(),
             ollama_models: Vec::new(),
             ollama_msg: None,
+            llm_timeout_edit,
             work_executor_mode: work::WorkExecutorUiMode::Auto,
             work_required_ref: String::new(),
             work_compare_a: String::new(),
@@ -532,42 +539,55 @@ impl AiraDesktopApp {
                 }
             }
         }
-        if let Some(outcome) = self.async_jobs.poll_submit() {
-            match outcome {
-                Ok(job) => {
-                    self.work_result = Some(job.primary);
-                    match job.compare_b {
-                        None => {
-                            self.work_result_b = None;
-                            self.work_compare_b_error = None;
-                        }
-                        Some(Ok(b)) => {
-                            self.work_result_b = Some(b);
-                            self.work_compare_b_error = None;
-                        }
-                        Some(Err(e)) => {
-                            self.work_result_b = None;
-                            self.work_compare_b_error = Some(e);
-                        }
-                    }
+        if let Some(event) = self.async_jobs.poll_submit() {
+            match event {
+                WorkJobEvent::ComparePrimary(primary) => {
+                    // P2: show Compare A immediately while B still runs.
+                    self.work_result = Some(primary);
+                    self.work_result_b = None;
+                    self.work_compare_b_error = None;
                     self.model_triple.used = self.used_model_fact();
                     self.clear_problem();
-                    // Lifecycle may have changed if submit started the node.
-                    self.request_status_refresh(ctx);
                 }
-                Err(e) => {
-                    self.last_problem = Some(UiProblem::from_submit_err(&e, self.ui_lang()));
-                }
-            }
-            // Phase T `#310`: Quit during submit → Stop→Close after submit settles.
-            match quit_followup_after_submit(self.quit_after_stop) {
-                QuitFollowup::None => {}
-                QuitFollowup::QueueStop => {
-                    self.request_lifecycle(LifecycleJobKind::Stop, ctx);
-                }
-                QuitFollowup::Close => {
-                    self.quit_after_stop = false;
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                WorkJobEvent::Done(outcome) => {
+                    match outcome {
+                        Ok(job) => {
+                            self.work_result = Some(job.primary);
+                            match job.compare_b {
+                                None => {
+                                    self.work_result_b = None;
+                                    self.work_compare_b_error = None;
+                                }
+                                Some(Ok(b)) => {
+                                    self.work_result_b = Some(b);
+                                    self.work_compare_b_error = None;
+                                }
+                                Some(Err(e)) => {
+                                    self.work_result_b = None;
+                                    self.work_compare_b_error = Some(e);
+                                }
+                            }
+                            self.model_triple.used = self.used_model_fact();
+                            self.clear_problem();
+                            // Lifecycle may have changed if submit started the node.
+                            self.request_status_refresh(ctx);
+                        }
+                        Err(e) => {
+                            self.last_problem =
+                                Some(UiProblem::from_submit_err(&e, self.ui_lang()));
+                        }
+                    }
+                    // Phase T `#310`: Quit during submit → Stop→Close after submit settles.
+                    match quit_followup_after_submit(self.quit_after_stop) {
+                        QuitFollowup::None => {}
+                        QuitFollowup::QueueStop => {
+                            self.request_lifecycle(LifecycleJobKind::Stop, ctx);
+                        }
+                        QuitFollowup::Close => {
+                            self.quit_after_stop = false;
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        }
+                    }
                 }
             }
         }
@@ -601,7 +621,8 @@ impl AiraDesktopApp {
             match outcome {
                 Ok(CatalogJobResult::Scan(snap))
                 | Ok(CatalogJobResult::Prepare(snap))
-                | Ok(CatalogJobResult::Verify(snap)) => {
+                | Ok(CatalogJobResult::Verify(snap))
+                | Ok(CatalogJobResult::Add(snap)) => {
                     self.apply_catalog_snapshot(snap);
                 }
                 Ok(CatalogJobResult::Select { chosen, snap }) => {

@@ -1,7 +1,7 @@
 use aira_desktop_runtime::{CatalogSelection, NetworkProfile, UiLang, DEFAULT_RELAY_TTL_DAYS};
 
 use crate::actions;
-use crate::lexicon::HelpId;
+use crate::lexicon::{ErrorCode, HelpId};
 
 use super::{work, AiraDesktopApp, MainTab};
 
@@ -603,7 +603,12 @@ impl AiraDesktopApp {
             }
         }
         if let Some(view) = self.work_result.clone() {
-            if self.work_result_b.is_some() || self.work_compare_b_error.is_some() {
+            // P2: show A as soon as ComparePrimary arrives (B may still be running).
+            if self.work_result_b.is_some()
+                || self.work_compare_b_error.is_some()
+                || (self.async_jobs.work_inflight()
+                    && matches!(self.work_executor_mode, work::WorkExecutorUiMode::Compare))
+            {
                 ui.strong(l.work_compare_leg_a);
             }
             self.ui_work_result_panel(ui, &view, "a");
@@ -1444,6 +1449,45 @@ impl AiraDesktopApp {
         if let Some(msg) = &self.ollama_msg {
             ui.small(msg);
         }
+        ui.horizontal(|ui| {
+            ui.label(l.settings_ollama_timeout);
+            ui.add(
+                egui::TextEdit::singleline(&mut self.llm_timeout_edit)
+                    .desired_width(100.0)
+                    .hint_text("e.g. 120000"),
+            );
+            if ui.button(l.settings_ollama_timeout_apply).clicked() {
+                let trimmed = self.llm_timeout_edit.trim();
+                let parsed = if trimmed.is_empty() {
+                    Ok(None)
+                } else {
+                    trimmed
+                        .parse::<u64>()
+                        .map(Some)
+                        .map_err(|e| format!("invalid timeout ms: {e}"))
+                };
+                match parsed {
+                    Ok(ms) => {
+                        self.settings.llm_process_timeout_ms = ms;
+                        match self.persist_settings() {
+                            Ok(()) => {
+                                self.ollama_msg = Some(if ms.is_some() {
+                                    format!(
+                                        "timeout {} ms saved — restart node to apply",
+                                        ms.unwrap()
+                                    )
+                                } else {
+                                    "timeout cleared — restart node to apply".into()
+                                });
+                            }
+                            Err(e) => self.set_problem(ErrorCode::SettingsPersistFailed, e),
+                        }
+                    }
+                    Err(e) => self.ollama_msg = Some(e),
+                }
+            }
+        });
+        ui.small(l.settings_ollama_timeout_hint);
 
         ui.horizontal(|ui| {
             let catalog_busy = self.async_jobs.catalog_inflight();
@@ -1574,14 +1618,36 @@ impl AiraDesktopApp {
                     Err(e) => self.catalog_msg = Some(format!("{e:#}")),
                 }
             }
-            if ui.button(l.settings_models_add).clicked() {
-                let path = rfd::FileDialog::new()
-                    .add_filter("weights", &["bin", "gguf", "ggml", "safetensors"])
-                    .pick_file();
-                if let Some(path) = path {
-                    match actions::models_catalog_add(&self.paths, &self.catalog_add_ref, &path) {
-                        Ok(snap) => self.apply_catalog_snapshot(snap),
-                        Err(e) => self.catalog_msg = Some(format!("{e:#}")),
+            let catalog_busy = self.async_jobs.catalog_inflight();
+            let work_busy = self.async_jobs.work_inflight();
+            if ui
+                .add_enabled(
+                    !catalog_busy && self.model_catalog.local_add_allowed,
+                    egui::Button::new(l.settings_models_add),
+                )
+                .clicked()
+            {
+                if work_busy {
+                    self.catalog_msg =
+                        Some("cannot Add while Work is running (weights locked)".into());
+                } else {
+                    let path = rfd::FileDialog::new()
+                        .add_filter("weights", &["bin", "gguf", "ggml", "safetensors"])
+                        .pick_file();
+                    if let Some(path) = path {
+                        let ctx = ui.ctx().clone();
+                        if !self.async_jobs.try_spawn_catalog(
+                            crate::async_jobs::CatalogJobKind::Add,
+                            self.paths.clone(),
+                            work_busy,
+                            Some(self.catalog_add_ref.clone()),
+                            None,
+                            Some(path),
+                            None,
+                            move || ctx.request_repaint(),
+                        ) {
+                            self.catalog_msg = Some("catalog job busy".into());
+                        }
                     }
                 }
             }

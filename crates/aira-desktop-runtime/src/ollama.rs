@@ -5,8 +5,10 @@
 //! `aira-node` already has `AIRA_LLM_BACKEND=process` until restart applies
 //! settings.
 
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context, Result};
 
@@ -55,48 +57,62 @@ pub fn resolve_ollama_bin(explicit: Option<&str>) -> PathBuf {
 /// Run `ollama list` on the Desktop host and return model names.
 ///
 /// Fail-closed when the binary is missing, exits non-zero, or exceeds timeout
-/// (Pack D / audit #3 — no unbounded UI hang).
+/// (Pack D / audit #3 — no unbounded UI hang). On timeout the child is killed
+/// and waited so hang probes do not accumulate orphans.
 pub fn list_ollama_models(bin: impl AsRef<Path>) -> Result<Vec<OllamaListEntry>> {
-    list_ollama_models_with_timeout(bin, std::time::Duration::from_secs(15))
+    list_ollama_models_with_timeout(bin, Duration::from_secs(15))
 }
 
 /// Same as [`list_ollama_models`] with an explicit wait bound.
 pub fn list_ollama_models_with_timeout(
     bin: impl AsRef<Path>,
-    timeout: std::time::Duration,
+    timeout: Duration,
 ) -> Result<Vec<OllamaListEntry>> {
-    use std::sync::mpsc;
-    use std::thread;
+    let bin = bin.as_ref();
+    let mut child = Command::new(bin)
+        .arg("list")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("spawn `{} list` (is ollama installed?)", bin.display()))?;
 
-    let bin = bin.as_ref().to_path_buf();
-    let (tx, rx) = mpsc::channel();
-    thread::spawn(move || {
-        let result = (|| {
-            let output = Command::new(&bin).arg("list").output().with_context(|| {
-                format!("spawn `{} list` (is ollama installed?)", bin.display())
-            })?;
-            if !output.status.success() {
-                let err = String::from_utf8_lossy(&output.stderr);
-                bail!(
-                    "`{} list` failed (status {:?}): {}",
-                    bin.display(),
-                    output.status.code(),
-                    err.trim()
-                );
+    let start = Instant::now();
+    loop {
+        match child
+            .try_wait()
+            .with_context(|| format!("wait `{} list`", bin.display()))?
+        {
+            Some(status) => {
+                let mut stdout = String::new();
+                let mut stderr = String::new();
+                if let Some(mut out) = child.stdout.take() {
+                    let _ = out.read_to_string(&mut stdout);
+                }
+                if let Some(mut err) = child.stderr.take() {
+                    let _ = err.read_to_string(&mut stderr);
+                }
+                if !status.success() {
+                    bail!(
+                        "`{} list` failed (status {:?}): {}",
+                        bin.display(),
+                        status.code(),
+                        stderr.trim()
+                    );
+                }
+                return Ok(parse_ollama_list_stdout(&stdout));
             }
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            Ok(parse_ollama_list_stdout(&stdout))
-        })();
-        let _ = tx.send(result);
-    });
-    match rx.recv_timeout(timeout) {
-        Ok(r) => r,
-        Err(mpsc::RecvTimeoutError::Timeout) => bail!(
-            "`ollama list` timed out after {}s (fail-closed; UI not blocked forever)",
-            timeout.as_secs()
-        ),
-        Err(mpsc::RecvTimeoutError::Disconnected) => {
-            bail!("`ollama list` worker disconnected (fail-closed)")
+            None => {
+                if start.elapsed() >= timeout {
+                    let child_pid = child.id();
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    bail!(
+                        "`ollama list` timed out after {}ms (fail-closed; killed pid {child_pid}; UI not blocked forever)",
+                        timeout.as_millis()
+                    );
+                }
+                std::thread::sleep(Duration::from_millis(25));
+            }
         }
     }
 }
@@ -136,22 +152,35 @@ koill/sentence-transformers:paraphrase-multilingual-minilm-l12-v2    3ee258ffc9f
         );
     }
 
-    /// Pack D: hang script must fail-closed via timeout (UI never waits forever).
+    /// Pack D / P2: hang script must fail-closed via kill+wait (no orphan sleep).
     #[cfg(unix)]
     #[test]
     fn list_ollama_models_timeout_fail_closed() {
         let dir = tempfile::tempdir().unwrap();
+        let pidfile = dir.path().join("hang.pid");
         let script = dir.path().join("hang-ollama.sh");
-        std::fs::write(&script, "#!/bin/sh\nsleep 30\n").unwrap();
+        let pidfile_disp = pidfile.display().to_string();
+        std::fs::write(
+            &script,
+            format!("#!/bin/sh\necho $$ > '{pidfile_disp}'\nexec sleep 30\n"),
+        )
+        .unwrap();
         use std::os::unix::fs::PermissionsExt;
         let mut perms = std::fs::metadata(&script).unwrap().permissions();
         perms.set_mode(0o755);
         std::fs::set_permissions(&script, perms).unwrap();
-        let err = list_ollama_models_with_timeout(&script, std::time::Duration::from_millis(200))
+        let err = list_ollama_models_with_timeout(&script, Duration::from_millis(200))
             .expect_err("hang must timeout");
         assert!(
             err.to_string().contains("timed out"),
             "expected timeout, got {err:#}"
+        );
+        // Child must be dead — no orphan accumulation across CI runs.
+        let pid_text = std::fs::read_to_string(&pidfile).unwrap_or_default();
+        let pid: u32 = pid_text.trim().parse().expect("hang script wrote pid");
+        assert!(
+            !crate::process::pid_alive(pid),
+            "hang child pid {pid} must be killed+waited after list timeout"
         );
     }
 }
