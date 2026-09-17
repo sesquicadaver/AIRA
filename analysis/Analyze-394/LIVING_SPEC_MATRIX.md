@@ -26,3 +26,6 @@
 | LS394-022 | Ollama Select ≠ activate_verified | `select_catalog_model` | `select_host_ollama_skips_activate_verified` | **DONE** |
 | LS394-023 | ollama list hang → timeout | `list_ollama_models_with_timeout` | `list_ollama_models_timeout_fail_closed` | **DONE** |
 | LS394-024 | collision-resistant named test | `host_ollama_model_ref` | `host_ollama_model_ref_is_collision_resistant` | **DONE** |
+| LS394-025 | R1 readiness = GUI settings | `evaluate_work_readiness(&settings)` / `load_settings_readonly` | `readiness_uses_system_layout_settings_not_data_root_file` | **DONE** |
+| LS394-026 | R2 trusted host_cli | `resolve_trusted_host_cli` | `tampered_pointer_host_ollama_model_is_fail_closed` | **DONE** |
+| LS394-027 | R3 file weights ≠ ollama tip | `ProcessBackend::generate` | `file_weight_binding_on_ollama_backend_is_fail_closed` | **DONE** |

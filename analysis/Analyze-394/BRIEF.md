@@ -12,6 +12,7 @@ Settings → Models: bind host Ollama as process executor; choose model from `ol
 - Executor display from applied/settings (not GUI env)
 - **RFC-0242:** host LLM required for Work; OP-001/C1 math → legacy; C1 process smoke
 - **RFC-0243:** per-request `host_cli_model` argv; lifecycle/attach honesty; Verify after quarantine; async catalog; timeouts; Work result binding; M6 ≠ installed-product
+- **Re-audit P0 (ef0503a):** R1 Work readiness uses GUI/`DesktopPaths` settings (no load-or-create under data_root); R2 `host_cli_model` from signed evidence; R3 file weights fail-closed on ollama ProcessBackend
 
 ## Canon
 
