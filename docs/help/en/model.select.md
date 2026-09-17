@@ -15,16 +15,16 @@ Canonical Desktop path (no CLI required):
 3. **Scan** the local lifecycle catalog (or **Enable local add** → **Add file…** for a local weight file).
 4. **Select** Auto or a specific row. Selection is **not** VERIFIED.
 5. **Prepare** when the row is not ready yet; read the ready reason on the catalog row.
-6. On **Work**, choose executor **Auto**, **Specific model**, or **Compare**. Built-in calculation (for example `Calculate 2 + 2`) does **not** need a model and cannot use Compare.
+6. On **Work**, choose executor **Auto**, **Specific model**, or **Compare**. Work requires a host process LLM (Settings → Models Ollama bind). Built-in math demo is **legacy** (RFC-0242), not a model-free product path.
 7. **Compare** needs two **different** available catalog models (A and B). Both must be ready before Run. A and B run sequentially on the same draft; if B fails, A’s result stays — there is **no silent substitute** of tip or another model.
 8. **Ollama (process executor):** under Settings → Models, **Refresh ollama list**, pick a host model name, and choose **Use Ollama process**. This sets `AIRA_LLM_BACKEND=process` for the **next** node start (`run <model>`), and writes a Phase D **host-ollama tip** (node-signed bind marker; evidence `verified=false` — not weight VERIFIED). Until you **Stop** then **Start** the node, Apply may show Restart needed and the running executor may still be mock.
-9. If Work shows the **demo / reference mock** banner, open **Settings → Models** — either bind Ollama (then restart) or accept mock text generation (see help:work.result).
+9. If Work shows the **no host LLM / reference mock** banner, open **Settings → Models** and bind Ollama, then restart — mock is not product Work.
 
 Optional tooling (not required for the GUI path): `aira models scan|list|activate`; env `AIRA_LLM_BACKEND=process` for Dev.
 
 ## What should happen?
 
-- Missing a model does **not** block tasks that do not need an LLM (math readiness ≠ generate readiness).
+- Missing a model / host LLM **blocks** Work generate (RFC-0242); there is no math-without-model product escape.
 - Desktop keeps **selected ≠ ready ≠ used** honest — never invent a model name or copy selected into used.
 - Choice / Prepare / Select never silently mean VERIFIED free-form text.
 - Compare never silently swaps an unready model for the tip or another catalog row.

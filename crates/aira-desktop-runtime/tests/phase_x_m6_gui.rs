@@ -12,8 +12,8 @@ use aira_csu_model_acquisition::{
     VerifyOutcome, ACTIVATED_POINTER_REL,
 };
 use aira_desktop_runtime::{
-    evaluate_work_readiness, prepare_model, select_catalog_model, CatalogSelection,
-    WorkExecutorPreference,
+    evaluate_work_readiness, prepare_model, select_catalog_model, write_settings, CatalogSelection,
+    DesktopPaths, DesktopSettings, LlmBackend, WorkExecutorPreference,
 };
 use aira_flow::init_node;
 use aira_object::{active_signature, ContentHash};
@@ -90,6 +90,12 @@ fn m6_e2e_gui_catalog_and_work_readiness_two_models() {
     let dir = tempfile::tempdir().unwrap();
     let root = dir.path().join(".aira");
     init_m6_root(&root);
+    // RFC-0242: Work readiness requires host process LLM in settings.
+    let paths = DesktopPaths::for_data_root(&root);
+    let mut settings = DesktopSettings::default_p0(&paths);
+    settings.llm_backend = LlmBackend::Process;
+    settings.llm_ollama_model = Some("llama3:latest".into());
+    write_settings(&paths, &settings).unwrap();
 
     let model_a = quarantine_verify(&root, "m6-gui-a", b"gui-a-weights");
     let model_b = quarantine_verify(&root, "m6-gui-b", b"gui-b-weights-xx");

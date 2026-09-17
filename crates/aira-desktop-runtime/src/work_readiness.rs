@@ -1,18 +1,21 @@
-//! Work executor preference + pre-submit readiness (`#349` / RFC-0232; Compare `#354` / RFC-0237).
+//! Work executor preference + pre-submit readiness (`#349` / RFC-0232; Compare `#354` / RFC-0237;
+//! host LLM gate RFC-0242).
 //!
-//! Math (`Calculate 2 + 2`) does not need a model. Generate-local needs an
-//! Auto tip or Required `model_ref` that is available. Compare needs **two**
-//! distinct available models and never silently substitutes either leg.
+//! **Canon (RFC-0242):** Desktop Work generate requires a configured **host process LLM**
+//! (`llm_backend=process` + `llm_ollama_model`). Reference mock is not product Work.
+//! OP-001 / C1 `Calculate 2 + 2` math readiness escape is **legacy non-normative** — math
+//! text is treated as generate and still needs host LLM.
 //! Choice ≠ VERIFIED.
 
 use std::path::Path;
 
-use aira_csu_reduction_basic::problem_binds_math_eval_safe;
 use aira_flow::{AdmissionConstraints, ReusePolicy};
 use serde::{Deserialize, Serialize};
 
 use crate::model_catalog::{load_model_catalog, CatalogEntry, ModelCatalogSnapshot};
 use crate::model_status::{load_model_triple, ModelFact, ModelTripleSnapshot};
+use crate::paths::DesktopPaths;
+use crate::settings::{load_or_create_settings, DesktopSettings, LlmBackend};
 
 /// Work-screen executor preference (not Settings catalog CRUD).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -28,9 +31,10 @@ pub enum WorkExecutorPreference {
 /// Capability class of the draft text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WorkCapabilityKind {
-    /// Deterministic math — model optional / must be omitted.
+    /// Legacy label only — Desktop no longer treats math as a model-free escape (RFC-0242).
+    #[serde(rename = "math")]
     Math,
-    /// Local text generate — model required.
+    /// Local text generate — host LLM + model tip/catalog required.
     Generate,
 }
 
@@ -82,36 +86,83 @@ fn bind_admission(model_ref: &str) -> AdmissionConstraints {
     }
 }
 
-/// Classify draft text and build fail-closed admission + readiness (`#349` / `#354`).
+/// Host process LLM configured in Desktop settings (RFC-0242).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HostLlmGate {
+    pub ok: bool,
+    pub ollama_model: Option<String>,
+    pub reasons: Vec<String>,
+}
+
+/// Inspect settings for a configured host process LLM (mock → fail-closed).
+pub fn evaluate_host_llm_gate(settings: &DesktopSettings) -> HostLlmGate {
+    match settings.llm_backend {
+        LlmBackend::Mock => HostLlmGate {
+            ok: false,
+            ollama_model: None,
+            reasons: vec![
+                "host LLM required — Settings → Models: Process + a model from `ollama list` (reference mock is not product Work)"
+                    .into(),
+            ],
+        },
+        LlmBackend::Process => {
+            let model = settings
+                .llm_ollama_model
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_string);
+            match model {
+                Some(m) => HostLlmGate {
+                    ok: true,
+                    ollama_model: Some(m),
+                    reasons: vec![],
+                },
+                None => HostLlmGate {
+                    ok: false,
+                    ollama_model: None,
+                    reasons: vec![
+                        "host LLM process bind needs llm_ollama_model from `ollama list`".into(),
+                    ],
+                },
+            }
+        }
+    }
+}
+
+fn load_host_llm_gate(root: &Path) -> HostLlmGate {
+    let paths = DesktopPaths::for_data_root(root);
+    match load_or_create_settings(&paths) {
+        Ok(s) => evaluate_host_llm_gate(&s),
+        Err(e) => HostLlmGate {
+            ok: false,
+            ollama_model: None,
+            reasons: vec![format!("desktop settings unavailable: {e}")],
+        },
+    }
+}
+
+/// Classify draft text and build fail-closed admission + readiness (`#349` / `#354` / RFC-0242).
 pub fn evaluate_work_readiness(
     root: impl AsRef<Path>,
     text: &str,
     preference: WorkExecutorPreference,
 ) -> WorkReadiness {
     let root = root.as_ref();
-    let trimmed = text.trim();
-    if problem_binds_math_eval_safe(trimmed) {
-        if matches!(preference, WorkExecutorPreference::Compare { .. }) {
-            return empty_readiness(
-                WorkCapabilityKind::Math,
-                false,
-                vec![
-                    "Compare mode needs text generation — math has no dual-model path (no silent substitute)"
-                        .into(),
-                ],
-                preference,
-            );
-        }
+    let _trimmed = text.trim();
+
+    let host = load_host_llm_gate(root);
+    if !host.ok {
         return empty_readiness(
-            WorkCapabilityKind::Math,
-            true,
-            vec!["deterministic math — local model not required (omit model_ref)".into()],
+            WorkCapabilityKind::Generate,
+            false,
+            host.reasons,
             preference,
         );
     }
 
     let catalog = load_model_catalog(root).unwrap_or_default();
-    let triple = load_model_triple(root, crate::settings::LlmBackend::Mock.as_env_str());
+    let triple = load_model_triple(root, crate::settings::LlmBackend::Process.as_env_str());
 
     match &preference {
         WorkExecutorPreference::Auto | WorkExecutorPreference::Required(_) => {
@@ -161,7 +212,7 @@ fn evaluate_single_generate(
             WorkCapabilityKind::Generate,
             false,
             vec![
-                "text generation needs a local model — Select/Prepare tip in Settings → Models"
+                "text generation needs a local model tip — Start node after Settings → Models process bind, or Select/Prepare in catalog"
                     .into(),
             ],
             preference,
@@ -298,8 +349,12 @@ fn generate_ready(
             vec![format!("{model_ref} is not available for generate-local")],
         );
     }
-    // Tip may be observed ready without a catalog row (fixture / race).
+    // Tip may be observed ready without a catalog row (fixture / host-ollama bind).
     if auto && tip_ready {
+        return (true, vec![]);
+    }
+    // Host-ollama tip admits generate without a weight catalog row when tip is ready.
+    if tip_ready && model_ref.starts_with("aira:model:ollama-") {
         return (true, vec![]);
     }
     (
@@ -319,11 +374,21 @@ mod tests {
     use std::sync::{Mutex, OnceLock};
     use tempfile::tempdir;
 
+    use crate::settings::write_settings;
+
     fn isolated() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
         LOCK.get_or_init(|| Mutex::new(()))
             .lock()
             .unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn write_host_llm(root: &std::path::Path, model: &str) {
+        let paths = DesktopPaths::for_data_root(root);
+        let mut s = DesktopSettings::default_p0(&paths);
+        s.llm_backend = LlmBackend::Process;
+        s.llm_ollama_model = Some(model.into());
+        write_settings(&paths, &s).unwrap();
     }
 
     fn write_available_slot(root: &std::path::Path, model_ref: &str, slot: &str) {
@@ -345,24 +410,23 @@ mod tests {
     }
 
     #[test]
-    fn math_is_ready_without_model() {
+    fn mock_settings_block_even_math_text() {
         let _g = isolated();
         let dir = tempdir().unwrap();
         fs::create_dir_all(dir.path().join("models")).unwrap();
         let r =
             evaluate_work_readiness(dir.path(), "Calculate 2 + 2", WorkExecutorPreference::Auto);
-        assert_eq!(r.kind, WorkCapabilityKind::Math);
-        assert!(r.ready);
-        assert!(r.admission.model_ref.is_none());
-        assert!(r.admission_b.is_none());
-        assert!(r.reasons.iter().any(|s| s.contains("math")));
+        assert_eq!(r.kind, WorkCapabilityKind::Generate);
+        assert!(!r.ready);
+        assert!(r.reasons.iter().any(|s| s.contains("host LLM")));
     }
 
     #[test]
-    fn generate_auto_without_tip_is_not_ready() {
+    fn process_settings_without_tip_not_ready_for_auto() {
         let _g = isolated();
         let dir = tempdir().unwrap();
         fs::create_dir_all(dir.path().join("models")).unwrap();
+        write_host_llm(dir.path(), "llama3:latest");
         let r = evaluate_work_readiness(
             dir.path(),
             "Summarize the local Problem Statement",
@@ -370,7 +434,10 @@ mod tests {
         );
         assert_eq!(r.kind, WorkCapabilityKind::Generate);
         assert!(!r.ready);
-        assert!(r.admission.model_ref.is_none());
+        assert!(r
+            .reasons
+            .iter()
+            .any(|s| s.contains("tip") || s.contains("model")));
     }
 
     #[test]
@@ -378,6 +445,7 @@ mod tests {
         let _g = isolated();
         let dir = tempdir().unwrap();
         fs::create_dir_all(dir.path().join("models")).unwrap();
+        write_host_llm(dir.path(), "llama3:latest");
         let r = evaluate_work_readiness(
             dir.path(),
             "Summarize locally",
@@ -392,9 +460,9 @@ mod tests {
     fn generate_auto_with_fixture_tip_is_ready_and_admits_model() {
         let _g = isolated();
         let dir = tempdir().unwrap();
+        write_host_llm(dir.path(), "llama3:latest");
         aira_object::reset_primary_signer();
         ActivatedPointerGate::install_fixture(dir.path()).unwrap();
-        // Warm observe so tip/lifecycle settle.
         let _ = ActivatedPointerGate::from_aira_root(dir.path()).observe_verify_now();
         let r = evaluate_work_readiness(
             dir.path(),
@@ -409,7 +477,6 @@ mod tests {
         );
         assert_eq!(r.admission.model_ref, r.resolved_model_ref);
         assert!(r.admission_b.is_none());
-        // Fixture may be pending hash — ready if available in catalog OR tip_ready.
         if r.ready {
             assert!(r.admission.model_ref.is_some());
         } else {
@@ -418,44 +485,11 @@ mod tests {
     }
 
     #[test]
-    fn math_ignores_required_model_preference_for_admission() {
-        let _g = isolated();
-        let dir = tempdir().unwrap();
-        fs::create_dir_all(dir.path().join("models")).unwrap();
-        let r = evaluate_work_readiness(
-            dir.path(),
-            "Calculate 9 - 3",
-            WorkExecutorPreference::Required("aira:model:x".into()),
-        );
-        assert_eq!(r.kind, WorkCapabilityKind::Math);
-        assert!(r.ready);
-        assert!(r.admission.model_ref.is_none());
-    }
-
-    #[test]
-    fn compare_math_is_blocked_fail_closed() {
-        let _g = isolated();
-        let dir = tempdir().unwrap();
-        fs::create_dir_all(dir.path().join("models")).unwrap();
-        let r = evaluate_work_readiness(
-            dir.path(),
-            "Calculate 2 + 2",
-            WorkExecutorPreference::Compare {
-                a: "aira:model:a".into(),
-                b: "aira:model:b".into(),
-            },
-        );
-        assert_eq!(r.kind, WorkCapabilityKind::Math);
-        assert!(!r.ready);
-        assert!(r.reasons.iter().any(|s| s.contains("Compare")));
-        assert!(r.admission_b.is_none());
-    }
-
-    #[test]
     fn compare_empty_or_same_is_not_ready() {
         let _g = isolated();
         let dir = tempdir().unwrap();
         fs::create_dir_all(dir.path().join("models")).unwrap();
+        write_host_llm(dir.path(), "llama3:latest");
         let empty = evaluate_work_readiness(
             dir.path(),
             "Summarize locally",
@@ -483,8 +517,8 @@ mod tests {
     fn compare_one_unready_does_not_substitute() {
         let _g = isolated();
         let dir = tempdir().unwrap();
+        write_host_llm(dir.path(), "llama3:latest");
         write_available_slot(dir.path(), "aira:model:a", "slot-a");
-        // B missing from catalog.
         let r = evaluate_work_readiness(
             dir.path(),
             "Summarize locally for compare",
@@ -496,7 +530,6 @@ mod tests {
         assert!(!r.ready);
         assert!(r.reasons.iter().any(|s| s.contains("Compare B")));
         assert!(r.reasons.iter().any(|s| s.contains("no silent substitute")));
-        // Admissions still name both requested refs — never tip substitution.
         assert_eq!(r.admission.model_ref.as_deref(), Some("aira:model:a"));
         assert_eq!(
             r.admission_b.as_ref().and_then(|c| c.model_ref.as_deref()),
@@ -509,6 +542,7 @@ mod tests {
     fn compare_both_available_admits_two_require_new() {
         let _g = isolated();
         let dir = tempdir().unwrap();
+        write_host_llm(dir.path(), "llama3:latest");
         write_available_slot(dir.path(), "aira:model:a", "slot-a");
         write_available_slot(dir.path(), "aira:model:b", "slot-b");
         let r = evaluate_work_readiness(
@@ -536,5 +570,14 @@ mod tests {
             r.admission.model_ref,
             r.admission_b.as_ref().and_then(|c| c.model_ref.clone())
         );
+    }
+
+    #[test]
+    fn evaluate_host_llm_gate_rejects_mock() {
+        let paths = DesktopPaths::for_data_root(tempdir().unwrap().path());
+        let s = DesktopSettings::default_p0(&paths);
+        let g = evaluate_host_llm_gate(&s);
+        assert!(!g.ok);
+        assert!(g.reasons.iter().any(|r| r.contains("host LLM")));
     }
 }

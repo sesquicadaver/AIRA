@@ -1,4 +1,4 @@
-# Living Spec Matrix — Analyze-394 / RFC-0241
+# Living Spec Matrix — Analyze-394 / RFC-0241 + RFC-0242
 
 | ID | Requirement | Module | Test | Status |
 |----|-------------|--------|------|--------|
@@ -10,3 +10,6 @@
 | LS394-006 | executor from node facts | `model_status` / `collect_status_snapshot` | `process_executor_is_not_reference_mock` | **DONE** |
 | LS394-007 | no VERIFIED claim | docs/help + UI copy | help model.select | **DONE** |
 | LS394-008 | host-ollama Phase D tip | `install_host_ollama_bind` | `host_ollama_bind_is_production_trust_ready_not_fixture` | **DONE** |
+| LS394-009 | Work requires host LLM; no math escape | `evaluate_work_readiness` / `evaluate_host_llm_gate` | `mock_settings_block_even_math_text` | **DONE** |
+| LS394-010 | C1 process Executed ≠ VERIFIED | `aira-conformance` c1 | `c1.pipeline.process_executor_executed` | **DONE** |
+| LS394-011 | OP-001 math legacy banner | RFC-0242 + `csu/execution-basic/LEGACY.md` | docs | **DONE** |

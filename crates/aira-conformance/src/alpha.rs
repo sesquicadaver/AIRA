@@ -1,12 +1,15 @@
-//! MVP alpha Definition of Done acceptance (Issue #80).
+//! MVP alpha Definition of Done acceptance (Issue #80; remapped RFC-0242).
+//!
+//! OP-001 `Calculate 2 + 2` VERIFIED is **legacy non-normative**. Alpha now
+//! requires a real process executor smoke (`Executed` ≠ VERIFIED) plus C0/C1.
 
 use std::path::Path;
 
 use aira_csu::support::make_event;
+use aira_csu_execution_llm::{AlwaysActivated, ProcessBackend};
 use aira_event::EventType;
-use aira_flow::{init_node, LocalSession, SubmitOutcome};
+use aira_flow::{init_node, LocalSession, OperationalPlane, SubmitOutcome};
 use aira_object::AiraRef;
-use serde_json::json;
 
 use crate::c0::run_c0;
 use crate::c1::run_c1;
@@ -19,7 +22,7 @@ pub fn run_alpha_acceptance(root: impl AsRef<Path>) -> Result<SuiteResult, Confo
     let aira = root.join(".aira");
     let cases = vec![
         test_init_and_identity_layout(&aira),
-        test_calculate_2_plus_2(&aira),
+        test_process_executor_executed(&aira),
         test_failure_evidence(&aira),
         test_c0_c1_pass(root),
     ];
@@ -51,23 +54,30 @@ fn test_init_and_identity_layout(aira: &Path) -> CaseResult {
     pass(id)
 }
 
-fn test_calculate_2_plus_2(aira: &Path) -> CaseResult {
-    let id = "alpha.calculate_2_plus_2";
-    let mut session = match LocalSession::open(aira) {
-        Ok(s) => s,
+fn test_process_executor_executed(aira: &Path) -> CaseResult {
+    let id = "alpha.process_executor_executed";
+    // LocalSession::submit rebuilds the plane and would drop an opt-in process bind.
+    // Alpha DoD uses the same reference plane smoke as C1 (RFC-0242).
+    let dir = aira.join("alpha-process-smoke");
+    let mut plane = match OperationalPlane::open(&dir) {
+        Ok(p) => p,
         Err(e) => return fail(id, e.to_string()),
     };
-    match session.submit_problem("Calculate 2 + 2") {
-        Ok(SubmitOutcome::Completed { result, .. }) => {
-            if result.get("result") != Some(&json!(4.0)) {
-                return fail(id, format!("bad result {result}"));
+    if let Err(e) = plane.bind_process_backend(ProcessBackend::new("echo"), AlwaysActivated) {
+        return fail(id, e.to_string());
+    }
+    let prompt = "Summarize the local Problem Statement without leaving the host.";
+    match plane.submit_problem(prompt) {
+        Ok(SubmitOutcome::Executed { result, .. }) => {
+            if result.get("verification_status") == Some(&serde_json::json!("VERIFIED")) {
+                return fail(id, "must not VERIFIED");
             }
-            if result.get("verification_status") != Some(&json!("VERIFIED")) {
-                return fail(id, "not VERIFIED");
+            if result.get("backend") != Some(&serde_json::json!("process")) {
+                return fail(id, format!("expected backend=process, got {result}"));
             }
             pass(id)
         }
-        Ok(other) => fail(id, format!("unexpected {other:?}")),
+        Ok(other) => fail(id, format!("expected Executed, got {other:?}")),
         Err(e) => fail(id, e.to_string()),
     }
 }
@@ -84,7 +94,7 @@ fn test_failure_evidence(aira: &Path) -> CaseResult {
         vec![AiraRef::parse("aira:problem:alpha_fail1").unwrap()],
         vec![AiraRef::parse("aira:artifact:missing_alpha").unwrap()],
         vec![],
-        Some("math.eval.safe".into()),
+        Some("text.generate.local".into()),
     );
     if let Err(e) = session.plane_mut().inject_and_drain(ev) {
         return fail(id, e.to_string());

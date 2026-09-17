@@ -44,6 +44,8 @@ Initial Issue Set має забезпечити перехід від специ
 не допустити повернення до GPU/LLM/Node/Scheduler-first архітектури.
 ```
 
+> **Note (RFC-0242):** `Calculate 2 + 2` above is the **historical** first demo. Normative product/Desktop acceptance now requires a host process LLM; math VERIFIED is legacy non-normative.
+
 AIRA MVP не є GPU marketplace, LLM runtime або blockchain network. Це локальне підтвердження формули `Problem Statement → Verified Result Artifact → Evidence → Lower-cost future Resolution`, зафіксованої в Book 0 і MVP Roadmap.  
 
 ---
@@ -1205,6 +1207,10 @@ Acceptance Criteria:
 ---
 
 ## Issue #53 — Implement Calculate 2 + 2 demo
+
+> **LEGACY / NON-NORMATIVE (RFC-0242, 2026-09-15):** Historical OP-001 / C1 math demo.
+> Product Desktop Work and normative C0/C1/alpha acceptance require a **host process LLM**.
+> Do not treat `result=4` / VERIFIED math as current product acceptance.
 
 ```yaml
 title: Implement first e2e demo: Calculate 2 + 2

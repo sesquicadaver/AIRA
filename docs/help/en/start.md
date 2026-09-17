@@ -9,7 +9,7 @@ Help · F1 is always available offline. It uses the topics shipped with this ver
 ## What to do?
 
 1. Open **Work**.
-2. Describe a task in your own words (for example `Calculate 2 + 2`).
+2. Describe a task in your own words (local text generation; bind host Ollama under Settings → Models first).
 3. Press **Run** or **Ctrl+Enter** (⌘+Enter on Mac). Enter alone inserts a new line.
 4. If nothing runs, open **System → Program** and press **Start**.
 

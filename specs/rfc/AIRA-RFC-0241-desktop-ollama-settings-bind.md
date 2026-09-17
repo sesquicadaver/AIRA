@@ -26,7 +26,8 @@ Fake VERIFIED / AlwaysActivated for ollama
 GPU marketplace / auto-download from Settings
 expected_model_ref auto-sync with activate tip (still #339 / RFC-0223 when set)
 Pack 3–7 QUEUE invention
-Changing C1 math path
+Changing C1 math path (superseded by RFC-0242 — math is legacy; host LLM required)
+
 ```
 
 ## 6. Behavior

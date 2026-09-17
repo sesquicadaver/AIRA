@@ -1,13 +1,16 @@
-//! C1 conformance suite (Issues #65, #70).
+//! C1 conformance suite (Issues #65, #70; remapped RFC-0242).
 //!
 //! Pipeline cases drive [`aira_flow::OperationalPlane`] as the **C1 reference/demo**
 //! plane, not as a production event/scheduler/federation runtime
 //! (`docs/operational-plane.md`).
+//!
+//! **RFC-0242:** OP-001 / `Calculate 2 + 2` → VERIFIED 4.0 is **legacy non-normative**.
+//! Normative C1 pipeline smoke is a real **process** executor (`Executed` ≠ VERIFIED).
+//! VRA completeness is checked via schema fixtures, not math acceptance.
 
 use std::fs;
 use std::path::Path;
 
-use aira_artifact::{ArtifactStore, ArtifactType};
 use aira_csu::support::make_event;
 use aira_csu::{Csu, CsuManifest, CsuRegistry};
 use aira_csu_artifact_basic::ArtifactBasicCsu;
@@ -15,13 +18,14 @@ use aira_csu_context_basic::ContextBasicCsu;
 use aira_csu_epistemic_basic::EpistemicBasicCsu;
 use aira_csu_evidence_basic::EvidenceBasicCsu;
 use aira_csu_execution_basic::ExecutionBasicCsu;
+use aira_csu_execution_llm::{AlwaysActivated, ProcessBackend};
 use aira_csu_reduction_basic::ReductionBasicCsu;
 use aira_csu_verification_basic::VerificationBasicCsu;
 use aira_event::EventType;
 use aira_flow::{OperationalPlane, SubmitOutcome};
 use aira_object::AiraRef;
 use aira_schema::SchemaRegistry;
-use serde_json::{json, Value};
+use serde_json::Value;
 
 use crate::report::ConformanceProfile;
 use crate::runner::{fail, finalize_suite, pass, CaseResult, ConformanceError, SuiteResult};
@@ -29,10 +33,10 @@ use crate::runner::{fail, finalize_suite, pass, CaseResult, ConformanceError, Su
 /// Run the C1 conformance suite and emit a Conformance Report Artifact.
 pub fn run_c1(artifact_root: impl AsRef<Path>) -> Result<SuiteResult, ConformanceError> {
     let cases = vec![
-        test_operational_pipeline(artifact_root.as_ref()),
+        test_process_executor_executed(artifact_root.as_ref()),
         test_csu_manifests(),
         test_csu_external_partner_fixture(artifact_root.as_ref()),
-        test_verified_result_completeness(artifact_root.as_ref()),
+        test_verified_result_completeness_fixture(),
         test_verified_result_extended_fields(),
         test_failure_to_evidence(artifact_root.as_ref()),
     ];
@@ -45,7 +49,7 @@ fn load_registry() -> Result<SchemaRegistry, ConformanceError> {
     SchemaRegistry::load(root.join("schemas")).map_err(|e| ConformanceError::Schema(e.to_string()))
 }
 
-/// B1-010: every `required[]` key from the VRA schema must be present on a runtime body.
+/// B1-010: every `required[]` key from the VRA schema must be present on a body.
 fn missing_vra_required(result: &Value) -> Result<(), String> {
     let root =
         aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")).map_err(|e| e.to_string())?;
@@ -68,43 +72,45 @@ fn missing_vra_required(result: &Value) -> Result<(), String> {
     Ok(())
 }
 
-/// Minimal operational pipeline: Calculate 2+2 → Verified Result.
-fn test_operational_pipeline(artifact_root: &Path) -> CaseResult {
-    let id = "c1.pipeline.calculate_2_plus_2";
+/// Normative C1 pipeline: host process executor → Executed (not VERIFIED).
+///
+/// Uses `/bin/echo` as a real process algorithm (not MockBackend, not math.eval.safe).
+fn test_process_executor_executed(artifact_root: &Path) -> CaseResult {
+    let id = "c1.pipeline.process_executor_executed";
     let dir = artifact_root.join("c1-pipeline");
     let mut plane = match OperationalPlane::open(&dir) {
         Ok(p) => p,
         Err(e) => return fail(id, e.to_string()),
     };
-    match plane.submit_problem("Calculate 2 + 2") {
-        Ok(SubmitOutcome::Completed { result, .. }) => {
-            if result.get("result") != Some(&json!(4.0)) {
-                return fail(id, format!("unexpected result {result}"));
+    if let Err(e) = plane.bind_process_backend(ProcessBackend::new("echo"), AlwaysActivated) {
+        return fail(id, e.to_string());
+    }
+    let prompt = "Summarize the local Problem Statement without leaving the host.";
+    match plane.submit_problem(prompt) {
+        Ok(SubmitOutcome::Executed { result, .. }) => {
+            if result.get("verification_status") == Some(&serde_json::json!("VERIFIED")) {
+                return fail(id, "process smoke must not mint VERIFIED");
             }
-            if result.get("verification_status") != Some(&json!("VERIFIED")) {
-                return fail(id, "verification_status != VERIFIED");
-            }
-            if let Err(e) = missing_vra_required(&result) {
-                return fail(id, e);
+            if result.get("backend") != Some(&serde_json::json!("process")) {
+                return fail(id, format!("expected backend=process, got {result}"));
             }
         }
-        Ok(other) => return fail(id, format!("expected Completed, got {other:?}")),
+        Ok(SubmitOutcome::Completed { .. }) => {
+            return fail(id, "expected Executed (not Completed/VERIFIED)");
+        }
+        Ok(other) => return fail(id, format!("expected Executed, got {other:?}")),
         Err(e) => return fail(id, e.to_string()),
     }
-    let Some((_, epi)) = plane.latest_epistemic_assessment() else {
-        return fail(id, "C1 2+2 path produced no epistemic-assessment artifact");
-    };
-    let reg = match load_registry() {
-        Ok(r) => r,
-        Err(e) => return fail(id, e.to_string()),
-    };
-    if let Err(e) = reg.validate("aira:schema:epistemic:assessment:0.1", &epi) {
-        return fail(id, format!("epistemic assessment schema: {e}"));
+    if plane.has_verified_result_artifact() {
+        return fail(
+            id,
+            "process smoke must not create a Verified Result Artifact",
+        );
     }
     pass(id)
 }
 
-/// Validate basic CSU manifests against schema.
+/// Validate basic CSU manifests against schema (execution-basic kept as LEGACY CSU).
 fn test_csu_manifests() -> CaseResult {
     let id = "c1.csu.manifests";
     let reg = match load_registry() {
@@ -199,34 +205,37 @@ fn test_csu_external_partner_fixture(artifact_root: &Path) -> CaseResult {
     pass(id)
 }
 
-/// Verified Result Artifact completeness fields.
-fn test_verified_result_completeness(artifact_root: &Path) -> CaseResult {
+/// Verified Result Artifact completeness from fixture (not math 2+2 path).
+fn test_verified_result_completeness_fixture() -> CaseResult {
     let id = "c1.result.verified_completeness";
-    let dir = artifact_root.join("c1-verified");
-    let mut plane = match OperationalPlane::open(&dir) {
-        Ok(p) => p,
+    let root = match aira_schema::find_repo_root(env!("CARGO_MANIFEST_DIR")) {
+        Ok(r) => r,
         Err(e) => return fail(id, e.to_string()),
     };
-    let out = match plane.submit_problem("Calculate 2 + 2") {
-        Ok(o) => o,
+    let reg = match load_registry() {
+        Ok(r) => r,
         Err(e) => return fail(id, e.to_string()),
     };
-    let SubmitOutcome::Completed {
-        verified_artifact_id,
-        result,
-        ..
-    } = out
-    else {
-        return fail(id, "expected Completed");
+    let path = root.join("fixtures/valid/result/verified-result-artifact.json");
+    if let Err(e) = reg.validate_file("aira:schema:result:verified-result-artifact:0.1", &path) {
+        return fail(id, e.to_string());
+    }
+    let text = match fs::read_to_string(&path) {
+        Ok(t) => t,
+        Err(e) => return fail(id, e.to_string()),
+    };
+    let result: Value = match serde_json::from_str(&text) {
+        Ok(v) => v,
+        Err(e) => return fail(id, e.to_string()),
     };
     for key in [
-        "result",
         "verification_status",
         "confidence",
         "evidence_refs",
         "provenance_refs",
         "scope",
-        "source_output_ref",
+        "result_id",
+        "solution_refs",
     ] {
         if result.get(key).is_none() {
             return fail(id, format!("missing field {key}"));
@@ -234,19 +243,6 @@ fn test_verified_result_completeness(artifact_root: &Path) -> CaseResult {
     }
     if let Err(e) = missing_vra_required(&result) {
         return fail(id, e);
-    }
-    match plane.artifacts().resolve(&verified_artifact_id) {
-        Ok((desc, _)) => {
-            if desc.artifact_type != ArtifactType::VerifiedResultArtifact
-                && desc.artifact_type != ArtifactType::ReadySolutionArtifact
-            {
-                return fail(
-                    id,
-                    format!("unexpected artifact_type {:?}", desc.artifact_type),
-                );
-            }
-        }
-        Err(e) => return fail(id, e.to_string()),
     }
     pass(id)
 }
@@ -337,7 +333,7 @@ fn test_failure_to_evidence(artifact_root: &Path) -> CaseResult {
         vec![AiraRef::parse("aira:problem:conf_fail1").unwrap()],
         vec![missing],
         vec![],
-        Some("math.eval.safe".into()),
+        Some("text.generate.local".into()),
     );
     if let Err(e) = plane.inject_and_drain(ev) {
         return fail(id, e.to_string());
