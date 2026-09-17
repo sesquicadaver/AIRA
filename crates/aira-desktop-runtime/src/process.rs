@@ -411,13 +411,19 @@ fn clear_runtime_files(paths: &DesktopPaths) {
 }
 
 pub(crate) fn pid_alive(pid: u32) -> bool {
-    Command::new("kill")
-        .args(["-0", &pid.to_string()])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+    // Prefer /proc: `kill -0` stays true for zombies until reaped, which would
+    // falsely block Stop confirmation after SIGKILL (P2).
+    match fs::read_to_string(format!("/proc/{pid}/stat")) {
+        Ok(stat) => {
+            // `pid (comm) state ...` — comm may contain spaces/parens; state follows last `)`.
+            let Some(idx) = stat.rfind(')') else {
+                return true;
+            };
+            let state = stat[idx + 1..].trim_start().chars().next().unwrap_or('?');
+            state != 'Z'
+        }
+        Err(_) => false,
+    }
 }
 
 pub(crate) fn signal_term(pid: u32) -> Result<()> {
