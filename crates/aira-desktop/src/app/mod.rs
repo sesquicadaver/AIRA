@@ -543,14 +543,14 @@ impl AiraDesktopApp {
             match event {
                 WorkJobEvent::ComparePrimary(primary) => {
                     // P2: show Compare A immediately while B still runs.
-                    self.work_result = Some(primary);
+                    self.work_result = Some(*primary);
                     self.work_result_b = None;
                     self.work_compare_b_error = None;
                     self.model_triple.used = self.used_model_fact();
                     self.clear_problem();
                 }
                 WorkJobEvent::Done(outcome) => {
-                    match outcome {
+                    match *outcome {
                         Ok(job) => {
                             self.work_result = Some(job.primary);
                             match job.compare_b {

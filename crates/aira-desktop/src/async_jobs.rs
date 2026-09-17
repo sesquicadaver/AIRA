@@ -175,9 +175,9 @@ pub enum CatalogJobResult {
 #[derive(Debug)]
 pub enum WorkJobEvent {
     /// Compare leg A finished; B still running (slot stays open).
-    ComparePrimary(WorkResultView),
+    ComparePrimary(Box<WorkResultView>),
     /// Terminal outcome (single submit or full Compare).
-    Done(Result<WorkJobResult, String>),
+    Done(Box<Result<WorkJobResult, String>>),
 }
 
 /// Authoritative status payload collected off the UI thread.
@@ -341,7 +341,7 @@ impl AsyncDesktopJobs {
             )
             .map(WorkJobResult::single)
             .map_err(|e| format!("{e:#}"));
-            let _ = tx.send(WorkJobEvent::Done(outcome));
+            let _ = tx.send(WorkJobEvent::Done(Box::new(outcome)));
             on_done();
         });
         true
@@ -391,12 +391,12 @@ impl AsyncDesktopJobs {
                 &admission_b,
                 &model_ctx_b,
                 move |primary| {
-                    let _ = tx_primary.send(WorkJobEvent::ComparePrimary(primary));
+                    let _ = tx_primary.send(WorkJobEvent::ComparePrimary(Box::new(primary)));
                     on_primary_done();
                 },
             )
             .map_err(|e| format!("{e:#}"));
-            let _ = tx.send(WorkJobEvent::Done(outcome));
+            let _ = tx.send(WorkJobEvent::Done(Box::new(outcome)));
             on_done();
         });
         true
@@ -461,7 +461,9 @@ impl AsyncDesktopJobs {
             Err(TryRecvError::Empty) => None,
             Err(TryRecvError::Disconnected) => {
                 self.work_rx = None;
-                Some(WorkJobEvent::Done(Err("submit worker disconnected".into())))
+                Some(WorkJobEvent::Done(Box::new(Err(
+                    "submit worker disconnected".into(),
+                ))))
             }
         }
     }

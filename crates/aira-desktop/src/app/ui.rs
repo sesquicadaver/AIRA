@@ -1471,13 +1471,11 @@ impl AiraDesktopApp {
                         self.settings.llm_process_timeout_ms = ms;
                         match self.persist_settings() {
                             Ok(()) => {
-                                self.ollama_msg = Some(if ms.is_some() {
-                                    format!(
-                                        "timeout {} ms saved — restart node to apply",
-                                        ms.unwrap()
-                                    )
-                                } else {
-                                    "timeout cleared — restart node to apply".into()
+                                self.ollama_msg = Some(match ms {
+                                    Some(v) => {
+                                        format!("timeout {v} ms saved — restart node to apply")
+                                    }
+                                    None => "timeout cleared — restart node to apply".into(),
                                 });
                             }
                             Err(e) => self.set_problem(ErrorCode::SettingsPersistFailed, e),
