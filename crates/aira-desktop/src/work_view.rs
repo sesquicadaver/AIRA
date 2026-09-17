@@ -31,6 +31,8 @@ pub struct WorkSubmitModelContext {
     pub requested: Option<String>,
     /// Activate/selected tip observed at submit (may differ from requested).
     pub applied: Option<String>,
+    /// Immutable prompt snapshot for this run (Pack F).
+    pub prompt: Option<String>,
 }
 
 /// One Work job outcome: single run or Compare dual (`#354` / RFC-0237).
@@ -84,6 +86,8 @@ pub struct WorkResultView {
     pub used_model: Option<String>,
     /// Requested / applied / executed honesty (`#350`).
     pub model_triple: ResultModelTriple,
+    /// Prompt text captured at submit for this run (Pack F).
+    pub prompt_snapshot: Option<String>,
     pub problem_id: Option<String>,
     pub verified_artifact_id: Option<String>,
     pub execution_artifact_id: Option<String>,
@@ -130,6 +134,7 @@ pub fn format_work_result_with_context(v: &Value, ctx: &WorkSubmitModelContext) 
         provenance,
         used_model,
         model_triple,
+        prompt_snapshot: ctx.prompt.clone(),
         problem_id,
         verified_artifact_id,
         execution_artifact_id,
@@ -472,6 +477,7 @@ mod tests {
         let ctx = WorkSubmitModelContext {
             requested: Some("aira:model:want".into()),
             applied: Some("aira:model:tip".into()),
+            prompt: Some("prompt-a".into()),
         };
         let view = format_work_result_with_context(&executed_generate_local_like_http(), &ctx);
         assert_eq!(
@@ -495,6 +501,7 @@ mod tests {
         let ctx = WorkSubmitModelContext {
             requested: Some("aira:model:want".into()),
             applied: Some("aira:model:want".into()),
+            prompt: Some("prompt-b".into()),
         };
         let view = format_work_result_with_context(
             &json!({
@@ -596,6 +603,29 @@ mod tests {
         let view = fmt_default(&v);
         assert_eq!(view.provenance, ProvenanceKind::ModelUndefined);
         assert!(view.verification_status.is_none());
+    }
+
+    /// Pack A / RFC-0237: Compare B fail must not rewrite leg A.
+    #[test]
+    fn compare_b_fail_preserves_leg_a() {
+        let a = format_work_result_with_context(
+            &executed_generate_local_like_http(),
+            &WorkSubmitModelContext {
+                requested: Some("aira:model:a".into()),
+                applied: Some("aira:model:a".into()),
+                prompt: Some("same-prompt".into()),
+            },
+        );
+        let job = WorkJobResult::compare(a.clone(), Err("B timed out".into()));
+        assert_eq!(job.primary.answer, a.answer);
+        assert_eq!(
+            job.primary.model_triple.requested.as_deref(),
+            Some("aira:model:a")
+        );
+        match job.compare_b {
+            Some(Err(e)) => assert!(e.contains("timed out"), "{e}"),
+            other => panic!("expected B Err, got {other:?}"),
+        }
     }
 
     #[test]

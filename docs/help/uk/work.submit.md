@@ -20,7 +20,7 @@
 ## Що робити, якщо не вдалося?
 
 - Порожній текст → відхилення з проблемою (Довідка на `work.submit`).
-- Генерація тексту не готова → немає host LLM, Auto tip або конкретна модель недоступна (`work.model_unready`); у Параметри→Моделі: Process + `ollama list`, Скан/Підготувати/Вибрати. Math-текст не є escape без моделі (RFC-0242). Вибір ≠ VERIFIED.
+- Генерація тексту не готова → немає host LLM, Auto tip або конкретна модель недоступна (`work.model_unready`); у Параметри→Моделі: Process + `ollama list`, Скан/Перевірити/Підготувати/Вибрати. Required/Порівняти перемикає моделі без restart (RFC-0243). Math-текст не є escape без моделі (RFC-0242). Вибір ≠ VERIFIED.
 - Вузол зупинено → Desktop може спочатку зробити Старт; якщо ні — help:node.lifecycle.
 - Немає моделі / host LLM → help:model.unavailable; Work вимагає щонайменше один host process LLM.
 

@@ -47,15 +47,20 @@ impl AiraDesktopApp {
                 .clone()
                 .or_else(|| requested.clone()),
         };
-        WorkSubmitModelContext { requested, applied }
+        WorkSubmitModelContext {
+            requested,
+            applied,
+            prompt: Some(self.problem_text.clone()),
+        }
     }
 
     /// Exact-bind context for one Compare leg (requested = applied = model_ref).
-    fn compare_leg_context(model_ref: &str) -> WorkSubmitModelContext {
+    fn compare_leg_context(&self, model_ref: &str) -> WorkSubmitModelContext {
         let r = Some(model_ref.to_string());
         WorkSubmitModelContext {
             requested: r.clone(),
             applied: r,
+            prompt: Some(self.problem_text.clone()),
         }
     }
 
@@ -122,9 +127,11 @@ impl AiraDesktopApp {
                 .resolved_model_ref_b
                 .clone()
                 .unwrap_or_default();
-            let model_ctx_a = Self::compare_leg_context(&a_ref);
-            let model_ctx_b = Self::compare_leg_context(&b_ref);
-            // Clear prior dual surface before spawn.
+            let model_ctx_a = self.compare_leg_context(&a_ref);
+            let model_ctx_b = self.compare_leg_context(&b_ref);
+            // Pack F: clear prior result surface before spawn so a failed run
+            // cannot keep showing an old answer under a new prompt.
+            self.work_result = None;
             self.work_result_b = None;
             self.work_compare_b_error = None;
             self.async_jobs.try_spawn_compare_submit(
@@ -142,6 +149,7 @@ impl AiraDesktopApp {
         } else {
             let admission = self.work_readiness.admission.clone();
             let model_ctx = self.work_submit_model_context();
+            self.work_result = None;
             self.work_result_b = None;
             self.work_compare_b_error = None;
             self.async_jobs.try_spawn_submit(

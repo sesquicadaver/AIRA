@@ -202,7 +202,18 @@ pub fn models_catalog_add(
     add_model_file(&paths.data_root, model_ref, source).map_err(|e| anyhow::anyhow!("{e}"))
 }
 
+/// Verify quarantined weights with a ModelArtifact (Pack C).
+pub fn models_catalog_verify(
+    paths: &DesktopPaths,
+    artifact_path: &Path,
+) -> Result<ModelCatalogSnapshot> {
+    aira_desktop_runtime::verify_catalog_quarantine(&paths.data_root, artifact_path)
+        .map_err(|e| anyhow::anyhow!("{e}"))
+}
+
 /// Activate verified model (Prepare).
+///
+/// Rejected while Work submit is in flight (Pack D / audit #4) — caller must gate.
 pub fn models_catalog_prepare(
     paths: &DesktopPaths,
     model_ref: &str,
@@ -350,6 +361,7 @@ mod tests {
             llm_backend: aira_desktop_runtime::LlmBackend::Mock,
             llm_process_bin: None,
             llm_ollama_model: None,
+            llm_process_timeout_ms: None,
         };
         apply_network_profile(&mut s, NetworkProfile::P0, DEFAULT_PEER_LISTEN, None).unwrap();
         assert_eq!(s.network_profile, NetworkProfile::P0);

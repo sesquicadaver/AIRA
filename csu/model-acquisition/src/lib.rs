@@ -1108,6 +1108,43 @@ mod tests {
         assert!(life2.iter().all(|e| e.verified && e.available));
     }
 
+    /// Pack B / audit #5: host-ollama activate slot must not print verified=true.
+    #[test]
+    fn host_ollama_lifecycle_is_available_not_verified() {
+        let dir = tempfile::tempdir().unwrap();
+        init_min_root(dir.path());
+        aira_object::reset_primary_signer();
+        let _ = aira_object::register_node_identity(dir.path());
+        // Mirror install_host_ollama_bind marker: activated pointer without verified slot.
+        let model_ref = "aira:model:ollama-llama3_latest-testhost";
+        let cache = dir.path().join("models/cache/ollama-bind.bin");
+        fs::create_dir_all(cache.parent().unwrap()).unwrap();
+        fs::write(&cache, b"host-ollama-bind\nmodel=llama3:latest\n").unwrap();
+        let pointer = ActivatedPointer {
+            updated_at: "2026-09-17T00:00:00Z".into(),
+            model_ref: model_ref.into(),
+            cache_path: cache.display().to_string(),
+            verified_path: String::new(),
+            content_hash: aira_object::ContentHash::sha256_bytes(b"host-ollama-bind")
+                .as_str()
+                .to_string(),
+            evidence_artifact_id: "aira:artifact:test".into(),
+        };
+        let slot = activated_slot_pointer_path(dir.path(), model_ref);
+        fs::create_dir_all(slot.parent().unwrap()).unwrap();
+        fs::write(&slot, serde_json::to_string_pretty(&pointer).unwrap()).unwrap();
+        fs::write(
+            dir.path().join(ACTIVATED_POINTER_REL),
+            serde_json::to_string_pretty(&pointer).unwrap(),
+        )
+        .unwrap();
+
+        let life = list_model_lifecycle(dir.path()).unwrap();
+        let e = life.iter().find(|e| e.model_ref == model_ref).unwrap();
+        assert!(e.available, "{e:?}");
+        assert!(!e.verified, "host-ollama must not claim verified: {e:?}");
+    }
+
     fn sanitize_slot_test(model_ref: &str) -> String {
         let mut out = String::with_capacity(model_ref.len());
         for c in model_ref.chars() {

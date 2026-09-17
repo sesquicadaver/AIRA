@@ -314,8 +314,19 @@ impl GenerateBackend for ProcessBackend {
         binding: &ExecutorFacts,
     ) -> Result<Value, String> {
         payload.validate()?;
+        // Pack A / RFC-0243: per-request host CLI model from activate binding
+        // overrides spawn-fixed argv for ollama-style backends. Admission wins.
+        let per_request_host = binding
+            .host_cli_model
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string);
+        let ollama_style = self.host_loopback || looks_like_ollama(&self.program);
         if let Some(want) = &self.expected_model_ref {
-            if want != &binding.model_ref {
+            // Spawn tip expected-ref is advisory when binding carries host_cli_model
+            // (Compare / Required may differ from Settings tip without restart).
+            if per_request_host.is_none() && want != &binding.model_ref {
                 return Err(format!(
                     "{BINDING_MISMATCH}: configured {want} vs activated {}",
                     binding.model_ref
@@ -333,8 +344,17 @@ impl GenerateBackend for ProcessBackend {
             return Err(NETNS_BLOCKS_LOOPBACK.to_string());
         }
         let program = self.resolve_program()?;
+        let argv: Vec<String> = if ollama_style {
+            if let Some(host) = &per_request_host {
+                vec!["run".into(), host.clone()]
+            } else {
+                self.args.clone()
+            }
+        } else {
+            self.args.clone()
+        };
         let mut cmd = Command::new(&program);
-        cmd.args(&self.args)
+        cmd.args(&argv)
             .arg(&payload.prompt)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -740,6 +760,7 @@ mod tests {
             model_ref: crate::ALWAYS_ACTIVATED_MODEL_REF.into(),
             content_hash: crate::AlwaysActivated::content_hash(),
             cache_path: String::new(),
+            host_cli_model: None,
         }
     }
 
@@ -1287,5 +1308,72 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// Pack A / RFC-0243: same ProcessBackend tip can run A then B via host_cli_model.
+    #[cfg(unix)]
+    #[test]
+    fn per_request_host_cli_model_rewrites_ollama_argv() {
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("fake-ollama.sh");
+        std::fs::write(
+            &script,
+            "#!/bin/sh\n# argv: run <model> <prompt…>\necho \"USED:$2\"\n",
+        )
+        .unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&script).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&script, perms).unwrap();
+        }
+
+        let backend = ProcessBackend::ollama(&script, "tip-model:latest")
+            .with_expected_model_ref("aira:model:ollama-tip");
+
+        let mut bind_a = dummy_binding();
+        bind_a.model_ref = "aira:model:ollama-a".into();
+        bind_a.host_cli_model = Some("model-a:latest".into());
+        let out_a = backend
+            .generate(&dummy_payload("prompt-a"), &bind_a)
+            .expect("A");
+        assert!(
+            out_a["result"]
+                .as_str()
+                .unwrap_or("")
+                .contains("USED:model-a:latest"),
+            "A must run model-a, got {}",
+            out_a
+        );
+
+        let mut bind_b = dummy_binding();
+        bind_b.model_ref = "aira:model:ollama-b".into();
+        bind_b.host_cli_model = Some("model-b:latest".into());
+        let out_b = backend
+            .generate(&dummy_payload("prompt-b"), &bind_b)
+            .expect("B");
+        assert!(
+            out_b["result"]
+                .as_str()
+                .unwrap_or("")
+                .contains("USED:model-b:latest"),
+            "B must run model-b without restart, got {}",
+            out_b
+        );
+    }
+
+    /// Without host_cli_model, spawn expected-ref still fail-closes on mismatch.
+    #[test]
+    fn expected_ref_mismatch_without_host_cli_is_fail_closed() {
+        let backend = ProcessBackend::ollama("aira-llm-process-missing-bin-do-not-install", "tip")
+            .with_expected_model_ref("aira:model:expected");
+        let mut bind = dummy_binding();
+        bind.model_ref = "aira:model:other".into();
+        bind.host_cli_model = None;
+        let err = backend
+            .generate(&dummy_payload("x"), &bind)
+            .expect_err("mismatch");
+        assert!(err.contains(BINDING_MISMATCH), "{err}");
     }
 }

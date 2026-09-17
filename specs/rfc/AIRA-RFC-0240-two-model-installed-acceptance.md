@@ -2,7 +2,9 @@
 
 ## 1. Summary
 
-QUEUE `#357` (Phase X / Pack 2 X3): living installed-product acceptance that two real local models share one staff path — GUI catalog/Work readiness, CLI `--model-ref` / HTTP `admission.model_ref` (same `AdmissionConstraints`), cold restart keeps tip+slots, and Required-unavailable never silent-substitutes.
+QUEUE `#357` (Phase X / Pack 2 X3): living **unit/e2e harness** that two local models share one staff path — GUI catalog/Work readiness, CLI `--model-ref` / HTTP `admission.model_ref` (same `AdmissionConstraints`), cold restart keeps tip+slots, and Required-unavailable never silent-substitutes.
+
+**Honesty (RFC-0243 Pack G):** M6 tests use **fixture weight bytes** (`m6-*-weights`), not two real host Ollama models. CI green on M6 ≠ **installed-product** acceptance complete. Installed-product gate is opt-in / manual / nightly with two real `ollama list` models — see §8b and [`docs/installed-product-llm-acceptance.md`](../../docs/installed-product-llm-acceptance.md).
 
 ## 2. Problem Statement
 
@@ -26,6 +28,7 @@ RFC-0226 consolidating close (#358)
 Pack 3 ratings / Pack 4–5 share
 Minting VERIFIED for generate-local / mock used-model stamp (#339)
 Full egui pixel e2e / marketplace download-delete
+Claiming fixture-M6 as installed-product complete
 ```
 
 ## 6. Compatibility
@@ -36,7 +39,7 @@ No new runtime API. Harness reuses activate/select/catalog/work_readiness/`Local
 
 Fail-closed only: Required missing/unready → explained select error and no Executed Success with a substitute model; Compare missing leg → not ready.
 
-## 8. Acceptance
+## 8. Acceptance (M6 fixture harness)
 
 ```text
 m6_e2e_two_models_cli_http_admission_paths green.
@@ -46,8 +49,18 @@ m6_e2e_gui_catalog_and_work_readiness_two_models green.
 Tip → first OPEN #358; RFC-0240.
 ```
 
+## 8b. Installed-product acceptance (opt-in; not CI default)
+
+Reproducible manual/nightly gate (document evidence in Analyze notes):
+
+1. Two real models from `ollama list` bound via Settings; Required A then B **without** node restart (RFC-0243).
+2. Compare A|B with distinct models; fail one leg → A retained.
+3. File path: Add → Verify (artifact) → Prepare → Work ready.
+4. Timeout / cancel honesty; failed Stop leaves window + pidfile.
+5. Layout smoke at widths 560 / 900 / 1600.
+
 ## 9. References
 
-- QUEUE `#357` · Analyze-394
+- QUEUE `#357` · Analyze-394 · RFC-0243
 - Depends on RFC-0227…0239
 - Parent consolidating: RFC-0226 (file-free until `#358`)

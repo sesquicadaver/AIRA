@@ -157,7 +157,9 @@ GUI-state зберігає лише вкладку/фокус/чернетку/�
 
 **Model data paths (`#355` @ RFC-0238):** Settings → Models storage root + used/free (or unknown).
 
-**Ollama process bind (RFC-0241):** Settings → Models may bind host `ollama` (`llm_backend=process` + model from `ollama list`). Applied only after node restart; System executor shows `process` from pidfile/applied facts (not GUI env). Process ≠ mock; executed ≠ VERIFIED; Phase D activate stays separate.
+**Ollama process bind (RFC-0241/0243):** Settings → Models may bind host `ollama` (`llm_backend=process` + model from `ollama list`) as default tip. Per-request Work Required/Compare rewrites `ollama run <model>` from activate `host_cli_model` without node restart. System executor shows `process` from pidfile/applied facts. Process ≠ mock; executed ≠ VERIFIED.
+
+**Two-model M6 (`#357` @ RFC-0240):** fixture-weight GUI+CLI+HTTP harness; cold restart; fail-closed. **Not** installed-product complete — see [`installed-product-llm-acceptance.md`](installed-product-llm-acceptance.md).
 
 **Apply-diff honesty (`#356` @ RFC-0239):** Changed/Saved/Applied/Restart + inline apply error.
 

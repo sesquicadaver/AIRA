@@ -19,6 +19,9 @@ const SUBMIT_TIMEOUT: Duration = Duration::from_secs(60);
 ///
 /// Constraints are copied into the HTTP body at submit time (`#325` / RFC-0210);
 /// later Settings changes do not rewrite an already-admitted snapshot.
+///
+/// Timeout: `max(60s, llm_process_timeout_ms)` so HTTP does not abort before
+/// the process backend (RFC-0243 Pack E).
 pub fn submit_desktop_problem(
     paths: &DesktopPaths,
     settings: &DesktopSettings,
@@ -50,8 +53,23 @@ pub fn submit_desktop_problem_with_admission(
         token.as_deref(),
         trimmed,
         admission,
-        SUBMIT_TIMEOUT,
+        submit_timeout_for(settings),
     )
+}
+
+/// Align Desktop HTTP read deadline with optional process timeout (RFC-0243).
+pub fn submit_timeout_for(settings: &DesktopSettings) -> Duration {
+    let process_ms = settings.llm_process_timeout_ms.unwrap_or(0);
+    let floor = SUBMIT_TIMEOUT;
+    if process_ms == 0 {
+        return floor;
+    }
+    let process = Duration::from_millis(process_ms);
+    if process > floor {
+        process
+    } else {
+        floor
+    }
 }
 
 /// POST `/v1/problems` to an already-listening node.

@@ -583,6 +583,7 @@ impl AiraDesktopApp {
         }
         if submitting {
             ui.label(l.work_submitting);
+            ui.small(l.work_cancel_honesty);
         }
         ui.label(l.work_user_note);
         egui::CollapsingHeader::new(l.work_how_it_works)
@@ -635,7 +636,21 @@ impl AiraDesktopApp {
         } else {
             view.answer.as_str()
         };
-        ui.heading(answer);
+        if let Some(prompt) = &view.prompt_snapshot {
+            ui.horizontal(|ui| {
+                ui.strong(l.work_prompt_snapshot);
+                ui.label(prompt);
+            });
+        }
+        egui::ScrollArea::vertical()
+            .id_source(format!("work-answer-{id_suffix}"))
+            .max_height(220.0)
+            .show(ui, |ui| {
+                ui.label(egui::RichText::new(answer).size(16.0));
+            });
+        if ui.button(l.work_copy_answer).clicked() {
+            ui.ctx().copy_text(answer.to_string());
+        }
         let status_human = if view.status.eq_ignore_ascii_case("completed") {
             l.work_status_completed
         } else if view.status.eq_ignore_ascii_case("executed") {
@@ -1379,7 +1394,7 @@ impl AiraDesktopApp {
                 {
                     self.bind_ollama_process(Some(m));
                 } else {
-                    self.refresh_ollama_list();
+                    self.refresh_ollama_list(ui.ctx());
                     if let Some(m) = self.ollama_models.first().cloned() {
                         self.bind_ollama_process(Some(m));
                     } else {
@@ -1394,7 +1409,7 @@ impl AiraDesktopApp {
                 self.bind_ollama_process(None);
             }
             if ui.button(l.settings_ollama_refresh).clicked() {
-                self.refresh_ollama_list();
+                self.refresh_ollama_list(ui.ctx());
             }
         });
         ui.horizontal(|ui| {
@@ -1431,10 +1446,24 @@ impl AiraDesktopApp {
         }
 
         ui.horizontal(|ui| {
-            if ui.button(l.settings_models_scan).clicked() {
-                match actions::models_catalog_scan(&self.paths) {
-                    Ok((_n, snap)) => self.apply_catalog_snapshot(snap),
-                    Err(e) => self.catalog_msg = Some(format!("{e:#}")),
+            let catalog_busy = self.async_jobs.catalog_inflight();
+            let work_busy = self.async_jobs.work_inflight();
+            if ui
+                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_scan))
+                .clicked()
+            {
+                let ctx = ui.ctx().clone();
+                if !self.async_jobs.try_spawn_catalog(
+                    crate::async_jobs::CatalogJobKind::Scan,
+                    self.paths.clone(),
+                    work_busy,
+                    None,
+                    None,
+                    None,
+                    None,
+                    move || ctx.request_repaint(),
+                ) {
+                    self.catalog_msg = Some("catalog job busy".into());
                 }
             }
             if ui
@@ -1443,7 +1472,10 @@ impl AiraDesktopApp {
             {
                 self.catalog_auto = true;
             }
-            if ui.button(l.settings_models_select).clicked() {
+            if ui
+                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_select))
+                .clicked()
+            {
                 let selection = if self.catalog_auto {
                     Some(CatalogSelection::Auto)
                 } else if let Some(r) = self.catalog_highlight.clone() {
@@ -1453,26 +1485,82 @@ impl AiraDesktopApp {
                     None
                 };
                 if let Some(selection) = selection {
-                    match actions::models_catalog_select(&self.paths, selection) {
-                        Ok((chosen, snap)) => {
-                            self.catalog_highlight = Some(chosen);
-                            self.catalog_auto = false;
-                            self.apply_catalog_snapshot(snap);
+                    if work_busy {
+                        self.catalog_msg =
+                            Some("cannot Select while Work is running (weights locked)".into());
+                    } else {
+                        let ctx = ui.ctx().clone();
+                        if !self.async_jobs.try_spawn_catalog(
+                            crate::async_jobs::CatalogJobKind::Select,
+                            self.paths.clone(),
+                            work_busy,
+                            None,
+                            Some(selection),
+                            None,
+                            None,
+                            move || ctx.request_repaint(),
+                        ) {
+                            self.catalog_msg = Some("catalog job busy".into());
                         }
-                        Err(e) => self.catalog_msg = Some(format!("{e:#}")),
                     }
                 }
             }
-            if ui.button(l.settings_models_prepare).clicked() {
-                if let Some(r) = self.catalog_highlight.clone() {
-                    match actions::models_catalog_prepare(&self.paths, &r) {
-                        Ok(snap) => self.apply_catalog_snapshot(snap),
-                        Err(e) => self.catalog_msg = Some(format!("{e:#}")),
+            if ui
+                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_prepare))
+                .clicked()
+            {
+                if work_busy {
+                    self.catalog_msg =
+                        Some("cannot Prepare while Work is running (weights locked)".into());
+                } else if let Some(r) = self.catalog_highlight.clone() {
+                    let ctx = ui.ctx().clone();
+                    if !self.async_jobs.try_spawn_catalog(
+                        crate::async_jobs::CatalogJobKind::Prepare,
+                        self.paths.clone(),
+                        work_busy,
+                        Some(r),
+                        None,
+                        None,
+                        None,
+                        move || ctx.request_repaint(),
+                    ) {
+                        self.catalog_msg = Some("catalog job busy".into());
                     }
                 } else {
                     self.catalog_msg = Some("select a catalog row before Prepare".into());
                 }
             }
+            if ui
+                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_verify))
+                .clicked()
+            {
+                let art = self.catalog_artifact_edit.trim().to_string();
+                if art.is_empty() {
+                    self.catalog_msg = Some("set ModelArtifact path before Verify".into());
+                } else if work_busy {
+                    self.catalog_msg =
+                        Some("cannot Verify while Work is running (weights locked)".into());
+                } else {
+                    let ctx = ui.ctx().clone();
+                    if !self.async_jobs.try_spawn_catalog(
+                        crate::async_jobs::CatalogJobKind::Verify,
+                        self.paths.clone(),
+                        work_busy,
+                        None,
+                        None,
+                        Some(std::path::PathBuf::from(art)),
+                        None,
+                        move || ctx.request_repaint(),
+                    ) {
+                        self.catalog_msg = Some("catalog job busy".into());
+                    }
+                }
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label(l.settings_models_artifact);
+            ui.text_edit_singleline(&mut self.catalog_artifact_edit);
         });
 
         ui.horizontal(|ui| {

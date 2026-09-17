@@ -20,7 +20,7 @@ The Work screen moves to a waiting state, then shows an answer with status, chec
 ## If it failed?
 
 - Empty text → rejected with a clear problem (Help opens on `work.submit`).
-- Text generation not ready → host LLM not bound, Auto tip missing, or specific model unavailable (`work.model_unready`); open Settings → Models (Process + `ollama list`, Scan/Prepare/Select). Math text is not a model-free escape (RFC-0242). Choice ≠ VERIFIED.
+- Text generation not ready → host LLM not bound, Auto tip missing, or specific model unavailable (`work.model_unready`); open Settings → Models (Process + `ollama list`, Scan/Verify/Prepare/Select). Required/Compare switch models without restart (RFC-0243). Math text is not a model-free escape (RFC-0242). Choice ≠ VERIFIED.
 - Node stopped → Desktop may Start first; if Start fails, follow help:node.lifecycle.
 - Model / host LLM missing → see help:model.unavailable; Work requires at least one host process LLM.
 

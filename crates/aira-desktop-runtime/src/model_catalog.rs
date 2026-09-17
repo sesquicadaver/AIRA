@@ -4,11 +4,13 @@
 //! activate/quarantine/inventory CSUs. Does **not** submit Work or invent
 //! VERIFIED from selection.
 
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use aira_csu_model_acquisition::{
     activate_verified_model, fetch_to_quarantine, list_model_lifecycle, load_policy, select_model,
-    write_acquisition_policy, FetchOutcome, ModelSelectError, ModelSelection,
+    verify_quarantine, write_acquisition_policy, FetchOutcome, ModelSelectError, ModelSelection,
+    QuarantinePointer, VerifyOutcome, QUARANTINE_POINTER_REL,
 };
 use aira_csu_model_inventory::scan_and_publish;
 use aira_flow::ActivatedPointerGate;
@@ -68,9 +70,13 @@ fn ready_reason(verified: bool, available: bool) -> String {
     match (verified, available) {
         (true, true) => "verified and available (activated cache)".into(),
         (true, false) => "verified but not activated — use Prepare".into(),
-        (false, true) => "available without verified slot (unexpected)".into(),
+        (false, true) => "available for process (activated/bind) — not weight-verified".into(),
         (false, false) => "not verified and not available".into(),
     }
+}
+
+fn quarantine_ready_reason() -> String {
+    "quarantined — Verify (artifact) then Prepare".into()
 }
 
 fn local_add_allowed(root: &Path) -> bool {
@@ -80,6 +86,12 @@ fn local_add_allowed(root: &Path) -> bool {
     }
 }
 
+fn read_quarantine_pointer(root: &Path) -> Option<QuarantinePointer> {
+    let path = root.join(QUARANTINE_POINTER_REL);
+    let raw = fs::read_to_string(path).ok()?;
+    serde_json::from_str(&raw).ok()
+}
+
 /// Load lifecycle catalog + tip + policy posture.
 pub fn load_model_catalog(
     root: impl AsRef<Path>,
@@ -87,7 +99,7 @@ pub fn load_model_catalog(
     let root = root.as_ref();
     let life = list_model_lifecycle(root).map_err(|e| ModelCatalogError::Message(e.to_string()))?;
     let tip = tip_model_ref(root);
-    let entries = life
+    let mut entries: Vec<CatalogEntry> = life
         .into_iter()
         .map(|e| CatalogEntry {
             ready_reason: ready_reason(e.verified, e.available),
@@ -96,6 +108,17 @@ pub fn load_model_catalog(
             available: e.available,
         })
         .collect();
+    // Pack C: surface pending quarantine so GUI can Verify → Prepare.
+    if let Some(q) = read_quarantine_pointer(root) {
+        if !entries.iter().any(|e| e.model_ref == q.model_ref) {
+            entries.push(CatalogEntry {
+                model_ref: q.model_ref,
+                verified: false,
+                available: false,
+                ready_reason: quarantine_ready_reason(),
+            });
+        }
+    }
     Ok(ModelCatalogSnapshot {
         entries,
         tip_model_ref: tip,
@@ -163,9 +186,38 @@ pub fn add_model_file(
             ..
         } => {
             snap.last_message = Some(format!(
-                "quarantined {model_ref} at {quarantine_path} ({content_hash}); Prepare needs verify evidence then activate"
+                "quarantined {model_ref} at {quarantine_path} ({content_hash}); Verify with ModelArtifact then Prepare"
             ));
             Ok(snap)
+        }
+    }
+}
+
+/// Verify quarantined weights against a ModelArtifact path (Pack C / audit #2).
+pub fn verify_catalog_quarantine(
+    root: impl AsRef<Path>,
+    artifact_path: impl AsRef<Path>,
+) -> Result<ModelCatalogSnapshot, ModelCatalogError> {
+    let root = root.as_ref();
+    let out = verify_quarantine(root, artifact_path.as_ref())
+        .map_err(|e| ModelCatalogError::Message(e.to_string()))?;
+    let mut snap = load_model_catalog(root)?;
+    match out {
+        VerifyOutcome::Verified {
+            model_ref,
+            verified_path,
+            ..
+        } => {
+            snap.last_message = Some(format!(
+                "verified {model_ref} → {verified_path}; use Prepare to activate"
+            ));
+            Ok(snap)
+        }
+        VerifyOutcome::Rejected { reason, .. } => {
+            snap.last_message = Some(format!("verify rejected: {reason}"));
+            Err(ModelCatalogError::Message(
+                snap.last_message.clone().unwrap_or_default(),
+            ))
         }
     }
 }
@@ -180,6 +232,12 @@ pub fn prepare_model(
     if model_ref.is_empty() {
         return Err(ModelCatalogError::Message(
             "select a model_ref before Prepare".into(),
+        ));
+    }
+    if model_ref.starts_with("aira:model:ollama-") {
+        return Err(ModelCatalogError::Message(
+            "host Ollama bind uses Settings → Models process bind — not Prepare/activate_verified (RFC-0243)"
+                .into(),
         ));
     }
     let out = activate_verified_model(root, model_ref)
@@ -206,20 +264,34 @@ pub fn select_catalog_model(
         CatalogSelection::Required(r) => ModelSelection::Required(r.clone()),
     };
     let chosen = select_model(root, sel)?;
-    // Setting tip requires activate when available; otherwise keep explained select only.
     let life = list_model_lifecycle(root).map_err(|e| ModelCatalogError::Message(e.to_string()))?;
-    let available = life
-        .iter()
-        .any(|e| e.model_ref == chosen.model_ref && e.available);
+    let entry = life.iter().find(|e| e.model_ref == chosen.model_ref);
+    let available = entry.is_some_and(|e| e.available);
+    let tip = load_model_catalog(root).ok().and_then(|s| s.tip_model_ref);
+    let mut snap = load_model_catalog(root)?;
+    if chosen.model_ref.starts_with("aira:model:ollama-") {
+        // Pack C: host-ollama tip is already process-bound; never activate_verified.
+        snap.last_message = Some(format!(
+            "selected host Ollama {} (process bind; no weight activate)",
+            chosen.model_ref
+        ));
+        return Ok((chosen.model_ref, snap));
+    }
     if available {
+        if tip.as_deref() == Some(chosen.model_ref.as_str()) {
+            // Pack C: tip already this model — skip redundant materialize/copy.
+            snap.last_message = Some(format!(
+                "selected {} (already tip; skipped re-activate)",
+                chosen.model_ref
+            ));
+            return Ok((chosen.model_ref, snap));
+        }
         let _ = activate_verified_model(root, &chosen.model_ref)
             .map_err(|e| ModelCatalogError::Message(e.to_string()))?;
-    }
-    let mut snap = load_model_catalog(root)?;
-    snap.last_message = Some(if available {
-        format!("selected and tip-activated {}", chosen.model_ref)
+        snap = load_model_catalog(root)?;
+        snap.last_message = Some(format!("selected and tip-activated {}", chosen.model_ref));
     } else {
-        format!(
+        snap.last_message = Some(format!(
             "selected {} but not available — use Prepare when verified ({})",
             chosen.model_ref,
             match chosen.via {
@@ -227,8 +299,8 @@ pub fn select_catalog_model(
                 aira_csu_model_acquisition::ModelSelectionVia::AutoLatestTip => "auto tip",
                 aira_csu_model_acquisition::ModelSelectionVia::AutoFirstAvailable => "auto first",
             }
-        )
-    });
+        ));
+    }
     Ok((chosen.model_ref, snap))
 }
 
@@ -322,6 +394,18 @@ mod tests {
     }
 
     #[test]
+    fn prepare_rejects_ollama_ref() {
+        let _g = isolated();
+        let dir = tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("models")).unwrap();
+        let err = prepare_model(dir.path(), "aira:model:ollama-x-deadbeefcafe").unwrap_err();
+        assert!(
+            err.to_string().contains("Ollama") || err.to_string().contains("process"),
+            "{err}"
+        );
+    }
+
+    #[test]
     fn select_auto_empty_is_explained() {
         let _g = isolated();
         let dir = tempdir().unwrap();
@@ -329,6 +413,62 @@ mod tests {
         let err = select_catalog_model(dir.path(), CatalogSelection::Auto).unwrap_err();
         assert!(
             err.to_string().contains("no available") || err.to_string().contains("fail-closed")
+        );
+    }
+
+    /// Pack C: host-ollama Select never calls activate_verified / NoVerified path.
+    #[test]
+    fn select_host_ollama_skips_activate_verified() {
+        let _g = isolated();
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("models/cache/ollama-slot")).unwrap();
+        let model_ref = "aira:model:ollama-sel_test-deadbeefcafe";
+        let cache = root.join("models/cache/ollama-slot/host-ollama.bind");
+        fs::write(&cache, b"aira-host-ollama-bind\nmodel=sel-test:latest\n").unwrap();
+        let pointer = serde_json::json!({
+            "updated_at": "2026-09-17T00:00:00Z",
+            "model_ref": model_ref,
+            "cache_path": cache.display().to_string(),
+            "verified_path": "",
+            "content_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "evidence_artifact_id": "aira:artifact:test",
+            "host_ollama_model": "sel-test:latest",
+        });
+        let slot = root.join("models/cache/ollama-slot").join("activated.json");
+        fs::write(&slot, serde_json::to_string_pretty(&pointer).unwrap()).unwrap();
+        // Slot dir name must match sanitize(model_ref) for select_model/lifecycle.
+        let slot_name = model_ref
+            .chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .collect::<String>();
+        let slot_dir = root.join("models/cache").join(&slot_name);
+        fs::create_dir_all(&slot_dir).unwrap();
+        let slot_ptr = slot_dir.join("activated.json");
+        fs::write(&slot_ptr, serde_json::to_string_pretty(&pointer).unwrap()).unwrap();
+        fs::write(
+            root.join("models/activated.latest.json"),
+            serde_json::to_string_pretty(&pointer).unwrap(),
+        )
+        .unwrap();
+
+        let (chosen, snap) =
+            select_catalog_model(root, CatalogSelection::Required(model_ref.into())).unwrap();
+        assert_eq!(chosen, model_ref);
+        let msg = snap.last_message.as_deref().unwrap_or("");
+        assert!(
+            msg.contains("process bind") || msg.contains("host Ollama"),
+            "expected host-ollama select message, got {msg}"
+        );
+        assert!(
+            !msg.contains("tip-activated"),
+            "must not activate_verified: {msg}"
         );
     }
 }
