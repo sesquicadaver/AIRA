@@ -201,7 +201,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn http_post_problem_math_model_ref_is_4xx() {
+    async fn http_post_problem_math_model_ref_forces_generate_fail_closed() {
+        // Re-audit R4: model_ref on math text is Generate, not #334 BAD_REQUEST.
+        // Without activated model the pipeline fails closed (no VRA).
         let (_dir, state) = setup();
         let (st, v) = json_req(
             router(state),
@@ -213,11 +215,16 @@ mod tests {
             })),
         )
         .await;
-        assert_eq!(st, StatusCode::BAD_REQUEST, "{v}");
+        assert_ne!(st, StatusCode::BAD_REQUEST, "must not #334 reject: {v}");
+        assert_eq!(st, StatusCode::INTERNAL_SERVER_ERROR, "{v}");
         assert!(
-            v["error"].as_str().unwrap_or("").contains("model_ref"),
+            v["error"]
+                .as_str()
+                .unwrap_or("")
+                .contains("no verified result"),
             "{v}"
         );
+        assert_ne!(v.get("status").and_then(|s| s.as_str()), Some("completed"));
     }
 
     #[tokio::test]

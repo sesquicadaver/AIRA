@@ -3,9 +3,10 @@
 //! Prefers Ready Solution / Knowledge reuse; otherwise Negative Lookup + Execution Capsule.
 //!
 //! QUEUE `#212`: catalog bind is by action/capability **string**. Echo and uppercase keep
-//! their existing binds. `Calculate 2 + 2` stays [`ACTION_MATH_EVAL_SAFE`]. Any other
-//! non-math statement binds [`ACTION_GENERATE_LOCAL`] (RFC-0105 payload). This crate does
-//! **not** import execution CSUs (CSU ↛ CSU). Plane dispatch of generate is `#213` (RFC-0108).
+//! their existing binds **when no admitted `model_ref`**. With `model_ref` (Desktop Generate /
+//! re-audit R4), bind is always [`ACTION_GENERATE_LOCAL`]. `Calculate 2 + 2` without
+//! `model_ref` stays [`ACTION_MATH_EVAL_SAFE`]. This crate does **not** import execution
+//! CSUs (CSU ↛ CSU). Plane dispatch of generate is `#213` (RFC-0108).
 
 use aira_artifact::ArtifactType;
 use aira_csu::support::{
@@ -28,7 +29,19 @@ pub const ACTION_GENERATE_LOCAL: &str = "text.generate.local";
 pub const PAYLOAD_SCHEMA_GENERATE_LOCAL: &str = "aira:schema:execution:generate-local:0.1";
 
 /// Bind a Problem Statement to a catalog action without importing execution CSUs.
+///
+/// Without an admitted `model_ref`, keeps legacy text→action heuristics (C1 math /
+/// echo / upper). Prefer [`catalog_action_with_model_intent`] for Desktop Generate.
 pub fn catalog_action(statement: &str) -> &'static str {
+    catalog_action_with_model_intent(statement, None)
+}
+
+/// Re-audit R4 / RFC-0242: non-empty admitted `model_ref` forces Generate —
+/// math / echo / upper are not an escape from host LLM Work.
+pub fn catalog_action_with_model_intent(statement: &str, model_ref: Option<&str>) -> &'static str {
+    if model_ref.map(str::trim).filter(|s| !s.is_empty()).is_some() {
+        return ACTION_GENERATE_LOCAL;
+    }
     let lower = statement.to_lowercase();
     if lower.contains("echo") {
         ACTION_TEXT_ECHO
@@ -344,14 +357,15 @@ impl Csu for ReductionBasicCsu {
 
         // Execution capsule (needed)
         let statement = event.payload_ref.clone().unwrap_or_default();
-        let action = catalog_action(&statement);
+        // Re-audit R4: admitted model_ref forces generate before text heuristics.
+        let model_ref = admission_model_ref_from_context(ctx, &context_ref);
+        let action = catalog_action_with_model_intent(&statement, model_ref.as_deref());
         let (capsule, artifact_type) = if action == ACTION_GENERATE_LOCAL {
             let prompt = if statement.is_empty() {
                 problem_ref.as_str().to_string()
             } else {
                 statement.clone()
             };
-            let model_ref = admission_model_ref_from_context(ctx, &context_ref);
             (
                 generate_local_payload(
                     &problem_ref,
@@ -516,6 +530,46 @@ mod tests {
         csu.on_event(&ev, &mut ctx).unwrap()
     }
 
+    fn reduce_with_model_ref(statement: &str, model_ref: &str) -> Vec<CsuOutput> {
+        let mut csu = ReductionBasicCsu::new();
+        let mut log = MemoryEventLog::new();
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let ctx_body = json!({
+            "resolved_factors": {
+                "admission_snapshot": {
+                    "kind": "admission_snapshot",
+                    "model_ref": model_ref,
+                    "statement_content_hash": "sha256:deadbeef"
+                }
+            }
+        });
+        let ctx_payload = json_bytes(&ctx_body);
+        let ctx_desc = aira_csu::support::make_artifact(
+            "aira:artifact:ctx-admit-r4",
+            ArtifactType::OperationalArtifact,
+            &ctx_payload,
+            vec![],
+        );
+        let ctx_id = ctx_desc.artifact_id.clone();
+        store.publish(ctx_desc, &ctx_payload).unwrap();
+        let mut ctx = aira_csu::CsuExecutionContext::new(
+            csu.manifest().csu_id.clone(),
+            &mut log,
+            Some(&mut store),
+            None,
+        );
+        let ev = mk(
+            "aira:event:c-r4",
+            EventType::ContextResolved,
+            vec![AiraRef::parse("aira:problem:01TESTPROBLEM").unwrap()],
+            vec![ctx_id],
+            vec![],
+            Some(statement.into()),
+        );
+        csu.on_event(&ev, &mut ctx).unwrap()
+    }
+
     fn capsule_action(outs: &[CsuOutput]) -> String {
         outs.iter()
             .find_map(|o| match o {
@@ -561,6 +615,61 @@ mod tests {
             catalog_action("Summarize the local Problem Statement without leaving the host."),
             ACTION_GENERATE_LOCAL
         );
+    }
+
+    /// Re-audit R4: admitted model_ref forces generate for math / echo / upper text.
+    #[test]
+    fn model_ref_forces_generate_over_math_echo_upper() {
+        let m = Some("aira:model:host-a");
+        assert_eq!(
+            catalog_action_with_model_intent("Calculate 2 + 2", m),
+            ACTION_GENERATE_LOCAL
+        );
+        assert_eq!(
+            catalog_action_with_model_intent("echo hello", m),
+            ACTION_GENERATE_LOCAL
+        );
+        assert_eq!(
+            catalog_action_with_model_intent("uppercase foo", m),
+            ACTION_GENERATE_LOCAL
+        );
+        assert_eq!(
+            catalog_action_with_model_intent(
+                "Summarize the local Problem Statement without leaving the host.",
+                m
+            ),
+            ACTION_GENERATE_LOCAL
+        );
+        // Empty / whitespace model_ref keeps legacy binds.
+        assert_eq!(
+            catalog_action_with_model_intent("Calculate 2 + 2", Some("  ")),
+            ACTION_MATH_EVAL_SAFE
+        );
+        assert_eq!(
+            catalog_action_with_model_intent("echo hello", None),
+            ACTION_TEXT_ECHO
+        );
+    }
+
+    #[test]
+    fn reduce_with_model_ref_binds_generate_for_math_and_echo() {
+        for prompt in [
+            "Calculate 2 + 2",
+            "echo hello",
+            "uppercase foo",
+            "Please echo my summary",
+        ] {
+            let outs = reduce_with_model_ref(prompt, "aira:model:chosen-x");
+            assert_eq!(
+                capsule_action(&outs),
+                ACTION_GENERATE_LOCAL,
+                "prompt={prompt}"
+            );
+            let (ty, body) = capsule_json(&outs);
+            assert_eq!(ty, ArtifactType::CustomArtifact, "prompt={prompt}");
+            assert_eq!(body["action"], json!(ACTION_GENERATE_LOCAL));
+            assert_eq!(body["model_artifact_ref"], json!("aira:model:chosen-x"));
+        }
     }
 
     #[test]

@@ -1583,6 +1583,8 @@ mod tests {
 
     #[test]
     fn local_session_same_text_different_model_ref_does_not_reuse() {
+        // Re-audit R4: model_ref on math text forces Generate (no #334 UnsupportedConstraint).
+        // Same statement + distinct model_ref must not reuse the prior math VRA.
         let _lock = isolated_flow();
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join(".aira");
@@ -1603,8 +1605,26 @@ mod tests {
         );
         let second = session.submit_problem_with_admission(text, constrained);
         assert!(
-            matches!(second, Err(FlowError::UnsupportedConstraint(_))),
-            "math + model_ref must reject (#334): {second:?}"
+            !matches!(second, Err(FlowError::UnsupportedConstraint(_))),
+            "R4: model_ref must not reject as math constraint, got {second:?}"
+        );
+        // Generate path without activated model fails closed (no VRA) — not silent reuse.
+        assert!(
+            matches!(
+                second,
+                Err(FlowError::Other(ref m)) if m.contains("no verified result")
+            ),
+            "must not Complecte via math reuse under different model_ref, got {second:?}"
+        );
+        assert!(
+            !session
+                .plane()
+                .events()
+                .iter()
+                .rev()
+                .take(12)
+                .any(|e| e.payload_ref.as_deref() == Some("reuse:ready_solution")),
+            "must not emit reuse:ready_solution for model_ref generate path"
         );
     }
 
