@@ -1646,8 +1646,7 @@ mod tests {
         let (gate, model_ref) =
             ActivatedPointerGate::install_host_ollama_bind(dir.path(), "trusted:latest").unwrap();
         let tip_path = dir.path().join("models/activated.latest.json");
-        let mut tip: Value =
-            serde_json::from_str(&fs::read_to_string(&tip_path).unwrap()).unwrap();
+        let mut tip: Value = serde_json::from_str(&fs::read_to_string(&tip_path).unwrap()).unwrap();
         tip["host_ollama_model"] = json!("evil-injected:latest");
         fs::write(&tip_path, serde_json::to_string_pretty(&tip).unwrap()).unwrap();
         // Slot pointer also carries host field for Required admits.
