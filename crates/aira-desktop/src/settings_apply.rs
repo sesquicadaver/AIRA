@@ -238,6 +238,24 @@ mod tests {
         );
     }
 
+    /// Pack B / audit #9: applied LLM facts from pidfile; disk tip differ → RestartNeeded.
+    #[test]
+    fn attach_applied_llm_from_pidfile_not_disk() {
+        let mut disk = sample_settings(NetworkProfile::P0);
+        disk.llm_backend = LlmBackend::Process;
+        disk.llm_ollama_model = Some("disk-tip:latest".into());
+        let mut pidfile = disk.clone();
+        pidfile.llm_backend = LlmBackend::Mock;
+        pidfile.llm_ollama_model = None;
+        let applied = AppliedRuntimeSettings::from_settings(&pidfile);
+        assert_eq!(applied.llm_backend, LlmBackend::Mock);
+        assert!(applied.llm_ollama_model.is_none());
+        assert_eq!(
+            settings_apply_phase(&disk, Some(&applied), false),
+            SettingsApplyPhase::RestartNeeded
+        );
+    }
+
     #[test]
     fn draft_dirty_is_changed_before_restart() {
         let mut saved = sample_settings(NetworkProfile::P1);

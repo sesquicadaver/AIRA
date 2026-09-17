@@ -114,6 +114,9 @@ pub struct DesktopSettings {
     /// Host ollama model name (`ollama list`); required when `llm_backend=process`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub llm_ollama_model: Option<String>,
+    /// Optional process generate timeout (ms) → `AIRA_LLM_PROCESS_TIMEOUT_MS` (RFC-0243).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub llm_process_timeout_ms: Option<u64>,
 }
 
 impl DesktopSettings {
@@ -134,6 +137,7 @@ impl DesktopSettings {
             llm_backend: LlmBackend::Mock,
             llm_process_bin: None,
             llm_ollama_model: None,
+            llm_process_timeout_ms: None,
         }
     }
 
@@ -184,18 +188,18 @@ pub fn apply_node_llm_env(cmd: &mut Command, settings: &DesktopSettings) {
             cmd.env(ENV_LLM_BACKEND, "process");
             cmd.env(ENV_PROCESS_BIN, settings.effective_llm_process_bin());
             if let Some(args) = settings.llm_process_args() {
+                // Default tip argv only. Per-request ollama model comes from
+                // activate binding `host_cli_model` (RFC-0243); do not lock
+                // EXPECTED_MODEL_REF to Settings tip — Compare/Required must
+                // switch without node restart.
                 cmd.env(ENV_PROCESS_ARGS, args);
             }
-            if let Some(model) = settings
-                .llm_ollama_model
-                .as_deref()
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-            {
-                cmd.env(
-                    ENV_EXPECTED_MODEL_REF,
-                    aira_flow::host_ollama_model_ref(model),
-                );
+            // Clear any inherited expected-ref; admission binding is authoritative.
+            cmd.env_remove(ENV_EXPECTED_MODEL_REF);
+            if let Some(ms) = settings.llm_process_timeout_ms {
+                if ms > 0 {
+                    cmd.env(ENV_PROCESS_TIMEOUT_MS, ms.to_string());
+                }
             }
         }
     }
@@ -403,6 +407,7 @@ mod unit {
             llm_backend: LlmBackend::Mock,
             llm_process_bin: None,
             llm_ollama_model: None,
+            llm_process_timeout_ms: None,
         }
     }
 

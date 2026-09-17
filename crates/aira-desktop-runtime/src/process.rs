@@ -82,7 +82,8 @@ pub fn start(paths: &DesktopPaths, node_bin: Option<PathBuf>) -> Result<StartOut
         outcome.peer_pid = peer_pid;
         outcome.peer_listen = peer_listen;
         outcome.peer_attached = peer_attached;
-        outcome.used_settings = settings;
+        // Pack B / RFC-0243: keep pidfile LLM facts from try_attach — do not
+        // overwrite with later disk settings (audit #9).
         return Ok(outcome);
     }
 

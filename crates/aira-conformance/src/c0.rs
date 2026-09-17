@@ -351,7 +351,7 @@ fn test_artifact_verify_on_read(artifact_root: &Path) -> CaseResult {
     pass(id)
 }
 
-/// #68 — operational event chain + causal_refs preserved.
+/// #68 — operational event chain + causal_refs preserved (process executor; not math).
 fn test_event_causality(artifact_root: &Path) -> CaseResult {
     let id = "c0.event.causality";
     let run_dir = artifact_root.join("c0-causality");
@@ -359,21 +359,36 @@ fn test_event_causality(artifact_root: &Path) -> CaseResult {
         Ok(p) => p,
         Err(e) => return fail(id, e.to_string()),
     };
-    if let Err(e) = plane.submit_problem("Calculate 2 + 2") {
+    if let Err(e) = plane.bind_process_backend(
+        aira_csu_execution_llm::ProcessBackend::new("echo"),
+        aira_csu_execution_llm::AlwaysActivated,
+    ) {
+        return fail(id, e.to_string());
+    }
+    if let Err(e) = plane.submit_problem("host process smoke for event causality") {
         return fail(id, e.to_string());
     }
     let events = plane.events();
+    // Generate/process path: CapsuleCompleted / Executed — no ResultPublished (≠ VERIFIED).
     let required = [
         EventType::ProblemSubmitted,
         EventType::ContextResolved,
         EventType::CapsuleCreated,
         EventType::CapsuleCompleted,
-        EventType::ResultPublished,
     ];
     for need in required {
         if !events.iter().any(|e| e.event_type == need) {
             return fail(id, format!("missing event {need:?}"));
         }
+    }
+    if events
+        .iter()
+        .any(|e| e.event_type == EventType::ResultPublished)
+    {
+        return fail(
+            id,
+            "process generate must not emit ResultPublished (Executed ≠ VERIFIED)",
+        );
     }
     let with_causal = events.iter().filter(|e| !e.causal_refs.is_empty()).count();
     if with_causal == 0 {

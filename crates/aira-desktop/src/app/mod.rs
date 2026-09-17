@@ -13,9 +13,9 @@ mod work;
 use std::path::PathBuf;
 
 use aira_desktop_runtime::{
-    evaluate_work_readiness, list_ollama_models, load_or_create_settings, load_or_create_ui_prefs,
-    load_system_snapshot, resolve_ollama_bin, sync_autostart_from_settings, write_ui_prefs,
-    DesktopPaths, DesktopSettings, LifecycleStatus, LlmBackend, ModelCatalogSnapshot, ModelFact,
+    evaluate_work_readiness, load_or_create_settings, load_or_create_ui_prefs,
+    load_system_snapshot, sync_autostart_from_settings, write_ui_prefs, DesktopPaths,
+    DesktopSettings, LifecycleStatus, LlmBackend, ModelCatalogSnapshot, ModelFact,
     ModelStorageSnapshot, ModelTripleSnapshot, NetworkMeshSnapshot, SystemSnapshot, UiLang,
     UiPrefs, WorkExecutorPreference, WorkReadiness, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
@@ -23,7 +23,8 @@ use aira_desktop_runtime::{
 use crate::actions;
 use crate::async_jobs::{
     quit_arm_policy, quit_followup_after_lifecycle, quit_followup_after_submit, AsyncDesktopJobs,
-    LifecycleJobKind, LifecycleJobResult, QuitArm, QuitFollowup, StatusSnapshot,
+    CatalogJobKind, CatalogJobResult, LifecycleJobKind, LifecycleJobResult, QuitArm, QuitFollowup,
+    StatusSnapshot,
 };
 use crate::camera;
 use crate::lexicon::{ActionId, ErrorCode, HelpId, UiProblem};
@@ -103,6 +104,8 @@ pub struct AiraDesktopApp {
     pub(super) catalog_auto: bool,
     pub(super) catalog_add_ref: String,
     pub(super) catalog_msg: Option<String>,
+    /// Path to ModelArtifact JSON for Verify (Pack C).
+    pub(super) catalog_artifact_edit: String,
     /// Host `ollama list` names for Settings process bind (not AIRA catalog).
     pub(super) ollama_models: Vec<String>,
     pub(super) ollama_msg: Option<String>,
@@ -215,6 +218,7 @@ impl AiraDesktopApp {
             catalog_auto: true,
             catalog_add_ref: String::new(),
             catalog_msg: None,
+            catalog_artifact_edit: String::new(),
             ollama_models: Vec::new(),
             ollama_msg: None,
             work_executor_mode: work::WorkExecutorUiMode::Auto,
@@ -408,27 +412,32 @@ impl AiraDesktopApp {
     }
 
     /// Probe host `ollama list` into Settings UI (observe-only; not VERIFIED).
-    pub(super) fn refresh_ollama_list(&mut self) {
-        let bin = resolve_ollama_bin(self.settings.llm_process_bin.as_deref());
-        match list_ollama_models(&bin) {
-            Ok(rows) => {
-                self.ollama_models = rows.into_iter().map(|e| e.name).collect();
-                self.ollama_msg = Some(format!(
-                    "{} ({})",
-                    self.labels().settings_ollama_listed,
-                    self.ollama_models.len()
-                ));
-            }
-            Err(e) => {
-                self.ollama_models.clear();
-                self.ollama_msg = Some(format!("{e:#}"));
-            }
+    ///
+    /// Pack D: runs off the egui thread with a bounded CLI timeout.
+    pub(super) fn refresh_ollama_list(&mut self, ctx: &egui::Context) {
+        let ctx = ctx.clone();
+        let on_done = move || ctx.request_repaint();
+        if !self.async_jobs.try_spawn_catalog(
+            CatalogJobKind::OllamaList,
+            self.paths.clone(),
+            self.async_jobs.work_inflight(),
+            None,
+            None,
+            None,
+            self.settings.llm_process_bin.clone(),
+            on_done,
+        ) {
+            self.ollama_msg = Some(if self.async_jobs.catalog_inflight() {
+                "ollama list already running".into()
+            } else {
+                "cannot list ollama while busy".into()
+            });
         }
     }
 
     /// Persist Ollama process bind; requires node restart to apply (`RestartNeeded`).
     ///
-    /// Also writes Phase D tip via host-ollama bind (node-signed marker; `verified=false`
+    /// Also writes activate tip via host-ollama bind (node-signed marker; `verified=false`
     /// in evidence — executed ≠ VERIFIED).
     pub(super) fn bind_ollama_process(&mut self, model: Option<String>) {
         match model {
@@ -580,6 +589,37 @@ impl AiraDesktopApp {
                 Err(e) => {
                     self.dial_msg = None;
                     self.set_problem(ErrorCode::Generic, e);
+                }
+            }
+        }
+        // Pack D: catalog / ollama-list workers.
+        if let Some(outcome) = self.async_jobs.poll_catalog() {
+            match outcome {
+                Ok(CatalogJobResult::Scan(snap))
+                | Ok(CatalogJobResult::Prepare(snap))
+                | Ok(CatalogJobResult::Verify(snap)) => {
+                    self.apply_catalog_snapshot(snap);
+                }
+                Ok(CatalogJobResult::Select { chosen, snap }) => {
+                    self.catalog_highlight = Some(chosen);
+                    self.catalog_auto = false;
+                    self.apply_catalog_snapshot(snap);
+                }
+                Ok(CatalogJobResult::OllamaList(names)) => {
+                    self.ollama_models = names;
+                    self.ollama_msg = Some(format!(
+                        "{} ({})",
+                        self.labels().settings_ollama_listed,
+                        self.ollama_models.len()
+                    ));
+                }
+                Err(e) => {
+                    if e.contains("ollama") || e.contains("list") {
+                        self.ollama_models.clear();
+                        self.ollama_msg = Some(e);
+                    } else {
+                        self.catalog_msg = Some(e);
+                    }
                 }
             }
         }

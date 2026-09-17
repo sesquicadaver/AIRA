@@ -195,6 +195,12 @@ pub struct ExecutorFacts {
     pub content_hash: String,
     /// Activated cache path when known (Phase D pointer); empty for test doubles.
     pub cache_path: String,
+    /// Host CLI model name for process backends (e.g. Ollama `run <name>`).
+    ///
+    /// Pack A / RFC-0243: when set, [`ProcessBackend`](crate::process::ProcessBackend)
+    /// uses this per generate instead of spawn-fixed `AIRA_LLM_PROCESS_ARGS`.
+    /// Empty/`None` keeps fixed argv. Never implies VERIFIED.
+    pub host_cli_model: Option<String>,
 }
 
 /// Test double: treat a model as Phase D activated.
@@ -219,6 +225,7 @@ impl ModelActivateGate for AlwaysActivated {
             model_ref: ALWAYS_ACTIVATED_MODEL_REF.into(),
             content_hash: Self::content_hash(),
             cache_path: String::new(),
+            host_cli_model: None,
         })
     }
 }

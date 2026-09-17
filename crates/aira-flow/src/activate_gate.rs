@@ -68,6 +68,9 @@ struct ActivatedPointer {
     verified_path: String,
     content_hash: String,
     evidence_artifact_id: String,
+    /// Host Ollama CLI name when this tip is a process bind (RFC-0243). Not VERIFIED.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    host_ollama_model: Option<String>,
 }
 
 /// Filename for per-model activated slot (`#344` / RFC-0227; mirrors acquisition).
@@ -395,6 +398,7 @@ impl ActivatedPointerGate {
             "verified_path": verified_rel,
             "content_hash": content_hash.as_str(),
             "evidence_artifact_id": evidence_id,
+            "host_ollama_model": ollama_model,
         });
         let apath = root.join("models/activated.latest.json");
         if let Some(parent) = apath.parent() {
@@ -599,10 +603,15 @@ impl ModelActivateGate for ActivatedPointerGate {
     fn check_activated(&self, payload: &GenerateLocalPayload) -> Result<ExecutorFacts, String> {
         let pointer = self.resolve_admit_pointer(payload)?;
         self.verify_pointer_ready(&pointer, VerifyMode::AdmitFull)?;
+        let host_cli_model = pointer
+            .host_ollama_model
+            .clone()
+            .or_else(|| host_ollama_model_from_binder(&self.aira_root, &pointer.cache_path));
         Ok(ExecutorFacts {
             model_ref: pointer.model_ref,
             content_hash: pointer.content_hash,
             cache_path: pointer.cache_path,
+            host_cli_model,
         })
     }
 }
@@ -683,9 +692,42 @@ fn sanitize_model_slot(model_ref: &str) -> String {
 }
 
 /// Stable `aira:model:…` for a host `ollama list` name (ProcessBackend expected bind).
+///
+/// Pack B / audit #7: collision-resistant — full normalized name is hashed so
+/// `org/model:latest` and `org_model:latest` do not share a slot.
 pub fn host_ollama_model_ref(ollama_model: &str) -> String {
-    let slot = sanitize_model_slot(ollama_model.trim());
-    format!("aira:model:ollama-{slot}")
+    let name = ollama_model.trim();
+    let readable = sanitize_model_slot(name);
+    let digest = ContentHash::sha256_bytes(name.as_bytes());
+    let short = digest.as_str().trim_start_matches("sha256:");
+    let short = if short.len() >= 12 {
+        &short[..12]
+    } else {
+        short
+    };
+    format!("aira:model:ollama-{readable}-{short}")
+}
+
+/// Recover host CLI name from bind-marker bytes when pointer omits `host_ollama_model`.
+fn host_ollama_model_from_binder(aira_root: &Path, cache_path: &str) -> Option<String> {
+    let path = {
+        let p = Path::new(cache_path);
+        if p.is_absolute() {
+            p.to_path_buf()
+        } else {
+            aira_root.join(p)
+        }
+    };
+    let text = fs::read_to_string(path).ok()?;
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("model=") {
+            let m = rest.trim();
+            if !m.is_empty() {
+                return Some(m.to_string());
+            }
+        }
+    }
+    None
 }
 
 fn pointer_fingerprint(pointer: &ActivatedPointer) -> String {
@@ -1424,13 +1466,85 @@ mod tests {
 
         let (gate, model_ref) =
             ActivatedPointerGate::install_host_ollama_bind(dir.path(), "llama3:latest").unwrap();
-        assert_eq!(model_ref, "aira:model:ollama-llama3_latest");
+        assert_eq!(model_ref, host_ollama_model_ref("llama3:latest"));
+        assert!(model_ref.starts_with("aira:model:ollama-llama3_latest-"));
+        // Collision-resistant: slash vs underscore must not collapse.
+        assert_ne!(
+            host_ollama_model_ref("org/model:latest"),
+            host_ollama_model_ref("org_model:latest")
+        );
         assert_eq!(gate.trust_mode(), ActivationTrustMode::Production);
         assert!(!dir.path().join(ACTIVATION_TRUST_FIXTURE_REL).is_file());
         let obs = gate.observe_verify_now();
         assert!(obs.ready, "detail={}", obs.detail);
         assert_eq!(obs.selected_model_ref.as_deref(), Some(model_ref.as_str()));
         gate.check_activated(&dummy_payload()).unwrap();
+    }
+
+    /// Pack B / audit #7: dedicated collision assert for host ollama refs.
+    #[test]
+    fn host_ollama_model_ref_is_collision_resistant() {
+        assert_ne!(
+            host_ollama_model_ref("org/model:latest"),
+            host_ollama_model_ref("org_model:latest")
+        );
+        assert_eq!(
+            host_ollama_model_ref("llama3:latest"),
+            host_ollama_model_ref("  llama3:latest  ")
+        );
+    }
+
+    /// Pack A: Required A then B admit distinct host_cli_model without restart.
+    #[test]
+    fn required_host_ollama_a_then_b_admit_distinct_host_cli() {
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let mut rng = OsRng;
+        let signing = SigningKey::generate(&mut rng);
+        let verifying = signing.verifying_key();
+        let secret_hex = hex::encode(signing.to_bytes());
+        let public_hex = hex::encode(verifying.to_bytes());
+        let identity_id = format!("aira:identity:desktop.{}", uuid::Uuid::now_v7().as_simple());
+        let id_ref = AiraRef::parse(&identity_id).unwrap();
+        let id_dir = dir.path().join("identity");
+        fs::create_dir_all(&id_dir).unwrap();
+        fs::write(id_dir.join("local.ed25519"), format!("{secret_hex}\n")).unwrap();
+        let id_sig = aira_object::sign_with_key(id_ref, &signing, identity_id.as_bytes());
+        let desc = json!({
+            "identity_id": identity_id,
+            "identity_type": "local",
+            "display_name": "desktop",
+            "public_key": { "algorithm": "ed25519", "key_hex": public_hex },
+            "created_at": "2026-09-08T00:00:00Z",
+            "key_path": "identity/local.ed25519",
+            "signature": id_sig,
+        });
+        fs::write(
+            id_dir.join("local.identity.json"),
+            serde_json::to_string_pretty(&desc).unwrap(),
+        )
+        .unwrap();
+
+        let (_gate_a, ref_a) =
+            ActivatedPointerGate::install_host_ollama_bind(dir.path(), "model-a:latest").unwrap();
+        let (gate, ref_b) =
+            ActivatedPointerGate::install_host_ollama_bind(dir.path(), "model-b:latest").unwrap();
+        assert_ne!(ref_a, ref_b);
+
+        let mut payload_a = dummy_payload();
+        payload_a.model_artifact_ref = Some(AiraRef::parse(&ref_a).unwrap());
+        let facts_a = gate.check_activated(&payload_a).unwrap();
+        assert_eq!(facts_a.model_ref, ref_a);
+        assert_eq!(facts_a.host_cli_model.as_deref(), Some("model-a:latest"));
+
+        let mut payload_b = dummy_payload();
+        payload_b.model_artifact_ref = Some(AiraRef::parse(&ref_b).unwrap());
+        let facts_b = gate.check_activated(&payload_b).unwrap();
+        assert_eq!(facts_b.model_ref, ref_b);
+        assert_eq!(facts_b.host_cli_model.as_deref(), Some("model-b:latest"));
     }
 
     /// `#337`: removing fixture marker forces production trust → local-test evidence denied.

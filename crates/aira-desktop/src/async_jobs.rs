@@ -17,8 +17,9 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use aira_desktop_runtime::{
-    load_system_snapshot, start, status, stop, DesktopPaths, DesktopSettings, DialOutcome,
-    LifecycleStatus, ModelTripleSnapshot, NetworkMeshSnapshot, PidRecordView, StartOutcome,
+    list_ollama_models, load_system_snapshot, resolve_ollama_bin, start, status, stop,
+    CatalogSelection, DesktopPaths, DesktopSettings, DialOutcome, LifecycleStatus,
+    ModelCatalogSnapshot, ModelTripleSnapshot, NetworkMeshSnapshot, PidRecordView, StartOutcome,
     SystemSnapshot,
 };
 
@@ -88,7 +89,9 @@ pub fn quit_followup_after_lifecycle(
     match (kind, succeeded) {
         (LifecycleJobKind::Start, true) => QuitFollowup::QueueStop,
         (LifecycleJobKind::Start, false) => QuitFollowup::Close,
-        (LifecycleJobKind::Stop, _) => QuitFollowup::Close,
+        // Pack E / audit #10: only close after a successful Stop.
+        (LifecycleJobKind::Stop, true) => QuitFollowup::Close,
+        (LifecycleJobKind::Stop, false) => QuitFollowup::None,
     }
 }
 
@@ -120,6 +123,34 @@ pub fn quit_arm_policy(work_inflight: bool) -> QuitArm {
     } else {
         QuitArm::ArmLifecycle
     }
+}
+
+/// Pack D: Prepare/Select/materialize must not run while Work is in flight.
+pub fn catalog_mutate_allowed(work_inflight: bool) -> bool {
+    !work_inflight
+}
+
+/// Background catalog / ollama-list job kinds (Pack D / audit #3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CatalogJobKind {
+    Scan,
+    Prepare,
+    Select,
+    OllamaList,
+    Verify,
+}
+
+/// Result of a background catalog mutation.
+#[derive(Debug)]
+pub enum CatalogJobResult {
+    Scan(ModelCatalogSnapshot),
+    Prepare(ModelCatalogSnapshot),
+    Select {
+        chosen: String,
+        snap: ModelCatalogSnapshot,
+    },
+    OllamaList(Vec<String>),
+    Verify(ModelCatalogSnapshot),
 }
 
 /// Authoritative status payload collected off the UI thread.
@@ -210,6 +241,8 @@ pub struct AsyncDesktopJobs {
     lifecycle_rx: Option<Receiver<(LifecycleJobKind, Result<LifecycleJobResult, String>)>>,
     /// Phase T `#308`: at most one opt-in peer dial worker.
     dial_rx: Option<Receiver<Result<DialOutcome, String>>>,
+    /// Pack D: catalog Scan/Prepare/Select/Verify/OllamaList off the UI thread.
+    catalog_rx: Option<Receiver<Result<CatalogJobResult, String>>>,
     /// Kind of in-flight lifecycle job (for Starting/Stopping UI).
     lifecycle_kind: Option<LifecycleJobKind>,
     /// Monotonic generation so a stale refresh cannot overwrite a newer one.
@@ -522,6 +555,96 @@ impl AsyncDesktopJobs {
             }
         }
     }
+
+    /// True while a catalog/ollama-list worker runs (Pack D).
+    pub fn catalog_inflight(&self) -> bool {
+        self.catalog_rx.is_some()
+    }
+
+    /// Spawn Scan / Prepare / Select / Verify / OllamaList off the UI thread.
+    ///
+    /// Prepare/Select/Verify rejected when `work_inflight` (immutable weights).
+    #[allow(clippy::too_many_arguments)] // kind/paths/selection/artifact stay explicit
+    pub fn try_spawn_catalog(
+        &mut self,
+        kind: CatalogJobKind,
+        paths: DesktopPaths,
+        work_inflight: bool,
+        model_ref: Option<String>,
+        selection: Option<CatalogSelection>,
+        artifact_path: Option<PathBuf>,
+        llm_process_bin: Option<String>,
+        on_done: impl FnOnce() + Send + 'static,
+    ) -> bool {
+        if self.catalog_rx.is_some() {
+            return false;
+        }
+        let mutates = matches!(
+            kind,
+            CatalogJobKind::Prepare | CatalogJobKind::Select | CatalogJobKind::Verify
+        );
+        if mutates && !catalog_mutate_allowed(work_inflight) {
+            return false;
+        }
+        let (tx, rx) = mpsc::channel();
+        self.catalog_rx = Some(rx);
+        thread::spawn(move || {
+            let outcome = (|| -> Result<CatalogJobResult, String> {
+                match kind {
+                    CatalogJobKind::Scan => {
+                        let (_n, snap) =
+                            actions::models_catalog_scan(&paths).map_err(|e| format!("{e:#}"))?;
+                        Ok(CatalogJobResult::Scan(snap))
+                    }
+                    CatalogJobKind::Prepare => {
+                        let r = model_ref.ok_or_else(|| "model_ref required".to_string())?;
+                        let snap = actions::models_catalog_prepare(&paths, &r)
+                            .map_err(|e| format!("{e:#}"))?;
+                        Ok(CatalogJobResult::Prepare(snap))
+                    }
+                    CatalogJobKind::Select => {
+                        let sel = selection.ok_or_else(|| "selection required".to_string())?;
+                        let (chosen, snap) = actions::models_catalog_select(&paths, sel)
+                            .map_err(|e| format!("{e:#}"))?;
+                        Ok(CatalogJobResult::Select { chosen, snap })
+                    }
+                    CatalogJobKind::Verify => {
+                        let art =
+                            artifact_path.ok_or_else(|| "artifact path required".to_string())?;
+                        let snap = actions::models_catalog_verify(&paths, &art)
+                            .map_err(|e| format!("{e:#}"))?;
+                        Ok(CatalogJobResult::Verify(snap))
+                    }
+                    CatalogJobKind::OllamaList => {
+                        let bin = resolve_ollama_bin(llm_process_bin.as_deref());
+                        let rows = list_ollama_models(&bin).map_err(|e| format!("{e:#}"))?;
+                        Ok(CatalogJobResult::OllamaList(
+                            rows.into_iter().map(|e| e.name).collect(),
+                        ))
+                    }
+                }
+            })();
+            let _ = tx.send(outcome);
+            on_done();
+        });
+        true
+    }
+
+    /// Non-blocking poll for a finished catalog job.
+    pub fn poll_catalog(&mut self) -> Option<Result<CatalogJobResult, String>> {
+        let rx = self.catalog_rx.as_ref()?;
+        match rx.try_recv() {
+            Ok(v) => {
+                self.catalog_rx = None;
+                Some(v)
+            }
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => {
+                self.catalog_rx = None;
+                Some(Err("catalog worker disconnected".into()))
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -541,7 +664,7 @@ mod tests {
             paths,
             settings,
             None,
-            "Calculate 2 + 2".into(),
+            "Summarize locally".into(),
             false,
             aira_flow::AdmissionConstraints::default(),
             WorkSubmitModelContext::default(),
@@ -567,7 +690,7 @@ mod tests {
             paths,
             settings,
             None,
-            "Calculate 2 + 2".into(),
+            "Summarize locally".into(),
             true,
             aira_flow::AdmissionConstraints::default(),
             WorkSubmitModelContext::default(),
@@ -732,6 +855,10 @@ mod tests {
             QuitFollowup::Close
         );
         assert_eq!(
+            quit_followup_after_lifecycle(true, LifecycleJobKind::Stop, false),
+            QuitFollowup::None
+        );
+        assert_eq!(
             quit_followup_after_lifecycle(false, LifecycleJobKind::Start, true),
             QuitFollowup::None
         );
@@ -744,6 +871,27 @@ mod tests {
         assert_eq!(quit_arm_policy(false), QuitArm::ArmLifecycle);
         assert_eq!(quit_followup_after_submit(true), QuitFollowup::QueueStop);
         assert_eq!(quit_followup_after_submit(false), QuitFollowup::None);
+    }
+
+    /// Pack D: Prepare/Select blocked while Work is in flight.
+    #[test]
+    fn catalog_mutate_blocked_during_work() {
+        assert!(!catalog_mutate_allowed(true));
+        assert!(catalog_mutate_allowed(false));
+        let mut jobs = AsyncDesktopJobs::new();
+        let (_hold_tx, hold_rx) = mpsc::channel();
+        jobs.work_rx = Some(hold_rx);
+        let paths = DesktopPaths::for_data_root(std::env::temp_dir().join("aira-async-catalog-d"));
+        assert!(!jobs.try_spawn_catalog(
+            CatalogJobKind::Prepare,
+            paths,
+            true,
+            Some("aira:model:x".into()),
+            None,
+            None,
+            None,
+            || {}
+        ));
     }
 
     #[test]

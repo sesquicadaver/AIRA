@@ -118,8 +118,14 @@ pub(crate) fn materialize_weights_nofollow(
     dest: &Path,
     expected: Option<&ContentHash>,
 ) -> Result<(ContentHash, u64), AcquisitionError> {
+    // Pack D / audit #4: write to a sibling temp then atomic rename so an
+    // in-flight reader never sees a truncated dest.
+    let tmp = dest.with_extension("partial");
+    if tmp.exists() {
+        let _ = fs::remove_file(&tmp);
+    }
     let mut src_f = open_nofollow_read(src)?;
-    let mut dest_f = open_nofollow_write(dest)?;
+    let mut dest_f = open_nofollow_write(&tmp)?;
 
     let mut hasher = Sha256::new();
     let mut buf = [0u8; WEIGHTS_IO_BUF];
@@ -147,14 +153,14 @@ pub(crate) fn materialize_weights_nofollow(
     drop(dest_f);
 
     if let Err(e) = copy_result {
-        let _ = fs::remove_file(dest);
+        let _ = fs::remove_file(&tmp);
         return Err(e);
     }
 
     let streamed = hash_from_sha256(hasher.finalize());
     if let Some(exp) = expected {
         if streamed != *exp {
-            let _ = fs::remove_file(dest);
+            let _ = fs::remove_file(&tmp);
             return Err(AcquisitionError::MaterializeHashMismatch {
                 expected: exp.as_str().to_string(),
                 observed: streamed.as_str().to_string(),
@@ -162,30 +168,31 @@ pub(crate) fn materialize_weights_nofollow(
         }
     }
 
-    let post = match content_hash_nofollow(dest) {
-        Ok(h) => h,
-        Err(e) => {
-            let _ = fs::remove_file(dest);
-            return Err(e);
-        }
-    };
-    if post != streamed {
-        let _ = fs::remove_file(dest);
-        return Err(AcquisitionError::MaterializeHashMismatch {
-            expected: streamed.as_str().to_string(),
-            observed: post.as_str().to_string(),
-        });
-    }
+    let post = content_hash_nofollow(&tmp)?;
     if let Some(exp) = expected {
         if post != *exp {
-            let _ = fs::remove_file(dest);
+            let _ = fs::remove_file(&tmp);
             return Err(AcquisitionError::MaterializeHashMismatch {
                 expected: exp.as_str().to_string(),
                 observed: post.as_str().to_string(),
             });
         }
     }
+    if streamed != post {
+        let _ = fs::remove_file(&tmp);
+        return Err(AcquisitionError::MaterializeHashMismatch {
+            expected: streamed.as_str().to_string(),
+            observed: post.as_str().to_string(),
+        });
+    }
 
+    if dest.exists() {
+        reject_if_symlink(dest)?;
+    }
+    fs::rename(&tmp, dest).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        AcquisitionError::Io(format!("atomic publish {}: {e}", dest.display()))
+    })?;
     Ok((post, bytes))
 }
 

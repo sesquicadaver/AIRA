@@ -537,11 +537,17 @@ fn phase_j_epistemic_emit_207() {
     assert!(!queue.contains("| 208 | **OPEN**"));
     let plane = std::fs::read_to_string(repo_root().join("crates/aira-flow/src/plane.rs")).unwrap();
     assert!(plane.contains("pipeline produced no epistemic assessment"));
+    assert!(plane.contains("latest_epistemic_assessment"));
+    // RFC-0242: normative C1 is process Executed smoke — epistemic emit stays on
+    // Completed paths (plane + aira-flow unit), not mandatory Calculate 2+2 in c1.rs.
     let c1 =
         std::fs::read_to_string(repo_root().join("crates/aira-conformance/src/c1.rs")).unwrap();
-    assert!(c1.contains("latest_epistemic_assessment"));
-    assert!(c1.contains("aira:schema:epistemic:assessment:0.1"));
     assert!(c1.contains("EpistemicBasicCsu"));
+    assert!(c1.contains("RFC-0242"));
+    let flow_lib =
+        std::fs::read_to_string(repo_root().join("crates/aira-flow/src/lib.rs")).unwrap();
+    assert!(flow_lib.contains("calculate_two_plus_two_emits_epistemic_assessment"));
+    assert!(flow_lib.contains("aira:schema:epistemic:assessment:0.1"));
 }
 
 #[test]

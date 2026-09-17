@@ -71,6 +71,11 @@
       "type": ["string", "null"],
       "minLength": 1,
       "description": "Host ollama model name from `ollama list` (argv: run <model>). Required when llm_backend=process. Not an AIRA model_ref and not VERIFIED."
+    },
+    "llm_process_timeout_ms": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "Optional generate process timeout in milliseconds (AIRA_LLM_PROCESS_TIMEOUT_MS). Desktop HTTP submit uses max(60s, this value). Never grants VERIFIED."
     }
   }
 }

@@ -63,7 +63,8 @@ pub use launcher::{
 };
 pub use model_catalog::{
     add_model_file, enable_local_model_add, load_model_catalog, prepare_model, scan_model_catalog,
-    select_catalog_model, CatalogEntry, CatalogSelection, ModelCatalogError, ModelCatalogSnapshot,
+    select_catalog_model, verify_catalog_quarantine, CatalogEntry, CatalogSelection,
+    ModelCatalogError, ModelCatalogSnapshot,
 };
 pub use model_status::{load_model_triple, ModelFact, ModelTripleConclusion, ModelTripleSnapshot};
 pub use model_storage::{format_bytes, load_model_storage, ModelStorageSnapshot};
@@ -74,6 +75,7 @@ pub use network_mesh::{
 };
 pub use node_http::{
     submit_desktop_problem, submit_desktop_problem_with_admission, submit_problem_http,
+    submit_timeout_for,
 };
 pub use ollama::{
     list_ollama_models, parse_ollama_list_stdout, resolve_ollama_bin, OllamaListEntry,
@@ -93,7 +95,8 @@ pub use settings::{
 };
 pub use ui_prefs::{detect_ui_lang, load_or_create_ui_prefs, write_ui_prefs, UiLang, UiPrefs};
 pub use work_readiness::{
-    evaluate_work_readiness, WorkCapabilityKind, WorkExecutorPreference, WorkReadiness,
+    evaluate_host_llm_gate, evaluate_work_readiness, HostLlmGate, WorkCapabilityKind,
+    WorkExecutorPreference, WorkReadiness,
 };
 
 /// Crate version for smoke tests.

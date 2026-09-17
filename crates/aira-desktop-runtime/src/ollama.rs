@@ -54,25 +54,51 @@ pub fn resolve_ollama_bin(explicit: Option<&str>) -> PathBuf {
 
 /// Run `ollama list` on the Desktop host and return model names.
 ///
-/// Fail-closed when the binary is missing or exits non-zero.
-/// Does **not** talk to `aira-node` and does not mutate activation.
+/// Fail-closed when the binary is missing, exits non-zero, or exceeds timeout
+/// (Pack D / audit #3 — no unbounded UI hang).
 pub fn list_ollama_models(bin: impl AsRef<Path>) -> Result<Vec<OllamaListEntry>> {
-    let bin = bin.as_ref();
-    let output = Command::new(bin)
-        .arg("list")
-        .output()
-        .with_context(|| format!("spawn `{} list` (is ollama installed?)", bin.display()))?;
-    if !output.status.success() {
-        let err = String::from_utf8_lossy(&output.stderr);
-        bail!(
-            "`{} list` failed (status {:?}): {}",
-            bin.display(),
-            output.status.code(),
-            err.trim()
-        );
+    list_ollama_models_with_timeout(bin, std::time::Duration::from_secs(15))
+}
+
+/// Same as [`list_ollama_models`] with an explicit wait bound.
+pub fn list_ollama_models_with_timeout(
+    bin: impl AsRef<Path>,
+    timeout: std::time::Duration,
+) -> Result<Vec<OllamaListEntry>> {
+    use std::sync::mpsc;
+    use std::thread;
+
+    let bin = bin.as_ref().to_path_buf();
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let result = (|| {
+            let output = Command::new(&bin).arg("list").output().with_context(|| {
+                format!("spawn `{} list` (is ollama installed?)", bin.display())
+            })?;
+            if !output.status.success() {
+                let err = String::from_utf8_lossy(&output.stderr);
+                bail!(
+                    "`{} list` failed (status {:?}): {}",
+                    bin.display(),
+                    output.status.code(),
+                    err.trim()
+                );
+            }
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            Ok(parse_ollama_list_stdout(&stdout))
+        })();
+        let _ = tx.send(result);
+    });
+    match rx.recv_timeout(timeout) {
+        Ok(r) => r,
+        Err(mpsc::RecvTimeoutError::Timeout) => bail!(
+            "`ollama list` timed out after {}s (fail-closed; UI not blocked forever)",
+            timeout.as_secs()
+        ),
+        Err(mpsc::RecvTimeoutError::Disconnected) => {
+            bail!("`ollama list` worker disconnected (fail-closed)")
+        }
     }
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    Ok(parse_ollama_list_stdout(&stdout))
 }
 
 #[cfg(test)]
@@ -107,6 +133,25 @@ koill/sentence-transformers:paraphrase-multilingual-minilm-l12-v2    3ee258ffc9f
         assert_eq!(
             resolve_ollama_bin(Some("  /usr/local/bin/ollama ")),
             PathBuf::from("/usr/local/bin/ollama")
+        );
+    }
+
+    /// Pack D: hang script must fail-closed via timeout (UI never waits forever).
+    #[cfg(unix)]
+    #[test]
+    fn list_ollama_models_timeout_fail_closed() {
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("hang-ollama.sh");
+        std::fs::write(&script, "#!/bin/sh\nsleep 30\n").unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&script).unwrap().permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&script, perms).unwrap();
+        let err = list_ollama_models_with_timeout(&script, std::time::Duration::from_millis(200))
+            .expect_err("hang must timeout");
+        assert!(
+            err.to_string().contains("timed out"),
+            "expected timeout, got {err:#}"
         );
     }
 }

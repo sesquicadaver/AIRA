@@ -71,7 +71,7 @@ O5 (`#260` **DONE** @ [`AIRA-RFC-0151`](../specs/rfc/AIRA-RFC-0151-work-screen-p
 - **Скасувати** — лише якщо виконавець підтверджує скасування; закриття HTTP ≠ скасування обчислення.
 - Результат: спочатку відповідь, далі статус виконання й перевірки **окремо**; mock / відсутність provenance — явно.
 
-Локальні моделі — **не Core і не маркетплейс**. Phase P `#269` **DONE** @ [`AIRA-RFC-0159`](../specs/rfc/AIRA-RFC-0159-model-triple-ux.md): selected ≠ ready ≠ used-in-result; **amendment 2026-09-10:** Settings **MUST** allow local model select/activate (anti-usurpation; observe-only superseded; GPU marketplace still forbidden; choice ≠ VERIFIED). Phase Q `#283` **DONE** @ [`AIRA-RFC-0172`](../specs/rfc/AIRA-RFC-0172-backend-ne-model-used.md): used = model id/hash only (never `backend:*`). Phase Q `#284` **DONE** @ [`AIRA-RFC-0173`](../specs/rfc/AIRA-RFC-0173-invite-import-atomicity.md): invite import checks-before-writes + trust rollback. Reachability DIRECT requires endpoint+direction bind @ [`AIRA-RFC-0160`](../specs/rfc/AIRA-RFC-0160-reachability-endpoint-bind.md) (`#270`). Канон: Artifact + Capability + Policy CSU (`aira models`); LLM Backend — зовнішній CSU. C1 `Calculate 2 + 2` → `execution-basic`; інший текст → `text.generate.local`. Phase K **DONE** @ RFC-0104. Не fake VERIFIED.
+Локальні моделі — **не Core і не маркетплейс**. Phase P `#269` **DONE** @ [`AIRA-RFC-0159`](../specs/rfc/AIRA-RFC-0159-model-triple-ux.md): selected ≠ ready ≠ used-in-result; **amendment 2026-09-10:** Settings **MUST** allow local model select/activate (anti-usurpation; observe-only superseded; GPU marketplace still forbidden; choice ≠ VERIFIED). Phase Q `#283` **DONE** @ [`AIRA-RFC-0172`](../specs/rfc/AIRA-RFC-0172-backend-ne-model-used.md): used = model id/hash only (never `backend:*`). Phase Q `#284` **DONE** @ [`AIRA-RFC-0173`](../specs/rfc/AIRA-RFC-0173-invite-import-atomicity.md): invite import checks-before-writes + trust rollback. Reachability DIRECT requires endpoint+direction bind @ [`AIRA-RFC-0160`](../specs/rfc/AIRA-RFC-0160-reachability-endpoint-bind.md) (`#270`). Канон: Artifact + Capability + Policy CSU (`aira models`); LLM Backend — зовнішній CSU. **RFC-0242:** Desktop Work потребує host process LLM (Settings Ollama); OP-001 / C1 `Calculate 2 + 2` / `execution-basic` — **legacy non-normative**. Продуктовий шлях — `text.generate.local` (Executed ≠ VERIFIED). Phase K **DONE** @ RFC-0104. Не fake VERIFIED.
 
 ## 4. Стан системи (цільовий контракт)
 
@@ -157,7 +157,9 @@ GUI-state зберігає лише вкладку/фокус/чернетку/�
 
 **Model data paths (`#355` @ RFC-0238):** Settings → Models storage root + used/free (or unknown).
 
-**Ollama process bind (RFC-0241):** Settings → Models may bind host `ollama` (`llm_backend=process` + model from `ollama list`). Applied only after node restart; System executor shows `process` from pidfile/applied facts (not GUI env). Process ≠ mock; executed ≠ VERIFIED; Phase D activate stays separate.
+**Ollama process bind (RFC-0241/0243):** Settings → Models may bind host `ollama` (`llm_backend=process` + model from `ollama list`) as default tip. Per-request Work Required/Compare rewrites `ollama run <model>` from activate `host_cli_model` without node restart. System executor shows `process` from pidfile/applied facts. Process ≠ mock; executed ≠ VERIFIED.
+
+**Two-model M6 (`#357` @ RFC-0240):** fixture-weight GUI+CLI+HTTP harness; cold restart; fail-closed. **Not** installed-product complete — see [`installed-product-llm-acceptance.md`](installed-product-llm-acceptance.md).
 
 **Apply-diff honesty (`#356` @ RFC-0239):** Changed/Saved/Applied/Restart + inline apply error.
 

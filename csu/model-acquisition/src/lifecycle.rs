@@ -158,8 +158,9 @@ pub fn list_model_lifecycle(
             if e.verified_path.is_none() {
                 e.verified_path = Some(pointer.verified_path);
             }
-            // Activated implies prior verify for this slot.
-            e.verified = true;
+            // Pack B / audit #5: activated ≠ weight-verified. Host-ollama bind
+            // markers stay verified=false unless a verified pointer was seen.
+            // Do not force e.verified = true here.
         }
     }
 
