@@ -90,8 +90,9 @@ pub use peer_dial::{
 pub use process::{start, status, stop, LifecycleStatus, PidRecordView, StartOutcome};
 pub use settings::{
     apply_node_llm_env, effective_peer_listen, effective_relay_ttl_days, load_or_create_settings,
-    normalize_settings, validate_listen_addr, write_settings, DesktopSettings, HttpAuthMode,
-    LlmBackend, NetworkProfile, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS, SETTINGS_SCHEMA_ID,
+    load_settings_readonly, normalize_settings, validate_listen_addr, write_settings,
+    DesktopSettings, HttpAuthMode, LlmBackend, NetworkProfile, DEFAULT_PEER_LISTEN,
+    DEFAULT_RELAY_TTL_DAYS, SETTINGS_SCHEMA_ID,
 };
 pub use ui_prefs::{detect_ui_lang, load_or_create_ui_prefs, write_ui_prefs, UiLang, UiPrefs};
 pub use work_readiness::{

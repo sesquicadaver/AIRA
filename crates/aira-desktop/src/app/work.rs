@@ -31,6 +31,7 @@ impl AiraDesktopApp {
     pub(super) fn refresh_work_readiness(&mut self) {
         self.work_readiness = evaluate_work_readiness(
             &self.paths.data_root,
+            &self.settings,
             &self.problem_text,
             self.work_preference(),
         );

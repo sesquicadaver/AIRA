@@ -14,8 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::model_catalog::{load_model_catalog, CatalogEntry, ModelCatalogSnapshot};
 use crate::model_status::{load_model_triple, ModelFact, ModelTripleSnapshot};
-use crate::paths::DesktopPaths;
-use crate::settings::{load_or_create_settings, DesktopSettings, LlmBackend};
+use crate::settings::{DesktopSettings, LlmBackend};
 
 /// Work-screen executor preference (not Settings catalog CRUD).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -130,28 +129,20 @@ pub fn evaluate_host_llm_gate(settings: &DesktopSettings) -> HostLlmGate {
     }
 }
 
-fn load_host_llm_gate(root: &Path) -> HostLlmGate {
-    let paths = DesktopPaths::for_data_root(root);
-    match load_or_create_settings(&paths) {
-        Ok(s) => evaluate_host_llm_gate(&s),
-        Err(e) => HostLlmGate {
-            ok: false,
-            ollama_model: None,
-            reasons: vec![format!("desktop settings unavailable: {e}")],
-        },
-    }
-}
-
 /// Classify draft text and build fail-closed admission + readiness (`#349` / `#354` / RFC-0242).
+///
+/// Re-audit R1: `settings` must be the same document the GUI loaded (system
+/// `DesktopPaths` / in-memory apply). Never load-or-create under `data_root`.
 pub fn evaluate_work_readiness(
     root: impl AsRef<Path>,
+    settings: &DesktopSettings,
     text: &str,
     preference: WorkExecutorPreference,
 ) -> WorkReadiness {
     let root = root.as_ref();
     let _trimmed = text.trim();
 
-    let host = load_host_llm_gate(root);
+    let host = evaluate_host_llm_gate(settings);
     if !host.ok {
         return empty_readiness(
             WorkCapabilityKind::Generate,
@@ -374,7 +365,8 @@ mod tests {
     use std::sync::{Mutex, OnceLock};
     use tempfile::tempdir;
 
-    use crate::settings::write_settings;
+    use crate::paths::DesktopPaths;
+    use crate::settings::{load_settings_readonly, write_settings};
 
     fn isolated() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -383,12 +375,18 @@ mod tests {
             .unwrap_or_else(|e| e.into_inner())
     }
 
-    fn write_host_llm(root: &std::path::Path, model: &str) {
+    fn write_host_llm(root: &std::path::Path, model: &str) -> DesktopSettings {
         let paths = DesktopPaths::for_data_root(root);
         let mut s = DesktopSettings::default_p0(&paths);
         s.llm_backend = LlmBackend::Process;
         s.llm_ollama_model = Some(model.into());
         write_settings(&paths, &s).unwrap();
+        s
+    }
+
+    fn mock_settings(root: &std::path::Path) -> DesktopSettings {
+        let paths = DesktopPaths::for_data_root(root);
+        DesktopSettings::default_p0(&paths)
     }
 
     fn write_available_slot(root: &std::path::Path, model_ref: &str, slot: &str) {
@@ -414,8 +412,13 @@ mod tests {
         let _g = isolated();
         let dir = tempdir().unwrap();
         fs::create_dir_all(dir.path().join("models")).unwrap();
-        let r =
-            evaluate_work_readiness(dir.path(), "Calculate 2 + 2", WorkExecutorPreference::Auto);
+        let s = mock_settings(dir.path());
+        let r = evaluate_work_readiness(
+            dir.path(),
+            &s,
+            "Calculate 2 + 2",
+            WorkExecutorPreference::Auto,
+        );
         assert_eq!(r.kind, WorkCapabilityKind::Generate);
         assert!(!r.ready);
         assert!(r.reasons.iter().any(|s| s.contains("host LLM")));
@@ -426,9 +429,10 @@ mod tests {
         let _g = isolated();
         let dir = tempdir().unwrap();
         fs::create_dir_all(dir.path().join("models")).unwrap();
-        write_host_llm(dir.path(), "llama3:latest");
+        let s = write_host_llm(dir.path(), "llama3:latest");
         let r = evaluate_work_readiness(
             dir.path(),
+            &s,
             "Summarize the local Problem Statement",
             WorkExecutorPreference::Auto,
         );
@@ -445,9 +449,10 @@ mod tests {
         let _g = isolated();
         let dir = tempdir().unwrap();
         fs::create_dir_all(dir.path().join("models")).unwrap();
-        write_host_llm(dir.path(), "llama3:latest");
+        let s = write_host_llm(dir.path(), "llama3:latest");
         let r = evaluate_work_readiness(
             dir.path(),
+            &s,
             "Summarize locally",
             WorkExecutorPreference::Required(String::new()),
         );
@@ -460,12 +465,13 @@ mod tests {
     fn generate_auto_with_fixture_tip_is_ready_and_admits_model() {
         let _g = isolated();
         let dir = tempdir().unwrap();
-        write_host_llm(dir.path(), "llama3:latest");
+        let s = write_host_llm(dir.path(), "llama3:latest");
         aira_object::reset_primary_signer();
         ActivatedPointerGate::install_fixture(dir.path()).unwrap();
         let _ = ActivatedPointerGate::from_aira_root(dir.path()).observe_verify_now();
         let r = evaluate_work_readiness(
             dir.path(),
+            &s,
             "Summarize the local Problem Statement",
             WorkExecutorPreference::Auto,
         );
@@ -489,9 +495,10 @@ mod tests {
         let _g = isolated();
         let dir = tempdir().unwrap();
         fs::create_dir_all(dir.path().join("models")).unwrap();
-        write_host_llm(dir.path(), "llama3:latest");
+        let s = write_host_llm(dir.path(), "llama3:latest");
         let empty = evaluate_work_readiness(
             dir.path(),
+            &s,
             "Summarize locally",
             WorkExecutorPreference::Compare {
                 a: String::new(),
@@ -503,6 +510,7 @@ mod tests {
 
         let same = evaluate_work_readiness(
             dir.path(),
+            &s,
             "Summarize locally",
             WorkExecutorPreference::Compare {
                 a: "aira:model:x".into(),
@@ -517,10 +525,11 @@ mod tests {
     fn compare_one_unready_does_not_substitute() {
         let _g = isolated();
         let dir = tempdir().unwrap();
-        write_host_llm(dir.path(), "llama3:latest");
+        let s = write_host_llm(dir.path(), "llama3:latest");
         write_available_slot(dir.path(), "aira:model:a", "slot-a");
         let r = evaluate_work_readiness(
             dir.path(),
+            &s,
             "Summarize locally for compare",
             WorkExecutorPreference::Compare {
                 a: "aira:model:a".into(),
@@ -542,11 +551,12 @@ mod tests {
     fn compare_both_available_admits_two_require_new() {
         let _g = isolated();
         let dir = tempdir().unwrap();
-        write_host_llm(dir.path(), "llama3:latest");
+        let s = write_host_llm(dir.path(), "llama3:latest");
         write_available_slot(dir.path(), "aira:model:a", "slot-a");
         write_available_slot(dir.path(), "aira:model:b", "slot-b");
         let r = evaluate_work_readiness(
             dir.path(),
+            &s,
             "Summarize locally for compare",
             WorkExecutorPreference::Compare {
                 a: "aira:model:a".into(),
@@ -579,5 +589,51 @@ mod tests {
         let g = evaluate_host_llm_gate(&s);
         assert!(!g.ok);
         assert!(g.reasons.iter().any(|r| r.contains("host LLM")));
+    }
+
+    /// Re-audit R1: system layout settings path ≠ data_root; readiness uses passed settings.
+    #[test]
+    fn readiness_uses_system_layout_settings_not_data_root_file() {
+        let _g = isolated();
+        let home = tempdir().unwrap();
+        let paths = DesktopPaths::system_for_home(home.path());
+        paths.ensure_dirs().unwrap();
+        // No settings under data_root.
+        assert!(!paths.data_root.join("desktop-settings.json").is_file());
+        let mut s = DesktopSettings::default_p0(&paths);
+        s.llm_backend = LlmBackend::Process;
+        s.llm_ollama_model = Some("llama3:latest".into());
+        write_settings(&paths, &s).unwrap();
+        assert!(paths.settings_file.is_file());
+        assert_ne!(
+            paths.settings_file,
+            paths.data_root.join("desktop-settings.json")
+        );
+        // Read-only load never creates; missing under wrong path stays missing.
+        let loaded = load_settings_readonly(&paths).unwrap();
+        assert_eq!(loaded.llm_backend, LlmBackend::Process);
+        let r = evaluate_work_readiness(
+            &paths.data_root,
+            &loaded,
+            "Summarize locally",
+            WorkExecutorPreference::Auto,
+        );
+        // Host gate passes; tip may still be unready — must not claim mock-host failure.
+        assert!(
+            !r.reasons.iter().any(|x| x.contains("host LLM required")),
+            "reasons={:?}",
+            r.reasons
+        );
+        assert!(!paths.data_root.join("desktop-settings.json").is_file());
+    }
+
+    #[test]
+    fn load_settings_readonly_missing_does_not_create() {
+        let home = tempdir().unwrap();
+        let paths = DesktopPaths::system_for_home(home.path());
+        paths.ensure_dirs().unwrap();
+        assert!(load_settings_readonly(&paths).is_err());
+        assert!(!paths.settings_file.is_file());
+        assert!(!paths.data_root.join("desktop-settings.json").is_file());
     }
 }

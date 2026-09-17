@@ -40,6 +40,8 @@ Pack 3–7 QUEUE invention
 | Compare A then B | Each leg uses its own host_cli_model; B fail does not rewrite A |
 | Expected mismatch | Without host_cli_model, spawn expected vs binding still CapsuleFailed |
 | Catalog host-ollama | Select/Prepare do not call `activate_verified`; Select skips re-copy when tip matches |
+| Trusted host_cli (re-audit R2) | `host_cli_model` from **signed evidence** (or small typed binder); pointer-only tamper → deny before child |
+| File weights vs ollama (re-audit R3) | Ollama-style ProcessBackend requires `aira:model:ollama-…` binding; local weights fail-closed (no tip argv stamp) |
 
 ## 7. Acceptance
 
@@ -48,9 +50,11 @@ Pack 3–7 QUEUE invention
 3. Unit: `host_ollama_model_ref("org/model:latest")` ≠ `host_ollama_model_ref("org_model:latest")`.
 4. Unit: attach applied LLM = pidfile; saved tip differ → RestartNeeded.
 5. Docs: Executed ≠ VERIFIED; M6 fixture acceptance ≠ installed-product gate (see RFC-0240 honesty).
+6. Unit: tampered `pointer.host_ollama_model` only → admit deny (`tampered_pointer_host_ollama_model_is_fail_closed`).
+7. Unit: file-weight `model_ref` on ollama ProcessBackend → `HOST_OLLAMA_BINDING_REQUIRED`.
 
 ## 8. References
 
-- RFC-0241 (Settings Ollama bind), RFC-0242 (host LLM required), RFC-0237 (Compare)
-- Audit GUI/LLM 77dd97e findings #1 #2 #5 #7 #9
+- RFC-0241 (Settings Ollama bind), RFC-0242 (host LLM required; re-audit R1: readiness uses GUI/`DesktopPaths` settings, never load-or-create under data_root), RFC-0237 (Compare)
+- Audit GUI/LLM 77dd97e findings #1 #2 #5 #7 #9; re-audit ef0503a R1–R3
 - Analyze-394 living matrix

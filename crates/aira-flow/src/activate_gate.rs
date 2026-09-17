@@ -603,10 +603,7 @@ impl ModelActivateGate for ActivatedPointerGate {
     fn check_activated(&self, payload: &GenerateLocalPayload) -> Result<ExecutorFacts, String> {
         let pointer = self.resolve_admit_pointer(payload)?;
         self.verify_pointer_ready(&pointer, VerifyMode::AdmitFull)?;
-        let host_cli_model = pointer
-            .host_ollama_model
-            .clone()
-            .or_else(|| host_ollama_model_from_binder(&self.aira_root, &pointer.cache_path));
+        let host_cli_model = self.resolve_trusted_host_cli(&pointer)?;
         Ok(ExecutorFacts {
             model_ref: pointer.model_ref,
             content_hash: pointer.content_hash,
@@ -672,6 +669,51 @@ impl ActivatedPointerGate {
                 .to_string()
         })
     }
+
+    /// Re-audit R2: `host_cli_model` only from signed evidence or small typed binder.
+    ///
+    /// Unsigned pointer `host_ollama_model` that disagrees with evidence → deny before child.
+    fn resolve_trusted_host_cli(
+        &self,
+        pointer: &ActivatedPointer,
+    ) -> Result<Option<String>, String> {
+        let evidence_id = AiraRef::parse(&pointer.evidence_artifact_id).map_err(|_| {
+            "activated evidence_artifact_id is not an aira ref (fail-closed; not VERIFIED)"
+                .to_string()
+        })?;
+        // Same crypto bind as verify_pointer_ready — CasArtifactStore::resolve checks
+        // descriptor signatures against the thread keyring.
+        let (ring, primary) = verification_crypto(&self.aira_root, self.trust_mode)?;
+        let _crypto = bind_thread_crypto(ring, primary);
+        let store = CasArtifactStore::open(self.aira_root.join("artifacts")).map_err(|e| {
+            format!("activated evidence store missing (fail-closed; not VERIFIED): {e}")
+        })?;
+        let (_desc, ev_bytes) = store.resolve(&evidence_id).map_err(|_| {
+            "activated evidence artifact missing (fail-closed; not VERIFIED)".to_string()
+        })?;
+        let evidence_host = evidence_host_ollama_model(&ev_bytes);
+        match (
+            pointer
+                .host_ollama_model
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty()),
+            evidence_host.as_deref(),
+        ) {
+            (Some(p), Some(e)) if p != e => Err(format!(
+                "activated pointer host_ollama_model mismatches signed evidence (fail-closed; not VERIFIED): pointer={p} evidence={e}"
+            )),
+            (_, Some(e)) => Ok(Some(e.to_string())),
+            (Some(_), None) => Err(
+                "activated pointer host_ollama_model without signed evidence host (fail-closed; not VERIFIED)"
+                    .into(),
+            ),
+            (None, None) => Ok(host_ollama_model_from_binder(
+                &self.aira_root,
+                &pointer.cache_path,
+            )),
+        }
+    }
 }
 
 /// Slot directory name matching `model-acquisition::sanitize_slot` (`#344`).
@@ -709,6 +751,10 @@ pub fn host_ollama_model_ref(ollama_model: &str) -> String {
 }
 
 /// Recover host CLI name from bind-marker bytes when pointer omits `host_ollama_model`.
+///
+/// Re-audit R2/R5: only small typed markers — never `read_to_string` on GGUF weights.
+const HOST_OLLAMA_BINDER_MAX_BYTES: u64 = 4096;
+
 fn host_ollama_model_from_binder(aira_root: &Path, cache_path: &str) -> Option<String> {
     let path = {
         let p = Path::new(cache_path);
@@ -718,7 +764,14 @@ fn host_ollama_model_from_binder(aira_root: &Path, cache_path: &str) -> Option<S
             aira_root.join(p)
         }
     };
-    let text = fs::read_to_string(path).ok()?;
+    let meta = fs::metadata(&path).ok()?;
+    if !meta.is_file() || meta.len() > HOST_OLLAMA_BINDER_MAX_BYTES {
+        return None;
+    }
+    let text = fs::read_to_string(&path).ok()?;
+    if !text.starts_with("aira-host-ollama-bind") {
+        return None;
+    }
     for line in text.lines() {
         if let Some(rest) = line.strip_prefix("model=") {
             let m = rest.trim();
@@ -728,6 +781,15 @@ fn host_ollama_model_from_binder(aira_root: &Path, cache_path: &str) -> Option<S
         }
     }
     None
+}
+
+fn evidence_host_ollama_model(bytes: &[u8]) -> Option<String> {
+    let body: Value = serde_json::from_slice(bytes).ok()?;
+    body.get("host_ollama_model")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
 }
 
 fn pointer_fingerprint(pointer: &ActivatedPointer) -> String {
@@ -1545,6 +1607,67 @@ mod tests {
         let facts_b = gate.check_activated(&payload_b).unwrap();
         assert_eq!(facts_b.model_ref, ref_b);
         assert_eq!(facts_b.host_cli_model.as_deref(), Some("model-b:latest"));
+    }
+
+    /// Re-audit R2: tampering only `pointer.host_ollama_model` must deny before child.
+    #[test]
+    fn tampered_pointer_host_ollama_model_is_fail_closed() {
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let mut rng = OsRng;
+        let signing = SigningKey::generate(&mut rng);
+        let verifying = signing.verifying_key();
+        let secret_hex = hex::encode(signing.to_bytes());
+        let public_hex = hex::encode(verifying.to_bytes());
+        let identity_id = format!("aira:identity:desktop.{}", uuid::Uuid::now_v7().as_simple());
+        let id_ref = AiraRef::parse(&identity_id).unwrap();
+        let id_dir = dir.path().join("identity");
+        fs::create_dir_all(&id_dir).unwrap();
+        fs::write(id_dir.join("local.ed25519"), format!("{secret_hex}\n")).unwrap();
+        let id_sig = aira_object::sign_with_key(id_ref, &signing, identity_id.as_bytes());
+        let desc = json!({
+            "identity_id": identity_id,
+            "identity_type": "local",
+            "display_name": "desktop",
+            "public_key": { "algorithm": "ed25519", "key_hex": public_hex },
+            "created_at": "2026-09-08T00:00:00Z",
+            "key_path": "identity/local.ed25519",
+            "signature": id_sig,
+        });
+        fs::write(
+            id_dir.join("local.identity.json"),
+            serde_json::to_string_pretty(&desc).unwrap(),
+        )
+        .unwrap();
+
+        let (gate, model_ref) =
+            ActivatedPointerGate::install_host_ollama_bind(dir.path(), "trusted:latest").unwrap();
+        let tip_path = dir.path().join("models/activated.latest.json");
+        let mut tip: Value = serde_json::from_str(&fs::read_to_string(&tip_path).unwrap()).unwrap();
+        tip["host_ollama_model"] = json!("evil-injected:latest");
+        fs::write(&tip_path, serde_json::to_string_pretty(&tip).unwrap()).unwrap();
+        // Slot pointer also carries host field for Required admits.
+        let slot = sanitize_model_slot(&model_ref);
+        let slot_path = dir
+            .path()
+            .join("models/cache")
+            .join(&slot)
+            .join(ACTIVATED_SLOT_POINTER_NAME);
+        if slot_path.is_file() {
+            let mut slot_tip: Value =
+                serde_json::from_str(&fs::read_to_string(&slot_path).unwrap()).unwrap();
+            slot_tip["host_ollama_model"] = json!("evil-injected:latest");
+            fs::write(&slot_path, serde_json::to_string_pretty(&slot_tip).unwrap()).unwrap();
+        }
+
+        let err = gate.check_activated(&dummy_payload()).unwrap_err();
+        assert!(
+            err.contains("mismatches signed evidence") || err.contains("host_ollama_model"),
+            "tampered pointer must deny, got {err}"
+        );
     }
 
     /// `#337`: removing fixture marker forces production trust → local-test evidence denied.

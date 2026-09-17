@@ -327,6 +327,26 @@ pub fn effective_peer_listen(settings: &DesktopSettings) -> Option<&str> {
     }
 }
 
+/// Load existing settings **without** creating defaults or writing Mock.
+///
+/// Re-audit R1 / RFC-0242: Work readiness must never side-effect a second
+/// settings file under `data_root` via [`load_or_create_settings`]. Callers that
+/// already hold in-memory GUI settings pass those instead.
+pub fn load_settings_readonly(paths: &DesktopPaths) -> Result<DesktopSettings> {
+    if !paths.settings_file.is_file() {
+        bail!(
+            "desktop settings missing at {} (fail-closed; not created)",
+            paths.settings_file.display()
+        );
+    }
+    let text = fs::read_to_string(&paths.settings_file)
+        .with_context(|| format!("read {}", paths.settings_file.display()))?;
+    let mut s: DesktopSettings = serde_json::from_str(&text)
+        .with_context(|| format!("parse {}", paths.settings_file.display()))?;
+    normalize_settings(&mut s)?;
+    Ok(s)
+}
+
 /// Load settings or create defaults on disk.
 pub fn load_or_create_settings(paths: &DesktopPaths) -> Result<DesktopSettings> {
     paths.ensure_dirs().context("create desktop dirs")?;

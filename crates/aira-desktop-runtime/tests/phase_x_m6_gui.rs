@@ -122,6 +122,7 @@ fn m6_e2e_gui_catalog_and_work_readiness_two_models() {
     let prompt = "Summarize the local Problem Statement without leaving the host.";
     let ready_a = evaluate_work_readiness(
         &root,
+        &settings,
         prompt,
         WorkExecutorPreference::Required(model_a.clone()),
     );
@@ -133,6 +134,7 @@ fn m6_e2e_gui_catalog_and_work_readiness_two_models() {
 
     let ready_b = evaluate_work_readiness(
         &root,
+        &settings,
         prompt,
         WorkExecutorPreference::Required(model_b.clone()),
     );
@@ -140,6 +142,7 @@ fn m6_e2e_gui_catalog_and_work_readiness_two_models() {
 
     let compare = evaluate_work_readiness(
         &root,
+        &settings,
         prompt,
         WorkExecutorPreference::Compare {
             a: model_a.clone(),
@@ -159,6 +162,7 @@ fn m6_e2e_gui_catalog_and_work_readiness_two_models() {
     // Fail-closed: Compare with missing leg does not substitute.
     let bad = evaluate_work_readiness(
         &root,
+        &settings,
         prompt,
         WorkExecutorPreference::Compare {
             a: model_a,

@@ -192,8 +192,12 @@ impl AiraDesktopApp {
             .map(|d| d.to_string())
             .unwrap_or_else(|| DEFAULT_RELAY_TTL_DAYS.to_string());
         let applied_runtime = None;
-        let work_readiness =
-            evaluate_work_readiness(&paths.data_root, "", WorkExecutorPreference::Auto);
+        let work_readiness = evaluate_work_readiness(
+            &paths.data_root,
+            &settings,
+            "",
+            WorkExecutorPreference::Auto,
+        );
         let mut app = Self {
             paths,
             node_bin,

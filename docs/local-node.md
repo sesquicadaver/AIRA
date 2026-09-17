@@ -146,7 +146,7 @@ Peer-to-peer authenticated links (Analyze-32…59) — [peer-link.md](peer-link.
 - MockBackend / ProcessBackend open **no sockets**. AIRA does not initiate WAN.
 - ollama-style CLI may use **loopback** to a local daemon; that is a host-process exception, not `network=none` OS enforcement.
 - llama.cpp-style argv is offline.
-- **Desktop:** Settings → Models may persist `llm_backend=process` + `llm_ollama_model` as default tip (RFC-0241). Per-request Work Required/Compare uses activate `host_cli_model` so `ollama run <model>` follows admission without node restart (RFC-0243). `aira desktop start` / GUI Start sets `AIRA_LLM_BACKEND` / `AIRA_LLM_PROCESS_*` (+ optional `AIRA_LLM_PROCESS_TIMEOUT_MS`) on the spawned `aira-node`. Default remains mock. Executed ≠ VERIFIED.
+- **Desktop:** Settings → Models may persist `llm_backend=process` + `llm_ollama_model` as default tip (RFC-0241). Work readiness reads the **same** system-layout settings document as the GUI (RFC-0242 re-audit R1) — never a second Mock file under `data_root`. Per-request Work Required/Compare uses activate `host_cli_model` from **signed evidence** so `ollama run <model>` follows admission without node restart (RFC-0243; R2). Ollama ProcessBackend refuses local file-weight bindings (R3). `aira desktop start` / GUI Start sets `AIRA_LLM_BACKEND` / `AIRA_LLM_PROCESS_*` (+ optional `AIRA_LLM_PROCESS_TIMEOUT_MS`) on the spawned `aira-node`. Default remains mock. Executed ≠ VERIFIED.
 
 C1 `Calculate 2 + 2` still uses `execution-basic` and never this path. See [`AIRA-RFC-0116`](../specs/rfc/AIRA-RFC-0116-network-none-contract.md).
 

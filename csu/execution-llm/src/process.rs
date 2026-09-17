@@ -60,6 +60,9 @@ pub use super::seccomp::{ENV_LLM_SECCOMP, SECCOMP_FAILED, SECCOMP_UNSUPPORTED, S
 
 /// Fail-closed when fixed process config disagrees with activate binding (`#339`).
 pub const BINDING_MISMATCH: &str = "generate backend binding mismatch (fail-closed; not VERIFIED)";
+/// Re-audit R3: ollama-style process cannot stamp file-weight identity while running tip argv.
+pub const HOST_OLLAMA_BINDING_REQUIRED: &str =
+    "ollama process requires host-ollama binding (aira:model:ollama-…); local weights are fail-closed (not VERIFIED)";
 
 /// Backend id stamped on successful process output.
 pub const PROCESS_BACKEND_ID: &str = "process";
@@ -343,6 +346,10 @@ impl GenerateBackend for ProcessBackend {
         if netns && (self.host_loopback || looks_like_ollama(&self.program)) {
             return Err(NETNS_BLOCKS_LOOPBACK.to_string());
         }
+        // Re-audit R3: never run ollama tip argv while stamping local file-weight identity.
+        if ollama_style && !is_host_ollama_model_ref(&binding.model_ref) {
+            return Err(HOST_OLLAMA_BINDING_REQUIRED.into());
+        }
         let program = self.resolve_program()?;
         let argv: Vec<String> = if ollama_style {
             if let Some(host) = &per_request_host {
@@ -546,6 +553,11 @@ fn looks_like_ollama(program: &Path) -> bool {
         .and_then(|n| n.to_str())
         .map(|n| n.eq_ignore_ascii_case("ollama"))
         .unwrap_or(false)
+}
+
+/// Host-ollama tip identity (`aira:model:ollama-…`). Local file weights are not this.
+fn is_host_ollama_model_ref(model_ref: &str) -> bool {
+    model_ref.starts_with("aira:model:ollama-")
 }
 
 #[cfg(all(test, target_os = "linux"))]
@@ -758,6 +770,16 @@ mod tests {
     fn dummy_binding() -> crate::ExecutorFacts {
         crate::ExecutorFacts {
             model_ref: crate::ALWAYS_ACTIVATED_MODEL_REF.into(),
+            content_hash: crate::AlwaysActivated::content_hash(),
+            cache_path: String::new(),
+            host_cli_model: None,
+        }
+    }
+
+    /// Binding identity for ollama-style ProcessBackend (re-audit R3).
+    fn host_ollama_binding() -> crate::ExecutorFacts {
+        crate::ExecutorFacts {
+            model_ref: "aira:model:ollama-test-deadbeef".into(),
             content_hash: crate::AlwaysActivated::content_hash(),
             cache_path: String::new(),
             host_cli_model: None,
@@ -1145,7 +1167,7 @@ mod tests {
     fn ollama_with_netns_is_fail_closed() {
         let err = ProcessBackend::ollama("aira-llm-process-missing-bin-215-do-not-install", "m")
             .with_netns()
-            .generate(&dummy_payload("ignored"), &dummy_binding())
+            .generate(&dummy_payload("ignored"), &host_ollama_binding())
             .unwrap_err();
         assert!(
             err.contains(NETNS_BLOCKS_LOOPBACK),
@@ -1162,7 +1184,7 @@ mod tests {
         env::remove_var(ENV_PROCESS_BIN);
         env::set_var(ENV_LLM_NETNS, "1");
         let err = ProcessBackend::from_env()
-            .generate(&dummy_payload("ignored"), &dummy_binding())
+            .generate(&dummy_payload("ignored"), &host_ollama_binding())
             .unwrap_err();
         match prev_bin {
             Some(v) => env::set_var(ENV_PROCESS_BIN, v),
@@ -1274,7 +1296,7 @@ mod tests {
     fn sandbox_required_ollama_is_fail_closed() {
         let err = ProcessBackend::ollama("aira-llm-process-missing-bin-215-do-not-install", "m")
             .with_sandbox_required()
-            .generate(&dummy_payload("ignored"), &dummy_binding())
+            .generate(&dummy_payload("ignored"), &host_ollama_binding())
             .unwrap_err();
         assert!(
             err.contains(SANDBOX_REQUIRED_LOOPBACK),
@@ -1367,13 +1389,28 @@ mod tests {
     #[test]
     fn expected_ref_mismatch_without_host_cli_is_fail_closed() {
         let backend = ProcessBackend::ollama("aira-llm-process-missing-bin-do-not-install", "tip")
-            .with_expected_model_ref("aira:model:expected");
-        let mut bind = dummy_binding();
-        bind.model_ref = "aira:model:other".into();
+            .with_expected_model_ref("aira:model:ollama-expected");
+        let mut bind = host_ollama_binding();
+        bind.model_ref = "aira:model:ollama-other".into();
         bind.host_cli_model = None;
         let err = backend
             .generate(&dummy_payload("x"), &bind)
             .expect_err("mismatch");
         assert!(err.contains(BINDING_MISMATCH), "{err}");
+    }
+
+    /// Re-audit R3: file-weight model_ref must not run via ollama tip argv.
+    #[test]
+    fn file_weight_binding_on_ollama_backend_is_fail_closed() {
+        let mut bind = dummy_binding();
+        bind.model_ref = "aira:model:file-weights-a".into();
+        bind.host_cli_model = None;
+        let err = ProcessBackend::ollama("aira-llm-process-missing-bin-do-not-install", "tip-b")
+            .generate(&dummy_payload("ignored"), &bind)
+            .unwrap_err();
+        assert!(
+            err.contains(HOST_OLLAMA_BINDING_REQUIRED),
+            "file weights via ollama tip must deny, got {err}"
+        );
     }
 }
