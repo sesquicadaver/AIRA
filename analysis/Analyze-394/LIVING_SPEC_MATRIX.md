@@ -29,3 +29,6 @@
 | LS394-025 | R1 readiness = GUI settings | `evaluate_work_readiness(&settings)` / `load_settings_readonly` | `readiness_uses_system_layout_settings_not_data_root_file` | **DONE** |
 | LS394-026 | R2 trusted host_cli | `resolve_trusted_host_cli` | `tampered_pointer_host_ollama_model_is_fail_closed` | **DONE** |
 | LS394-027 | R3 file weights ≠ ollama tip | `ProcessBackend::generate` | `file_weight_binding_on_ollama_backend_is_fail_closed` | **DONE** |
+| LS394-028 | R4 model_ref forces generate | `catalog_action_with_model_intent` / admission | `model_ref_forces_generate_over_math_echo_upper`; `reduce_with_model_ref_binds_generate_for_math_and_echo`; `enforce_model_ref_on_math_text_is_generate_ok` | **DONE** |
+| LS394-029 | R5 bounded binder read | `host_ollama_model_from_binder` | `binder_read_rejects_oversized_non_marker_file` | **DONE** |
+| LS394-030 | R6 exclusive materialize temp | `materialize_weights_nofollow` | `concurrent_materialize_unique_temps_publish_safely` | **DONE** |

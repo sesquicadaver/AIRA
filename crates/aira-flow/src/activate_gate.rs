@@ -753,9 +753,12 @@ pub fn host_ollama_model_ref(ollama_model: &str) -> String {
 /// Recover host CLI name from bind-marker bytes when pointer omits `host_ollama_model`.
 ///
 /// Re-audit R2/R5: only small typed markers — never `read_to_string` on GGUF weights.
-const HOST_OLLAMA_BINDER_MAX_BYTES: u64 = 4096;
+/// Magic prefix is checked on a bounded read; files larger than the cap never fully load.
+const HOST_OLLAMA_BINDER_MAX_BYTES: usize = 4096;
+const HOST_OLLAMA_BINDER_MAGIC: &[u8] = b"aira-host-ollama-bind";
 
 fn host_ollama_model_from_binder(aira_root: &Path, cache_path: &str) -> Option<String> {
+    use std::io::Read;
     let path = {
         let p = Path::new(cache_path);
         if p.is_absolute() {
@@ -764,14 +767,18 @@ fn host_ollama_model_from_binder(aira_root: &Path, cache_path: &str) -> Option<S
             aira_root.join(p)
         }
     };
-    let meta = fs::metadata(&path).ok()?;
-    if !meta.is_file() || meta.len() > HOST_OLLAMA_BINDER_MAX_BYTES {
+    let mut file = fs::File::open(&path).ok()?;
+    // Read at most MAX+1: full fill means the file is too large for a typed marker.
+    let mut buf = vec![0u8; HOST_OLLAMA_BINDER_MAX_BYTES + 1];
+    let n = file.read(&mut buf).ok()?;
+    if n == 0 || n > HOST_OLLAMA_BINDER_MAX_BYTES {
         return None;
     }
-    let text = fs::read_to_string(&path).ok()?;
-    if !text.starts_with("aira-host-ollama-bind") {
+    buf.truncate(n);
+    if !buf.starts_with(HOST_OLLAMA_BINDER_MAGIC) {
         return None;
     }
+    let text = std::str::from_utf8(&buf).ok()?;
     for line in text.lines() {
         if let Some(rest) = line.strip_prefix("model=") {
             let m = rest.trim();
@@ -1667,6 +1674,30 @@ mod tests {
         assert!(
             err.contains("mismatches signed evidence") || err.contains("host_ollama_model"),
             "tampered pointer must deny, got {err}"
+        );
+    }
+
+    /// Re-audit R5: oversized non-marker file is never fully read as binder.
+    #[test]
+    fn binder_read_rejects_oversized_non_marker_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let big = dir.path().join("weights.gguf");
+        fs::write(&big, vec![0u8; HOST_OLLAMA_BINDER_MAX_BYTES + 64]).unwrap();
+        assert!(host_ollama_model_from_binder(dir.path(), big.to_str().unwrap()).is_none());
+    }
+
+    #[test]
+    fn binder_read_accepts_small_typed_marker() {
+        let dir = tempfile::tempdir().unwrap();
+        let marker = dir.path().join("host-ollama.bind");
+        fs::write(
+            &marker,
+            "aira-host-ollama-bind\nmodel=llama3:latest\nmodel_ref=aira:model:ollama-x\n",
+        )
+        .unwrap();
+        assert_eq!(
+            host_ollama_model_from_binder(dir.path(), marker.to_str().unwrap()).as_deref(),
+            Some("llama3:latest")
         );
     }
 

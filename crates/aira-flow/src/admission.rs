@@ -324,14 +324,17 @@ impl AdmissionSnapshot {
             return Err("unsupported constraint: model_content_hash".into());
         }
 
-        let math = aira_csu_reduction_basic::problem_binds_math_eval_safe(problem_text);
+        // Re-audit R4 / RFC-0242: non-empty model_ref forces Generate path —
+        // math text is not rejected and must not escape to math.eval.safe.
+        let force_generate = self
+            .model_ref
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .is_some();
+        let math =
+            !force_generate && aira_csu_reduction_basic::problem_binds_math_eval_safe(problem_text);
         if math {
-            if self.model_ref.is_some() {
-                return Err(
-                    "unsupported constraint: model_ref on deterministic math (execute with model or omit)"
-                        .into(),
-                );
-            }
             if !self.allowed_model_refs.is_empty() {
                 return Err(
                     "unsupported constraint: allowed_model_refs on deterministic math".into(),
@@ -518,7 +521,8 @@ mod tests {
     }
 
     #[test]
-    fn enforce_rejects_model_ref_on_math() {
+    fn enforce_model_ref_on_math_text_is_generate_ok() {
+        // Re-audit R4: Desktop Work always admits model_ref; math text is Generate.
         let s = AdmissionSnapshot::from_text_and_constraints(
             "Calculate 2 + 2",
             &AdmissionConstraints {
@@ -526,8 +530,20 @@ mod tests {
                 ..Default::default()
             },
         );
-        let err = s.enforce_or_reject("Calculate 2 + 2").unwrap_err();
-        assert!(err.contains("model_ref"), "{err}");
+        s.enforce_or_reject("Calculate 2 + 2").unwrap();
+    }
+
+    #[test]
+    fn enforce_model_ref_on_echo_text_is_generate_ok() {
+        let s = AdmissionSnapshot::from_text_and_constraints(
+            "Please echo my summary without leaving the host",
+            &AdmissionConstraints {
+                model_ref: Some("aira:model:x".into()),
+                ..Default::default()
+            },
+        );
+        s.enforce_or_reject("Please echo my summary without leaving the host")
+            .unwrap();
     }
 
     #[test]
