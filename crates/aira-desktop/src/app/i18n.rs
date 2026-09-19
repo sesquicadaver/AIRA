@@ -1,4 +1,7 @@
 //! Ukrainian / English UI chrome. Fonts: system TTF with Cyrillic when present.
+//!
+//! Phase K `#216` file contract (not shown on product screens): `text.generate.local`
+//! never fakes VERIFIED; `execution-basic` is not the product path.
 
 use aira_desktop_runtime::UiLang;
 
