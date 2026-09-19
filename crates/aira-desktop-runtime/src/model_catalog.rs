@@ -289,6 +289,138 @@ pub fn host_cli_name_for_ollama_ref(root: impl AsRef<Path>, model_ref: &str) -> 
     None
 }
 
+/// Display name for a catalog row. `model_ref` and hashes stay out of this string.
+pub fn catalog_display_name(model_ref: &str) -> String {
+    let rest = model_ref.strip_prefix("aira:model:").unwrap_or(model_ref);
+    if rest.is_empty() {
+        model_ref.to_string()
+    } else {
+        rest.to_string()
+    }
+}
+
+/// Host-ollama catalog identity (`aira:model:ollama-…`). Not a local weight file.
+pub fn is_host_ollama_catalog_ref(model_ref: &str) -> bool {
+    model_ref.starts_with("aira:model:ollama-")
+}
+
+/// Where a shared catalog row came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CatalogSource {
+    HostOllama,
+    LocalFile,
+}
+
+/// One row shared by Settings and Work: name, source, availability.
+///
+/// `model_ref` is for details and admission, not the primary label.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogProjectionRow {
+    pub name: String,
+    pub source: CatalogSource,
+    pub available: bool,
+    pub verified: bool,
+    pub model_ref: String,
+    pub ready_reason: String,
+}
+
+/// Settings and Work share this projection.
+///
+/// Host names come from `ollama list`. Local-file rows never include
+/// `aira:model:ollama-` refs, so Prepare is not offered for a bind that cannot activate.
+pub fn project_shared_catalog(
+    snap: &ModelCatalogSnapshot,
+    ollama_names: &[String],
+) -> Vec<CatalogProjectionRow> {
+    let mut rows = Vec::new();
+    let mut seen_refs = std::collections::HashSet::new();
+    for name in ollama_names {
+        let name = name.trim();
+        if name.is_empty() {
+            continue;
+        }
+        let model_ref = aira_flow::host_ollama_model_ref(name);
+        if !seen_refs.insert(model_ref.clone()) {
+            continue;
+        }
+        let cat = snap.entries.iter().find(|e| e.model_ref == model_ref);
+        rows.push(CatalogProjectionRow {
+            name: name.to_string(),
+            source: CatalogSource::HostOllama,
+            available: true,
+            verified: cat.is_some_and(|e| e.verified),
+            model_ref,
+            ready_reason: cat
+                .map(|e| e.ready_reason.clone())
+                .unwrap_or_else(|| "listed by host ollama — not weight-verified".into()),
+        });
+    }
+    for entry in &snap.entries {
+        if !is_host_ollama_catalog_ref(&entry.model_ref)
+            || !seen_refs.insert(entry.model_ref.clone())
+        {
+            continue;
+        }
+        rows.push(CatalogProjectionRow {
+            name: catalog_display_name(&entry.model_ref),
+            source: CatalogSource::HostOllama,
+            available: entry.available,
+            verified: entry.verified,
+            model_ref: entry.model_ref.clone(),
+            ready_reason: entry.ready_reason.clone(),
+        });
+    }
+    for entry in &snap.entries {
+        if is_host_ollama_catalog_ref(&entry.model_ref) {
+            continue;
+        }
+        rows.push(CatalogProjectionRow {
+            name: catalog_display_name(&entry.model_ref),
+            source: CatalogSource::LocalFile,
+            available: entry.available,
+            verified: entry.verified,
+            model_ref: entry.model_ref.clone(),
+            ready_reason: entry.ready_reason.clone(),
+        });
+    }
+    rows
+}
+
+/// Bind target for “Use Ollama” when a name is already known.
+///
+/// `None` means the host list has not returned yet — do not treat that as “no models”.
+pub fn resolve_use_ollama_bind(
+    pick: Option<&str>,
+    bound: Option<&str>,
+    listed: &[String],
+) -> Option<String> {
+    fn nonempty(s: &str) -> Option<String> {
+        let t = s.trim();
+        if t.is_empty() {
+            None
+        } else {
+            Some(t.to_string())
+        }
+    }
+    pick.and_then(nonempty)
+        .or_else(|| bound.and_then(nonempty))
+        .or_else(|| listed.iter().find_map(|n| nonempty(n)))
+}
+
+/// After a successful `ollama list`, finish a pending Use Ollama bind.
+pub fn resolve_bind_after_ollama_list(pick: Option<&str>, listed: &[String]) -> Option<String> {
+    let pick = pick.map(str::trim).filter(|s| !s.is_empty());
+    if let Some(p) = pick {
+        if listed.iter().any(|n| n == p) {
+            return Some(p.to_string());
+        }
+    }
+    listed
+        .iter()
+        .find(|n| !n.trim().is_empty())
+        .map(|n| n.trim().to_string())
+}
+
 /// Select Auto or Required; when the resolved model is available, activate tip.
 ///
 /// Host-ollama rows never call `activate_verified`. Tip change for host-ollama is
@@ -520,6 +652,59 @@ mod tests {
         assert_eq!(
             host_cli_name_for_ollama_ref(root, model_ref).as_deref(),
             Some("sel-test:latest")
+        );
+    }
+
+    #[test]
+    fn projection_file_source_omits_ollama_rows() {
+        let snap = ModelCatalogSnapshot {
+            entries: vec![
+                CatalogEntry {
+                    model_ref: "aira:model:ollama-phi-aaaaaaaaaaaa".into(),
+                    verified: false,
+                    available: true,
+                    ready_reason: "available for process (activated/bind) — not weight-verified"
+                        .into(),
+                },
+                CatalogEntry {
+                    model_ref: "aira:model:weights-a".into(),
+                    verified: true,
+                    available: false,
+                    ready_reason: "verified but not activated — use Prepare".into(),
+                },
+            ],
+            ..ModelCatalogSnapshot::default()
+        };
+        let rows = project_shared_catalog(&snap, &["phi:latest".into()]);
+        let files: Vec<_> = rows
+            .iter()
+            .filter(|r| r.source == CatalogSource::LocalFile)
+            .collect();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].name, "weights-a");
+        assert!(!is_host_ollama_catalog_ref(&files[0].model_ref));
+        let host: Vec<_> = rows
+            .iter()
+            .filter(|r| r.source == CatalogSource::HostOllama)
+            .collect();
+        assert!(host.iter().any(|r| r.name == "phi:latest" && r.available));
+        assert!(host
+            .iter()
+            .all(|r| is_host_ollama_catalog_ref(&r.model_ref)));
+        assert!(host.iter().all(|r| r.name != r.model_ref));
+    }
+
+    #[test]
+    fn use_ollama_waits_for_empty_list() {
+        assert!(resolve_use_ollama_bind(None, None, &[]).is_none());
+        assert_eq!(
+            resolve_bind_after_ollama_list(None, &["phi:latest".into()]).as_deref(),
+            Some("phi:latest")
+        );
+        assert_eq!(
+            resolve_use_ollama_bind(Some("b:latest"), Some("a:latest"), &[]).as_deref(),
+            Some("b:latest"),
+            "a request pick is not the saved default"
         );
     }
 }

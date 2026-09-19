@@ -11,8 +11,8 @@ Local models belong to the model / execution layer — **not** `aira-core`, not 
 Canonical Desktop path (no CLI required):
 
 1. Open **Settings → Models** and pick a **source**.
-2. **Host Ollama:** refresh the host list, pick a model, and **Use Ollama process** or **Make default**. That writes the default tip (signed bind marker; not weight-verified) and sets process for the **next** node start. Until you **Stop** then **Start**, the running executor may still be mock. Selecting an Ollama row also makes it the default when the host name is known; otherwise the UI says the tip did not change.
-3. **Local file:** note **Model storage** (observe-only). **Scan**, or **Enable local add** → **Add file…**. **Select** a row (not verified). **Prepare** when the row is not ready. The artifact path for **Verify** lives under **Technical details**.
+2. **Host Ollama:** refresh the host list, pick a model (that choice does not change the default), then **Make default** or **Use Ollama process**. Make default writes the default tip (signed bind marker; not weight-verified) and sets process for the **next** node start. Until you **Stop** then **Start**, the running executor may still be mock. If the host list is still loading, Use Ollama finishes the bind after the list returns.
+3. **Local file:** note **Model storage** (observe-only). **Scan**, or **Enable local add** → **Add file…**. The **artifact path** for **Verify** is on this add-file step, not under Technical details. **Select** a row (not verified). **Prepare** when the row is a local file and not ready. Host Ollama rows are not listed here and have no Prepare.
 4. On **Work**, choose **Auto**, **Specific model**, or **Compare**. Work requires a host process LLM. Built-in math demo is **legacy**, not a model-free product path. Compare needs two different available models; if B fails, A stays — no silent substitute.
 5. If Work is blocked for missing host LLM, bind Ollama under Settings → Models and restart. Mock is not product Work.
 

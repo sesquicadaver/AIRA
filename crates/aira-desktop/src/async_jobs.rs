@@ -614,6 +614,11 @@ impl AsyncDesktopJobs {
         self.catalog_rx.is_some()
     }
 
+    /// Kind of the in-flight catalog job, if any.
+    pub fn catalog_kind(&self) -> Option<CatalogJobKind> {
+        self.catalog_kind
+    }
+
     /// True while Prepare/Select/Verify/Add is in flight (P2 reverse Work lock).
     pub fn catalog_mutate_inflight(&self) -> bool {
         self.catalog_kind.is_some_and(catalog_job_mutates)
