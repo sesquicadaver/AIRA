@@ -14,6 +14,7 @@ mod mesh_language;
 mod problem_action;
 mod settings_apply;
 mod system_view;
+mod window_check;
 mod work_view;
 
 use std::path::PathBuf;

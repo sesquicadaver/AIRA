@@ -39,7 +39,7 @@ impl eframe::App for AiraDesktopApp {
 
         let l = self.labels();
         egui::TopBottomPanel::top("shell-chrome").show(ctx, |ui| {
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 let mut tab = self.tab;
                 ui.selectable_value(&mut tab, MainTab::Work, l.tab_work);
                 ui.selectable_value(&mut tab, MainTab::System, l.tab_system);
@@ -47,22 +47,40 @@ impl eframe::App for AiraDesktopApp {
                 if tab != self.tab {
                     self.set_tab(tab);
                 }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button(l.help_f1).clicked() {
-                        self.open_help_contextual();
-                    }
-                });
+                if ui.button(l.help_f1).clicked() {
+                    self.open_help_contextual();
+                }
             });
             ui.separator();
             self.ui_status_strip(ui);
         });
 
         if self.help_open {
-            egui::SidePanel::right("help-panel")
-                .default_width(320.0)
-                .show(ctx, |ui| {
-                    self.ui_help_panel(ui);
-                });
+            let screen_w = ctx.screen_rect().width();
+            if crate::window_check::central_width_with_f1(screen_w) < screen_w {
+                egui::SidePanel::right("help-panel")
+                    .exact_width(crate::window_check::HELP_DOCK_WIDTH)
+                    .resizable(false)
+                    .show(ctx, |ui| {
+                        self.ui_help_panel(ui, true);
+                    });
+            } else {
+                let w = (screen_w - 16.0).clamp(240.0, crate::window_check::HELP_DOCK_WIDTH);
+                let mut open = true;
+                egui::Window::new(l.help_panel_title)
+                    .id(egui::Id::new("help-overlay"))
+                    .collapsible(false)
+                    .resizable(true)
+                    .default_width(w)
+                    .default_pos(egui::pos2((screen_w - w - 8.0).max(0.0), 36.0))
+                    .open(&mut open)
+                    .show(ctx, |ui| {
+                        self.ui_help_panel(ui, false);
+                    });
+                if !open {
+                    self.close_help();
+                }
+            }
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -185,6 +203,8 @@ impl AiraDesktopApp {
         };
         egui::ComboBox::from_id_source(id)
             .selected_text(selected_text)
+            .width(ui.available_width().clamp(160.0, 520.0))
+            .wrap()
             .show_ui(ui, |ui| {
                 if matches!(pick, WorkPick::Required) {
                     let default_label = format!(
@@ -266,7 +286,7 @@ impl AiraDesktopApp {
                 }
                 aira_desktop_runtime::ModelTripleConclusion::UsedInResult => l.strip_model_used,
             };
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.small(format!("{} {}", l.strip_work, work));
             ui.separator();
             ui.small(format!("{} {}", l.strip_model, model));
@@ -276,24 +296,24 @@ impl AiraDesktopApp {
     }
 
     /// Offline F1 panel: search, topics, related links, embedded Markdown (`#263`/`#273`).
-    fn ui_help_panel(&mut self, ui: &mut egui::Ui) {
+    fn ui_help_panel(&mut self, ui: &mut egui::Ui, docked: bool) {
         let l = self.labels();
         let lang = self.ui_lang();
-        ui.horizontal(|ui| {
-            ui.heading(l.help_panel_title);
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        if docked {
+            ui.horizontal_wrapped(|ui| {
+                ui.heading(l.help_panel_title);
                 if ui.button(l.help_close).clicked() {
                     self.close_help();
                 }
             });
-        });
+        }
         ui.small(l.help_offline_note);
         ui.separator();
         ui.horizontal(|ui| {
             ui.label(l.help_search);
             ui.add(
                 egui::TextEdit::singleline(&mut self.help_search)
-                    .desired_width(180.0)
+                    .desired_width(ui.available_width().clamp(80.0, 220.0))
                     .hint_text(l.help_search),
             );
         });
@@ -700,7 +720,7 @@ impl AiraDesktopApp {
             Some(s) => s,
             None => none,
         };
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.strong(l.work_ran_model);
             if view.model_triple.executed.as_deref() == Some(crate::work_view::EXECUTED_MOCK_LABEL)
             {
