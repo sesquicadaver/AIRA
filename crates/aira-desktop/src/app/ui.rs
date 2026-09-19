@@ -564,8 +564,9 @@ impl AiraDesktopApp {
         });
 
         let submitting = self.async_jobs.work_inflight();
+        let can_run = !submitting && self.work_readiness.ready;
         let mut do_submit = false;
-        ui.add_enabled_ui(!submitting, |ui| {
+        ui.add_enabled_ui(can_run, |ui| {
             let btn = ui.button(l.work_submit);
             if btn.hovered() {
                 self.note_help_focus(HelpId::WorkSubmit);
@@ -574,7 +575,7 @@ impl AiraDesktopApp {
                 do_submit = true;
             }
         });
-        if !submitting && shortcut_run {
+        if can_run && shortcut_run {
             do_submit = true;
         }
         if do_submit {

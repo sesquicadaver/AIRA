@@ -459,10 +459,10 @@ impl AiraDesktopApp {
         }
     }
 
-    /// Persist Ollama process bind; requires node restart to apply (`RestartNeeded`).
+    /// Persist Ollama process bind.
     ///
-    /// Also writes activate tip via host-ollama bind (node-signed marker; `verified=false`
-    /// in evidence — executed ≠ VERIFIED).
+    /// Backend Mock↔Process needs a node restart. Switching the host model on an
+    /// already applied Process does not: admission `host_cli_model` is per request.
     pub(super) fn bind_ollama_process(&mut self, model: Option<String>) {
         match model {
             Some(m) => {

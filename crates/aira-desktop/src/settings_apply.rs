@@ -112,7 +112,6 @@ impl AppliedRuntimeSettings {
             || self.http_listen != saved.http_listen
             || self.llm_backend != saved.llm_backend
             || self.llm_process_bin != saved.llm_process_bin
-            || self.llm_ollama_model != saved.llm_ollama_model
             || self.llm_process_timeout_ms != saved.llm_process_timeout_ms
     }
 }
@@ -240,6 +239,19 @@ mod tests {
         assert_eq!(
             settings_apply_phase(&saved, Some(&applied), false),
             SettingsApplyPhase::RestartNeeded
+        );
+    }
+
+    #[test]
+    fn process_model_switch_does_not_need_restart() {
+        let mut saved = sample_settings(NetworkProfile::P0);
+        saved.llm_backend = LlmBackend::Process;
+        saved.llm_ollama_model = Some("model-a:latest".into());
+        let applied = AppliedRuntimeSettings::from_settings(&saved);
+        saved.llm_ollama_model = Some("model-b:latest".into());
+        assert_eq!(
+            settings_apply_phase(&saved, Some(&applied), false),
+            SettingsApplyPhase::Applied
         );
     }
 

@@ -346,17 +346,20 @@ impl GenerateBackend for ProcessBackend {
         if netns && (self.host_loopback || looks_like_ollama(&self.program)) {
             return Err(NETNS_BLOCKS_LOOPBACK.to_string());
         }
-        // Re-audit R3: never run ollama tip argv while stamping local file-weight identity.
+        // Re-audit R3 + GUI audit P0 / F8: prefix is not a host binding.
+        // Missing host_cli_model must not fall back to spawn argv.
+        if ollama_style && per_request_host.is_none() {
+            return Err(HOST_OLLAMA_BINDING_REQUIRED.into());
+        }
         if ollama_style && !is_host_ollama_model_ref(&binding.model_ref) {
             return Err(HOST_OLLAMA_BINDING_REQUIRED.into());
         }
         let program = self.resolve_program()?;
         let argv: Vec<String> = if ollama_style {
-            if let Some(host) = &per_request_host {
-                vec!["run".into(), host.clone()]
-            } else {
-                self.args.clone()
-            }
+            let host = per_request_host
+                .clone()
+                .ok_or_else(|| HOST_OLLAMA_BINDING_REQUIRED.to_string())?;
+            vec!["run".into(), host]
         } else {
             self.args.clone()
         };
@@ -1397,6 +1400,17 @@ mod tests {
             .generate(&dummy_payload("x"), &bind)
             .expect_err("mismatch");
         assert!(err.contains(BINDING_MISMATCH), "{err}");
+    }
+
+    /// Same prefix, still no host name: echo would succeed if argv fallback remained.
+    #[test]
+    fn ollama_prefix_without_host_cli_does_not_fall_back_to_argv() {
+        let bind = host_ollama_binding();
+        assert!(bind.host_cli_model.is_none());
+        let err = ProcessBackend::ollama("echo", "tip-must-not-run")
+            .generate(&dummy_payload("ignored"), &bind)
+            .unwrap_err();
+        assert!(err.contains(HOST_OLLAMA_BINDING_REQUIRED), "got {err}");
     }
 
     /// Re-audit R3: file-weight model_ref must not run via ollama tip argv.

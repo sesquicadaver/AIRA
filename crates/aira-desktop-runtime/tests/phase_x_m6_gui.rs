@@ -127,7 +127,12 @@ fn m6_e2e_gui_catalog_and_work_readiness_two_models() {
         prompt,
         WorkExecutorPreference::Required(model_a.clone()),
     );
-    assert!(ready_a.ready, "Required A ready: {:?}", ready_a.reasons);
+    assert!(
+        !ready_a.ready,
+        "file weights are not Work-ready on Ollama: {:?}",
+        ready_a.reasons
+    );
+    assert!(ready_a.reasons.iter().any(|s| s.contains("cannot run")));
     assert_eq!(
         ready_a.resolved_model_ref.as_deref(),
         Some(model_a.as_str())
@@ -139,7 +144,11 @@ fn m6_e2e_gui_catalog_and_work_readiness_two_models() {
         prompt,
         WorkExecutorPreference::Required(model_b.clone()),
     );
-    assert!(ready_b.ready, "Required B ready: {:?}", ready_b.reasons);
+    assert!(
+        !ready_b.ready,
+        "Required B must not be ready: {:?}",
+        ready_b.reasons
+    );
 
     let compare = evaluate_work_readiness(
         &root,
@@ -150,7 +159,11 @@ fn m6_e2e_gui_catalog_and_work_readiness_two_models() {
             b: model_b.clone(),
         },
     );
-    assert!(compare.ready, "Compare A|B ready: {:?}", compare.reasons);
+    assert!(
+        !compare.ready,
+        "Compare of file weights must not be ready: {:?}",
+        compare.reasons
+    );
     assert_eq!(
         compare.resolved_model_ref.as_deref(),
         Some(model_a.as_str())
