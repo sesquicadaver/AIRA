@@ -1,0 +1,24 @@
+{
+  "executed": {
+    "backend": "process",
+    "file_weight_fail_closed": true,
+    "required_a_then_b_without_restart": true,
+    "result_a_prefix": "Accepted.",
+    "result_b_prefix": "OK",
+    "timeout_fail_closed": true,
+    "verification_status": null
+  },
+  "gate": "installed-product-llm",
+  "models": {
+    "a": "phi:latest",
+    "b": "llama3.2:latest"
+  },
+  "not_executed": [
+    "gui_settings_clickthrough",
+    "compare_mid_kill",
+    "file_verify_prepare_gui",
+    "failed_stop_window",
+    "widths_560_900_1600"
+  ],
+  "not_installed_product_complete": true
+}

@@ -19,7 +19,7 @@ C4/C5 are local scaffolds only. Research remains **RESEARCH**. Consolidating Pha
 | Profile | Runner | Focus | CI on `main` |
 |---------|--------|-------|----------------|
 | C0 | `run_c0` | ontology, object/artifact immutability, event causality, policy gate, CSU dispatch, acquisition fail-closed | **yes** (job `check`) |
-| C1 | `run_c1` | pipeline 2+2, CSU manifests, external partner fixture (`c1.csu.external_partner_fixture`), verified result completeness, failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) | **yes** |
+| C1 | `run_c1` | normative smoke `c1.pipeline.process_executor_executed` (host process → **Executed**, not VERIFIED); CSU manifests; external partner fixture; VRA **schema fixtures** (`c1.result.verified_completeness`) — not a runtime VRA pipeline and not OP-001 math; failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) | **yes** |
 | C2 | `run_c2` | partial **local** protocols (M13): envelope/response/identity schemas, discovery Capability≠Node, UNSUPPORTED_VERSION without side effects | **yes** (job `conformance-c2`, QUEUE #117) |
 | C3 | `run_c3` | **8 named local cases**: federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170) | **optional job** `conformance-c3` (#164) — **not** a merge gate ([governance](ci-governance.md#job-conformance-c3-queue-164)) |
 | C4 | `run_c4` (Phase H `#175`) | **3 named local cases**: receipt emit/verify + privacy reject + link prior CRP route (RFC-0081) | no |

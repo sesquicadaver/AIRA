@@ -40,3 +40,5 @@
 | LS394-036 | P3 one catalog by source | Settings Models `ModelsSourceKind` | host Ollama vs local file actions | **DONE** |
 | LS394-037 | P3 Select Ollama tip honesty | `select_catalog_model` / `maybe_make_default_host_ollama` | `select_host_ollama_skips_activate_verified` | **DONE** |
 | LS394-038 | P3 help EN/UK matches gate | `docs/help/{en,uk}/model.select.md` | embedded help catalog | **DONE** |
+| LS394-039 | P4 M6 ≠ installed-product | RFC-0240 honesty; `docs/conformance.md` C1 process-smoke vs VRA fixture | `installed_product_opt_in_is_not_default_ci` | **DONE** |
+| LS394-040 | P4 opt-in two real Ollama models | `installed_product_two_real_ollama_models` (`#[ignore]`) | Analyze-396 `run.json`; not default CI | **PARTIAL** (process path only; GUI widths not run) |

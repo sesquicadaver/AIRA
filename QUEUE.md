@@ -978,7 +978,7 @@ W0 wiring + A0 (#331 DONE)
 | 354 | **DONE** | ~~Analyze-391 — Work Compare mode~~ | dual model; no silent substitute; RFC-0237 | `#354` DONE; first OPEN `#355` | data paths (#355) |
 | 355 | **DONE** | ~~Analyze-392 — Model data paths (light)~~ | storage catalog + space; RFC-0238 | `#355` DONE; first OPEN `#356` | apply-diff (#356) |
 | 356 | **DONE** | ~~Analyze-393 — Apply-diff honesty~~ | changed/applied/restart + apply error; RFC-0239 | `#356` DONE; first OPEN `#357` | M6 (#357) |
-| 357 | **DONE** | ~~Analyze-394 — Two-model installed acceptance (M6)~~ | GUI+CLI+HTTP; cold restart; fail-closed; RFC-0240 | `#357` DONE; first OPEN `#358` | RFC close (#358) |
+| 357 | **DONE** | ~~Analyze-394 — Two-model installed acceptance (M6)~~ | fixture GUI+CLI+HTTP; cold restart; fail-closed; RFC-0240; not installed-product | `#357` DONE; first OPEN `#358` | RFC close (#358) |
 | 358 | **DONE** | ~~Analyze-395 — RFC-0226 + close~~ | consolidating RFC-0226; QUEUE X closed | `#358` DONE; **QUEUE X closed**; no OPEN X atoms | Pack 3+ |
 
 ### Наступний цикл (Phase X)

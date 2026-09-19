@@ -19,3 +19,15 @@ Prerequisites: `ollama` on PATH, two pulled models (e.g. `llama3:latest` and ano
 8. Resize to ~560 / 900 / 1600 and confirm Work/Settings usable.
 
 Record command output + screenshots under `analysis/Analyze-N/` when closing the gate.
+
+## Opt-in process evidence (not GUI)
+
+Default CI does **not** run real `ollama`. On a host that already has two pulled models:
+
+```bash
+AIRA_OLLAMA_A=phi:latest AIRA_OLLAMA_B=llama3.2:latest \
+  scripts/installed-product-llm-acceptance.sh
+```
+
+That runs `installed_product_two_real_ollama_models` (`#[ignore]`). It covers Required A then B on one ProcessBackend (no restart), file-weight fail-closed, and a 1ms timeout. It does **not** cover GUI click-through, Compare mid-kill, failed Stop, or widths 560/900/1600. Workflow: [`.github/workflows/installed-product-llm.yml`](../.github/workflows/installed-product-llm.yml) (`workflow_dispatch` only; no-op if `ollama` is absent). Not a merge gate.
+

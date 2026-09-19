@@ -1,6 +1,7 @@
 //! Phase X / Pack 2 M6 GUI facade acceptance (QUEUE `#357` / RFC-0240).
 //!
-//! Settings→Models prepare/select + Work readiness for two installed models.
+//! Settings→Models prepare/select + Work readiness for two fixture models.
+//! Not installed-product acceptance (fixture weights only).
 //! CLI/HTTP admission e2e lives in `aira-flow` `phase_x_m6_acceptance`.
 
 use std::fs;
