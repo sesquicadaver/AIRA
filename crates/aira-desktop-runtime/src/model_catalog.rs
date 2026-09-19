@@ -253,7 +253,47 @@ pub fn prepare_model(
     Ok(snap)
 }
 
+/// Resolve host CLI name (`ollama list` token) for an `aira:model:ollama-*` row.
+///
+/// Reads `host_ollama_model` from matching activated pointers under the data root.
+pub fn host_cli_name_for_ollama_ref(root: impl AsRef<Path>, model_ref: &str) -> Option<String> {
+    if !model_ref.starts_with("aira:model:ollama-") {
+        return None;
+    }
+    let root = root.as_ref();
+    let read_host = |path: &Path| -> Option<String> {
+        let raw = fs::read_to_string(path).ok()?;
+        let v: serde_json::Value = serde_json::from_str(&raw).ok()?;
+        if v.get("model_ref").and_then(|x| x.as_str()) != Some(model_ref) {
+            return None;
+        }
+        v.get("host_ollama_model")
+            .and_then(|x| x.as_str())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+    };
+    if let Some(m) = read_host(&root.join("models/activated.latest.json")) {
+        return Some(m);
+    }
+    let cache = root.join("models/cache");
+    let Ok(entries) = fs::read_dir(&cache) else {
+        return None;
+    };
+    for ent in entries.flatten() {
+        let path = ent.path().join("activated.json");
+        if let Some(m) = read_host(&path) {
+            return Some(m);
+        }
+    }
+    None
+}
+
 /// Select Auto or Required; when the resolved model is available, activate tip.
+///
+/// Host-ollama rows never call `activate_verified`. Tip change for host-ollama is
+/// Desktop's make-default bind (`install_host_ollama_bind`); this path reports tip
+/// honesty so the UI never pretends Auto tip changed when it did not.
 pub fn select_catalog_model(
     root: impl AsRef<Path>,
     selection: CatalogSelection,
@@ -270,11 +310,18 @@ pub fn select_catalog_model(
     let tip = load_model_catalog(root).ok().and_then(|s| s.tip_model_ref);
     let mut snap = load_model_catalog(root)?;
     if chosen.model_ref.starts_with("aira:model:ollama-") {
-        // Pack C: host-ollama tip is already process-bound; never activate_verified.
-        snap.last_message = Some(format!(
-            "selected host Ollama {} (process bind; no weight activate)",
-            chosen.model_ref
-        ));
+        // Pack C / P3: never activate_verified for host-ollama.
+        if tip.as_deref() == Some(chosen.model_ref.as_str()) {
+            snap.last_message = Some(format!(
+                "selected host Ollama {} — already the default tip (Work Auto unchanged)",
+                chosen.model_ref
+            ));
+        } else {
+            snap.last_message = Some(format!(
+                "selected host Ollama {} — tip not changed yet (make default in Settings → Models)",
+                chosen.model_ref
+            ));
+        }
         return Ok((chosen.model_ref, snap));
     }
     if available {
@@ -463,12 +510,16 @@ mod tests {
         assert_eq!(chosen, model_ref);
         let msg = snap.last_message.as_deref().unwrap_or("");
         assert!(
-            msg.contains("process bind") || msg.contains("host Ollama"),
-            "expected host-ollama select message, got {msg}"
+            msg.contains("host Ollama") && (msg.contains("tip") || msg.contains("default")),
+            "expected host-ollama tip-honesty message, got {msg}"
         );
         assert!(
             !msg.contains("tip-activated"),
             "must not activate_verified: {msg}"
+        );
+        assert_eq!(
+            host_cli_name_for_ollama_ref(root, model_ref).as_deref(),
+            Some("sel-test:latest")
         );
     }
 }

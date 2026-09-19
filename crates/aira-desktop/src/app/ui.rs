@@ -1317,386 +1317,32 @@ impl AiraDesktopApp {
             self.note_help_focus(HelpId::ModelSelect);
         }
         ui.small(l.settings_models_catalog_hint);
-
-        ui.strong(l.settings_models_storage);
-        ui.small(l.settings_models_storage_hint);
         ui.horizontal(|ui| {
-            ui.label(l.settings_models_storage_root);
-            ui.monospace(self.model_storage.models_root.display().to_string());
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.settings_models_storage_used);
-            ui.label(aira_desktop_runtime::format_bytes(
-                self.model_storage.used_bytes,
-            ));
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.settings_models_storage_free);
-            match self.model_storage.available_bytes {
-                Some(b) => ui.label(aira_desktop_runtime::format_bytes(b)),
-                None => ui.label(l.settings_models_storage_unknown),
-            };
-        });
-        egui::CollapsingHeader::new(l.settings_models_storage_subdirs)
-            .id_source("settings-models-storage-subdirs")
-            .default_open(false)
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("quarantine");
-                    ui.monospace(self.model_storage.quarantine_dir.display().to_string());
-                });
-                ui.horizontal(|ui| {
-                    ui.label("verified");
-                    ui.monospace(self.model_storage.verified_dir.display().to_string());
-                });
-                ui.horizontal(|ui| {
-                    ui.label("cache");
-                    ui.monospace(self.model_storage.cache_dir.display().to_string());
-                });
-            });
-
-        ui.horizontal(|ui| {
-            ui.label(l.sys_model_selected);
-            ui.monospace(self.model_triple.selected.as_display());
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.sys_model_ready);
-            ui.label(if self.model_triple.ready {
-                l.mesh_yes
-            } else {
-                l.mesh_no
-            });
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.sys_model_used);
-            ui.monospace(self.model_triple.used.as_display());
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.sys_model_executor);
-            ui.monospace(&self.model_triple.executor_kind);
-        });
-        if self.model_triple.executor_is_reference_mock() {
-            ui.small(l.sys_model_executor_mock_hint);
-        }
-
-        ui.separator();
-        ui.strong(l.settings_ollama_heading);
-        ui.small(l.settings_ollama_hint);
-        ui.horizontal(|ui| {
-            let process_on = matches!(
-                self.settings.llm_backend,
-                aira_desktop_runtime::LlmBackend::Process
-            );
+            ui.label(l.settings_models_source);
             if ui
-                .selectable_label(process_on, l.settings_ollama_use_process)
-                .clicked()
-            {
-                if let Some(m) = self
-                    .settings
-                    .llm_ollama_model
-                    .clone()
-                    .or_else(|| self.ollama_models.first().cloned())
-                {
-                    self.bind_ollama_process(Some(m));
-                } else {
-                    self.refresh_ollama_list(ui.ctx());
-                    if let Some(m) = self.ollama_models.first().cloned() {
-                        self.bind_ollama_process(Some(m));
-                    } else {
-                        self.ollama_msg = Some(l.settings_ollama_empty.into());
-                    }
-                }
-            }
-            if ui
-                .selectable_label(!process_on, l.settings_ollama_use_mock)
-                .clicked()
-            {
-                self.bind_ollama_process(None);
-            }
-            if ui.button(l.settings_ollama_refresh).clicked() {
-                self.refresh_ollama_list(ui.ctx());
-            }
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.settings_ollama_bound_model);
-            ui.monospace(self.settings.llm_ollama_model.as_deref().unwrap_or("—"));
-        });
-        if matches!(
-            self.settings_apply_phase(),
-            crate::settings_apply::SettingsApplyPhase::RestartNeeded
-        ) && matches!(
-            self.settings.llm_backend,
-            aira_desktop_runtime::LlmBackend::Process
-        ) {
-            ui.small(l.settings_ollama_restart_hint);
-        }
-        if self.ollama_models.is_empty() {
-            ui.small(l.settings_ollama_empty);
-        } else {
-            egui::ScrollArea::vertical()
-                .max_height(140.0)
-                .id_source("settings-ollama-list")
-                .show(ui, |ui| {
-                    for name in self.ollama_models.clone() {
-                        let selected =
-                            self.settings.llm_ollama_model.as_deref() == Some(name.as_str());
-                        if ui.selectable_label(selected, &name).clicked() {
-                            self.bind_ollama_process(Some(name));
-                        }
-                    }
-                });
-        }
-        if let Some(msg) = &self.ollama_msg {
-            ui.small(msg);
-        }
-        ui.horizontal(|ui| {
-            ui.label(l.settings_ollama_timeout);
-            ui.add(
-                egui::TextEdit::singleline(&mut self.llm_timeout_edit)
-                    .desired_width(100.0)
-                    .hint_text("e.g. 120000"),
-            );
-            if ui.button(l.settings_ollama_timeout_apply).clicked() {
-                let trimmed = self.llm_timeout_edit.trim();
-                let parsed = if trimmed.is_empty() {
-                    Ok(None)
-                } else {
-                    trimmed
-                        .parse::<u64>()
-                        .map(Some)
-                        .map_err(|e| format!("invalid timeout ms: {e}"))
-                };
-                match parsed {
-                    Ok(ms) => {
-                        self.settings.llm_process_timeout_ms = ms;
-                        match self.persist_settings() {
-                            Ok(()) => {
-                                self.ollama_msg = Some(match ms {
-                                    Some(v) => {
-                                        format!("timeout {v} ms saved — restart node to apply")
-                                    }
-                                    None => "timeout cleared — restart node to apply".into(),
-                                });
-                            }
-                            Err(e) => self.set_problem(ErrorCode::SettingsPersistFailed, e),
-                        }
-                    }
-                    Err(e) => self.ollama_msg = Some(e),
-                }
-            }
-        });
-        ui.small(l.settings_ollama_timeout_hint);
-
-        ui.horizontal(|ui| {
-            let catalog_busy = self.async_jobs.catalog_inflight();
-            let work_busy = self.async_jobs.work_inflight();
-            if ui
-                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_scan))
-                .clicked()
-            {
-                let ctx = ui.ctx().clone();
-                if !self.async_jobs.try_spawn_catalog(
-                    crate::async_jobs::CatalogJobKind::Scan,
-                    self.paths.clone(),
-                    work_busy,
-                    None,
-                    None,
-                    None,
-                    None,
-                    move || ctx.request_repaint(),
-                ) {
-                    self.catalog_msg = Some("catalog job busy".into());
-                }
-            }
-            if ui
-                .selectable_label(self.catalog_auto, l.settings_models_auto)
-                .clicked()
-            {
-                self.catalog_auto = true;
-            }
-            if ui
-                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_select))
-                .clicked()
-            {
-                let selection = if self.catalog_auto {
-                    Some(CatalogSelection::Auto)
-                } else if let Some(r) = self.catalog_highlight.clone() {
-                    Some(CatalogSelection::Required(r))
-                } else {
-                    self.catalog_msg = Some("select a catalog row or Auto".into());
-                    None
-                };
-                if let Some(selection) = selection {
-                    if work_busy {
-                        self.catalog_msg =
-                            Some("cannot Select while Work is running (weights locked)".into());
-                    } else {
-                        let ctx = ui.ctx().clone();
-                        if !self.async_jobs.try_spawn_catalog(
-                            crate::async_jobs::CatalogJobKind::Select,
-                            self.paths.clone(),
-                            work_busy,
-                            None,
-                            Some(selection),
-                            None,
-                            None,
-                            move || ctx.request_repaint(),
-                        ) {
-                            self.catalog_msg = Some("catalog job busy".into());
-                        }
-                    }
-                }
-            }
-            if ui
-                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_prepare))
-                .clicked()
-            {
-                if work_busy {
-                    self.catalog_msg =
-                        Some("cannot Prepare while Work is running (weights locked)".into());
-                } else if let Some(r) = self.catalog_highlight.clone() {
-                    let ctx = ui.ctx().clone();
-                    if !self.async_jobs.try_spawn_catalog(
-                        crate::async_jobs::CatalogJobKind::Prepare,
-                        self.paths.clone(),
-                        work_busy,
-                        Some(r),
-                        None,
-                        None,
-                        None,
-                        move || ctx.request_repaint(),
-                    ) {
-                        self.catalog_msg = Some("catalog job busy".into());
-                    }
-                } else {
-                    self.catalog_msg = Some("select a catalog row before Prepare".into());
-                }
-            }
-            if ui
-                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_verify))
-                .clicked()
-            {
-                let art = self.catalog_artifact_edit.trim().to_string();
-                if art.is_empty() {
-                    self.catalog_msg = Some("set ModelArtifact path before Verify".into());
-                } else if work_busy {
-                    self.catalog_msg =
-                        Some("cannot Verify while Work is running (weights locked)".into());
-                } else {
-                    let ctx = ui.ctx().clone();
-                    if !self.async_jobs.try_spawn_catalog(
-                        crate::async_jobs::CatalogJobKind::Verify,
-                        self.paths.clone(),
-                        work_busy,
-                        None,
-                        None,
-                        Some(std::path::PathBuf::from(art)),
-                        None,
-                        move || ctx.request_repaint(),
-                    ) {
-                        self.catalog_msg = Some("catalog job busy".into());
-                    }
-                }
-            }
-        });
-
-        ui.horizontal(|ui| {
-            ui.label(l.settings_models_artifact);
-            ui.text_edit_singleline(&mut self.catalog_artifact_edit);
-        });
-
-        ui.horizontal(|ui| {
-            ui.label(l.settings_models_model_ref);
-            ui.text_edit_singleline(&mut self.catalog_add_ref);
-            if !self.model_catalog.local_add_allowed
-                && ui.button(l.settings_models_enable_add).clicked()
-            {
-                match actions::models_catalog_enable_local_add(&self.paths) {
-                    Ok(snap) => self.apply_catalog_snapshot(snap),
-                    Err(e) => self.catalog_msg = Some(format!("{e:#}")),
-                }
-            }
-            let catalog_busy = self.async_jobs.catalog_inflight();
-            let work_busy = self.async_jobs.work_inflight();
-            if ui
-                .add_enabled(
-                    !catalog_busy && self.model_catalog.local_add_allowed,
-                    egui::Button::new(l.settings_models_add),
+                .selectable_label(
+                    self.models_source == crate::app::ModelsSourceKind::HostOllama,
+                    l.settings_models_source_ollama,
                 )
                 .clicked()
             {
-                if work_busy {
-                    self.catalog_msg =
-                        Some("cannot Add while Work is running (weights locked)".into());
-                } else {
-                    let path = rfd::FileDialog::new()
-                        .add_filter("weights", &["bin", "gguf", "ggml", "safetensors"])
-                        .pick_file();
-                    if let Some(path) = path {
-                        let ctx = ui.ctx().clone();
-                        if !self.async_jobs.try_spawn_catalog(
-                            crate::async_jobs::CatalogJobKind::Add,
-                            self.paths.clone(),
-                            work_busy,
-                            Some(self.catalog_add_ref.clone()),
-                            None,
-                            Some(path),
-                            None,
-                            move || ctx.request_repaint(),
-                        ) {
-                            self.catalog_msg = Some("catalog job busy".into());
-                        }
-                    }
-                }
+                self.models_source = crate::app::ModelsSourceKind::HostOllama;
+            }
+            if ui
+                .selectable_label(
+                    self.models_source == crate::app::ModelsSourceKind::LocalFile,
+                    l.settings_models_source_file,
+                )
+                .clicked()
+            {
+                self.models_source = crate::app::ModelsSourceKind::LocalFile;
             }
         });
 
-        if self.model_catalog.entries.is_empty() {
-            ui.small(l.settings_models_empty);
-        } else {
-            egui::ScrollArea::vertical()
-                .max_height(160.0)
-                .show(ui, |ui| {
-                    for entry in &self.model_catalog.entries.clone() {
-                        let selected =
-                            self.catalog_highlight.as_deref() == Some(entry.model_ref.as_str());
-                        let tip = self.model_catalog.tip_model_ref.as_deref()
-                            == Some(entry.model_ref.as_str());
-                        let flags = match (entry.verified, entry.available) {
-                            (true, true) => format!(
-                                "{}/{}",
-                                l.settings_models_verified, l.settings_models_available
-                            ),
-                            (true, false) => l.settings_models_verified.to_string(),
-                            (false, true) => l.settings_models_available.to_string(),
-                            (false, false) => "-".into(),
-                        };
-                        let mut label =
-                            format!("{} [{}] — {}", entry.model_ref, flags, entry.ready_reason);
-                        if tip {
-                            label.push_str(" (tip)");
-                        }
-                        if ui.selectable_label(selected, label).clicked() {
-                            self.catalog_highlight = Some(entry.model_ref.clone());
-                            self.catalog_auto = false;
-                            self.catalog_add_ref = entry.model_ref.clone();
-                        }
-                    }
-                });
+        match self.models_source {
+            crate::app::ModelsSourceKind::HostOllama => self.ui_settings_models_ollama(ui),
+            crate::app::ModelsSourceKind::LocalFile => self.ui_settings_models_file(ui),
         }
-        if let Some(msg) = &self.catalog_msg {
-            ui.small(msg);
-        }
-        egui::CollapsingHeader::new(l.sys_tech_details)
-            .id_source("settings-models-tech")
-            .default_open(false)
-            .show(ui, |ui| {
-                ui.label(l.not_llm);
-                ui.label(format!("ready_detail: {}", self.model_triple.ready_detail));
-                if let Some(tip) = &self.model_catalog.tip_model_ref {
-                    ui.label(format!("tip: {tip}"));
-                }
-            });
 
         ui.separator();
         let g = ui.strong(l.settings_group_connection);
@@ -1840,5 +1486,377 @@ impl AiraDesktopApp {
             }
         });
         ui.label(format!("instance: {}", self.settings.instance_id));
+    }
+
+    fn ui_settings_models_ollama(&mut self, ui: &mut egui::Ui) {
+        let l = self.labels();
+        ui.strong(l.settings_ollama_heading);
+        ui.small(l.settings_ollama_hint);
+        ui.horizontal(|ui| {
+            let process_on = matches!(
+                self.settings.llm_backend,
+                aira_desktop_runtime::LlmBackend::Process
+            );
+            if ui
+                .selectable_label(process_on, l.settings_ollama_use_process)
+                .clicked()
+            {
+                if let Some(m) = self
+                    .settings
+                    .llm_ollama_model
+                    .clone()
+                    .or_else(|| self.ollama_models.first().cloned())
+                {
+                    self.bind_ollama_process(Some(m));
+                } else {
+                    self.refresh_ollama_list(ui.ctx());
+                    if let Some(m) = self.ollama_models.first().cloned() {
+                        self.bind_ollama_process(Some(m));
+                    } else {
+                        self.ollama_msg = Some(l.settings_ollama_empty.into());
+                    }
+                }
+            }
+            if ui
+                .selectable_label(!process_on, l.settings_ollama_use_mock)
+                .clicked()
+            {
+                self.bind_ollama_process(None);
+            }
+            if ui.button(l.settings_ollama_refresh).clicked() {
+                self.refresh_ollama_list(ui.ctx());
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.settings_ollama_bound_model);
+            ui.monospace(self.settings.llm_ollama_model.as_deref().unwrap_or("—"));
+        });
+        if matches!(
+            self.settings_apply_phase(),
+            crate::settings_apply::SettingsApplyPhase::RestartNeeded
+        ) && matches!(
+            self.settings.llm_backend,
+            aira_desktop_runtime::LlmBackend::Process
+        ) {
+            ui.small(l.settings_ollama_restart_hint);
+        }
+        if self.ollama_models.is_empty() {
+            ui.small(l.settings_ollama_empty);
+        } else {
+            egui::ScrollArea::vertical()
+                .max_height(140.0)
+                .id_source("settings-ollama-list")
+                .show(ui, |ui| {
+                    for name in self.ollama_models.clone() {
+                        let selected =
+                            self.settings.llm_ollama_model.as_deref() == Some(name.as_str());
+                        if ui.selectable_label(selected, &name).clicked() {
+                            self.bind_ollama_process(Some(name));
+                        }
+                    }
+                });
+        }
+        if let Some(msg) = &self.ollama_msg {
+            ui.small(msg);
+        }
+        ui.horizontal(|ui| {
+            ui.label(l.settings_ollama_timeout);
+            ui.add(
+                egui::TextEdit::singleline(&mut self.llm_timeout_edit)
+                    .desired_width(100.0)
+                    .hint_text("e.g. 120000"),
+            );
+            if ui.button(l.settings_ollama_timeout_apply).clicked() {
+                let trimmed = self.llm_timeout_edit.trim();
+                let parsed = if trimmed.is_empty() {
+                    Ok(None)
+                } else {
+                    trimmed
+                        .parse::<u64>()
+                        .map(Some)
+                        .map_err(|e| format!("invalid timeout ms: {e}"))
+                };
+                match parsed {
+                    Ok(ms) => {
+                        self.settings.llm_process_timeout_ms = ms;
+                        match self.persist_settings() {
+                            Ok(()) => {
+                                self.ollama_msg = Some(match ms {
+                                    Some(v) => {
+                                        format!("timeout {v} ms saved — restart node to apply")
+                                    }
+                                    None => "timeout cleared — restart node to apply".into(),
+                                });
+                            }
+                            Err(e) => self.set_problem(ErrorCode::SettingsPersistFailed, e),
+                        }
+                    }
+                    Err(e) => self.ollama_msg = Some(e),
+                }
+            }
+        });
+        ui.small(l.settings_ollama_timeout_hint);
+
+        if ui.button(l.settings_models_make_default).clicked() {
+            if let Some(m) = self
+                .settings
+                .llm_ollama_model
+                .clone()
+                .or_else(|| self.ollama_models.first().cloned())
+            {
+                self.bind_ollama_process(Some(m));
+            } else {
+                self.ollama_msg = Some(l.settings_ollama_empty.into());
+            }
+        }
+    }
+
+    fn ui_settings_models_file(&mut self, ui: &mut egui::Ui) {
+        let l = self.labels();
+        ui.strong(l.settings_models_storage);
+        ui.small(l.settings_models_storage_hint);
+        ui.horizontal(|ui| {
+            ui.label(l.settings_models_storage_root);
+            ui.monospace(self.model_storage.models_root.display().to_string());
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.settings_models_storage_used);
+            ui.label(aira_desktop_runtime::format_bytes(
+                self.model_storage.used_bytes,
+            ));
+        });
+        ui.horizontal(|ui| {
+            ui.label(l.settings_models_storage_free);
+            match self.model_storage.available_bytes {
+                Some(b) => ui.label(aira_desktop_runtime::format_bytes(b)),
+                None => ui.label(l.settings_models_storage_unknown),
+            };
+        });
+        egui::CollapsingHeader::new(l.settings_models_storage_subdirs)
+            .id_source("settings-models-storage-subdirs")
+            .default_open(false)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("quarantine");
+                    ui.monospace(self.model_storage.quarantine_dir.display().to_string());
+                });
+                ui.horizontal(|ui| {
+                    ui.label("verified");
+                    ui.monospace(self.model_storage.verified_dir.display().to_string());
+                });
+                ui.horizontal(|ui| {
+                    ui.label("cache");
+                    ui.monospace(self.model_storage.cache_dir.display().to_string());
+                });
+            });
+        ui.horizontal(|ui| {
+            let catalog_busy = self.async_jobs.catalog_inflight();
+            let work_busy = self.async_jobs.work_inflight();
+            if ui
+                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_scan))
+                .clicked()
+            {
+                let ctx = ui.ctx().clone();
+                if !self.async_jobs.try_spawn_catalog(
+                    crate::async_jobs::CatalogJobKind::Scan,
+                    self.paths.clone(),
+                    work_busy,
+                    None,
+                    None,
+                    None,
+                    None,
+                    move || ctx.request_repaint(),
+                ) {
+                    self.catalog_msg = Some("catalog job busy".into());
+                }
+            }
+            if ui
+                .selectable_label(self.catalog_auto, l.settings_models_auto)
+                .clicked()
+            {
+                self.catalog_auto = true;
+            }
+            if ui
+                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_select))
+                .clicked()
+            {
+                let selection = if self.catalog_auto {
+                    Some(CatalogSelection::Auto)
+                } else if let Some(r) = self.catalog_highlight.clone() {
+                    Some(CatalogSelection::Required(r))
+                } else {
+                    self.catalog_msg = Some("select a catalog row or Auto".into());
+                    None
+                };
+                if let Some(selection) = selection {
+                    if work_busy {
+                        self.catalog_msg =
+                            Some("cannot Select while Work is running (weights locked)".into());
+                    } else {
+                        let ctx = ui.ctx().clone();
+                        if !self.async_jobs.try_spawn_catalog(
+                            crate::async_jobs::CatalogJobKind::Select,
+                            self.paths.clone(),
+                            work_busy,
+                            None,
+                            Some(selection),
+                            None,
+                            None,
+                            move || ctx.request_repaint(),
+                        ) {
+                            self.catalog_msg = Some("catalog job busy".into());
+                        }
+                    }
+                }
+            }
+            if ui
+                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_prepare))
+                .clicked()
+            {
+                if work_busy {
+                    self.catalog_msg =
+                        Some("cannot Prepare while Work is running (weights locked)".into());
+                } else if let Some(r) = self.catalog_highlight.clone() {
+                    let ctx = ui.ctx().clone();
+                    if !self.async_jobs.try_spawn_catalog(
+                        crate::async_jobs::CatalogJobKind::Prepare,
+                        self.paths.clone(),
+                        work_busy,
+                        Some(r),
+                        None,
+                        None,
+                        None,
+                        move || ctx.request_repaint(),
+                    ) {
+                        self.catalog_msg = Some("catalog job busy".into());
+                    }
+                } else {
+                    self.catalog_msg = Some("select a catalog row before Prepare".into());
+                }
+            }
+            if ui
+                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_verify))
+                .clicked()
+            {
+                let art = self.catalog_artifact_edit.trim().to_string();
+                if art.is_empty() {
+                    self.catalog_msg = Some("set ModelArtifact path before Verify".into());
+                } else if work_busy {
+                    self.catalog_msg =
+                        Some("cannot Verify while Work is running (weights locked)".into());
+                } else {
+                    let ctx = ui.ctx().clone();
+                    if !self.async_jobs.try_spawn_catalog(
+                        crate::async_jobs::CatalogJobKind::Verify,
+                        self.paths.clone(),
+                        work_busy,
+                        None,
+                        None,
+                        Some(std::path::PathBuf::from(art)),
+                        None,
+                        move || ctx.request_repaint(),
+                    ) {
+                        self.catalog_msg = Some("catalog job busy".into());
+                    }
+                }
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label(l.settings_models_model_ref);
+            ui.text_edit_singleline(&mut self.catalog_add_ref);
+            if !self.model_catalog.local_add_allowed
+                && ui.button(l.settings_models_enable_add).clicked()
+            {
+                match actions::models_catalog_enable_local_add(&self.paths) {
+                    Ok(snap) => self.apply_catalog_snapshot(snap),
+                    Err(e) => self.catalog_msg = Some(format!("{e:#}")),
+                }
+            }
+            let catalog_busy = self.async_jobs.catalog_inflight();
+            let work_busy = self.async_jobs.work_inflight();
+            if ui
+                .add_enabled(
+                    !catalog_busy && self.model_catalog.local_add_allowed,
+                    egui::Button::new(l.settings_models_add),
+                )
+                .clicked()
+            {
+                if work_busy {
+                    self.catalog_msg =
+                        Some("cannot Add while Work is running (weights locked)".into());
+                } else {
+                    let path = rfd::FileDialog::new()
+                        .add_filter("weights", &["bin", "gguf", "ggml", "safetensors"])
+                        .pick_file();
+                    if let Some(path) = path {
+                        let ctx = ui.ctx().clone();
+                        if !self.async_jobs.try_spawn_catalog(
+                            crate::async_jobs::CatalogJobKind::Add,
+                            self.paths.clone(),
+                            work_busy,
+                            Some(self.catalog_add_ref.clone()),
+                            None,
+                            Some(path),
+                            None,
+                            move || ctx.request_repaint(),
+                        ) {
+                            self.catalog_msg = Some("catalog job busy".into());
+                        }
+                    }
+                }
+            }
+        });
+
+        if self.model_catalog.entries.is_empty() {
+            ui.small(l.settings_models_empty);
+        } else {
+            egui::ScrollArea::vertical()
+                .max_height(160.0)
+                .show(ui, |ui| {
+                    for entry in &self.model_catalog.entries.clone() {
+                        let selected =
+                            self.catalog_highlight.as_deref() == Some(entry.model_ref.as_str());
+                        let tip = self.model_catalog.tip_model_ref.as_deref()
+                            == Some(entry.model_ref.as_str());
+                        let flags = match (entry.verified, entry.available) {
+                            (true, true) => format!(
+                                "{}/{}",
+                                l.settings_models_verified, l.settings_models_available
+                            ),
+                            (true, false) => l.settings_models_verified.to_string(),
+                            (false, true) => l.settings_models_available.to_string(),
+                            (false, false) => "-".into(),
+                        };
+                        let mut label =
+                            format!("{} [{}] — {}", entry.model_ref, flags, entry.ready_reason);
+                        if tip {
+                            label.push_str(" (tip)");
+                        }
+                        if ui.selectable_label(selected, label).clicked() {
+                            self.catalog_highlight = Some(entry.model_ref.clone());
+                            self.catalog_auto = false;
+                            self.catalog_add_ref = entry.model_ref.clone();
+                        }
+                    }
+                });
+        }
+        if let Some(msg) = &self.catalog_msg {
+            ui.small(msg);
+        }
+        egui::CollapsingHeader::new(l.sys_tech_details)
+            .id_source("settings-models-tech")
+            .default_open(false)
+            .show(ui, |ui| {
+                ui.label(l.not_llm);
+                ui.label(format!("ready_detail: {}", self.model_triple.ready_detail));
+                if let Some(tip) = &self.model_catalog.tip_model_ref {
+                    ui.label(format!("default: {tip}"));
+                }
+                ui.horizontal(|ui| {
+                    ui.label(l.settings_models_artifact);
+                    ui.text_edit_singleline(&mut self.catalog_artifact_edit);
+                });
+            });
     }
 }

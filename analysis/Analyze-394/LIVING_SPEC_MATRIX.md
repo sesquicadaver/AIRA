@@ -37,3 +37,6 @@
 | LS394-033 | P2 Stop confirms death before clear | `process::stop` after SIGKILL | Stop failed keeps pidfile; Retry | **DONE** |
 | LS394-034 | P2 Compare A visible before B | `WorkJobEvent::ComparePrimary` | pump applies A mid-job | **DONE** |
 | LS394-035 | P2 timeout UI + pidfile + error code | Settings timeout field; `PidRecord.llm_process_timeout_ms`; `ErrorCode::WorkTimedOut` | `timed_out_submit_classifies_to_work_timed_out` | **DONE** |
+| LS394-036 | P3 one catalog by source | Settings Models `ModelsSourceKind` | host Ollama vs local file actions | **DONE** |
+| LS394-037 | P3 Select Ollama tip honesty | `select_catalog_model` / `maybe_make_default_host_ollama` | `select_host_ollama_skips_activate_verified` | **DONE** |
+| LS394-038 | P3 help EN/UK matches gate | `docs/help/{en,uk}/model.select.md` | embedded help catalog | **DONE** |
