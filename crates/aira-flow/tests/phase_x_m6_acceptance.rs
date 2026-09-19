@@ -1,6 +1,7 @@
-//! Phase X / Pack 2 M6 installed-product acceptance (QUEUE `#357` / RFC-0240).
+//! Phase X / Pack 2 M6 fixture-weight harness (QUEUE `#357` / RFC-0240).
 //!
-//! Proves two real local models share one staff path for select + CLI/HTTP
+//! Not installed-product acceptance. Uses fixture weight bytes only.
+//! Proves two fixture models share one staff path for select + CLI/HTTP
 //! admission (`AdmissionConstraints` = CLI flags = `POST /v1/problems` body),
 //! cold restart keeps tip/slots, and Required-unavailable never silent-substitutes.
 //! GUI catalog/Work facade lives in `aira-desktop-runtime` `phase_x_m6_gui`.

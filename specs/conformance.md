@@ -106,6 +106,8 @@ Evidence CSU
 Verified Result Artifact
 ```
 
+Reference runner (does not weaken B1-010): normative C1 smoke is `c1.pipeline.process_executor_executed` (host process → Executed, not VERIFIED). VRA completeness in CI is schema fixtures (`c1.result.verified_completeness`), not a runtime VRA pipeline on generate-local and not the legacy OP-001 math path. Installed-product Ollama acceptance is opt-in and is not this profile.
+
 ## AIRA-C2 — Protocol-Compatible Node
 
 Додає локальну або мережеву сумісність:

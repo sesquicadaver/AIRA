@@ -163,8 +163,6 @@ GUI-state зберігає лише вкладку/фокус/чернетку/�
 
 **Apply-diff honesty (`#356` @ RFC-0239):** Changed/Saved/Applied/Restart + inline apply error.
 
-**Two-model M6 (`#357` @ RFC-0240):** GUI+CLI+HTTP acceptance; cold restart; fail-closed.
-
 **Settings ≠ System (`#352` @ RFC-0235):** edit network in Settings → Connection; System → Connection observes + invites + CTA.
 
 **Address roles (`#351` @ RFC-0234):** HTTP listen ≠ peer listen ≠ advertised discovery address. Desktop default peer listen is **loopback** — not a dial address for another PC. Advanced P3|P4 is a **radio** (mutex), not dual checkboxes.

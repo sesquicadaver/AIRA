@@ -1,0 +1,46 @@
+# Opt-in installed-product LLM gate. Not a merge gate.
+# Default CI (ci.yml) must not run `ollama run`.
+name: Installed-product LLM
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_a:
+        description: First host Ollama model
+        required: false
+        default: phi:latest
+      model_b:
+        description: Second host Ollama model
+        required: false
+        default: llama3.2:latest
+
+jobs:
+  installed-product-llm:
+    name: opt-in real ollama (not a merge gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@35d8a35b823d6c20db516f5c35eb0a9640942c17 # 1.94.0
+        with:
+          toolchain: 1.94.0
+
+      - name: Skip when ollama is absent
+        id: probe
+        run: |
+          if ! command -v ollama >/dev/null 2>&1; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "ollama not on PATH; skipping (not default CI, not a failure)"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Opt-in two-model process evidence
+        if: steps.probe.outputs.present == 'true'
+        env:
+          AIRA_INSTALLED_PRODUCT: "1"
+          AIRA_OLLAMA_A: ${{ inputs.model_a }}
+          AIRA_OLLAMA_B: ${{ inputs.model_b }}
+          AIRA_INSTALLED_EVIDENCE: ${{ runner.temp }}/installed-product.json
+        run: cargo test -p aira-csu-execution-llm --lib installed_product_two_real_ollama_models -- --ignored --nocapture

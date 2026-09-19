@@ -123,7 +123,7 @@ X0 Wiring (після QUEUE W closed)
 | `#354` | X2 | Work Compare mode | **DONE** @ RFC-0237: dual model; no silent substitute; not Pack 3 ratings | data paths (#355) |
 | `#355` | X2 | Model data paths (light) | **DONE** @ RFC-0238: storage catalog + used/free (or unknown) in Settings | apply-diff (#356) |
 | `#356` | X2 | Apply-diff honesty | **DONE** @ RFC-0239: Changed/Saved/Applied/Restart + apply error | M6 (#357) |
-| `#357` | X3 | Two-model installed acceptance (M6) | **DONE** @ RFC-0240: GUI+CLI+HTTP; cold restart; fail-closed | close (#358) |
+| `#357` | X3 | Two-model installed acceptance (M6) | **DONE** @ RFC-0240: fixture GUI+CLI+HTTP; cold restart; fail-closed; not installed-product complete | close (#358) |
 | `#358` | X | RFC-0226 + close | **DONE** @ RFC-0226: consolidating; QUEUE X closed; Pack 2 DONE | Pack 3+ |
 
 ```text

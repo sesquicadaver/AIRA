@@ -38,6 +38,8 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      # Installed-product Ollama is not this job. Opt-in only:
+      # .github/workflows/installed-product-llm.yml (workflow_dispatch; not a merge gate).
       - name: cargo test
         run: cargo test --workspace
 

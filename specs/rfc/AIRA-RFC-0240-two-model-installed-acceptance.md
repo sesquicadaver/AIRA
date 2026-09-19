@@ -51,6 +51,8 @@ Tip → first OPEN #358; RFC-0240.
 
 ## 8b. Installed-product acceptance (opt-in; not CI default)
 
+M6 §8 is fixture weights. This section is the real-host gate. Default CI does not run it. Opt-in process evidence: `installed_product_two_real_ollama_models` (`#[ignore]`) via [`scripts/installed-product-llm-acceptance.sh`](../../scripts/installed-product-llm-acceptance.sh). A green fixture harness is not installed-product complete. GUI widths 560/900/1600 stay manual.
+
 Reproducible manual/nightly gate (document evidence in Analyze notes):
 
 1. Two real models from `ollama list` bound via Settings; Required A then B **without** node restart (RFC-0243).

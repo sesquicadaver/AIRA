@@ -1413,4 +1413,135 @@ mod tests {
             "file weights via ollama tip must deny, got {err}"
         );
     }
+
+    /// Opt-in installed-product gate (P4). Default `cargo test` skips `#[ignore]`.
+    ///
+    /// Proves one ProcessBackend can `ollama run` two real host models via
+    /// per-request `host_cli_model` (no restart), file-weight bindings fail-closed,
+    /// and a short wait returns [`TIMED_OUT`] (not VERIFIED). GUI widths, Compare
+    /// mid-kill, and the failed-Stop window are out of this process test.
+    #[test]
+    #[ignore = "opt-in real ollama; not default CI (P4)"]
+    fn installed_product_two_real_ollama_models() {
+        let _guard = env_lock();
+        assert_eq!(
+            std::env::var("AIRA_INSTALLED_PRODUCT").ok().as_deref(),
+            Some("1"),
+            "set AIRA_INSTALLED_PRODUCT=1; this test must not pass by accident"
+        );
+        let model_a = std::env::var("AIRA_OLLAMA_A").unwrap_or_else(|_| "phi:latest".to_string());
+        let model_b =
+            std::env::var("AIRA_OLLAMA_B").unwrap_or_else(|_| "llama3.2:latest".to_string());
+        assert_ne!(model_a, model_b, "need two distinct ollama models");
+        assert!(
+            Command::new("ollama")
+                .arg("--version")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false),
+            "ollama must be on PATH"
+        );
+
+        let prompt = "Reply with the single word OK";
+        let payload = dummy_payload(prompt);
+        let bind_a = installed_host_binding(&model_a, "a");
+        let bind_b = installed_host_binding(&model_b, "b");
+        let backend =
+            ProcessBackend::ollama("ollama", &model_a).with_timeout(Duration::from_secs(180));
+        let out_a = backend
+            .generate(&payload, &bind_a)
+            .expect("model A generate");
+        let out_b = backend
+            .generate(&payload, &bind_b)
+            .expect("model B generate without restart");
+        for (label, out, bind) in [("A", &out_a, &bind_a), ("B", &out_b, &bind_b)] {
+            assert_eq!(out.get("backend").and_then(|v| v.as_str()), Some("process"));
+            assert_eq!(
+                out.get("model_ref").and_then(|v| v.as_str()),
+                Some(bind.model_ref.as_str()),
+                "{label} stamped the wrong model_ref"
+            );
+            assert!(out.get("verification_status").is_none());
+            let text = out.get("result").and_then(|v| v.as_str()).unwrap_or("");
+            assert!(!text.is_empty(), "{label} empty stdout");
+            assert!(
+                !text.contains("VERIFIED"),
+                "{label} must not mint VERIFIED, got {text}"
+            );
+        }
+        assert_ne!(
+            out_a.get("model_ref"),
+            out_b.get("model_ref"),
+            "A and B must keep distinct bindings"
+        );
+
+        let mut file_bind = bind_a.clone();
+        file_bind.model_ref = "aira:model:file-weights-p4".into();
+        file_bind.host_cli_model = None;
+        let file_err = backend
+            .generate(&payload, &file_bind)
+            .expect_err("file weights on ollama must fail-closed");
+        assert!(
+            file_err.contains(HOST_OLLAMA_BINDING_REQUIRED),
+            "file weights via ollama must deny, got {file_err}"
+        );
+
+        let timed =
+            ProcessBackend::ollama("ollama", &model_a).with_timeout(Duration::from_millis(1));
+        let timeout_err = timed
+            .generate(&payload, &bind_a)
+            .expect_err("1ms wait must time out");
+        assert!(
+            timeout_err.contains(TIMED_OUT),
+            "expected timeout fail-closed, got {timeout_err}"
+        );
+
+        if let Ok(path) = std::env::var("AIRA_INSTALLED_EVIDENCE") {
+            let clip = |v: &Value| {
+                v.get("result")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("")
+                    .chars()
+                    .take(180)
+                    .collect::<String>()
+            };
+            let doc = json!({
+                "gate": "installed-product-llm",
+                "not_installed_product_complete": true,
+                "models": {"a": model_a, "b": model_b},
+                "executed": {
+                    "required_a_then_b_without_restart": true,
+                    "backend": "process",
+                    "verification_status": null,
+                    "result_a_prefix": clip(&out_a),
+                    "result_b_prefix": clip(&out_b),
+                    "file_weight_fail_closed": true,
+                    "timeout_fail_closed": true
+                },
+                "not_executed": [
+                    "gui_settings_clickthrough",
+                    "compare_mid_kill",
+                    "file_verify_prepare_gui",
+                    "failed_stop_window",
+                    "widths_560_900_1600"
+                ]
+            });
+            if let Some(parent) = Path::new(&path).parent() {
+                std::fs::create_dir_all(parent).expect("evidence dir");
+            }
+            std::fs::write(&path, serde_json::to_string_pretty(&doc).expect("json"))
+                .expect("write evidence");
+        }
+    }
+
+    fn installed_host_binding(cli: &str, suffix: &str) -> crate::ExecutorFacts {
+        crate::ExecutorFacts {
+            model_ref: format!("aira:model:ollama-installed-{suffix}"),
+            content_hash: crate::AlwaysActivated::content_hash(),
+            cache_path: String::new(),
+            host_cli_model: Some(cli.to_string()),
+        }
+    }
 }

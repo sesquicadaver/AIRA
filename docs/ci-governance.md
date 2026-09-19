@@ -131,6 +131,10 @@ CRP marketplace / settlement ledger / scheduler
 
 GitGuardian may run as an additional PR check; it is **not** listed in `ci.yml` and is not part of the required check name above unless explicitly added to branch protection.
 
+## Job `installed-product-llm` (opt-in, not a merge gate)
+
+Workflow [`.github/workflows/installed-product-llm.yml`](../.github/workflows/installed-product-llm.yml) is `workflow_dispatch` only. It is **not** in `.github/workflows/ci.yml` and **must not** be added to branch-protection required checks. If `ollama` is absent the job exits 0 without `ollama run`. Default PR CI stays fixture M6 + C1 process smoke (`c1.pipeline.process_executor_executed`: Executed ≠ VERIFIED) and VRA schema fixtures — not a runtime VRA pipeline.
+
 ## Related
 
 - Phase F plan (DONE): [`phase-f-plan.md`](phase-f-plan.md) F0

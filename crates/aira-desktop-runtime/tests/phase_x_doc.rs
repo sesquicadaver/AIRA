@@ -764,3 +764,27 @@ fn phase_x_status_row() {
         "implementation-status must not keep #358 as first-OPEN tip"
     );
 }
+
+#[test]
+fn installed_product_opt_in_is_not_default_ci() {
+    let root = repo_root();
+    let proc = std::fs::read_to_string(root.join("csu/execution-llm/src/process.rs")).unwrap();
+    assert!(proc.contains("fn installed_product_two_real_ollama_models"));
+    assert!(proc.contains("#[ignore = \"opt-in real ollama; not default CI (P4)\"]"));
+    let wf =
+        std::fs::read_to_string(root.join(".github/workflows/installed-product-llm.yml")).unwrap();
+    assert!(wf.contains("workflow_dispatch"));
+    assert!(!wf.contains("pull_request:"));
+    assert!(wf.contains("command -v ollama"));
+    let ci = std::fs::read_to_string(root.join(".github/workflows/ci.yml")).unwrap();
+    assert!(!ci.contains("installed_product_two_real_ollama_models"));
+    let ux = std::fs::read_to_string(root.join("docs/desktop-ux.md")).unwrap();
+    assert!(ux.contains("Not** installed-product complete"));
+    assert!(!ux.contains("GUI+CLI+HTTP acceptance"));
+    let conf = std::fs::read_to_string(root.join("docs/conformance.md")).unwrap();
+    assert!(conf.contains("c1.pipeline.process_executor_executed"));
+    assert!(conf.contains("not a runtime VRA pipeline"));
+    let spec = std::fs::read_to_string(root.join("specs/conformance.md")).unwrap();
+    assert!(spec.contains("c1.pipeline.process_executor_executed"));
+    assert!(spec.contains("c1.result.verified_completeness"));
+}
