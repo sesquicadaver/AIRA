@@ -19,7 +19,7 @@ Done when: Mock→Process without restart does not admit Work; a prepared file i
 
 ## P1 — One catalog
 
-Status: **open**.
+Status: **done** in this patch (`projection_file_source_omits_ollama_rows`, `use_ollama_waits_for_empty_list`).
 
 - Settings and Work share one projection: name, source, availability. `model_ref` and hash stay in details.
 - Choosing a model for a request does not change the default tip. Make-default is a separate action.

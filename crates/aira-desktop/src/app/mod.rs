@@ -117,6 +117,10 @@ pub struct AiraDesktopApp {
     pub(super) catalog_artifact_edit: String,
     /// Host `ollama list` names for Settings process bind (not AIRA catalog).
     pub(super) ollama_models: Vec<String>,
+    /// Host name chosen for a request. Does not write the default tip.
+    pub(super) ollama_pick: Option<String>,
+    /// First “Use Ollama” while the list is still empty: bind after the list returns.
+    pub(super) ollama_bind_pending: bool,
     pub(super) ollama_msg: Option<String>,
     /// Draft for `llm_process_timeout_ms` (empty = unset / default).
     pub(super) llm_timeout_edit: String,
@@ -242,6 +246,8 @@ impl AiraDesktopApp {
             catalog_msg: None,
             catalog_artifact_edit: String::new(),
             ollama_models: Vec::new(),
+            ollama_pick: None,
+            ollama_bind_pending: false,
             ollama_msg: None,
             llm_timeout_edit,
             models_source,
@@ -463,6 +469,7 @@ impl AiraDesktopApp {
     ///
     /// Backend Mock↔Process needs a node restart. Switching the host model on an
     /// already applied Process does not: admission `host_cli_model` is per request.
+    /// Choosing a row (`ollama_pick`) does not call this — Make default / Use Ollama does.
     pub(super) fn bind_ollama_process(&mut self, model: Option<String>) {
         match model {
             Some(m) => {
@@ -508,37 +515,43 @@ impl AiraDesktopApp {
         }
     }
 
-    /// P3: after Select on a host-ollama row, set Settings tip (make default) when possible.
-    pub(super) fn maybe_make_default_host_ollama(&mut self, model_ref: &str) {
-        if self.model_catalog.tip_model_ref.as_deref() == Some(model_ref)
-            && matches!(self.settings.llm_backend, LlmBackend::Process)
-            && self.settings.llm_ollama_model.is_some()
-        {
-            // Already default — keep catalog honesty message from select.
+    /// Finish a pending Use Ollama bind once `ollama list` has returned.
+    pub(super) fn finish_pending_ollama_bind(&mut self) {
+        if !self.ollama_bind_pending {
             return;
         }
-        let host =
-            aira_desktop_runtime::host_cli_name_for_ollama_ref(&self.paths.data_root, model_ref)
-                .or_else(|| {
-                    self.ollama_models.iter().find_map(|name| {
-                        let r = aira_flow::host_ollama_model_ref(name);
-                        (r == model_ref).then(|| name.clone())
-                    })
-                });
-        match host {
-            Some(m) => {
-                self.bind_ollama_process(Some(m));
-                self.catalog_msg = Some(
-                    "selected host Ollama — set as default tip (restart node if executor still mock)"
-                        .into(),
-                );
-            }
+        self.ollama_bind_pending = false;
+        match aira_desktop_runtime::resolve_bind_after_ollama_list(
+            self.ollama_pick.as_deref(),
+            &self.ollama_models,
+        ) {
+            Some(m) => self.bind_ollama_process(Some(m)),
             None => {
-                self.catalog_msg = Some(
-                    "selected host Ollama — tip not changed (no CLI name on disk; Refresh list and Make default)"
-                        .into(),
-                );
+                self.ollama_msg = Some(self.labels().settings_ollama_empty.into());
             }
+        }
+    }
+
+    /// Use Ollama process. If no name is known yet, wait for the host list.
+    pub(super) fn request_use_ollama_process(&mut self, ctx: &egui::Context) {
+        if let Some(m) = aira_desktop_runtime::resolve_use_ollama_bind(
+            self.ollama_pick.as_deref(),
+            self.settings.llm_ollama_model.as_deref(),
+            &self.ollama_models,
+        ) {
+            self.ollama_bind_pending = false;
+            self.bind_ollama_process(Some(m));
+            return;
+        }
+        self.ollama_bind_pending = true;
+        let already = self.async_jobs.catalog_kind() == Some(CatalogJobKind::OllamaList);
+        if !already {
+            self.refresh_ollama_list(ctx);
+        }
+        if self.async_jobs.catalog_kind() == Some(CatalogJobKind::OllamaList) {
+            self.ollama_msg = Some(self.labels().settings_ollama_loading.into());
+        } else {
+            self.ollama_bind_pending = false;
         }
     }
 
@@ -674,22 +687,30 @@ impl AiraDesktopApp {
                     self.catalog_highlight = Some(chosen.clone());
                     self.catalog_auto = false;
                     self.apply_catalog_snapshot(snap);
-                    // P3: Select host-ollama → make default tip (or keep honest msg).
+                    // Request selection does not write the default tip. Make default is separate.
                     if chosen.starts_with("aira:model:ollama-") {
-                        self.maybe_make_default_host_ollama(&chosen);
+                        self.catalog_msg = Some(
+                            "selected host Ollama — tip not changed (Make default is separate)"
+                                .into(),
+                        );
                     }
                 }
                 Ok(CatalogJobResult::OllamaList(names)) => {
                     self.ollama_models = names;
-                    self.ollama_msg = Some(format!(
-                        "{} ({})",
-                        self.labels().settings_ollama_listed,
-                        self.ollama_models.len()
-                    ));
+                    if self.ollama_bind_pending {
+                        self.finish_pending_ollama_bind();
+                    } else {
+                        self.ollama_msg = Some(format!(
+                            "{} ({})",
+                            self.labels().settings_ollama_listed,
+                            self.ollama_models.len()
+                        ));
+                    }
                 }
                 Err(e) => {
                     if e.contains("ollama") || e.contains("list") {
                         self.ollama_models.clear();
+                        self.ollama_bind_pending = false;
                         self.ollama_msg = Some(e);
                     } else {
                         self.catalog_msg = Some(e);

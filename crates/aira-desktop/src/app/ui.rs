@@ -1,9 +1,19 @@
-use aira_desktop_runtime::{CatalogSelection, NetworkProfile, UiLang, DEFAULT_RELAY_TTL_DAYS};
+use aira_desktop_runtime::{
+    project_shared_catalog, CatalogProjectionRow, CatalogSelection, CatalogSource, NetworkProfile,
+    UiLang, DEFAULT_RELAY_TTL_DAYS,
+};
 
 use crate::actions;
 use crate::lexicon::{ErrorCode, HelpId};
 
 use super::{work, AiraDesktopApp, MainTab};
+
+/// Which Work field a shared catalog row writes. Never the default tip.
+enum WorkPick {
+    Required,
+    CompareA,
+    CompareB,
+}
 
 impl eframe::App for AiraDesktopApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -119,6 +129,64 @@ impl eframe::App for AiraDesktopApp {
 }
 
 impl AiraDesktopApp {
+    fn catalog_rows(&self) -> Vec<CatalogProjectionRow> {
+        project_shared_catalog(&self.model_catalog, &self.ollama_models)
+    }
+
+    fn projection_label(l: &crate::app::i18n::Labels, row: &CatalogProjectionRow) -> String {
+        let source = match row.source {
+            CatalogSource::HostOllama => l.settings_models_source_ollama,
+            CatalogSource::LocalFile => l.settings_models_source_file,
+        };
+        let avail = if row.available {
+            l.settings_models_available
+        } else {
+            l.settings_models_unavailable
+        };
+        if row.verified {
+            format!(
+                "{} · {} · {} · {}",
+                row.name, source, l.settings_models_verified, avail
+            )
+        } else {
+            format!("{} · {} · {}", row.name, source, avail)
+        }
+    }
+
+    /// Request pick from the shared projection. Does not call bind or Select.
+    fn ui_work_projection_picks(&mut self, ui: &mut egui::Ui, pick: WorkPick) {
+        let l = self.labels();
+        let rows = self.catalog_rows();
+        if rows.is_empty() {
+            return;
+        }
+        ui.horizontal_wrapped(|ui| {
+            for row in rows {
+                let current = match pick {
+                    WorkPick::Required => self.work_required_ref.clone(),
+                    WorkPick::CompareA => self.work_compare_a.clone(),
+                    WorkPick::CompareB => self.work_compare_b.clone(),
+                };
+                let selected = current == row.model_ref;
+                if ui
+                    .selectable_label(selected, Self::projection_label(l, &row))
+                    .clicked()
+                {
+                    let model_ref = row.model_ref.clone();
+                    match pick {
+                        WorkPick::Required => {
+                            self.work_required_ref = model_ref;
+                            self.work_executor_mode = work::WorkExecutorUiMode::Specific;
+                        }
+                        WorkPick::CompareA => self.work_compare_a = model_ref,
+                        WorkPick::CompareB => self.work_compare_b = model_ref,
+                    }
+                    self.refresh_work_readiness();
+                }
+            }
+        });
+    }
+
     /// Compact status strip on every main screen (`desktop-ux` §2.2 / `#259`).
     /// Network cell: human phrase via `#289` `mesh_language` (agrees with Connection).
     fn ui_status_strip(&self, ui: &mut egui::Ui) {
@@ -443,78 +511,13 @@ impl AiraDesktopApp {
         });
         ui.small(l.work_executor_hint);
         if self.work_executor_mode == work::WorkExecutorUiMode::Specific {
-            ui.horizontal(|ui| {
-                ui.label(l.settings_models_model_ref);
-                if ui
-                    .text_edit_singleline(&mut self.work_required_ref)
-                    .changed()
-                {
-                    self.refresh_work_readiness();
-                }
-            });
-            if !self.model_catalog.entries.is_empty() {
-                ui.horizontal_wrapped(|ui| {
-                    for entry in &self.model_catalog.entries.clone() {
-                        let selected = self.work_required_ref == entry.model_ref;
-                        let label = format!(
-                            "{}{}",
-                            entry.model_ref,
-                            if entry.available { " ✓" } else { "" }
-                        );
-                        if ui.selectable_label(selected, label).clicked() {
-                            self.work_required_ref = entry.model_ref.clone();
-                            self.work_executor_mode = work::WorkExecutorUiMode::Specific;
-                            self.refresh_work_readiness();
-                        }
-                    }
-                });
-            }
+            self.ui_work_projection_picks(ui, WorkPick::Required);
         }
         if self.work_executor_mode == work::WorkExecutorUiMode::Compare {
-            ui.horizontal(|ui| {
-                ui.label(l.work_compare_a);
-                if ui.text_edit_singleline(&mut self.work_compare_a).changed() {
-                    self.refresh_work_readiness();
-                }
-            });
-            ui.horizontal(|ui| {
-                ui.label(l.work_compare_b);
-                if ui.text_edit_singleline(&mut self.work_compare_b).changed() {
-                    self.refresh_work_readiness();
-                }
-            });
-            if !self.model_catalog.entries.is_empty() {
-                ui.label(l.work_compare_pick_a);
-                ui.horizontal_wrapped(|ui| {
-                    for entry in &self.model_catalog.entries.clone() {
-                        let selected = self.work_compare_a == entry.model_ref;
-                        let label = format!(
-                            "{}{}",
-                            entry.model_ref,
-                            if entry.available { " ✓" } else { "" }
-                        );
-                        if ui.selectable_label(selected, label).clicked() {
-                            self.work_compare_a = entry.model_ref.clone();
-                            self.refresh_work_readiness();
-                        }
-                    }
-                });
-                ui.label(l.work_compare_pick_b);
-                ui.horizontal_wrapped(|ui| {
-                    for entry in &self.model_catalog.entries.clone() {
-                        let selected = self.work_compare_b == entry.model_ref;
-                        let label = format!(
-                            "{}{}",
-                            entry.model_ref,
-                            if entry.available { " ✓" } else { "" }
-                        );
-                        if ui.selectable_label(selected, label).clicked() {
-                            self.work_compare_b = entry.model_ref.clone();
-                            self.refresh_work_readiness();
-                        }
-                    }
-                });
-            }
+            ui.label(l.work_compare_pick_a);
+            self.ui_work_projection_picks(ui, WorkPick::CompareA);
+            ui.label(l.work_compare_pick_b);
+            self.ui_work_projection_picks(ui, WorkPick::CompareB);
         }
 
         {
@@ -592,6 +595,28 @@ impl AiraDesktopApp {
             .default_open(false)
             .show(ui, |ui| {
                 ui.label(l.work_tech_details);
+                ui.small(l.settings_models_model_ref);
+                if self.work_executor_mode == work::WorkExecutorUiMode::Specific
+                    && ui
+                        .text_edit_singleline(&mut self.work_required_ref)
+                        .changed()
+                {
+                    self.refresh_work_readiness();
+                }
+                if self.work_executor_mode == work::WorkExecutorUiMode::Compare {
+                    ui.horizontal(|ui| {
+                        ui.label(l.work_compare_a);
+                        if ui.text_edit_singleline(&mut self.work_compare_a).changed() {
+                            self.refresh_work_readiness();
+                        }
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label(l.work_compare_b);
+                        if ui.text_edit_singleline(&mut self.work_compare_b).changed() {
+                            self.refresh_work_readiness();
+                        }
+                    });
+                }
             });
         if self.work_result.is_some()
             || self.work_result_b.is_some()
@@ -1502,21 +1527,7 @@ impl AiraDesktopApp {
                 .selectable_label(process_on, l.settings_ollama_use_process)
                 .clicked()
             {
-                if let Some(m) = self
-                    .settings
-                    .llm_ollama_model
-                    .clone()
-                    .or_else(|| self.ollama_models.first().cloned())
-                {
-                    self.bind_ollama_process(Some(m));
-                } else {
-                    self.refresh_ollama_list(ui.ctx());
-                    if let Some(m) = self.ollama_models.first().cloned() {
-                        self.bind_ollama_process(Some(m));
-                    } else {
-                        self.ollama_msg = Some(l.settings_ollama_empty.into());
-                    }
-                }
+                self.request_use_ollama_process(ui.ctx());
             }
             if ui
                 .selectable_label(!process_on, l.settings_ollama_use_mock)
@@ -1541,18 +1552,34 @@ impl AiraDesktopApp {
         ) {
             ui.small(l.settings_ollama_restart_hint);
         }
-        if self.ollama_models.is_empty() {
+        let loading = self.async_jobs.catalog_kind()
+            == Some(crate::async_jobs::CatalogJobKind::OllamaList)
+            || self.ollama_bind_pending;
+        if loading && self.ollama_models.is_empty() {
+            ui.small(l.settings_ollama_loading);
+        } else if self.ollama_models.is_empty() {
             ui.small(l.settings_ollama_empty);
         } else {
+            let rows: Vec<_> = self
+                .catalog_rows()
+                .into_iter()
+                .filter(|r| r.source == CatalogSource::HostOllama)
+                .collect();
             egui::ScrollArea::vertical()
                 .max_height(140.0)
                 .id_source("settings-ollama-list")
                 .show(ui, |ui| {
-                    for name in self.ollama_models.clone() {
-                        let selected =
-                            self.settings.llm_ollama_model.as_deref() == Some(name.as_str());
-                        if ui.selectable_label(selected, &name).clicked() {
-                            self.bind_ollama_process(Some(name));
+                    for row in rows {
+                        let selected = self.ollama_pick.as_deref() == Some(row.name.as_str())
+                            || (self.ollama_pick.is_none()
+                                && self.settings.llm_ollama_model.as_deref()
+                                    == Some(row.name.as_str()));
+                        if ui
+                            .selectable_label(selected, Self::projection_label(l, &row))
+                            .clicked()
+                        {
+                            // Request pick only — Make default writes the tip.
+                            self.ollama_pick = Some(row.name.clone());
                         }
                     }
                 });
@@ -1599,15 +1626,10 @@ impl AiraDesktopApp {
         ui.small(l.settings_ollama_timeout_hint);
 
         if ui.button(l.settings_models_make_default).clicked() {
-            if let Some(m) = self
-                .settings
-                .llm_ollama_model
-                .clone()
-                .or_else(|| self.ollama_models.first().cloned())
-            {
+            if let Some(m) = self.ollama_pick.clone() {
                 self.bind_ollama_process(Some(m));
             } else {
-                self.ollama_msg = Some(l.settings_ollama_empty.into());
+                self.ollama_msg = Some(l.settings_ollama_select_first.into());
             }
         }
     }
@@ -1684,7 +1706,14 @@ impl AiraDesktopApp {
                 let selection = if self.catalog_auto {
                     Some(CatalogSelection::Auto)
                 } else if let Some(r) = self.catalog_highlight.clone() {
-                    Some(CatalogSelection::Required(r))
+                    if aira_desktop_runtime::is_host_ollama_catalog_ref(&r) {
+                        self.catalog_msg = Some(
+                            "host Ollama is not a local file — pick it under Host Ollama".into(),
+                        );
+                        None
+                    } else {
+                        Some(CatalogSelection::Required(r))
+                    }
                 } else {
                     self.catalog_msg = Some("select a catalog row or Auto".into());
                     None
@@ -1710,26 +1739,36 @@ impl AiraDesktopApp {
                     }
                 }
             }
-            if ui
-                .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_prepare))
-                .clicked()
+            let file_prepare = self
+                .catalog_highlight
+                .as_deref()
+                .is_none_or(|r| !aira_desktop_runtime::is_host_ollama_catalog_ref(r));
+            if file_prepare
+                && ui
+                    .add_enabled(!catalog_busy, egui::Button::new(l.settings_models_prepare))
+                    .clicked()
             {
                 if work_busy {
                     self.catalog_msg =
                         Some("cannot Prepare while Work is running (weights locked)".into());
                 } else if let Some(r) = self.catalog_highlight.clone() {
-                    let ctx = ui.ctx().clone();
-                    if !self.async_jobs.try_spawn_catalog(
-                        crate::async_jobs::CatalogJobKind::Prepare,
-                        self.paths.clone(),
-                        work_busy,
-                        Some(r),
-                        None,
-                        None,
-                        None,
-                        move || ctx.request_repaint(),
-                    ) {
-                        self.catalog_msg = Some("catalog job busy".into());
+                    if aira_desktop_runtime::is_host_ollama_catalog_ref(&r) {
+                        self.catalog_msg =
+                            Some("host Ollama bind uses Make default — not Prepare".into());
+                    } else {
+                        let ctx = ui.ctx().clone();
+                        if !self.async_jobs.try_spawn_catalog(
+                            crate::async_jobs::CatalogJobKind::Prepare,
+                            self.paths.clone(),
+                            work_busy,
+                            Some(r),
+                            None,
+                            None,
+                            None,
+                            move || ctx.request_repaint(),
+                        ) {
+                            self.catalog_msg = Some("catalog job busy".into());
+                        }
                     }
                 } else {
                     self.catalog_msg = Some("select a catalog row before Prepare".into());
@@ -1809,35 +1848,35 @@ impl AiraDesktopApp {
             }
         });
 
-        if self.model_catalog.entries.is_empty() {
+        ui.horizontal(|ui| {
+            ui.label(l.settings_models_artifact);
+            ui.text_edit_singleline(&mut self.catalog_artifact_edit);
+        });
+
+        let file_rows: Vec<_> = self
+            .catalog_rows()
+            .into_iter()
+            .filter(|r| r.source == CatalogSource::LocalFile)
+            .collect();
+        if file_rows.is_empty() {
             ui.small(l.settings_models_empty);
         } else {
             egui::ScrollArea::vertical()
                 .max_height(160.0)
                 .show(ui, |ui| {
-                    for entry in &self.model_catalog.entries.clone() {
+                    for row in file_rows {
                         let selected =
-                            self.catalog_highlight.as_deref() == Some(entry.model_ref.as_str());
+                            self.catalog_highlight.as_deref() == Some(row.model_ref.as_str());
                         let tip = self.model_catalog.tip_model_ref.as_deref()
-                            == Some(entry.model_ref.as_str());
-                        let flags = match (entry.verified, entry.available) {
-                            (true, true) => format!(
-                                "{}/{}",
-                                l.settings_models_verified, l.settings_models_available
-                            ),
-                            (true, false) => l.settings_models_verified.to_string(),
-                            (false, true) => l.settings_models_available.to_string(),
-                            (false, false) => "-".into(),
-                        };
-                        let mut label =
-                            format!("{} [{}] — {}", entry.model_ref, flags, entry.ready_reason);
+                            == Some(row.model_ref.as_str());
+                        let mut label = Self::projection_label(l, &row);
                         if tip {
                             label.push_str(" (tip)");
                         }
                         if ui.selectable_label(selected, label).clicked() {
-                            self.catalog_highlight = Some(entry.model_ref.clone());
+                            self.catalog_highlight = Some(row.model_ref.clone());
                             self.catalog_auto = false;
-                            self.catalog_add_ref = entry.model_ref.clone();
+                            self.catalog_add_ref = row.model_ref.clone();
                         }
                     }
                 });
@@ -1854,10 +1893,9 @@ impl AiraDesktopApp {
                 if let Some(tip) = &self.model_catalog.tip_model_ref {
                     ui.label(format!("default: {tip}"));
                 }
-                ui.horizontal(|ui| {
-                    ui.label(l.settings_models_artifact);
-                    ui.text_edit_singleline(&mut self.catalog_artifact_edit);
-                });
+                if let Some(h) = &self.catalog_highlight {
+                    ui.monospace(h);
+                }
             });
     }
 }
