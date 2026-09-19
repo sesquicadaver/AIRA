@@ -17,7 +17,7 @@ You can open Help any time; Esc closes only Help and never cancels a run or clea
 
 ## What should happen?
 
-You see an answer with run status, check, and origin. Built-in calculation can succeed without a local language model. Provenance stays honest: mock is not verified, and an undefined model is stated explicitly.
+You see an answer, the model that ran, and one check. A local model is required. The reference demo is not a real model, and an undefined model is stated explicitly.
 
 ## If it failed?
 

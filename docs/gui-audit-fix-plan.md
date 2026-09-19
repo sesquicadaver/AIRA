@@ -29,7 +29,7 @@ Status: **done** in this patch (`projection_file_source_omits_ollama_rows`, `use
 
 ## P2 — Screens and copy
 
-Status: **open**.
+Status: **done** in this patch (Work selector, System conclusions, Settings group order, help start without a model-free math promise).
 
 - Work: selector (“Default: name”), prompt, Run, answer using free height, model that actually ran, one verification status, Copy. Compare opens a second selector, not a second full catalog.
 - System: three short conclusions and the next action. Journal, PID, addresses stay collapsed.

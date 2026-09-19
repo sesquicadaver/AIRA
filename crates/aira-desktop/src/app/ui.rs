@@ -67,9 +67,6 @@ impl eframe::App for AiraDesktopApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.heading(l.heading);
-                ui.label(l.subtitle);
-                ui.separator();
                 match self.tab {
                     MainTab::Work => self.ui_work(ui, ctx),
                     MainTab::System => self.ui_system(ui, ctx),
@@ -89,33 +86,24 @@ impl eframe::App for AiraDesktopApp {
                             ui.label(next);
                         }
                     }
-                    ui.small(format!(
-                        "{} · help:{}",
-                        action_view.code_wire, action_view.help_wire
-                    ));
-                    if let Some(try_wire) = action_view.try_wire {
-                        ui.small(format!(
-                            "try:{} · help:{}",
-                            try_wire,
-                            problem
-                                .corrective
-                                .map(|a| a.help_id().as_str())
-                                .unwrap_or(action_view.help_wire)
-                        ));
-                    }
-                    // Keep action catalog reachable for F1 wiring (#263).
-                    let _ = crate::lexicon::ActionId::catalog().len();
                     if ui.small_button(l.help_open_topic).clicked() {
                         open_problem_help = Some(problem.help_id);
                     }
-                    if let Some(detail) = &problem.detail {
-                        egui::CollapsingHeader::new(l.work_details)
-                            .id_source("problem-detail")
-                            .default_open(false)
-                            .show(ui, |ui| {
+                    egui::CollapsingHeader::new(l.work_details)
+                        .id_source("problem-detail")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            ui.small(format!(
+                                "{} · help:{}",
+                                action_view.code_wire, action_view.help_wire
+                            ));
+                            if let Some(try_wire) = action_view.try_wire {
+                                ui.small(format!("try:{try_wire}"));
+                            }
+                            if let Some(detail) = &problem.detail {
                                 ui.monospace(detail);
-                            });
-                    }
+                            }
+                        });
                 }
                 if let Some(topic) = open_problem_help {
                     self.open_help(topic);
@@ -153,38 +141,84 @@ impl AiraDesktopApp {
         }
     }
 
-    /// Request pick from the shared projection. Does not call bind or Select.
-    fn ui_work_projection_picks(&mut self, ui: &mut egui::Ui, pick: WorkPick) {
+    fn row_name_for_ref(&self, model_ref: &str) -> String {
+        self.catalog_rows()
+            .into_iter()
+            .find(|r| r.model_ref == model_ref)
+            .map(|r| r.name)
+            .unwrap_or_else(|| aira_desktop_runtime::catalog_display_name(model_ref))
+    }
+
+    fn default_selector_name(&self) -> String {
+        if let Some(tip) = &self.model_catalog.tip_model_ref {
+            return self.row_name_for_ref(tip);
+        }
+        self.settings
+            .llm_ollama_model
+            .clone()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "—".into())
+    }
+
+    /// One model selector. Compare adds a second combo, not a second catalog.
+    fn ui_model_combo(&mut self, ui: &mut egui::Ui, pick: WorkPick) {
         let l = self.labels();
         let rows = self.catalog_rows();
-        if rows.is_empty() {
-            return;
-        }
-        ui.horizontal_wrapped(|ui| {
-            for row in rows {
-                let current = match pick {
-                    WorkPick::Required => self.work_required_ref.clone(),
-                    WorkPick::CompareA => self.work_compare_a.clone(),
-                    WorkPick::CompareB => self.work_compare_b.clone(),
-                };
-                let selected = current == row.model_ref;
-                if ui
-                    .selectable_label(selected, Self::projection_label(l, &row))
-                    .clicked()
-                {
-                    let model_ref = row.model_ref.clone();
-                    match pick {
-                        WorkPick::Required => {
-                            self.work_required_ref = model_ref;
-                            self.work_executor_mode = work::WorkExecutorUiMode::Specific;
-                        }
-                        WorkPick::CompareA => self.work_compare_a = model_ref,
-                        WorkPick::CompareB => self.work_compare_b = model_ref,
+        let current = match pick {
+            WorkPick::Required if self.work_executor_mode == work::WorkExecutorUiMode::Auto => None,
+            WorkPick::Required => Some(self.work_required_ref.clone()).filter(|s| !s.is_empty()),
+            WorkPick::CompareA => Some(self.work_compare_a.clone()).filter(|s| !s.is_empty()),
+            WorkPick::CompareB => Some(self.work_compare_b.clone()).filter(|s| !s.is_empty()),
+        };
+        let selected_text = match current.as_deref() {
+            Some(r) => self.row_name_for_ref(r),
+            None => format!(
+                "{}: {}",
+                l.work_selector_default,
+                self.default_selector_name()
+            ),
+        };
+        let id = match pick {
+            WorkPick::Required => "work-model",
+            WorkPick::CompareA => "work-model-a",
+            WorkPick::CompareB => "work-model-b",
+        };
+        egui::ComboBox::from_id_source(id)
+            .selected_text(selected_text)
+            .show_ui(ui, |ui| {
+                if matches!(pick, WorkPick::Required) {
+                    let default_label = format!(
+                        "{}: {}",
+                        l.work_selector_default,
+                        self.default_selector_name()
+                    );
+                    if ui
+                        .selectable_label(current.is_none(), default_label)
+                        .clicked()
+                    {
+                        self.work_executor_mode = work::WorkExecutorUiMode::Auto;
+                        self.refresh_work_readiness();
                     }
-                    self.refresh_work_readiness();
                 }
-            }
-        });
+                for row in rows {
+                    let on = current.as_deref() == Some(row.model_ref.as_str());
+                    if ui
+                        .selectable_label(on, Self::projection_label(l, &row))
+                        .clicked()
+                    {
+                        let model_ref = row.model_ref.clone();
+                        match pick {
+                            WorkPick::Required => {
+                                self.work_required_ref = model_ref;
+                                self.work_executor_mode = work::WorkExecutorUiMode::Specific;
+                            }
+                            WorkPick::CompareA => self.work_compare_a = model_ref,
+                            WorkPick::CompareB => self.work_compare_b = model_ref,
+                        }
+                        self.refresh_work_readiness();
+                    }
+                }
+            });
     }
 
     /// Compact status strip on every main screen (`desktop-ux` §2.2 / `#259`).
@@ -459,86 +493,48 @@ impl AiraDesktopApp {
             ui.add_space(6.0);
         }
 
-        ui.label(l.work_hint);
-        ui.small(l.work_shortcut_hint);
-
+        let comparing = self.work_executor_mode == work::WorkExecutorUiMode::Compare;
         ui.horizontal(|ui| {
-            ui.strong(l.work_executor);
+            self.ui_model_combo(
+                ui,
+                if comparing {
+                    WorkPick::CompareA
+                } else {
+                    WorkPick::Required
+                },
+            );
             if ui
-                .selectable_label(
-                    self.work_executor_mode == work::WorkExecutorUiMode::Auto,
-                    l.work_executor_auto,
-                )
+                .selectable_label(comparing, l.work_executor_compare)
                 .clicked()
             {
-                self.work_executor_mode = work::WorkExecutorUiMode::Auto;
-                self.refresh_work_readiness();
-            }
-            if ui
-                .selectable_label(
-                    self.work_executor_mode == work::WorkExecutorUiMode::Specific,
-                    l.work_executor_specific,
-                )
-                .clicked()
-            {
-                self.work_executor_mode = work::WorkExecutorUiMode::Specific;
-                if self.work_required_ref.is_empty() {
-                    if let Some(h) = self.catalog_highlight.clone() {
-                        self.work_required_ref = h;
-                    } else if let Some(tip) = self.model_catalog.tip_model_ref.clone() {
-                        self.work_required_ref = tip;
-                    }
-                }
-                self.refresh_work_readiness();
-            }
-            if ui
-                .selectable_label(
-                    self.work_executor_mode == work::WorkExecutorUiMode::Compare,
-                    l.work_executor_compare,
-                )
-                .clicked()
-            {
-                self.work_executor_mode = work::WorkExecutorUiMode::Compare;
-                if self.work_compare_a.is_empty() {
-                    if let Some(tip) = self.model_catalog.tip_model_ref.clone() {
-                        self.work_compare_a = tip;
-                    } else if let Some(h) = self.catalog_highlight.clone() {
-                        self.work_compare_a = h;
+                if comparing {
+                    self.work_executor_mode = work::WorkExecutorUiMode::Auto;
+                } else {
+                    self.work_executor_mode = work::WorkExecutorUiMode::Compare;
+                    if self.work_compare_a.is_empty() {
+                        let picked = self.work_required_ref.trim();
+                        self.work_compare_a = if picked.is_empty() {
+                            self.model_catalog.tip_model_ref.clone().unwrap_or_default()
+                        } else {
+                            picked.to_string()
+                        };
                     }
                 }
                 self.refresh_work_readiness();
             }
         });
-        ui.small(l.work_executor_hint);
-        if self.work_executor_mode == work::WorkExecutorUiMode::Specific {
-            self.ui_work_projection_picks(ui, WorkPick::Required);
+        if comparing {
+            ui.horizontal(|ui| {
+                ui.label(l.work_compare_b);
+                self.ui_model_combo(ui, WorkPick::CompareB);
+            });
         }
-        if self.work_executor_mode == work::WorkExecutorUiMode::Compare {
-            ui.label(l.work_compare_pick_a);
-            self.ui_work_projection_picks(ui, WorkPick::CompareA);
-            ui.label(l.work_compare_pick_b);
-            self.ui_work_projection_picks(ui, WorkPick::CompareB);
-        }
-
-        {
-            use aira_desktop_runtime::WorkCapabilityKind;
-            let cap = match self.work_readiness.kind {
-                WorkCapabilityKind::Math => l.work_capability_math,
-                WorkCapabilityKind::Generate => l.work_capability_generate,
-            };
-            ui.label(cap);
-            let ready_label = if self.work_readiness.ready {
-                l.work_readiness_ready
-            } else {
-                l.work_readiness_blocked
-            };
-            let color = if self.work_readiness.ready {
-                egui::Color32::from_rgb(40, 140, 70)
-            } else {
-                egui::Color32::from_rgb(180, 120, 40)
-            };
-            ui.colored_label(color, ready_label);
-            for reason in &self.work_readiness.reasons {
+        if !self.work_readiness.ready {
+            ui.colored_label(
+                egui::Color32::from_rgb(180, 120, 40),
+                l.work_readiness_blocked,
+            );
+            if let Some(reason) = self.work_readiness.reasons.first() {
                 ui.small(reason);
             }
         }
@@ -587,14 +583,27 @@ impl AiraDesktopApp {
         }
         if submitting {
             ui.label(l.work_submitting);
-            ui.small(l.work_cancel_honesty);
         }
-        ui.label(l.work_user_note);
         egui::CollapsingHeader::new(l.work_how_it_works)
             .id_source("work-tech-note")
             .default_open(false)
             .show(ui, |ui| {
                 ui.label(l.work_tech_details);
+                ui.small(l.work_hint);
+                ui.small(l.work_shortcut_hint);
+                ui.small(l.work_executor);
+                ui.small(l.work_executor_auto);
+                ui.small(l.work_executor_specific);
+                ui.small(l.work_executor_hint);
+                ui.small(l.work_compare_pick_a);
+                ui.small(l.work_compare_pick_b);
+                ui.small(l.work_capability_math);
+                ui.small(l.work_capability_generate);
+                ui.small(l.work_readiness_ready);
+                ui.small(l.work_user_note);
+                if submitting {
+                    ui.small(l.work_cancel_honesty);
+                }
                 ui.small(l.settings_models_model_ref);
                 if self.work_executor_mode == work::WorkExecutorUiMode::Specific
                     && ui
@@ -667,74 +676,59 @@ impl AiraDesktopApp {
         } else {
             view.answer.as_str()
         };
-        if let Some(prompt) = &view.prompt_snapshot {
-            ui.horizontal(|ui| {
-                ui.strong(l.work_prompt_snapshot);
-                ui.label(prompt);
-            });
-        }
+        let room = (ui.available_height() - 72.0).max(160.0);
         egui::ScrollArea::vertical()
             .id_source(format!("work-answer-{id_suffix}"))
-            .max_height(220.0)
+            .max_height(room)
             .show(ui, |ui| {
                 ui.label(egui::RichText::new(answer).size(16.0));
             });
-        if ui.button(l.work_copy_answer).clicked() {
-            ui.ctx().copy_text(answer.to_string());
-        }
-        let status_human = if view.status.eq_ignore_ascii_case("completed") {
-            l.work_status_completed
-        } else if view.status.eq_ignore_ascii_case("executed") {
-            l.work_status_executed
-        } else if view.status.eq_ignore_ascii_case("needs_human_collapse") {
-            l.work_status_needs_human
-        } else {
-            view.status.as_str()
-        };
-        ui.horizontal(|ui| {
-            ui.strong(l.work_run_status);
-            ui.label(status_human);
-        });
-        if let Some(vs) = &view.verification_status {
-            ui.horizontal(|ui| {
-                ui.strong(l.work_verification);
-                let color = if vs.eq_ignore_ascii_case("VERIFIED") {
-                    egui::Color32::from_rgb(40, 140, 70)
-                } else {
-                    egui::Color32::from_rgb(180, 120, 40)
-                };
-                ui.colored_label(color, vs);
-            });
-        }
-        ui.horizontal(|ui| {
-            ui.strong(l.work_provenance);
-            ui.label(self.work_provenance_label(view.provenance));
-        });
         let none = l.work_triple_none;
         let req = view.model_triple.requested.as_deref().unwrap_or(none);
-        let app = view.model_triple.applied.as_deref().unwrap_or(none);
         let exec = match view.model_triple.executed.as_deref() {
             Some(crate::work_view::EXECUTED_MOCK_LABEL) => l.work_triple_executed_mock,
             Some(s) => s,
             None => none,
         };
         ui.horizontal(|ui| {
-            ui.strong(l.work_triple_requested);
-            ui.monospace(req);
-        });
-        ui.horizontal(|ui| {
-            ui.strong(l.work_triple_applied);
-            ui.monospace(app);
-        });
-        ui.horizontal(|ui| {
-            ui.strong(l.work_triple_executed);
+            ui.strong(l.work_ran_model);
             if view.model_triple.executed.as_deref() == Some(crate::work_view::EXECUTED_MOCK_LABEL)
             {
                 ui.colored_label(egui::Color32::from_rgb(180, 120, 40), exec);
             } else {
-                ui.monospace(exec);
+                ui.label(self.row_name_for_ref(exec));
             }
         });
+        if view.model_triple.requested.is_some()
+            && view.model_triple.executed.is_some()
+            && view.model_triple.requested != view.model_triple.executed
+            && view.model_triple.executed.as_deref() != Some(crate::work_view::EXECUTED_MOCK_LABEL)
+        {
+            ui.colored_label(egui::Color32::from_rgb(180, 120, 40), l.work_model_mismatch);
+        }
+        let check = view.verification_status.as_deref().unwrap_or_else(|| {
+            if view.status.eq_ignore_ascii_case("completed") {
+                l.work_status_completed
+            } else if view.status.eq_ignore_ascii_case("executed") {
+                l.work_status_executed
+            } else if view.status.eq_ignore_ascii_case("needs_human_collapse") {
+                l.work_status_needs_human
+            } else {
+                view.status.as_str()
+            }
+        });
+        ui.horizontal(|ui| {
+            ui.strong(l.work_verification);
+            let color = if check.eq_ignore_ascii_case("VERIFIED") {
+                egui::Color32::from_rgb(40, 140, 70)
+            } else {
+                egui::Color32::from_rgb(180, 120, 40)
+            };
+            ui.colored_label(color, check);
+        });
+        if ui.button(l.work_copy_answer).clicked() {
+            ui.ctx().copy_text(answer.to_string());
+        }
         let has_ids = view.problem_id.is_some()
             || view.verified_artifact_id.is_some()
             || view.execution_artifact_id.is_some()
@@ -774,6 +768,20 @@ impl AiraDesktopApp {
             .id_source(format!("work-details-{id_suffix}"))
             .default_open(false)
             .show(ui, |ui| {
+                ui.label(self.work_provenance_label(view.provenance));
+                ui.small(l.work_provenance);
+                ui.small(l.work_run_status);
+                ui.small(l.work_triple_executed);
+                if let Some(prompt) = &view.prompt_snapshot {
+                    ui.strong(l.work_prompt_snapshot);
+                    ui.label(prompt);
+                }
+                ui.small(format!("{} {req}", l.work_triple_requested));
+                ui.small(format!(
+                    "{} {}",
+                    l.work_triple_applied,
+                    view.model_triple.applied.as_deref().unwrap_or(none)
+                ));
                 ui.monospace(&view.details_json);
             });
     }
@@ -890,37 +898,37 @@ impl AiraDesktopApp {
         if heading.hovered() {
             self.note_help_focus(HelpId::ModelSelect);
         }
-        ui.horizontal(|ui| {
-            ui.label(l.sys_model_selected);
-            ui.monospace(view.model.selected.as_display());
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.sys_model_ready);
-            ui.label(if view.model.ready {
-                l.mesh_yes
-            } else {
-                l.mesh_no
-            });
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.sys_model_used);
-            ui.monospace(view.model.used.as_display());
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.sys_model_executor);
-            ui.monospace(&view.model.executor_kind);
-        });
-        if view.model.executor_kind == "mock" {
-            ui.small(l.sys_model_executor_mock_hint);
+        if view.model.ready {
+            ui.label(l.sys_model_ready_line);
+        } else {
+            ui.colored_label(egui::Color32::from_rgb(180, 120, 40), l.sys_model_not_ready);
+            if ui.button(l.work_mock_banner_cta).clicked() {
+                self.set_tab(MainTab::Settings);
+                self.note_help_focus(HelpId::ModelSelect);
+            }
         }
-        ui.small(l.sys_model_triple_hint);
         egui::CollapsingHeader::new(l.sys_tech_details)
             .id_source("sys-model-tech")
             .default_open(false)
             .show(ui, |ui| {
-                ui.label(l.not_llm);
+                ui.horizontal(|ui| {
+                    ui.label(l.sys_model_selected);
+                    ui.monospace(view.model.selected.as_display());
+                });
+                ui.horizontal(|ui| {
+                    ui.label(l.sys_model_used);
+                    ui.monospace(view.model.used.as_display());
+                });
+                ui.horizontal(|ui| {
+                    ui.label(l.sys_model_executor);
+                    ui.monospace(&view.model.executor_kind);
+                });
                 ui.label(format!("ready_detail: {}", view.model.ready_detail));
-                ui.label(format!("summary: {}", view.model.summary.as_str()));
+                ui.small(l.sys_model_ready);
+                ui.small(l.sys_model_executor_mock_hint);
+                ui.small(l.sys_model_triple_hint);
+                ui.label(l.heading);
+                ui.label(l.subtitle);
             });
     }
 
@@ -942,26 +950,6 @@ impl AiraDesktopApp {
             crate::system_view::ConnectionConclusion::LocalOnly => l.sys_conn_local,
             crate::system_view::ConnectionConclusion::Unknown => l.sys_conn_unknown,
             crate::system_view::ConnectionConclusion::Offline => l.sys_conn_offline,
-        });
-        ui.horizontal(|ui| {
-            ui.small(format!("{} {}", l.sys_observed, view.observed_at));
-            ui.small(format!("{} {}", l.sys_loaded, view.loaded_at));
-            ui.small(format!(
-                "{} {}",
-                l.sys_quality,
-                view.network_quality.as_str()
-            ));
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.sys_saved_participants);
-            ui.label(view.address_book_count.to_string());
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.sys_live_sessions);
-            ui.label(match view.live_session_count {
-                Some(n) => n.to_string(),
-                None => l.sys_live_unobserved.to_string(),
-            });
         });
         // Phase S `#299`: always-visible Connection boundary (setup ≠ remote; loopback ≠ dial).
         let boundary = ui.label(
@@ -1036,7 +1024,24 @@ impl AiraDesktopApp {
             .id_source("sys-connection-tech")
             .default_open(false)
             .show(ui, |ui| {
-                // Raw enum secondary (`#289`); human conclusion already above.
+                ui.small(format!("{} {}", l.sys_observed, view.observed_at));
+                ui.small(format!("{} {}", l.sys_loaded, view.loaded_at));
+                ui.small(format!(
+                    "{} {}",
+                    l.sys_quality,
+                    view.network_quality.as_str()
+                ));
+                ui.horizontal(|ui| {
+                    ui.label(l.sys_saved_participants);
+                    ui.label(view.address_book_count.to_string());
+                });
+                ui.horizontal(|ui| {
+                    ui.label(l.sys_live_sessions);
+                    ui.label(match view.live_session_count {
+                        Some(n) => n.to_string(),
+                        None => l.sys_live_unobserved.to_string(),
+                    });
+                });
                 ui.small(format!(
                     "top_level:{} · live_q:{}",
                     view.top_level,
@@ -1050,36 +1055,35 @@ impl AiraDesktopApp {
 
     fn ui_sys_events(&self, ui: &mut egui::Ui) {
         let l = self.labels();
-        ui.strong(l.sys_events);
-        let mut any = false;
-        if let Some(problem) = &self.last_problem {
-            any = true;
-            ui.colored_label(egui::Color32::from_rgb(200, 60, 60), &problem.message);
-            let action_view =
-                crate::problem_action::ProblemActionView::from_problem(problem, self.ui_lang());
-            if let Some(next) = action_view.next_step {
-                ui.label(next);
-            }
-            ui.small(format!(
-                "{} · {}",
-                action_view.code_wire, action_view.help_wire
-            ));
-        }
-        if let Some(msg) = &self.discovery_msg {
-            any = true;
-            ui.label(msg);
-        }
-        if let Some(msg) = &self.invite_msg {
-            any = true;
-            ui.label(msg);
-        }
-        if self.restart_hint || self.settings_need_restart() {
-            any = true;
-            ui.colored_label(egui::Color32::from_rgb(180, 120, 40), l.restart_hint);
-        }
-        if !any {
-            ui.label(l.sys_events_empty);
-        }
+        egui::CollapsingHeader::new(l.sys_events)
+            .id_source("sys-events")
+            .default_open(false)
+            .show(ui, |ui| {
+                let mut any = false;
+                if let Some(problem) = &self.last_problem {
+                    any = true;
+                    ui.colored_label(egui::Color32::from_rgb(200, 60, 60), &problem.message);
+                    let action_view = crate::problem_action::ProblemActionView::from_problem(
+                        problem,
+                        self.ui_lang(),
+                    );
+                    if let Some(next) = action_view.next_step {
+                        ui.label(next);
+                    }
+                    ui.small(action_view.code_wire);
+                }
+                if let Some(msg) = &self.discovery_msg {
+                    any = true;
+                    ui.label(msg);
+                }
+                if let Some(msg) = &self.invite_msg {
+                    any = true;
+                    ui.label(msg);
+                }
+                if !any {
+                    ui.label(l.sys_events_empty);
+                }
+            });
     }
 
     /// Primary connect path on System: observe + invites (`#288` / `#352`).
@@ -1248,6 +1252,104 @@ impl AiraDesktopApp {
         }
     }
 
+    fn ui_settings_general(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
+        let l = self.labels();
+        let g = ui.strong(l.settings_group_general);
+        if g.hovered() {
+            self.note_help_focus(HelpId::SettingsApply);
+        }
+        ui.horizontal(|ui| {
+            ui.strong(l.language);
+            if ui
+                .selectable_label(self.ui_prefs.ui_lang == UiLang::Uk, l.lang_uk)
+                .clicked()
+            {
+                self.set_ui_lang(UiLang::Uk, ctx);
+            }
+            if ui
+                .selectable_label(self.ui_prefs.ui_lang == UiLang::En, l.lang_en)
+                .clicked()
+            {
+                self.set_ui_lang(UiLang::En, ctx);
+            }
+        });
+        let mut dirty = false;
+        dirty |= ui
+            .checkbox(&mut self.settings.open_ui_on_start, l.open_window_on_login)
+            .changed();
+        ui.label(l.open_window_hint);
+        dirty |= ui
+            .checkbox(&mut self.settings.autostart_on_login, l.autostart)
+            .changed();
+        if dirty {
+            if let Err(e) = self.persist_settings() {
+                self.note_settings_apply_error(format!("{e:#}"));
+            } else {
+                self.clear_settings_apply_error();
+            }
+        }
+    }
+
+    /// Show the saved value. Repeat Applied only when it differs.
+    fn ui_saved_or_diff(&self, ui: &mut egui::Ui, label: &str, saved: &str, applied: &str) {
+        let l = self.labels();
+        ui.horizontal(|ui| {
+            ui.label(label);
+            if saved == applied {
+                ui.monospace(saved);
+            } else {
+                ui.strong(l.settings_saved);
+                ui.monospace(saved);
+            }
+        });
+        if saved != applied {
+            ui.horizontal(|ui| {
+                ui.label(label);
+                ui.strong(l.settings_applied);
+                ui.monospace(applied);
+            });
+        }
+    }
+
+    fn ui_settings_timeout(&mut self, ui: &mut egui::Ui) {
+        let l = self.labels();
+        ui.horizontal(|ui| {
+            ui.label(l.settings_ollama_timeout);
+            ui.add(
+                egui::TextEdit::singleline(&mut self.llm_timeout_edit)
+                    .desired_width(100.0)
+                    .hint_text("120000"),
+            );
+            if ui.button(l.settings_ollama_timeout_apply).clicked() {
+                let trimmed = self.llm_timeout_edit.trim();
+                let parsed = if trimmed.is_empty() {
+                    Ok(None)
+                } else {
+                    trimmed.parse::<u64>().map(Some).map_err(|_| ())
+                };
+                match parsed {
+                    Ok(ms) => {
+                        self.settings.llm_process_timeout_ms = ms;
+                        match self.persist_settings() {
+                            Ok(()) => {
+                                self.ollama_msg = Some(
+                                    match ms {
+                                        Some(_) => l.timeout_saved,
+                                        None => l.timeout_cleared,
+                                    }
+                                    .into(),
+                                );
+                            }
+                            Err(e) => self.set_problem(ErrorCode::SettingsPersistFailed, e),
+                        }
+                    }
+                    Err(()) => self.ollama_msg = Some(l.timeout_invalid.into()),
+                }
+            }
+        });
+        ui.small(l.settings_ollama_timeout_hint);
+    }
+
     fn ui_settings(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let l = self.labels();
         ui.heading(l.settings_heading);
@@ -1302,42 +1404,6 @@ impl AiraDesktopApp {
         ui.label(l.settings_close_not_stop);
 
         ui.separator();
-        let g = ui.strong(l.settings_group_general);
-        if g.hovered() {
-            self.note_help_focus(HelpId::SettingsApply);
-        }
-        ui.horizontal(|ui| {
-            ui.strong(l.language);
-            if ui
-                .selectable_label(self.ui_prefs.ui_lang == UiLang::Uk, l.lang_uk)
-                .clicked()
-            {
-                self.set_ui_lang(UiLang::Uk, ctx);
-            }
-            if ui
-                .selectable_label(self.ui_prefs.ui_lang == UiLang::En, l.lang_en)
-                .clicked()
-            {
-                self.set_ui_lang(UiLang::En, ctx);
-            }
-        });
-        let mut dirty = false;
-        dirty |= ui
-            .checkbox(&mut self.settings.open_ui_on_start, l.open_window_on_login)
-            .changed();
-        ui.label(l.open_window_hint);
-        dirty |= ui
-            .checkbox(&mut self.settings.autostart_on_login, l.autostart)
-            .changed();
-        if dirty {
-            if let Err(e) = self.persist_settings() {
-                self.note_settings_apply_error(format!("{e:#}"));
-            } else {
-                self.clear_settings_apply_error();
-            }
-        }
-
-        ui.separator();
         let g = ui.strong(l.settings_group_models);
         if g.hovered() {
             self.note_help_focus(HelpId::ModelSelect);
@@ -1369,6 +1435,9 @@ impl AiraDesktopApp {
             crate::app::ModelsSourceKind::HostOllama => self.ui_settings_models_ollama(ui),
             crate::app::ModelsSourceKind::LocalFile => self.ui_settings_models_file(ui),
         }
+
+        ui.separator();
+        self.ui_settings_general(ui, ctx);
 
         ui.separator();
         let g = ui.strong(l.settings_group_connection);
@@ -1410,6 +1479,64 @@ impl AiraDesktopApp {
             });
             ui.small(l.peer_listen_loopback_hint);
         }
+        let profile_label = match self.settings.network_profile {
+            NetworkProfile::P0 => l.p0,
+            NetworkProfile::P1 => l.p1,
+            NetworkProfile::P2 => l.p2,
+            NetworkProfile::P3 => l.p3_relay,
+            NetworkProfile::P4 => l.p4_gossip,
+            NetworkProfile::P5 => l.federation,
+            NetworkProfile::P6 => l.discovery,
+        };
+        let applied_profile = self
+            .applied_runtime
+            .as_ref()
+            .map(|a| match a.network_profile {
+                NetworkProfile::P0 => l.p0,
+                NetworkProfile::P1 => l.p1,
+                NetworkProfile::P2 => l.p2,
+                NetworkProfile::P3 => l.p3_relay,
+                NetworkProfile::P4 => l.p4_gossip,
+                NetworkProfile::P5 => l.federation,
+                NetworkProfile::P6 => l.discovery,
+            })
+            .unwrap_or(l.settings_applied_undefined);
+        self.ui_saved_or_diff(ui, l.network_profile, profile_label, applied_profile);
+        let saved_listen = self
+            .settings
+            .peer_listen
+            .as_deref()
+            .unwrap_or(l.peer_off_p0);
+        let applied_listen = self
+            .applied_runtime
+            .as_ref()
+            .map(|a| a.peer_listen.as_deref().unwrap_or(l.peer_off_p0))
+            .unwrap_or(l.settings_applied_undefined);
+        self.ui_saved_or_diff(ui, l.addr_peer_listen, saved_listen, applied_listen);
+
+        ui.separator();
+        let g = ui.strong(l.settings_group_advanced);
+        if g.hovered() {
+            self.note_help_focus(HelpId::SettingsApply);
+        }
+        ui.horizontal(|ui| {
+            ui.label(l.addr_http);
+            ui.monospace(&self.settings.http_listen);
+        });
+        if self
+            .applied_runtime
+            .as_ref()
+            .is_some_and(|a| a.http_listen != self.settings.http_listen)
+        {
+            ui.horizontal(|ui| {
+                ui.label(l.addr_http);
+                ui.strong(l.settings_applied);
+                if let Some(applied) = self.applied_runtime.as_ref() {
+                    ui.monospace(&applied.http_listen);
+                }
+            });
+        }
+        self.ui_settings_timeout(ui);
         ui.small(l.p34_mutex_hint);
         let relay_on = self.settings.network_profile.is_relay_profile();
         let gossip_on = self.settings.network_profile.is_gossip_profile();
@@ -1436,81 +1563,6 @@ impl AiraDesktopApp {
                 }
             });
         }
-        let profile_label = match self.settings.network_profile {
-            NetworkProfile::P0 => l.p0,
-            NetworkProfile::P1 => l.p1,
-            NetworkProfile::P2 => l.p2,
-            NetworkProfile::P3 => l.p3_relay,
-            NetworkProfile::P4 => l.p4_gossip,
-            NetworkProfile::P5 => l.federation,
-            NetworkProfile::P6 => l.discovery,
-        };
-        let applied_profile = self
-            .applied_runtime
-            .as_ref()
-            .map(|a| match a.network_profile {
-                NetworkProfile::P0 => l.p0,
-                NetworkProfile::P1 => l.p1,
-                NetworkProfile::P2 => l.p2,
-                NetworkProfile::P3 => l.p3_relay,
-                NetworkProfile::P4 => l.p4_gossip,
-                NetworkProfile::P5 => l.federation,
-                NetworkProfile::P6 => l.discovery,
-            })
-            .unwrap_or(l.settings_applied_undefined);
-        ui.horizontal(|ui| {
-            ui.strong(l.network_profile);
-            ui.strong(l.settings_saved);
-            ui.label(profile_label);
-        });
-        ui.horizontal(|ui| {
-            ui.strong(l.network_profile);
-            ui.strong(l.settings_applied);
-            ui.label(applied_profile);
-        });
-        let saved_listen = self
-            .settings
-            .peer_listen
-            .as_deref()
-            .unwrap_or(l.peer_off_p0);
-        let applied_listen = self
-            .applied_runtime
-            .as_ref()
-            .map(|a| a.peer_listen.as_deref().unwrap_or(l.peer_off_p0))
-            .unwrap_or(l.settings_applied_undefined);
-        ui.horizontal(|ui| {
-            ui.label(l.addr_peer_listen);
-            ui.strong(l.settings_saved);
-            ui.monospace(saved_listen);
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.addr_peer_listen);
-            ui.strong(l.settings_applied);
-            ui.monospace(applied_listen);
-        });
-
-        ui.separator();
-        let g = ui.strong(l.settings_group_advanced);
-        if g.hovered() {
-            self.note_help_focus(HelpId::SettingsApply);
-        }
-        ui.horizontal(|ui| {
-            ui.label(l.addr_http);
-            ui.strong(l.settings_saved);
-            ui.monospace(&self.settings.http_listen);
-        });
-        ui.horizontal(|ui| {
-            ui.label(l.addr_http);
-            ui.strong(l.settings_applied);
-            match self.applied_runtime.as_ref() {
-                Some(a) => {
-                    ui.monospace(&a.http_listen);
-                }
-                None => {
-                    ui.label(l.settings_applied_undefined);
-                }
-            }
-        });
         ui.label(format!("instance: {}", self.settings.instance_id));
     }
 
@@ -1587,43 +1639,6 @@ impl AiraDesktopApp {
         if let Some(msg) = &self.ollama_msg {
             ui.small(msg);
         }
-        ui.horizontal(|ui| {
-            ui.label(l.settings_ollama_timeout);
-            ui.add(
-                egui::TextEdit::singleline(&mut self.llm_timeout_edit)
-                    .desired_width(100.0)
-                    .hint_text("e.g. 120000"),
-            );
-            if ui.button(l.settings_ollama_timeout_apply).clicked() {
-                let trimmed = self.llm_timeout_edit.trim();
-                let parsed = if trimmed.is_empty() {
-                    Ok(None)
-                } else {
-                    trimmed
-                        .parse::<u64>()
-                        .map(Some)
-                        .map_err(|e| format!("invalid timeout ms: {e}"))
-                };
-                match parsed {
-                    Ok(ms) => {
-                        self.settings.llm_process_timeout_ms = ms;
-                        match self.persist_settings() {
-                            Ok(()) => {
-                                self.ollama_msg = Some(match ms {
-                                    Some(v) => {
-                                        format!("timeout {v} ms saved — restart node to apply")
-                                    }
-                                    None => "timeout cleared — restart node to apply".into(),
-                                });
-                            }
-                            Err(e) => self.set_problem(ErrorCode::SettingsPersistFailed, e),
-                        }
-                    }
-                    Err(e) => self.ollama_msg = Some(e),
-                }
-            }
-        });
-        ui.small(l.settings_ollama_timeout_hint);
 
         if ui.button(l.settings_models_make_default).clicked() {
             if let Some(m) = self.ollama_pick.clone() {
@@ -1690,7 +1705,7 @@ impl AiraDesktopApp {
                     None,
                     move || ctx.request_repaint(),
                 ) {
-                    self.catalog_msg = Some("catalog job busy".into());
+                    self.catalog_msg = Some(l.catalog_job_busy.into());
                 }
             }
             if ui
@@ -1707,21 +1722,18 @@ impl AiraDesktopApp {
                     Some(CatalogSelection::Auto)
                 } else if let Some(r) = self.catalog_highlight.clone() {
                     if aira_desktop_runtime::is_host_ollama_catalog_ref(&r) {
-                        self.catalog_msg = Some(
-                            "host Ollama is not a local file — pick it under Host Ollama".into(),
-                        );
+                        self.catalog_msg = Some(l.catalog_ollama_not_file.into());
                         None
                     } else {
                         Some(CatalogSelection::Required(r))
                     }
                 } else {
-                    self.catalog_msg = Some("select a catalog row or Auto".into());
+                    self.catalog_msg = Some(l.catalog_select_row.into());
                     None
                 };
                 if let Some(selection) = selection {
                     if work_busy {
-                        self.catalog_msg =
-                            Some("cannot Select while Work is running (weights locked)".into());
+                        self.catalog_msg = Some(l.catalog_work_locked.into());
                     } else {
                         let ctx = ui.ctx().clone();
                         if !self.async_jobs.try_spawn_catalog(
@@ -1734,7 +1746,7 @@ impl AiraDesktopApp {
                             None,
                             move || ctx.request_repaint(),
                         ) {
-                            self.catalog_msg = Some("catalog job busy".into());
+                            self.catalog_msg = Some(l.catalog_job_busy.into());
                         }
                     }
                 }
@@ -1749,12 +1761,10 @@ impl AiraDesktopApp {
                     .clicked()
             {
                 if work_busy {
-                    self.catalog_msg =
-                        Some("cannot Prepare while Work is running (weights locked)".into());
+                    self.catalog_msg = Some(l.catalog_work_locked.into());
                 } else if let Some(r) = self.catalog_highlight.clone() {
                     if aira_desktop_runtime::is_host_ollama_catalog_ref(&r) {
-                        self.catalog_msg =
-                            Some("host Ollama bind uses Make default — not Prepare".into());
+                        self.catalog_msg = Some(l.catalog_not_prepare.into());
                     } else {
                         let ctx = ui.ctx().clone();
                         if !self.async_jobs.try_spawn_catalog(
@@ -1767,11 +1777,11 @@ impl AiraDesktopApp {
                             None,
                             move || ctx.request_repaint(),
                         ) {
-                            self.catalog_msg = Some("catalog job busy".into());
+                            self.catalog_msg = Some(l.catalog_job_busy.into());
                         }
                     }
                 } else {
-                    self.catalog_msg = Some("select a catalog row before Prepare".into());
+                    self.catalog_msg = Some(l.catalog_select_before_prepare.into());
                 }
             }
             if ui
@@ -1780,10 +1790,9 @@ impl AiraDesktopApp {
             {
                 let art = self.catalog_artifact_edit.trim().to_string();
                 if art.is_empty() {
-                    self.catalog_msg = Some("set ModelArtifact path before Verify".into());
+                    self.catalog_msg = Some(l.catalog_need_artifact.into());
                 } else if work_busy {
-                    self.catalog_msg =
-                        Some("cannot Verify while Work is running (weights locked)".into());
+                    self.catalog_msg = Some(l.catalog_work_locked.into());
                 } else {
                     let ctx = ui.ctx().clone();
                     if !self.async_jobs.try_spawn_catalog(
@@ -1796,7 +1805,7 @@ impl AiraDesktopApp {
                         None,
                         move || ctx.request_repaint(),
                     ) {
-                        self.catalog_msg = Some("catalog job busy".into());
+                        self.catalog_msg = Some(l.catalog_job_busy.into());
                     }
                 }
             }
@@ -1823,8 +1832,7 @@ impl AiraDesktopApp {
                 .clicked()
             {
                 if work_busy {
-                    self.catalog_msg =
-                        Some("cannot Add while Work is running (weights locked)".into());
+                    self.catalog_msg = Some(l.catalog_work_locked.into());
                 } else {
                     let path = rfd::FileDialog::new()
                         .add_filter("weights", &["bin", "gguf", "ggml", "safetensors"])
@@ -1841,7 +1849,7 @@ impl AiraDesktopApp {
                             None,
                             move || ctx.request_repaint(),
                         ) {
-                            self.catalog_msg = Some("catalog job busy".into());
+                            self.catalog_msg = Some(l.catalog_job_busy.into());
                         }
                     }
                 }
