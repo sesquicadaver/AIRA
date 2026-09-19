@@ -458,9 +458,9 @@ impl AiraDesktopApp {
             on_done,
         ) {
             self.ollama_msg = Some(if self.async_jobs.catalog_inflight() {
-                "ollama list already running".into()
+                self.labels().catalog_job_busy.into()
             } else {
-                "cannot list ollama while busy".into()
+                self.labels().catalog_work_locked.into()
             });
         }
     }
@@ -496,7 +496,10 @@ impl AiraDesktopApp {
                         }
                     }
                     Err(e) => {
-                        self.note_settings_apply_error(format!("host Ollama bind failed: {e}"));
+                        self.note_settings_apply_error(format!(
+                            "{}: {e}",
+                            self.labels().settings_apply_error
+                        ));
                         self.ollama_msg = Some(e.to_string());
                     }
                 }
@@ -689,10 +692,7 @@ impl AiraDesktopApp {
                     self.apply_catalog_snapshot(snap);
                     // Request selection does not write the default tip. Make default is separate.
                     if chosen.starts_with("aira:model:ollama-") {
-                        self.catalog_msg = Some(
-                            "selected host Ollama — tip not changed (Make default is separate)"
-                                .into(),
-                        );
+                        self.catalog_msg = Some(self.labels().catalog_not_prepare.into());
                     }
                 }
                 Ok(CatalogJobResult::OllamaList(names)) => {

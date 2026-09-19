@@ -1,4 +1,7 @@
 //! Ukrainian / English UI chrome. Fonts: system TTF with Cyrillic when present.
+//!
+//! Phase K `#216` file contract (not shown on product screens): `text.generate.local`
+//! never fakes VERIFIED; `execution-basic` is not the product path.
 
 use aira_desktop_runtime::UiLang;
 
@@ -286,6 +289,21 @@ pub struct Labels {
     pub settings_ollama_empty: &'static str,
     pub settings_ollama_loading: &'static str,
     pub settings_ollama_select_first: &'static str,
+    pub catalog_job_busy: &'static str,
+    pub catalog_select_row: &'static str,
+    pub catalog_work_locked: &'static str,
+    pub catalog_ollama_not_file: &'static str,
+    pub catalog_not_prepare: &'static str,
+    pub catalog_need_artifact: &'static str,
+    pub catalog_select_before_prepare: &'static str,
+    pub timeout_invalid: &'static str,
+    pub timeout_saved: &'static str,
+    pub timeout_cleared: &'static str,
+    pub work_selector_default: &'static str,
+    pub work_ran_model: &'static str,
+    pub work_model_mismatch: &'static str,
+    pub sys_model_ready_line: &'static str,
+    pub sys_model_not_ready: &'static str,
     pub settings_ollama_listed: &'static str,
     pub settings_ollama_bound: &'static str,
     pub settings_ollama_restart_hint: &'static str,
@@ -446,7 +464,7 @@ static EN: Labels = Labels {
     work_shortcut_hint: "Ctrl+Enter (⌘+Enter on Mac) runs when available. Your draft stays if you switch section, open Help, or a run fails.",
     work_user_note: "Work requires a host LLM (Settings → Models). Text generation never pretends a result was verified.",
     work_how_it_works: "How this works",
-    work_tech_details: "Technical: Desktop Work is `text.generate.local` via host process LLM (Settings Ollama bind). Executed ≠ VERIFIED — this screen never fakes VERIFIED. Reference MockBackend is not product Work. OP-001 / C1 `Calculate 2 + 2` / `execution-basic` is legacy non-normative (RFC-0242). Fail-closes without host LLM + activate tip. Core does not host inference. Path: `POST /v1/problems` (same as `aira problem submit`).",
+    work_tech_details: "Work runs the local model you chose. A result is not verified unless the check says so. The reference demo is not a real model.",
     work_answer: "Answer",
     work_run_status: "Run status:",
     work_verification: "Check:",
@@ -573,6 +591,21 @@ static EN: Labels = Labels {
     settings_ollama_empty: "No host models yet — install ollama and Refresh.",
     settings_ollama_loading: "Loading host models…",
     settings_ollama_select_first: "Select a host model, then Make default.",
+    catalog_job_busy: "Another model action is still running.",
+    catalog_select_row: "Select a model, or leave Auto.",
+    catalog_work_locked: "Wait until Work finishes before changing model files.",
+    catalog_ollama_not_file: "Host Ollama is not a local file. Choose it under Host Ollama.",
+    catalog_not_prepare: "Host Ollama uses Make default, not Prepare.",
+    catalog_need_artifact: "Set the verification document path before Verify.",
+    catalog_select_before_prepare: "Select a local file before Prepare.",
+    timeout_invalid: "Timeout must be a whole number of milliseconds.",
+    timeout_saved: "Timeout saved — restart the node to apply.",
+    timeout_cleared: "Timeout cleared — restart the node to apply.",
+    work_selector_default: "Default",
+    work_ran_model: "Model that ran",
+    work_model_mismatch: "The model that ran is not the one you selected.",
+    sys_model_ready_line: "Model ready",
+    sys_model_not_ready: "Model not ready",
     settings_ollama_listed: "Host models listed",
     settings_ollama_bound: "Ollama bind + activate tip saved — restart node to apply process executor (executed ≠ VERIFIED).",
     settings_ollama_restart_hint: "Saved bind differs from the running node — Stop then Start.",
@@ -724,7 +757,7 @@ static UK: Labels = Labels {
     work_shortcut_hint: "Ctrl+Enter (⌘+Enter на Mac) запускає, коли дія доступна. Чернетка лишається при зміні розділу, F1 чи невдалому запуску.",
     work_user_note: "Work потребує host LLM (Параметри → Моделі). Генерація тексту ніколи не вдає перевірений результат.",
     work_how_it_works: "Як це працює",
-    work_tech_details: "Технічно: Desktop Work — `text.generate.local` через host process LLM (прив’язка Ollama в Параметрах). Executed ≠ VERIFIED. Reference MockBackend не є продуктовим Work. OP-001 / C1 `Calculate 2 + 2` / `execution-basic` — legacy non-normative (RFC-0242). Без host LLM + activate tip — fail-closed. Ядро не хостить inference. Шлях: `POST /v1/problems` (як `aira problem submit`).",
+    work_tech_details: "Робота виконує локальну модель, яку ви обрали. Результат не перевірено, доки перевірка цього не каже. Демонстраційний режим — не справжня модель.",
     work_answer: "Відповідь",
     work_run_status: "Статус виконання:",
     work_verification: "Перевірка:",
@@ -852,6 +885,21 @@ static UK: Labels = Labels {
     settings_ollama_empty: "Немає хостових моделей — встановіть ollama і Оновіть.",
     settings_ollama_loading: "Завантаження списку Ollama…",
     settings_ollama_select_first: "Спочатку оберіть хостову модель, потім «Зробити типовою».",
+    catalog_job_busy: "Інша дія з моделлю ще виконується.",
+    catalog_select_row: "Оберіть модель або лишіть Авто.",
+    catalog_work_locked: "Зачекайте, поки Робота завершиться, перш ніж змінювати файли моделі.",
+    catalog_ollama_not_file: "Хостовий Ollama — не локальний файл. Оберіть його в джерелі «Хостовий Ollama».",
+    catalog_not_prepare: "Для хостового Ollama — «Зробити типовою», не «Підготувати».",
+    catalog_need_artifact: "Вкажіть шлях документа перевірки перед «Перевірити».",
+    catalog_select_before_prepare: "Оберіть локальний файл перед «Підготувати».",
+    timeout_invalid: "Таймаут має бути цілим числом мілісекунд.",
+    timeout_saved: "Таймаут збережено — перезапустіть вузол, щоб застосувати.",
+    timeout_cleared: "Таймаут очищено — перезапустіть вузол, щоб застосувати.",
+    work_selector_default: "Типова",
+    work_ran_model: "Модель, що виконала",
+    work_model_mismatch: "Виконала не та модель, яку ви обрали.",
+    sys_model_ready_line: "Модель готова",
+    sys_model_not_ready: "Модель не готова",
     settings_ollama_listed: "Хостові моделі перелічено",
     settings_ollama_bound: "Прив’язку Ollama + activate tip збережено — перезапустіть node для process executor (executed ≠ VERIFIED).",
     settings_ollama_restart_hint: "Збережена прив’язка відрізняється від запущеного node — Stop, потім Start.",
@@ -917,18 +965,12 @@ mod tests {
         assert!(Labels::get(UiLang::Uk)
             .open_window_hint
             .contains("не блокує"));
+        assert!(!Labels::get(UiLang::En).work_tech_details.contains("OP-001"));
+        assert!(!Labels::get(UiLang::En).work_tech_details.contains("RFC"));
+        assert!(!Labels::get(UiLang::Uk).work_tech_details.contains("legacy"));
         assert!(Labels::get(UiLang::En)
             .work_tech_details
-            .contains("execution-basic"));
-        assert!(Labels::get(UiLang::En)
-            .work_tech_details
-            .contains("text.generate.local"));
-        assert!(Labels::get(UiLang::En)
-            .work_tech_details
-            .contains("never fakes VERIFIED"));
-        assert!(Labels::get(UiLang::Uk)
-            .work_tech_details
-            .contains("text.generate.local"));
+            .contains("not verified"));
         assert!(Labels::get(UiLang::Uk).not_llm.contains("не заборона"));
         assert_eq!(Labels::get(UiLang::Uk).work_answer, "Відповідь");
         assert_eq!(Labels::get(UiLang::En).work_details, "Details");

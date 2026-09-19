@@ -13,14 +13,14 @@ Canonical Desktop path (no CLI required):
 1. Open **Settings → Models** and pick a **source**.
 2. **Host Ollama:** refresh the host list, pick a model (that choice does not change the default), then **Make default** or **Use Ollama process**. Make default writes the default tip (signed bind marker; not weight-verified) and sets process for the **next** node start. Until you **Stop** then **Start**, the running executor may still be mock. If the host list is still loading, Use Ollama finishes the bind after the list returns.
 3. **Local file:** note **Model storage** (observe-only). **Scan**, or **Enable local add** → **Add file…**. The **artifact path** for **Verify** is on this add-file step, not under Technical details. **Select** a row (not verified). **Prepare** when the row is a local file and not ready. Host Ollama rows are not listed here and have no Prepare.
-4. On **Work**, choose **Auto**, **Specific model**, or **Compare**. Work requires a host process LLM. Built-in math demo is **legacy**, not a model-free product path. Compare needs two different available models; if B fails, A stays — no silent substitute.
+4. On **Work**, the selector shows **Default: name**. **Compare** opens a second selector, not a second catalog. A local model is required. If B fails, A stays.
 5. If Work is blocked for missing host LLM, bind Ollama under Settings → Models and restart. Mock is not product Work.
 
 Optional tooling (not required for the GUI path): `aira models scan|list|activate`; env `AIRA_LLM_BACKEND=process` for Dev.
 
 ## What should happen?
 
-- Missing a model / host LLM **blocks** Work generate (RFC-0242); there is no math-without-model product escape.
+- Missing a model blocks Work. There is no path that succeeds without a local model.
 - Desktop keeps **selected ≠ ready ≠ used** honest — never invent a model name or copy selected into used.
 - Choice / Prepare / Select never silently mean VERIFIED free-form text.
 - Compare never silently swaps an unready model for the tip or another catalog row.
