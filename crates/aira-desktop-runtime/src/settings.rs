@@ -172,7 +172,7 @@ const ENV_PROCESS_TIMEOUT_MS: &str = "AIRA_LLM_PROCESS_TIMEOUT_MS";
 ///
 /// Explicitly sets / clears vars so a parent shell cannot leak a stale process
 /// bind into a mock node (or the reverse). Never claims VERIFIED.
-pub fn apply_node_llm_env(cmd: &mut Command, settings: &DesktopSettings) {
+pub fn apply_node_llm_env(cmd: &mut Command, settings: &DesktopSettings) -> Result<()> {
     // Clear inherited process knobs first.
     cmd.env_remove(ENV_LLM_BACKEND);
     cmd.env_remove(ENV_PROCESS_BIN);
@@ -197,11 +197,43 @@ pub fn apply_node_llm_env(cmd: &mut Command, settings: &DesktopSettings) {
             // Clear any inherited expected-ref; admission binding is authoritative.
             cmd.env_remove(ENV_EXPECTED_MODEL_REF);
             if let Some(ms) = settings.llm_process_timeout_ms {
-                if ms > 0 {
-                    cmd.env(ENV_PROCESS_TIMEOUT_MS, ms.to_string());
+                if ms == 0 {
+                    bail!("llm_process_timeout_ms must be greater than 0 or unset");
                 }
+                cmd.env(ENV_PROCESS_TIMEOUT_MS, ms.to_string());
             }
         }
+    }
+    Ok(())
+}
+
+/// Rejected operator timeout: not a whole number of seconds greater than zero.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TimeoutParseError;
+
+/// Settings field is milliseconds. The operator types whole seconds.
+/// Empty clears the deadline. `0` is rejected, not stored as “no timeout”.
+pub fn timeout_ms_from_seconds_text(raw: &str) -> Result<Option<u64>, TimeoutParseError> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    let secs: u64 = match trimmed.parse() {
+        Ok(n) => n,
+        Err(_) => return Err(TimeoutParseError),
+    };
+    if secs == 0 {
+        return Err(TimeoutParseError);
+    }
+    secs.checked_mul(1_000).map(Some).ok_or(TimeoutParseError)
+}
+
+/// Show stored milliseconds as whole seconds, rounding up so the field
+/// never shortens a saved deadline.
+pub fn timeout_seconds_text(ms: Option<u64>) -> String {
+    match ms {
+        None => String::new(),
+        Some(ms) => ms.saturating_add(999).div_euclid(1_000).to_string(),
     }
 }
 
@@ -282,6 +314,9 @@ fn normalize_llm_settings(settings: &mut DesktopSettings) -> Result<()> {
         } else {
             *model = t;
         }
+    }
+    if settings.llm_process_timeout_ms == Some(0) {
+        bail!("llm_process_timeout_ms must be greater than 0 or unset");
     }
     match settings.llm_backend {
         LlmBackend::Mock => Ok(()),
@@ -512,12 +547,43 @@ mod unit {
         s.llm_ollama_model = Some("llama3:latest".into());
         normalize_settings(&mut s).unwrap();
         let mut cmd = Command::new("true");
-        apply_node_llm_env(&mut cmd, &s);
+        apply_node_llm_env(&mut cmd, &s).unwrap();
         // Command debug formatting includes env for inspection on Unix.
         let dbg = format!("{cmd:?}");
         assert!(
             dbg.contains("AIRA_LLM_BACKEND") || dbg.contains("process"),
             "{dbg}"
+        );
+    }
+
+    #[test]
+    fn zero_timeout_is_rejected() {
+        let mut s = base(NetworkProfile::P0);
+        s.llm_process_timeout_ms = Some(0);
+        let err = normalize_settings(&mut s).unwrap_err().to_string();
+        assert!(err.contains("greater than 0"), "{err}");
+        assert!(timeout_ms_from_seconds_text("0").is_err());
+        assert_eq!(timeout_ms_from_seconds_text("").unwrap(), None);
+        assert_eq!(timeout_ms_from_seconds_text("120").unwrap(), Some(120_000));
+        assert_eq!(timeout_seconds_text(Some(120_000)), "120");
+        assert_eq!(timeout_seconds_text(Some(1)), "1");
+    }
+
+    #[test]
+    fn http_deadline_includes_slack_past_process_timeout() {
+        let mut s = base(NetworkProfile::P0);
+        s.llm_process_timeout_ms = Some(120_000);
+        let got = crate::submit_timeout_for(&s);
+        assert_eq!(
+            got,
+            std::time::Duration::from_millis(120_000) + std::time::Duration::from_secs(15)
+        );
+        s.llm_process_timeout_ms = None;
+        assert!(crate::submit_timeout_for(&s) > std::time::Duration::from_secs(60));
+        s.llm_process_timeout_ms = Some(0);
+        assert_eq!(
+            crate::submit_timeout_for(&s),
+            crate::submit_timeout_for(&base(NetworkProfile::P0))
         );
     }
 }

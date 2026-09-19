@@ -116,7 +116,7 @@ pub fn start(paths: &DesktopPaths, node_bin: Option<PathBuf>) -> Result<StartOut
         .stdin(Stdio::null())
         .stdout(Stdio::from(stdout))
         .stderr(Stdio::from(stderr));
-    apply_node_llm_env(&mut cmd, &settings);
+    apply_node_llm_env(&mut cmd, &settings)?;
     let mut child = cmd
         .spawn()
         .with_context(|| format!("spawn {}", node_bin.display()))?;

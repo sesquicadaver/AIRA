@@ -39,11 +39,11 @@ Status: **done** in this patch (Work selector, System conclusions, Settings grou
 
 ## P3 — Job and timeout
 
-Status: **open**.
+Status: **done**.
 
-- Button, shortcut, and handler share one availability check. “Work: ready” only when P0 allows the run.
-- Node Stop is not presented as cancel. Cancel appears only after the process is confirmed dead.
-- Timeout is shown in seconds, with slack for the HTTP response. `0` is not silently ignored. A transport error is not reported as malformed HTTP.
+- Button, shortcut, and handler share `work_run_available`. “Work: ready” only when P0 readiness allows the run; otherwise the strip says not ready.
+- Node Stop is not presented as cancel. The word Cancel appears only after `generate process timed out` (child already killed).
+- Timeout is shown in seconds. `0` is rejected (not dropped). HTTP read waits 15s past the process deadline. A transport read error stays a transport error.
 
 ## P4 — Window check
 

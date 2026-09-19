@@ -234,8 +234,10 @@ impl AiraDesktopApp {
                 self.ui_lang(),
                 l.strip_work_action,
             )
-        } else {
+        } else if self.work_readiness.ready {
             l.strip_work_ready
+        } else {
+            l.strip_work_unready
         };
         let quality = self.system_snapshot.network_quality;
         let network = match crate::mesh_language::strip_network_from_top_level(
@@ -563,7 +565,7 @@ impl AiraDesktopApp {
         });
 
         let submitting = self.async_jobs.work_inflight();
-        let can_run = !submitting && self.work_readiness.ready;
+        let can_run = self.work_can_run();
         let mut do_submit = false;
         ui.add_enabled_ui(can_run, |ui| {
             let btn = ui.button(l.work_submit);
@@ -603,6 +605,14 @@ impl AiraDesktopApp {
                 ui.small(l.work_user_note);
                 if submitting {
                     ui.small(l.work_cancel_honesty);
+                }
+                let process_dead = self
+                    .last_problem
+                    .as_ref()
+                    .and_then(|p| p.detail.as_deref())
+                    .is_some_and(crate::lexicon::process_death_confirmed);
+                if crate::lexicon::cancel_affordance_visible(process_dead) {
+                    ui.small(l.work_cancelled);
                 }
                 ui.small(l.settings_models_model_ref);
                 if self.work_executor_mode == work::WorkExecutorUiMode::Specific
@@ -1318,16 +1328,10 @@ impl AiraDesktopApp {
             ui.add(
                 egui::TextEdit::singleline(&mut self.llm_timeout_edit)
                     .desired_width(100.0)
-                    .hint_text("120000"),
+                    .hint_text("120"),
             );
             if ui.button(l.settings_ollama_timeout_apply).clicked() {
-                let trimmed = self.llm_timeout_edit.trim();
-                let parsed = if trimmed.is_empty() {
-                    Ok(None)
-                } else {
-                    trimmed.parse::<u64>().map(Some).map_err(|_| ())
-                };
-                match parsed {
+                match aira_desktop_runtime::timeout_ms_from_seconds_text(&self.llm_timeout_edit) {
                     Ok(ms) => {
                         self.settings.llm_process_timeout_ms = ms;
                         match self.persist_settings() {
@@ -1343,7 +1347,7 @@ impl AiraDesktopApp {
                             Err(e) => self.set_problem(ErrorCode::SettingsPersistFailed, e),
                         }
                     }
-                    Err(()) => self.ollama_msg = Some(l.timeout_invalid.into()),
+                    Err(_) => self.ollama_msg = Some(l.timeout_invalid.into()),
                 }
             }
         });

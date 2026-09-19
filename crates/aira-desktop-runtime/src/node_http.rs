@@ -14,14 +14,17 @@ use crate::paths::DesktopPaths;
 use crate::settings::{resolve_token_path, DesktopSettings, HttpAuthMode};
 
 const SUBMIT_TIMEOUT: Duration = Duration::from_secs(60);
+/// Extra wait after the process deadline so a killed child can still return
+/// its timeout error instead of an empty socket read.
+const HTTP_RESPONSE_SLACK: Duration = Duration::from_secs(15);
 
 /// POST problem text (+ optional admission constraints) to `/v1/problems`.
 ///
 /// Constraints are copied into the HTTP body at submit time (`#325` / RFC-0210);
 /// later Settings changes do not rewrite an already-admitted snapshot.
 ///
-/// Timeout: `max(60s, llm_process_timeout_ms)` so HTTP does not abort before
-/// the process backend (RFC-0243 Pack E).
+/// Timeout: process deadline plus [`HTTP_RESPONSE_SLACK`], so the HTTP read
+/// does not abort in the same instant the child is killed (RFC-0243 Pack E).
 pub fn submit_desktop_problem(
     paths: &DesktopPaths,
     settings: &DesktopSettings,
@@ -58,18 +61,15 @@ pub fn submit_desktop_problem_with_admission(
 }
 
 /// Align Desktop HTTP read deadline with optional process timeout (RFC-0243).
+///
+/// Unset uses the 60s floor. A stored `0` is not a deadline and is not folded
+/// into that floor — callers must reject it before spawn.
 pub fn submit_timeout_for(settings: &DesktopSettings) -> Duration {
-    let process_ms = settings.llm_process_timeout_ms.unwrap_or(0);
-    let floor = SUBMIT_TIMEOUT;
-    if process_ms == 0 {
-        return floor;
-    }
-    let process = Duration::from_millis(process_ms);
-    if process > floor {
-        process
-    } else {
-        floor
-    }
+    let base = match settings.llm_process_timeout_ms {
+        Some(ms) if ms > 0 => Duration::from_millis(ms),
+        _ => SUBMIT_TIMEOUT,
+    };
+    base.saturating_add(HTTP_RESPONSE_SLACK)
 }
 
 /// POST `/v1/problems` to an already-listening node.
@@ -106,7 +106,7 @@ pub fn submit_problem_http(
     msg.extend_from_slice(&body);
     stream.write_all(&msg)?;
     let mut buf = Vec::new();
-    let _ = stream.read_to_end(&mut buf);
+    stream.read_to_end(&mut buf).context("read HTTP response")?;
     let (status, payload) = parse_http_response(&buf)?;
     if !(200..300).contains(&status) {
         if let Ok(v) = serde_json::from_str::<Value>(&payload) {
@@ -349,6 +349,32 @@ mod tests {
         .to_string();
         assert!(err.contains("400"), "{err}");
         assert!(err.contains("text must be non-empty"), "{err}");
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn transport_read_error_is_not_malformed_http() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let handle = thread::spawn(move || {
+            let (_sock, _) = listener.accept().unwrap();
+            thread::sleep(Duration::from_millis(400));
+        });
+        let listen = format!("{}:{}", addr.ip(), addr.port());
+        let err = submit_problem_http(
+            &listen,
+            None,
+            "hi",
+            &AdmissionConstraints::default(),
+            Duration::from_millis(80),
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(
+            !err.contains("malformed HTTP"),
+            "transport error must not be rewritten: {err}"
+        );
+        assert!(err.contains("read HTTP response"), "{err}");
         handle.join().unwrap();
     }
 }
