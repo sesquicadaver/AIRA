@@ -75,6 +75,15 @@ pub(super) fn resolve_help_routing(
     }
 }
 
+/// Settings → Models source surface (P3 catalog IA).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ModelsSourceKind {
+    /// Host `ollama list` / process executor bind.
+    HostOllama,
+    /// Local weight files (Scan / Add / Verify / Prepare).
+    LocalFile,
+}
+
 pub struct AiraDesktopApp {
     pub(super) paths: DesktopPaths,
     pub(super) node_bin: Option<PathBuf>,
@@ -111,6 +120,8 @@ pub struct AiraDesktopApp {
     pub(super) ollama_msg: Option<String>,
     /// Draft for `llm_process_timeout_ms` (empty = unset / default).
     pub(super) llm_timeout_edit: String,
+    /// Settings → Models source surface (P3 IA).
+    pub(super) models_source: ModelsSourceKind,
     /// Work executor Auto / Specific / Compare + readiness (`#349` / `#354`).
     pub(super) work_executor_mode: work::WorkExecutorUiMode,
     pub(super) work_required_ref: String,
@@ -197,6 +208,7 @@ impl AiraDesktopApp {
             .llm_process_timeout_ms
             .map(|ms| ms.to_string())
             .unwrap_or_default();
+        let models_source = ModelsSourceKind::HostOllama;
         let applied_runtime = None;
         let work_readiness = evaluate_work_readiness(
             &paths.data_root,
@@ -232,6 +244,7 @@ impl AiraDesktopApp {
             ollama_models: Vec::new(),
             ollama_msg: None,
             llm_timeout_edit,
+            models_source,
             work_executor_mode: work::WorkExecutorUiMode::Auto,
             work_required_ref: String::new(),
             work_compare_a: String::new(),
@@ -476,9 +489,7 @@ impl AiraDesktopApp {
                         }
                     }
                     Err(e) => {
-                        self.note_settings_apply_error(format!(
-                            "Phase D host-ollama activate failed: {e}"
-                        ));
+                        self.note_settings_apply_error(format!("host Ollama bind failed: {e}"));
                         self.ollama_msg = Some(e.to_string());
                     }
                 }
@@ -493,6 +504,40 @@ impl AiraDesktopApp {
                     self.refresh_model_triple();
                     self.ollama_msg = Some(self.labels().settings_ollama_bound.into());
                 }
+            }
+        }
+    }
+
+    /// P3: after Select on a host-ollama row, set Settings tip (make default) when possible.
+    pub(super) fn maybe_make_default_host_ollama(&mut self, model_ref: &str) {
+        if self.model_catalog.tip_model_ref.as_deref() == Some(model_ref)
+            && matches!(self.settings.llm_backend, LlmBackend::Process)
+            && self.settings.llm_ollama_model.is_some()
+        {
+            // Already default — keep catalog honesty message from select.
+            return;
+        }
+        let host =
+            aira_desktop_runtime::host_cli_name_for_ollama_ref(&self.paths.data_root, model_ref)
+                .or_else(|| {
+                    self.ollama_models.iter().find_map(|name| {
+                        let r = aira_flow::host_ollama_model_ref(name);
+                        (r == model_ref).then(|| name.clone())
+                    })
+                });
+        match host {
+            Some(m) => {
+                self.bind_ollama_process(Some(m));
+                self.catalog_msg = Some(
+                    "selected host Ollama — set as default tip (restart node if executor still mock)"
+                        .into(),
+                );
+            }
+            None => {
+                self.catalog_msg = Some(
+                    "selected host Ollama — tip not changed (no CLI name on disk; Refresh list and Make default)"
+                        .into(),
+                );
             }
         }
     }
@@ -626,9 +671,13 @@ impl AiraDesktopApp {
                     self.apply_catalog_snapshot(snap);
                 }
                 Ok(CatalogJobResult::Select { chosen, snap }) => {
-                    self.catalog_highlight = Some(chosen);
+                    self.catalog_highlight = Some(chosen.clone());
                     self.catalog_auto = false;
                     self.apply_catalog_snapshot(snap);
+                    // P3: Select host-ollama → make default tip (or keep honest msg).
+                    if chosen.starts_with("aira:model:ollama-") {
+                        self.maybe_make_default_host_ollama(&chosen);
+                    }
                 }
                 Ok(CatalogJobResult::OllamaList(names)) => {
                     self.ollama_models = names;

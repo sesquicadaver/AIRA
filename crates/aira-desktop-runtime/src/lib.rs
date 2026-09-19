@@ -62,9 +62,9 @@ pub use launcher::{
     AIRA_GUI_DESKTOP_FILENAME,
 };
 pub use model_catalog::{
-    add_model_file, enable_local_model_add, load_model_catalog, prepare_model, scan_model_catalog,
-    select_catalog_model, verify_catalog_quarantine, CatalogEntry, CatalogSelection,
-    ModelCatalogError, ModelCatalogSnapshot,
+    add_model_file, enable_local_model_add, host_cli_name_for_ollama_ref, load_model_catalog,
+    prepare_model, scan_model_catalog, select_catalog_model, verify_catalog_quarantine,
+    CatalogEntry, CatalogSelection, ModelCatalogError, ModelCatalogSnapshot,
 };
 pub use model_status::{load_model_triple, ModelFact, ModelTripleConclusion, ModelTripleSnapshot};
 pub use model_storage::{format_bytes, load_model_storage, ModelStorageSnapshot};

@@ -4,21 +4,17 @@
 
 Local models belong to the model / execution layer — **not** `aira-core`, not a GPU marketplace, and not invented by the Work screen. Help works **offline** (embedded articles; no network and no LLM required to read this topic).
 
-**Settings ≠ System:** change the catalog only under **Settings → Models**. **System → Model** shows **selected**, **ready**, and **used in last result** as observed facts — it is not a second catalog editor.
+**Settings ≠ System:** change the catalog only under **Settings → Models**. **System → Model** shows **selected**, **ready**, and **used in last result** as observed facts — it is not a second catalog editor. There is one catalog with two sources: **Host Ollama** and **Local file**. Each source shows only the actions it allows.
 
 ## What to do?
 
 Canonical Desktop path (no CLI required):
 
-1. Open **Settings → Models**.
-2. Note the **Model storage** block: storage root under this install’s data root, used space, and free space on the volume (or **unknown** if not observable). This is observe-only — not a marketplace and not edited on System.
-3. **Scan** the local lifecycle catalog (or **Enable local add** → **Add file…** for a local weight file).
-4. **Select** Auto or a specific row. Selection is **not** VERIFIED.
-5. **Prepare** when the row is not ready yet; read the ready reason on the catalog row.
-6. On **Work**, choose executor **Auto**, **Specific model**, or **Compare**. Work requires a host process LLM (Settings → Models Ollama bind). Built-in math demo is **legacy** (RFC-0242), not a model-free product path.
-7. **Compare** needs two **different** available catalog models (A and B). Both must be ready before Run. A and B run sequentially on the same draft; if B fails, A’s result stays — there is **no silent substitute** of tip or another model.
-8. **Ollama (process executor):** under Settings → Models, **Refresh ollama list**, pick a host model name, and choose **Use Ollama process**. This sets `AIRA_LLM_BACKEND=process` for the **next** node start (`run <model>`), and writes a Phase D **host-ollama tip** (node-signed bind marker; evidence `verified=false` — not weight VERIFIED). Until you **Stop** then **Start** the node, Apply may show Restart needed and the running executor may still be mock.
-9. If Work shows the **no host LLM / reference mock** banner, open **Settings → Models** and bind Ollama, then restart — mock is not product Work.
+1. Open **Settings → Models** and pick a **source**.
+2. **Host Ollama:** refresh the host list, pick a model, and **Use Ollama process** or **Make default**. That writes the default tip (signed bind marker; not weight-verified) and sets process for the **next** node start. Until you **Stop** then **Start**, the running executor may still be mock. Selecting an Ollama row also makes it the default when the host name is known; otherwise the UI says the tip did not change.
+3. **Local file:** note **Model storage** (observe-only). **Scan**, or **Enable local add** → **Add file…**. **Select** a row (not verified). **Prepare** when the row is not ready. The artifact path for **Verify** lives under **Technical details**.
+4. On **Work**, choose **Auto**, **Specific model**, or **Compare**. Work requires a host process LLM. Built-in math demo is **legacy**, not a model-free product path. Compare needs two different available models; if B fails, A stays — no silent substitute.
+5. If Work is blocked for missing host LLM, bind Ollama under Settings → Models and restart. Mock is not product Work.
 
 Optional tooling (not required for the GUI path): `aira models scan|list|activate`; env `AIRA_LLM_BACKEND=process` for Dev.
 

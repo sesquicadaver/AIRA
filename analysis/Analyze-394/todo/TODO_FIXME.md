@@ -6,5 +6,6 @@
 - [x] Re-audit P0: R1 settings paths, R2 trusted host_cli, R3 file≠ollama tip
 - [x] Re-audit P1: R4 generate intent routing, R5 bounded binder, R6 exclusive materialize
 - [x] Re-audit P2: bidirectional Work↔catalog lock; async Add; ollama list kill+wait; confirmed Stop; Compare A immediate; timeout UI/pidfile/`work.timed_out`
+- [x] Re-audit P3: catalog by source; Select Ollama make-default or honest unchanged tip; artifact path in details; declutter + help EN/UK
 - [ ] Optional: surface applied llm_backend next to Saved/Applied network lines
 - [ ] Installed-product nightly: two real Ollama models (see RFC-0240 honesty) — not M6 fixtures

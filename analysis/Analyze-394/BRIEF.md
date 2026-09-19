@@ -15,6 +15,7 @@ Settings → Models: bind host Ollama as process executor; choose model from `ol
 - **Re-audit P0 (ef0503a):** R1 Work readiness uses GUI/`DesktopPaths` settings (no load-or-create under data_root); R2 `host_cli_model` from signed evidence; R3 file weights fail-closed on ollama ProcessBackend
 - **Re-audit P1:** R4 admitted `model_ref` forces `text.generate.local` (no math/echo/upper escape); R5 bounded binder read; R6 exclusive unique materialize temps + concurrent test
 - **Re-audit P2:** bidirectional Work↔catalog lock; async Add; `ollama list` kill+wait; Stop confirms death before pidfile clear; Compare A via `WorkJobEvent::ComparePrimary`; timeout GUI + pidfile + `work.timed_out`
+- **Re-audit P3:** one Settings→Models catalog by source (host Ollama / local file); Select host-ollama makes default tip or says it did not; artifact path in Technical details; primary chrome without Phase/tip jargon; help EN/UK matches the host-LLM gate
 
 ## Canon
 
