@@ -1,4 +1,6 @@
-use aira_desktop_runtime::{evaluate_work_readiness, ModelFact, WorkExecutorPreference};
+use aira_desktop_runtime::{
+    evaluate_work_readiness_applied, AppliedHostLlm, LlmBackend, ModelFact, WorkExecutorPreference,
+};
 
 use super::AiraDesktopApp;
 use crate::lexicon::{work_submit_gate, ErrorCode, UiProblem};
@@ -28,13 +30,35 @@ impl AiraDesktopApp {
     }
 
     /// Recompute pre-submit readiness (host LLM required; RFC-0242).
+    ///
+    /// A running node is judged by the applied executor, not by settings that
+    /// were only saved. A stopped node uses saved settings (next start).
     pub(super) fn refresh_work_readiness(&mut self) {
-        self.work_readiness = evaluate_work_readiness(
+        let applied = self.applied_host_for_readiness();
+        self.work_readiness = evaluate_work_readiness_applied(
             &self.paths.data_root,
             &self.settings,
             &self.problem_text,
             self.work_preference(),
+            applied.as_ref(),
         );
+    }
+
+    /// `Some` only while the node is running. Unconfirmed runtime is treated as mock.
+    fn applied_host_for_readiness(&self) -> Option<AppliedHostLlm> {
+        if !self.node_running {
+            return None;
+        }
+        Some(match &self.applied_runtime {
+            Some(a) => AppliedHostLlm {
+                backend: a.llm_backend,
+                ollama_model: a.llm_ollama_model.clone(),
+            },
+            None => AppliedHostLlm {
+                backend: LlmBackend::Mock,
+                ollama_model: None,
+            },
+        })
     }
 
     /// Submit-time requested/applied for a single admit (`#350`).

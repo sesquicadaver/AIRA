@@ -129,18 +129,61 @@ pub fn evaluate_host_llm_gate(settings: &DesktopSettings) -> HostLlmGate {
     }
 }
 
+/// Executor the live node is using. `None` means the node is stopped; readiness
+/// then follows saved settings (the next start applies them).
+///
+/// GUI audit P0: a running Mock must not become ready because Settings were
+/// saved as Process. Model A→B on an already applied Process does not use this
+/// type — admission `host_cli_model` switches without restart.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppliedHostLlm {
+    pub backend: LlmBackend,
+    pub ollama_model: Option<String>,
+}
+
 /// Classify draft text and build fail-closed admission + readiness (`#349` / `#354` / RFC-0242).
 ///
 /// Re-audit R1: `settings` must be the same document the GUI loaded (system
 /// `DesktopPaths` / in-memory apply). Never load-or-create under `data_root`.
+/// Stopped node (`applied = None`). See [`evaluate_work_readiness_applied`].
 pub fn evaluate_work_readiness(
     root: impl AsRef<Path>,
     settings: &DesktopSettings,
     text: &str,
     preference: WorkExecutorPreference,
 ) -> WorkReadiness {
+    evaluate_work_readiness_applied(root, settings, text, preference, None)
+}
+
+/// Same as [`evaluate_work_readiness`], with the confirmed running executor.
+pub fn evaluate_work_readiness_applied(
+    root: impl AsRef<Path>,
+    settings: &DesktopSettings,
+    text: &str,
+    preference: WorkExecutorPreference,
+    applied: Option<&AppliedHostLlm>,
+) -> WorkReadiness {
     let root = root.as_ref();
     let _trimmed = text.trim();
+
+    let gate_owned;
+    let settings = if let Some(applied) = applied {
+        if applied.backend != LlmBackend::Process {
+            return empty_readiness(
+                WorkCapabilityKind::Generate,
+                false,
+                vec!["running node is still mock — restart to apply the saved host model".into()],
+                preference,
+            );
+        }
+        let mut owned = settings.clone();
+        owned.llm_backend = LlmBackend::Process;
+        owned.llm_ollama_model = applied.ollama_model.clone();
+        gate_owned = owned;
+        &gate_owned
+    } else {
+        settings
+    };
 
     let host = evaluate_host_llm_gate(settings);
     if !host.ok {
@@ -317,12 +360,26 @@ fn evaluate_compare_generate(
     }
 }
 
+fn host_ollama_model_ref(model_ref: &str) -> bool {
+    model_ref.starts_with("aira:model:ollama-")
+}
+
 fn generate_ready(
     model_ref: &str,
     entry: Option<&CatalogEntry>,
     tip_ready: bool,
     auto: bool,
 ) -> (bool, Vec<String>) {
+    // GUI audit P0 / F2: Process Work only runs host Ollama bindings.
+    // A prepared local file must not look executable.
+    if !host_ollama_model_ref(model_ref) {
+        return (
+            false,
+            vec![format!(
+                "{model_ref} is a local file; the host Ollama executor cannot run it"
+            )],
+        );
+    }
     if let Some(e) = entry {
         if e.available {
             return (true, vec![]);
@@ -552,24 +609,30 @@ mod tests {
         let _g = isolated();
         let dir = tempdir().unwrap();
         let s = write_host_llm(dir.path(), "llama3:latest");
-        write_available_slot(dir.path(), "aira:model:a", "slot-a");
-        write_available_slot(dir.path(), "aira:model:b", "slot-b");
+        write_available_slot(dir.path(), "aira:model:ollama-a", "slot-a");
+        write_available_slot(dir.path(), "aira:model:ollama-b", "slot-b");
         let r = evaluate_work_readiness(
             dir.path(),
             &s,
             "Summarize locally for compare",
             WorkExecutorPreference::Compare {
-                a: "aira:model:a".into(),
-                b: "aira:model:b".into(),
+                a: "aira:model:ollama-a".into(),
+                b: "aira:model:ollama-b".into(),
             },
         );
         assert!(r.ready, "reasons={:?}", r.reasons);
-        assert_eq!(r.resolved_model_ref.as_deref(), Some("aira:model:a"));
-        assert_eq!(r.resolved_model_ref_b.as_deref(), Some("aira:model:b"));
-        assert_eq!(r.admission.model_ref.as_deref(), Some("aira:model:a"));
+        assert_eq!(r.resolved_model_ref.as_deref(), Some("aira:model:ollama-a"));
+        assert_eq!(
+            r.resolved_model_ref_b.as_deref(),
+            Some("aira:model:ollama-b")
+        );
+        assert_eq!(
+            r.admission.model_ref.as_deref(),
+            Some("aira:model:ollama-a")
+        );
         assert_eq!(
             r.admission_b.as_ref().and_then(|c| c.model_ref.as_deref()),
-            Some("aira:model:b")
+            Some("aira:model:ollama-b")
         );
         assert_eq!(r.admission.reuse_policy, ReusePolicy::RequireNewExecution);
         assert_eq!(
@@ -635,5 +698,46 @@ mod tests {
         assert!(load_settings_readonly(&paths).is_err());
         assert!(!paths.settings_file.is_file());
         assert!(!paths.data_root.join("desktop-settings.json").is_file());
+    }
+
+    #[test]
+    fn running_mock_blocks_saved_process() {
+        let _g = isolated();
+        let dir = tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("models")).unwrap();
+        let saved = write_host_llm(dir.path(), "llama3:latest");
+        let applied = AppliedHostLlm {
+            backend: LlmBackend::Mock,
+            ollama_model: None,
+        };
+        let r = evaluate_work_readiness_applied(
+            dir.path(),
+            &saved,
+            "Summarize locally",
+            WorkExecutorPreference::Auto,
+            Some(&applied),
+        );
+        assert!(!r.ready);
+        assert!(
+            r.reasons.iter().any(|s| s.contains("restart")),
+            "reasons={:?}",
+            r.reasons
+        );
+    }
+
+    #[test]
+    fn local_file_is_not_ready_on_ollama_executor() {
+        let _g = isolated();
+        let dir = tempdir().unwrap();
+        let s = write_host_llm(dir.path(), "llama3:latest");
+        write_available_slot(dir.path(), "aira:model:file-weights-a", "slot-file");
+        let r = evaluate_work_readiness(
+            dir.path(),
+            &s,
+            "Summarize locally",
+            WorkExecutorPreference::Required("aira:model:file-weights-a".into()),
+        );
+        assert!(!r.ready, "reasons={:?}", r.reasons);
+        assert!(r.reasons.iter().any(|s| s.contains("cannot run")));
     }
 }
