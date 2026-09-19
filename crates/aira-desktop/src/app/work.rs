@@ -3,7 +3,7 @@ use aira_desktop_runtime::{
 };
 
 use super::AiraDesktopApp;
-use crate::lexicon::{work_submit_gate, ErrorCode, UiProblem};
+use crate::lexicon::{work_run_available, work_submit_gate, ErrorCode, UiProblem};
 use crate::work_view::WorkSubmitModelContext;
 
 /// Work-screen executor radio (`#349` / `#354`).
@@ -89,34 +89,46 @@ impl AiraDesktopApp {
         }
     }
 
+    /// Run button, shortcut, and [`Self::submit_work`] share this check.
+    pub(super) fn work_can_run(&self) -> bool {
+        work_run_available(
+            self.async_jobs.work_inflight(),
+            self.async_jobs.lifecycle_inflight(),
+            self.async_jobs.catalog_mutate_inflight(),
+            self.work_readiness.ready,
+            self.problem_text.trim().is_empty(),
+        )
+    }
+
     /// Queue a background submit (`#257`). Does not block the egui thread.
     ///
     /// The draft (`problem_text`) is **not** cleared on validation errors, Help,
     /// section switches, or failed runs (`#260`).
     /// Compare (`#354`) runs A then B in one worker — no silent substitute.
+    /// Availability is [`Self::work_can_run`] — the same check as the button and shortcut.
     pub(super) fn submit_work(&mut self, ctx: &egui::Context) {
-        let gate = work_submit_gate(
-            self.async_jobs.work_inflight(),
-            self.async_jobs.lifecycle_inflight(),
-            self.async_jobs.catalog_mutate_inflight(),
-        );
-        if !gate.available {
-            if let Some(code) = gate.reason {
-                self.last_problem = Some(UiProblem::new(code, self.ui_lang(), None));
-            }
-            return;
-        }
-        let text = self.problem_text.clone();
-        if text.trim().is_empty() {
-            self.last_problem = Some(UiProblem::new(
-                ErrorCode::WorkEmptyText,
-                self.ui_lang(),
-                None,
-            ));
-            return;
-        }
         self.refresh_work_readiness();
-        if !self.work_readiness.ready {
+        if !self.work_can_run() {
+            let gate = work_submit_gate(
+                self.async_jobs.work_inflight(),
+                self.async_jobs.lifecycle_inflight(),
+                self.async_jobs.catalog_mutate_inflight(),
+            );
+            if !gate.available {
+                if let Some(code) = gate.reason {
+                    self.last_problem = Some(UiProblem::new(code, self.ui_lang(), None));
+                }
+                return;
+            }
+            let text = self.problem_text.clone();
+            if text.trim().is_empty() {
+                self.last_problem = Some(UiProblem::new(
+                    ErrorCode::WorkEmptyText,
+                    self.ui_lang(),
+                    None,
+                ));
+                return;
+            }
             let detail = self.work_readiness.reasons.join("; ");
             self.last_problem = Some(UiProblem::new(
                 ErrorCode::WorkModelUnready,
@@ -129,6 +141,7 @@ impl AiraDesktopApp {
             ));
             return;
         }
+        let text = self.problem_text.clone();
         let ensure_started = !self.node_running;
         let ctx = ctx.clone();
         let on_done = move || ctx.request_repaint();

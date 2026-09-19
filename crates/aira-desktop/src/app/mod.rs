@@ -122,7 +122,7 @@ pub struct AiraDesktopApp {
     /// First “Use Ollama” while the list is still empty: bind after the list returns.
     pub(super) ollama_bind_pending: bool,
     pub(super) ollama_msg: Option<String>,
-    /// Draft for `llm_process_timeout_ms` (empty = unset / default).
+    /// Draft for `llm_process_timeout_ms`, shown as whole seconds (empty = unset).
     pub(super) llm_timeout_edit: String,
     /// Settings → Models source surface (P3 IA).
     pub(super) models_source: ModelsSourceKind,
@@ -208,10 +208,8 @@ impl AiraDesktopApp {
             .relay_ttl_days
             .map(|d| d.to_string())
             .unwrap_or_else(|| DEFAULT_RELAY_TTL_DAYS.to_string());
-        let llm_timeout_edit = settings
-            .llm_process_timeout_ms
-            .map(|ms| ms.to_string())
-            .unwrap_or_default();
+        let llm_timeout_edit =
+            aira_desktop_runtime::timeout_seconds_text(settings.llm_process_timeout_ms);
         let models_source = ModelsSourceKind::HostOllama;
         let applied_runtime = None;
         let work_readiness = evaluate_work_readiness(

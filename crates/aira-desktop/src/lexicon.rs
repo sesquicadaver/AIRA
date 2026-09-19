@@ -138,6 +138,30 @@ impl ActionGate {
     }
 }
 
+/// One check for the Run button, the shortcut, and [`crate::app::AiraDesktopApp::submit_work`].
+/// Ready is P0 `work_readiness.ready` (applied executor), not “no error banner”.
+pub fn work_run_available(
+    work_inflight: bool,
+    lifecycle_inflight: bool,
+    catalog_mutate_inflight: bool,
+    readiness_ready: bool,
+    text_blank: bool,
+) -> bool {
+    work_submit_gate(work_inflight, lifecycle_inflight, catalog_mutate_inflight).available
+        && readiness_ready
+        && !text_blank
+}
+
+/// Cancel is not a live control. It is shown only after the generate process
+/// is confirmed dead (`generate process timed out` after the child kill).
+pub fn cancel_affordance_visible(process_confirmed_dead: bool) -> bool {
+    process_confirmed_dead
+}
+
+pub fn process_death_confirmed(err: &str) -> bool {
+    err.contains("generate process timed out")
+}
+
 /// Gate for Work submit: at most one in-flight job (`#257`); blocked during
 /// lifecycle (`#302`) or catalog mutate (P2 reverse lock).
 pub fn work_submit_gate(
@@ -287,10 +311,10 @@ impl ErrorCode {
                 "Не вдалося надіслати завдання. Перевірте, що AIRA запущена, і спробуйте знову."
             }
             (UiLang::En, Self::WorkTimedOut) => {
-                "The model did not finish before the process timeout. Raise llm_process_timeout_ms or retry."
+                "The model did not finish before the process timeout (seconds). Raise it in Settings → Advanced, then restart the node."
             }
             (UiLang::Uk, Self::WorkTimedOut) => {
-                "Модель не встигла до таймауту процесу. Збільште llm_process_timeout_ms або спробуйте знову."
+                "Модель не встигла до таймауту процесу (секунди). Збільште його в Параметрах → Додатково і перезапустіть вузол."
             }
             (UiLang::En, Self::CatalogBusy) => {
                 "A catalog change (Add/Prepare/Select/Verify) is running. Wait before submitting Work."
@@ -299,10 +323,10 @@ impl ErrorCode {
                 "Триває зміна каталогу (Add/Prepare/Select/Verify). Дочекайтеся перед надсиланням Work."
             }
             (UiLang::En, Self::WorkModelUnready) => {
-                "Text generation is not ready yet. Use Auto tip or pick an available model — calculation still works without one. Choice ≠ VERIFIED."
+                "Text generation is not ready. Pick an available host model in Settings → Models."
             }
             (UiLang::Uk, Self::WorkModelUnready) => {
-                "Генерація тексту ще не готова. Увімкніть Auto tip або оберіть доступну модель — розрахунок працює і без неї. Вибір ≠ VERIFIED."
+                "Генерація тексту не готова. Оберіть доступну модель хоста в Параметрах → Моделі."
             }
             (UiLang::En, Self::StatusRefreshFailed) => {
                 "Could not refresh system status. Try Refresh status again."
@@ -479,6 +503,19 @@ mod tests {
         let g3 = work_submit_gate(false, false, true);
         assert!(!g3.available);
         assert_eq!(g3.reason, Some(ErrorCode::CatalogBusy));
+    }
+
+    #[test]
+    fn run_button_shortcut_and_handler_share_one_check() {
+        assert!(work_run_available(false, false, false, true, false));
+        assert!(!work_run_available(true, false, false, true, false));
+        assert!(!work_run_available(false, false, false, false, false));
+        assert!(!work_run_available(false, false, false, true, true));
+        assert!(!cancel_affordance_visible(false));
+        assert!(cancel_affordance_visible(process_death_confirmed(
+            "generate process timed out (fail-closed; not VERIFIED)"
+        )));
+        assert!(!process_death_confirmed("timed out"));
     }
 
     #[test]
