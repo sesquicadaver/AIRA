@@ -258,7 +258,9 @@ fn evaluate_single_generate(
         .iter()
         .find(|e| e.model_ref == model_ref)
         .cloned();
-    let (ready, mut reasons) = generate_ready(&model_ref, entry.as_ref(), triple.ready, auto);
+    let is_tip = tip.as_deref() == Some(model_ref.as_str());
+    let (ready, mut reasons) =
+        generate_ready(&model_ref, entry.as_ref(), triple.ready, auto, is_tip);
     if !ready {
         if let Some(e) = &entry {
             reasons.push(e.ready_reason.clone());
@@ -318,10 +320,29 @@ fn evaluate_compare_generate(
         );
     }
 
+    let tip = catalog
+        .tip_model_ref
+        .clone()
+        .or_else(|| match &triple.selected {
+            ModelFact::Value(s) => Some(s.clone()),
+            _ => None,
+        });
     let entry_a = catalog.entries.iter().find(|e| e.model_ref == a).cloned();
     let entry_b = catalog.entries.iter().find(|e| e.model_ref == b).cloned();
-    let (ready_a, mut reasons_a) = generate_ready(&a, entry_a.as_ref(), triple.ready, false);
-    let (ready_b, mut reasons_b) = generate_ready(&b, entry_b.as_ref(), triple.ready, false);
+    let (ready_a, mut reasons_a) = generate_ready(
+        &a,
+        entry_a.as_ref(),
+        triple.ready,
+        false,
+        tip.as_deref() == Some(a.as_str()),
+    );
+    let (ready_b, mut reasons_b) = generate_ready(
+        &b,
+        entry_b.as_ref(),
+        triple.ready,
+        false,
+        tip.as_deref() == Some(b.as_str()),
+    );
 
     let mut reasons = Vec::new();
     if ready_a {
@@ -369,6 +390,7 @@ fn generate_ready(
     entry: Option<&CatalogEntry>,
     tip_ready: bool,
     auto: bool,
+    is_tip: bool,
 ) -> (bool, Vec<String>) {
     // GUI audit P0 / F2: Process Work only runs host Ollama bindings.
     // A prepared local file must not look executable.
@@ -401,8 +423,8 @@ fn generate_ready(
     if auto && tip_ready {
         return (true, vec![]);
     }
-    // Host-ollama tip admits generate without a weight catalog row when tip is ready.
-    if tip_ready && model_ref.starts_with("aira:model:ollama-") {
+    // Only that tip. Another `aira:model:ollama-` name must not borrow it (#359).
+    if is_tip && tip_ready {
         return (true, vec![]);
     }
     (
@@ -602,6 +624,70 @@ mod tests {
             Some("aira:model:missing")
         );
         assert_eq!(r.admission.reuse_policy, ReusePolicy::RequireNewExecution);
+    }
+
+    /// `#359`: tip readiness is not a pass for every other `aira:model:ollama-` name.
+    #[test]
+    fn tip_ready_does_not_make_unbound_ollama_ref_ready() {
+        let tip = "aira:model:ollama-tip";
+        let other = "aira:model:ollama-other";
+        let catalog = ModelCatalogSnapshot {
+            tip_model_ref: Some(tip.into()),
+            ..ModelCatalogSnapshot::default()
+        };
+        let mut triple = ModelTripleSnapshot::undefined();
+        triple.ready = true;
+        triple.selected = ModelFact::Value(tip.into());
+
+        let required_other = evaluate_single_generate(
+            WorkExecutorPreference::Required(other.into()),
+            catalog.clone(),
+            triple.clone(),
+        );
+        assert!(
+            !required_other.ready,
+            "unbound B borrowed tip readiness: {:?}",
+            required_other.reasons
+        );
+        assert!(required_other.reasons.iter().any(|s| s.contains(other)));
+
+        let required_tip = evaluate_single_generate(
+            WorkExecutorPreference::Required(tip.into()),
+            catalog.clone(),
+            triple.clone(),
+        );
+        assert!(
+            required_tip.ready,
+            "the tip itself must stay ready: {:?}",
+            required_tip.reasons
+        );
+
+        let auto = evaluate_single_generate(
+            WorkExecutorPreference::Auto,
+            catalog.clone(),
+            triple.clone(),
+        );
+        assert!(
+            auto.ready,
+            "Auto still uses the ready tip: {:?}",
+            auto.reasons
+        );
+
+        let compare = evaluate_compare_generate(
+            tip,
+            other,
+            WorkExecutorPreference::Compare {
+                a: tip.into(),
+                b: other.into(),
+            },
+            catalog,
+            triple,
+        );
+        assert!(!compare.ready);
+        assert!(compare
+            .reasons
+            .iter()
+            .any(|s| s.contains("Compare B") && s.contains("not ready")));
     }
 
     #[test]

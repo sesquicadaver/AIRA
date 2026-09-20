@@ -52,3 +52,5 @@ Status: **done**. Contrast and typography stay a later pass. This pass did not t
 - F1 docks at 320 px only when the window is at least 880 px, so 900 and 1600 leave a central column of at least 560. At 560, F1 is a floating window and Work keeps the full width (`window_check_f1_keeps_central_column`).
 - Tabs, the status strip, the model selector, and the “model that ran” line wrap, so a long name does not require one unbreakable row.
 - The scenario truths from P0–P3 stay in force: no model is not ready; a request pick does not change the default; Mock→Process needs a restart; a local file is not ready on Ollama; a failed Compare B keeps A; timeout is seconds and not a malformed HTTP error.
+
+Follow-on, not part of this audit: [`phase-y-plan.md`](phase-y-plan.md) `#359`–`#375`. Metadata HTTP starts at `#368` only.
