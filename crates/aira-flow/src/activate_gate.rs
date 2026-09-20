@@ -334,11 +334,23 @@ impl ActivatedPointerGate {
         Ok(Self::from_aira_root(root))
     }
 
+    /// Host-Ollama slot only (`#361`). Writes the signed cache bind and
+    /// `models/cache/…/activated.json`. Does **not** create or replace
+    /// `models/activated.latest.json` — that tip moves only via
+    /// [`Self::install_host_ollama_bind`] (Settings → Make default).
+    pub fn install_host_ollama_slot(
+        aira_root: impl AsRef<Path>,
+        ollama_model: &str,
+    ) -> Result<String, String> {
+        Self::install_host_ollama(aira_root, ollama_model, false)
+            .map(|(_gate, model_ref)| model_ref)
+    }
+
     /// Phase D-shaped tip for **host Ollama process bind** (Developer Preview).
     ///
-    /// Writes a bind-marker under `models/cache/…` (not marketplace weights),
-    /// activates tip with `model_ref = aira:model:ollama-…`, and signs evidence
-    /// with the **on-disk node identity** (production trust — no fixture marker).
+    /// Make-default path: writes the same slot as [`Self::install_host_ollama_slot`]
+    /// and then `models/activated.latest.json`. A slot install must not call this
+    /// if the current tip should stay put.
     ///
     /// Honesty: activate tip becomes **ready** for generate admission; result
     /// status remains **executed**, never a Verified Result. Evidence uses
@@ -346,6 +358,14 @@ impl ActivatedPointerGate {
     pub fn install_host_ollama_bind(
         aira_root: impl AsRef<Path>,
         ollama_model: &str,
+    ) -> Result<(Self, String), String> {
+        Self::install_host_ollama(aira_root, ollama_model, true)
+    }
+
+    fn install_host_ollama(
+        aira_root: impl AsRef<Path>,
+        ollama_model: &str,
+        set_tip: bool,
     ) -> Result<(Self, String), String> {
         let root = aira_root.as_ref();
         let ollama_model = ollama_model.trim();
@@ -400,15 +420,14 @@ impl ActivatedPointerGate {
             "evidence_artifact_id": evidence_id,
             "host_ollama_model": ollama_model,
         });
-        let apath = root.join("models/activated.latest.json");
-        if let Some(parent) = apath.parent() {
-            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        let pretty = serde_json::to_string_pretty(&pointer).map_err(|e| e.to_string())?;
+        if set_tip {
+            let apath = root.join("models/activated.latest.json");
+            if let Some(parent) = apath.parent() {
+                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            fs::write(&apath, &pretty).map_err(|e| e.to_string())?;
         }
-        fs::write(
-            &apath,
-            serde_json::to_string_pretty(&pointer).map_err(|e| e.to_string())?,
-        )
-        .map_err(|e| e.to_string())?;
         let slot_path = root
             .join("models/cache")
             .join(slot)
@@ -416,11 +435,7 @@ impl ActivatedPointerGate {
         if let Some(parent) = slot_path.parent() {
             fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
-        fs::write(
-            &slot_path,
-            serde_json::to_string_pretty(&pointer).map_err(|e| e.to_string())?,
-        )
-        .map_err(|e| e.to_string())?;
+        fs::write(&slot_path, &pretty).map_err(|e| e.to_string())?;
         // Explicitly do NOT write ACTIVATION_TRUST_FIXTURE_REL — production trust.
         Ok((Self::from_aira_root(root), model_ref))
     }
@@ -1548,6 +1563,55 @@ mod tests {
         assert!(obs.ready, "detail={}", obs.detail);
         assert_eq!(obs.selected_model_ref.as_deref(), Some(model_ref.as_str()));
         gate.check_activated(&dummy_payload()).unwrap();
+    }
+
+    /// `#361`: writing B's slot does not create or replace tip A.
+    #[test]
+    fn host_ollama_slot_does_not_replace_tip() {
+        use aira_object::{create_or_ensure_node_identity, NodeIdentityCreatePolicy};
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let mut rng = OsRng;
+        let signing = SigningKey::generate(&mut rng);
+        create_or_ensure_node_identity(
+            dir.path(),
+            &format!("aira:identity:slot.{}", uuid::Uuid::now_v7().as_simple()),
+            "slot",
+            signing,
+            NodeIdentityCreatePolicy::CreateExclusive,
+        )
+        .unwrap();
+
+        let tip_path = dir.path().join("models/activated.latest.json");
+        let ref_b =
+            ActivatedPointerGate::install_host_ollama_slot(dir.path(), "model-b:latest").unwrap();
+        assert!(
+            !tip_path.exists(),
+            "slot install must not create activated.latest"
+        );
+        let slot_b = dir
+            .path()
+            .join("models/cache")
+            .join(sanitize_model_slot(&ref_b))
+            .join(ACTIVATED_SLOT_POINTER_NAME);
+        assert!(slot_b.is_file(), "slot B pointer missing");
+
+        let (_gate, ref_a) =
+            ActivatedPointerGate::install_host_ollama_bind(dir.path(), "model-a:latest").unwrap();
+        assert_ne!(ref_a, ref_b);
+        let tip_before = fs::read_to_string(&tip_path).unwrap();
+        assert!(tip_before.contains(&ref_a));
+        assert!(!tip_before.contains(&ref_b));
+
+        let again =
+            ActivatedPointerGate::install_host_ollama_slot(dir.path(), "model-b:latest").unwrap();
+        assert_eq!(again, ref_b);
+        assert_eq!(fs::read_to_string(&tip_path).unwrap(), tip_before);
+        let slot_json: Value = serde_json::from_str(&fs::read_to_string(&slot_b).unwrap()).unwrap();
+        assert_eq!(slot_json["model_ref"].as_str(), Some(ref_b.as_str()));
     }
 
     /// Pack B / audit #7: dedicated collision assert for host ollama refs.

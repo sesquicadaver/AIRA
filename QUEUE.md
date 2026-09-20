@@ -12,7 +12,7 @@
 | `main` | Phase W `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed** @ [`phase-w-plan.md`](docs/phase-w-plan.md); Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** @ [`phase-x-plan.md`](docs/phase-x-plan.md) (Pack 2 GUI DONE; no OPEN X atoms); Phase V `#323`–`#330` **DONE** @ RFC-0208; **QUEUE V closed**; Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase Y [`docs/phase-y-plan.md`](docs/phase-y-plan.md) `#361`–`#375` **OPEN**; перший рядок `#361`. `#359`–`#360` **DONE**. Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** |
+| Активна черга | Phase Y [`docs/phase-y-plan.md`](docs/phase-y-plan.md) `#362`–`#375` **OPEN**; перший рядок `#362`. `#359`–`#361` **DONE**. Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** |
 
 ## Правила атомарності
 
@@ -985,13 +985,13 @@ W0 wiring + A0 (#331 DONE)
 
 ## Phase Y — вибір моделі (OPEN)
 
-План: [`docs/phase-y-plan.md`](docs/phase-y-plan.md). Перший OPEN: `#361`. Не Pack 3.
+План: [`docs/phase-y-plan.md`](docs/phase-y-plan.md). Перший OPEN: `#362`. Не Pack 3.
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
 | 359 | **DONE** | — | ~~`generate_ready`: чужий `aira:model:ollama-` не готовий лише тому, що готова типова~~ | тест: tip-ready A не робить unbound B готовим | слот, кнопка, HTTP |
 | 360 | **DONE** | — | ~~Порожня Compare B не «Типова»; причина B окремо від успішної A~~ | тест підпису і причини | підготовка слота |
-| 361 | OPEN | — | Слот моделі не пише `activated.latest`; tip змінює лише make-default | тест: слот B є, tip лишається A | кнопка запуску |
+| 361 | **DONE** | — | ~~Слот моделі не пише `activated.latest`; tip змінює лише make-default~~ | тест: слот B є, tip лишається A | кнопка запуску |
 | 362 | OPEN | — | «Підготувати й виконати»: слот → допуск → запуск; повтор без другого запуску; помилка не змінює tip | тест кнопки і повтору | метадані, фільтр |
 | 363 | OPEN | — | Екранний підпис не стає CLI-ім’ям; без точного імені bind заборонений | тест відмови bind | перший рядок списку |
 | 364 | OPEN | — | «Використовувати Ollama» не бере перше ім’я списку | тест resolver | endpoint |
@@ -1009,7 +1009,7 @@ W0 wiring + A0 (#331 DONE)
 
 ### Наступний цикл
 
-**Phase Y OPEN.** `#359`–`#360` **DONE**. Перший рядок `#361`. `#362`–`#375` не стартують раніше.
+**Phase Y OPEN.** `#359`–`#361` **DONE**. Перший рядок `#362`. `#363`–`#375` не стартують раніше.
 
 ```text
 #359 readiness
@@ -1135,6 +1135,6 @@ P0 wiring (#266 DONE)
 | Runtime-honest Desktop (post-O audit) | [`docs/phase-p-plan.md`](docs/phase-p-plan.md); `aira-current.md` @ `700ffd5`; `#266`–`#274` (**DONE** @ RFC-0156; QUEUE P closed) |
 | Pack 1 residual honesty (post-V audit) | [`docs/phase-w-plan.md`](docs/phase-w-plan.md); `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed** |
 | Pack 2 local multi-model GUI (aira-current 2026-09-13 + M1–M6) | [`docs/phase-x-plan.md`](docs/phase-x-plan.md); `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed**; no OPEN X atoms |
-| Вибір моделі (підтверджений аудит `9f3e642` + `aira-current.md` 2026-09-20) | [`docs/phase-y-plan.md`](docs/phase-y-plan.md); `#359`–`#360` **DONE**; `#361`–`#375` **OPEN**; перший `#361` |
+| Вибір моделі (підтверджений аудит `9f3e642` + `aira-current.md` 2026-09-20) | [`docs/phase-y-plan.md`](docs/phase-y-plan.md); `#359`–`#361` **DONE**; `#362`–`#375` **OPEN**; перший `#362` |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
