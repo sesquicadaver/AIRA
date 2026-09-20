@@ -314,9 +314,13 @@ pub enum CatalogSource {
 /// One row shared by Settings and Work: name, source, availability.
 ///
 /// `model_ref` is for details and admission, not the primary label.
+/// `cli_name` is the exact host token for bind when known; a display label alone
+/// is never a CLI name (`#363`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CatalogProjectionRow {
     pub name: String,
+    /// Exact `ollama list` / `host_ollama_model` token. `None` → row visible, bind refused.
+    pub cli_name: Option<String>,
     pub source: CatalogSource,
     pub available: bool,
     pub verified: bool,
@@ -328,10 +332,13 @@ pub struct CatalogProjectionRow {
 ///
 /// Host names come from `ollama list`. Local-file rows never include
 /// `aira:model:ollama-` refs, so Prepare is not offered for a bind that cannot activate.
+/// Lifecycle-only host rows stay visible; without an exact CLI token they are not bindable.
 pub fn project_shared_catalog(
     snap: &ModelCatalogSnapshot,
     ollama_names: &[String],
+    root: impl AsRef<Path>,
 ) -> Vec<CatalogProjectionRow> {
+    let root = root.as_ref();
     let mut rows = Vec::new();
     let mut seen_refs = std::collections::HashSet::new();
     for name in ollama_names {
@@ -346,6 +353,7 @@ pub fn project_shared_catalog(
         let cat = snap.entries.iter().find(|e| e.model_ref == model_ref);
         rows.push(CatalogProjectionRow {
             name: name.to_string(),
+            cli_name: Some(name.to_string()),
             source: CatalogSource::HostOllama,
             available: true,
             verified: cat.is_some_and(|e| e.verified),
@@ -361,8 +369,13 @@ pub fn project_shared_catalog(
         {
             continue;
         }
+        let cli = host_cli_name_for_ollama_ref(root, &entry.model_ref);
+        let name = cli
+            .clone()
+            .unwrap_or_else(|| catalog_display_name(&entry.model_ref));
         rows.push(CatalogProjectionRow {
-            name: catalog_display_name(&entry.model_ref),
+            name,
+            cli_name: cli,
             source: CatalogSource::HostOllama,
             available: entry.available,
             verified: entry.verified,
@@ -376,6 +389,7 @@ pub fn project_shared_catalog(
         }
         rows.push(CatalogProjectionRow {
             name: catalog_display_name(&entry.model_ref),
+            cli_name: None,
             source: CatalogSource::LocalFile,
             available: entry.available,
             verified: entry.verified,
@@ -386,9 +400,33 @@ pub fn project_shared_catalog(
     rows
 }
 
+/// Exact host CLI token for bind. A screen label is never invented into a CLI name (`#363`).
+pub fn exact_cli_name_for_bind(
+    pick: Option<&str>,
+    listed: &[String],
+    rows: &[CatalogProjectionRow],
+) -> Option<String> {
+    let pick = pick.map(str::trim).filter(|s| !s.is_empty())?;
+    if let Some(row) = rows.iter().find(|r| {
+        r.source == CatalogSource::HostOllama
+            && (r.name == pick || r.cli_name.as_deref() == Some(pick) || r.model_ref == pick)
+    }) {
+        return row
+            .cli_name
+            .as_ref()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+    }
+    listed
+        .iter()
+        .find(|n| n.trim() == pick)
+        .map(|n| n.trim().to_string())
+}
+
 /// Bind target for “Use Ollama” when a name is already known.
 ///
 /// `None` means the host list has not returned yet — do not treat that as “no models”.
+/// A pick that is only a display label is never returned as a CLI name (`#363`).
 pub fn resolve_use_ollama_bind(
     pick: Option<&str>,
     bound: Option<&str>,
@@ -402,18 +440,67 @@ pub fn resolve_use_ollama_bind(
             Some(t.to_string())
         }
     }
-    pick.and_then(nonempty)
-        .or_else(|| bound.and_then(nonempty))
-        .or_else(|| listed.iter().find_map(|n| nonempty(n)))
+    fn exact_in_list(candidate: &str, listed: &[String]) -> Option<String> {
+        listed
+            .iter()
+            .find(|n| n.trim() == candidate.trim())
+            .map(|n| n.trim().to_string())
+    }
+    if let Some(p) = pick.and_then(nonempty) {
+        if let Some(exact) = exact_in_list(&p, listed) {
+            return Some(exact);
+        }
+        if !is_display_label_not_cli_name(&p) && listed.is_empty() {
+            // List not loaded yet; pick still looks like a host token.
+            return Some(p);
+        }
+        // Display label or non-exact pick — never bind the label itself.
+    }
+    if let Some(b) = bound.and_then(nonempty) {
+        if is_display_label_not_cli_name(&b) {
+            // Fall through; do not treat a screen label as a saved CLI name.
+        } else if listed.is_empty() {
+            return Some(b);
+        } else if let Some(exact) = exact_in_list(&b, listed) {
+            return Some(exact);
+        }
+    }
+    // First-row fallback stays until `#364`.
+    listed.iter().find_map(|n| nonempty(n))
+}
+
+/// True when `s` is a catalog display label (or full model_ref), not an `ollama list` token.
+pub fn is_display_label_not_cli_name(s: &str) -> bool {
+    let t = s.trim();
+    if t.starts_with("aira:model:") {
+        return true;
+    }
+    // `catalog_display_name("aira:model:ollama-…-xxxxxxxxxxxx")` → `ollama-…-xxxxxxxxxxxx`
+    let Some(rest) = t.strip_prefix("ollama-") else {
+        return false;
+    };
+    if rest.len() < 13 {
+        return false;
+    }
+    let hash = &rest[rest.len() - 13..];
+    hash.starts_with('-') && hash.len() == 13 && hash[1..].chars().all(|c| c.is_ascii_hexdigit())
 }
 
 /// After a successful `ollama list`, finish a pending Use Ollama bind.
+///
+/// Pick binds only when it is an exact list token. Display labels are refused (`#363`).
+/// First-row fallback when pick is absent stays until `#364`.
 pub fn resolve_bind_after_ollama_list(pick: Option<&str>, listed: &[String]) -> Option<String> {
     let pick = pick.map(str::trim).filter(|s| !s.is_empty());
     if let Some(p) = pick {
-        if listed.iter().any(|n| n == p) {
+        if is_display_label_not_cli_name(p) {
+            return None;
+        }
+        if listed.iter().any(|n| n.trim() == p) {
             return Some(p.to_string());
         }
+        // Pick present but not exact — do not invent a CLI name from the first row.
+        return None;
     }
     listed
         .iter()
@@ -657,6 +744,7 @@ mod tests {
 
     #[test]
     fn projection_file_source_omits_ollama_rows() {
+        let dir = tempfile::tempdir().unwrap();
         let snap = ModelCatalogSnapshot {
             entries: vec![
                 CatalogEntry {
@@ -675,13 +763,14 @@ mod tests {
             ],
             ..ModelCatalogSnapshot::default()
         };
-        let rows = project_shared_catalog(&snap, &["phi:latest".into()]);
+        let rows = project_shared_catalog(&snap, &["phi:latest".into()], dir.path());
         let files: Vec<_> = rows
             .iter()
             .filter(|r| r.source == CatalogSource::LocalFile)
             .collect();
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].name, "weights-a");
+        assert!(files[0].cli_name.is_none());
         assert!(!is_host_ollama_catalog_ref(&files[0].model_ref));
         let host: Vec<_> = rows
             .iter()
@@ -692,6 +781,50 @@ mod tests {
             .iter()
             .all(|r| is_host_ollama_catalog_ref(&r.model_ref)));
         assert!(host.iter().all(|r| r.name != r.model_ref));
+        assert!(host
+            .iter()
+            .any(|r| r.cli_name.as_deref() == Some("phi:latest")));
+    }
+
+    #[test]
+    fn display_label_is_not_accepted_as_cli_bind() {
+        let dir = tempfile::tempdir().unwrap();
+        let model_ref = aira_flow::host_ollama_model_ref("kept-tip:latest");
+        let label = catalog_display_name(&model_ref);
+        assert!(is_display_label_not_cli_name(&label));
+        assert!(is_display_label_not_cli_name(&model_ref));
+        assert!(!is_display_label_not_cli_name("kept-tip:latest"));
+
+        let snap = ModelCatalogSnapshot {
+            entries: vec![CatalogEntry {
+                model_ref: model_ref.clone(),
+                verified: false,
+                available: true,
+                ready_reason: "available".into(),
+            }],
+            ..ModelCatalogSnapshot::default()
+        };
+        // Lifecycle row without host_ollama_model in slot → visible, not bindable.
+        let rows = project_shared_catalog(&snap, &[], dir.path());
+        let host = rows
+            .iter()
+            .find(|r| r.model_ref == model_ref)
+            .expect("row stays visible");
+        assert_eq!(host.name, label);
+        assert!(host.cli_name.is_none());
+        assert!(exact_cli_name_for_bind(Some(&label), &[], &rows).is_none());
+        assert!(exact_cli_name_for_bind(Some(&label), &["other:latest".into()], &rows).is_none());
+        assert_eq!(
+            exact_cli_name_for_bind(Some("other:latest"), &["other:latest".into()], &rows)
+                .as_deref(),
+            Some("other:latest")
+        );
+
+        assert!(resolve_use_ollama_bind(Some(&label), None, &[]).is_none());
+        // Label pick must not become the CLI name even when a list exists (#364 still owns first-row).
+        let with_list = resolve_use_ollama_bind(Some(&label), None, &["phi:latest".into()]);
+        assert_ne!(with_list.as_deref(), Some(label.as_str()));
+        assert!(resolve_bind_after_ollama_list(Some(&label), &["phi:latest".into()]).is_none());
     }
 
     #[test]
