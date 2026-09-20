@@ -9,10 +9,37 @@ use crate::lexicon::{ErrorCode, HelpId};
 use super::{work, AiraDesktopApp, MainTab};
 
 /// Which Work field a shared catalog row writes. Never the default tip.
+#[derive(Clone, Copy)]
 enum WorkPick {
     Required,
     CompareA,
     CompareB,
+}
+
+/// Closed Work combo. Empty Compare B is a prompt, not the tip (`#360`).
+fn work_selector_closed_label(
+    pick: WorkPick,
+    selected_name: Option<&str>,
+    default_word: &str,
+    default_name: &str,
+    empty_compare_b: &str,
+) -> String {
+    if let Some(name) = selected_name {
+        return name.to_string();
+    }
+    if matches!(pick, WorkPick::CompareB) {
+        return empty_compare_b.to_string();
+    }
+    format!("{default_word}: {default_name}")
+}
+
+/// Lines under «Not ready». Compare keeps B visible when A already succeeded (`#360`).
+fn work_readiness_lines(comparing: bool, reasons: &[String]) -> Vec<&str> {
+    if comparing {
+        reasons.iter().map(String::as_str).collect()
+    } else {
+        reasons.first().map(String::as_str).into_iter().collect()
+    }
 }
 
 impl eframe::App for AiraDesktopApp {
@@ -188,14 +215,14 @@ impl AiraDesktopApp {
             WorkPick::CompareA => Some(self.work_compare_a.clone()).filter(|s| !s.is_empty()),
             WorkPick::CompareB => Some(self.work_compare_b.clone()).filter(|s| !s.is_empty()),
         };
-        let selected_text = match current.as_deref() {
-            Some(r) => self.row_name_for_ref(r),
-            None => format!(
-                "{}: {}",
-                l.work_selector_default,
-                self.default_selector_name()
-            ),
-        };
+        let selected_name = current.as_deref().map(|r| self.row_name_for_ref(r));
+        let selected_text = work_selector_closed_label(
+            pick,
+            selected_name.as_deref(),
+            l.work_selector_default,
+            &self.default_selector_name(),
+            l.work_compare_b_empty,
+        );
         let id = match pick {
             WorkPick::Required => "work-model",
             WorkPick::CompareA => "work-model-a",
@@ -556,7 +583,7 @@ impl AiraDesktopApp {
                 egui::Color32::from_rgb(180, 120, 40),
                 l.work_readiness_blocked,
             );
-            if let Some(reason) = self.work_readiness.reasons.first() {
+            for reason in work_readiness_lines(comparing, &self.work_readiness.reasons) {
                 ui.small(reason);
             }
         }
@@ -1929,5 +1956,60 @@ impl AiraDesktopApp {
                     ui.monospace(h);
                 }
             });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::i18n::Labels;
+    use aira_desktop_runtime::UiLang;
+
+    #[test]
+    fn empty_compare_b_is_not_labeled_as_the_tip() {
+        for lang in [UiLang::En, UiLang::Uk] {
+            let l = Labels::get(lang);
+            let empty = work_selector_closed_label(
+                WorkPick::CompareB,
+                None,
+                l.work_selector_default,
+                "kimi-k2.7-code:cloud",
+                l.work_compare_b_empty,
+            );
+            let tip = format!("{}: kimi-k2.7-code:cloud", l.work_selector_default);
+            assert_ne!(empty, tip);
+            assert!(!empty.contains(l.work_selector_default));
+            assert_eq!(empty, l.work_compare_b_empty);
+
+            let still_default = work_selector_closed_label(
+                WorkPick::Required,
+                None,
+                l.work_selector_default,
+                "kimi-k2.7-code:cloud",
+                l.work_compare_b_empty,
+            );
+            assert_eq!(still_default, tip);
+        }
+    }
+
+    #[test]
+    fn compare_keeps_b_reason_when_a_is_ready() {
+        let reasons = vec![
+            "Compare A aira:model:ollama-a available; choice ≠ VERIFIED; RequireNewExecution"
+                .into(),
+            "Compare B aira:model:ollama-b not ready — no silent substitute".into(),
+            "aira:model:ollama-b not in lifecycle catalog — Scan/Prepare in Settings → Models"
+                .into(),
+        ];
+        let shown = work_readiness_lines(true, &reasons);
+        assert!(shown
+            .iter()
+            .any(|s| s.contains("Compare A") && s.contains("available")));
+        assert!(shown
+            .iter()
+            .any(|s| s.contains("Compare B") && s.contains("not ready")));
+        assert!(shown.iter().any(|s| s.contains("not in lifecycle catalog")));
+        let single = work_readiness_lines(false, &reasons);
+        assert_eq!(single, vec![reasons[0].as_str()]);
     }
 }
