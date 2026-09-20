@@ -435,7 +435,7 @@ impl ActivatedPointerGate {
         if let Some(parent) = slot_path.parent() {
             fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
-        fs::write(&slot_path, &pretty).map_err(|e| e.to_string())?;
+        write_atomic(&slot_path, &pretty)?;
         // Explicitly do NOT write ACTIVATION_TRUST_FIXTURE_REL — production trust.
         Ok((Self::from_aira_root(root), model_ref))
     }
@@ -729,6 +729,25 @@ impl ActivatedPointerGate {
             )),
         }
     }
+}
+
+/// Replace `path` via a same-directory temp file so a crash cannot leave a partial slot (`#362`).
+fn write_atomic(path: &Path, contents: &str) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let file_name = path
+        .file_name()
+        .map(|n| n.to_os_string())
+        .unwrap_or_else(|| std::ffi::OsString::from("slot"));
+    let mut tmp_name = file_name;
+    tmp_name.push(".tmp");
+    let tmp = path.with_file_name(tmp_name);
+    fs::write(&tmp, contents).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, path).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        e.to_string()
+    })
 }
 
 /// Slot directory name matching `model-acquisition::sanitize_slot` (`#344`).

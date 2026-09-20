@@ -100,7 +100,8 @@ pub use settings::{
 pub use ui_prefs::{detect_ui_lang, load_or_create_ui_prefs, write_ui_prefs, UiLang, UiPrefs};
 pub use work_readiness::{
     evaluate_host_llm_gate, evaluate_work_readiness, evaluate_work_readiness_applied,
-    AppliedHostLlm, HostLlmGate, WorkCapabilityKind, WorkExecutorPreference, WorkReadiness,
+    execute_prepare_and_run, prepare_and_run_cli_names, prepare_host_slots, AppliedHostLlm,
+    HostLlmGate, PrepareAndRunOutcome, WorkCapabilityKind, WorkExecutorPreference, WorkReadiness,
 };
 
 /// Crate version for smoke tests.

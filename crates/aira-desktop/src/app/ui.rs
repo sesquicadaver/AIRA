@@ -613,18 +613,37 @@ impl AiraDesktopApp {
 
         let submitting = self.async_jobs.work_inflight();
         let can_run = self.work_can_run();
+        let prepare = self.prepare_and_run_names();
         let mut do_submit = false;
-        ui.add_enabled_ui(can_run, |ui| {
-            let btn = ui.button(l.work_submit);
+        let mut do_prepare = false;
+        if prepare.is_some() {
+            let btn = ui.button(l.work_prepare_and_run);
             if btn.hovered() {
                 self.note_help_focus(HelpId::WorkSubmit);
             }
             if btn.clicked() {
+                do_prepare = true;
+            }
+        } else {
+            ui.add_enabled_ui(can_run, |ui| {
+                let btn = ui.button(l.work_submit);
+                if btn.hovered() {
+                    self.note_help_focus(HelpId::WorkSubmit);
+                }
+                if btn.clicked() {
+                    do_submit = true;
+                }
+            });
+        }
+        if shortcut_run {
+            if prepare.is_some() {
+                do_prepare = true;
+            } else if can_run {
                 do_submit = true;
             }
-        });
-        if can_run && shortcut_run {
-            do_submit = true;
+        }
+        if do_prepare {
+            self.prepare_and_run(ctx);
         }
         if do_submit {
             // Draft (`problem_text`) is never cleared here — only cloned for submit.
@@ -1990,6 +2009,17 @@ mod tests {
             );
             assert_eq!(still_default, tip);
         }
+    }
+
+    #[test]
+    fn prepare_and_run_label_is_not_the_run_button() {
+        let uk = Labels::get(UiLang::Uk);
+        let en = Labels::get(UiLang::En);
+        assert_eq!(uk.work_prepare_and_run, "Підготувати й виконати");
+        assert_eq!(en.work_prepare_and_run, "Prepare and run");
+        assert_ne!(uk.work_prepare_and_run, uk.work_submit);
+        assert_ne!(en.work_prepare_and_run, en.work_submit);
+        assert!(!uk.work_prepare_and_run.contains("Типова"));
     }
 
     #[test]
