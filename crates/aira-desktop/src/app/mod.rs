@@ -531,7 +531,17 @@ impl AiraDesktopApp {
         ) {
             Some(m) => self.bind_ollama_process(Some(m)),
             None => {
-                self.ollama_msg = Some(self.labels().settings_ollama_empty.into());
+                self.ollama_msg = Some(
+                    if self
+                        .ollama_pick
+                        .as_deref()
+                        .is_some_and(aira_desktop_runtime::is_display_label_not_cli_name)
+                    {
+                        self.labels().settings_ollama_need_exact_cli.into()
+                    } else {
+                        self.labels().settings_ollama_empty.into()
+                    },
+                );
             }
         }
     }

@@ -163,7 +163,11 @@ impl eframe::App for AiraDesktopApp {
 
 impl AiraDesktopApp {
     fn catalog_rows(&self) -> Vec<CatalogProjectionRow> {
-        project_shared_catalog(&self.model_catalog, &self.ollama_models)
+        project_shared_catalog(
+            &self.model_catalog,
+            &self.ollama_models,
+            &self.paths.data_root,
+        )
     }
 
     fn projection_label(l: &crate::app::i18n::Labels, row: &CatalogProjectionRow) -> String {
@@ -1711,10 +1715,19 @@ impl AiraDesktopApp {
         }
 
         if ui.button(l.settings_models_make_default).clicked() {
-            if let Some(m) = self.ollama_pick.clone() {
-                self.bind_ollama_process(Some(m));
-            } else {
-                self.ollama_msg = Some(l.settings_ollama_select_first.into());
+            let rows = self.catalog_rows();
+            match aira_desktop_runtime::exact_cli_name_for_bind(
+                self.ollama_pick.as_deref(),
+                &self.ollama_models,
+                &rows,
+            ) {
+                Some(m) => self.bind_ollama_process(Some(m)),
+                None if self.ollama_pick.is_some() => {
+                    self.ollama_msg = Some(l.settings_ollama_need_exact_cli.into());
+                }
+                None => {
+                    self.ollama_msg = Some(l.settings_ollama_select_first.into());
+                }
             }
         }
     }

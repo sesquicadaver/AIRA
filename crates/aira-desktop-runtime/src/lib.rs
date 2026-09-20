@@ -62,11 +62,12 @@ pub use launcher::{
     AIRA_GUI_DESKTOP_FILENAME,
 };
 pub use model_catalog::{
-    add_model_file, catalog_display_name, enable_local_model_add, host_cli_name_for_ollama_ref,
-    is_host_ollama_catalog_ref, load_model_catalog, prepare_model, project_shared_catalog,
-    resolve_bind_after_ollama_list, resolve_use_ollama_bind, scan_model_catalog,
-    select_catalog_model, verify_catalog_quarantine, CatalogEntry, CatalogProjectionRow,
-    CatalogSelection, CatalogSource, ModelCatalogError, ModelCatalogSnapshot,
+    add_model_file, catalog_display_name, enable_local_model_add, exact_cli_name_for_bind,
+    host_cli_name_for_ollama_ref, is_display_label_not_cli_name, is_host_ollama_catalog_ref,
+    load_model_catalog, prepare_model, project_shared_catalog, resolve_bind_after_ollama_list,
+    resolve_use_ollama_bind, scan_model_catalog, select_catalog_model, verify_catalog_quarantine,
+    CatalogEntry, CatalogProjectionRow, CatalogSelection, CatalogSource, ModelCatalogError,
+    ModelCatalogSnapshot,
 };
 pub use model_status::{load_model_triple, ModelFact, ModelTripleConclusion, ModelTripleSnapshot};
 pub use model_storage::{format_bytes, load_model_storage, ModelStorageSnapshot};
