@@ -215,4 +215,57 @@ impl AiraDesktopApp {
         }
         self.clear_problem();
     }
+
+    /// Exact CLI names for «Prepare and run», or `None` when Run is the right control (`#362`).
+    pub(super) fn prepare_and_run_names(&self) -> Option<Vec<String>> {
+        let host_ok = aira_desktop_runtime::evaluate_host_llm_gate(&self.settings).ok;
+        let busy = self.prepare_and_run_busy
+            || self.async_jobs.work_inflight()
+            || self.async_jobs.lifecycle_inflight()
+            || self.async_jobs.catalog_mutate_inflight();
+        aira_desktop_runtime::prepare_and_run_cli_names(
+            host_ok,
+            self.problem_text.trim().is_empty(),
+            busy,
+            &self.work_preference(),
+            &self.model_catalog.entries,
+            &self.ollama_models,
+        )
+    }
+
+    /// Slot the selected host model, then the existing admit-and-run path.
+    ///
+    /// A repeat while this click or a run is in flight does not start a second run.
+    /// A slot error does not change the tip and does not submit.
+    pub(super) fn prepare_and_run(&mut self, ctx: &egui::Context) {
+        if self.prepare_and_run_busy || self.async_jobs.work_inflight() {
+            return;
+        }
+        let Some(names) = self.prepare_and_run_names() else {
+            return;
+        };
+        self.prepare_and_run_busy = true;
+        let root = self.paths.data_root.clone();
+        let prepared = aira_desktop_runtime::execute_prepare_and_run(
+            false,
+            || aira_desktop_runtime::prepare_host_slots(&root, &names),
+            || Ok(()),
+        );
+        self.prepare_and_run_busy = false;
+        match prepared {
+            aira_desktop_runtime::PrepareAndRunOutcome::Failed(e) => {
+                self.refresh_model_catalog();
+                self.last_problem = Some(UiProblem::new(
+                    ErrorCode::WorkModelUnready,
+                    self.ui_lang(),
+                    Some(e),
+                ));
+            }
+            aira_desktop_runtime::PrepareAndRunOutcome::IgnoredRepeat => {}
+            aira_desktop_runtime::PrepareAndRunOutcome::Started => {
+                self.refresh_model_catalog();
+                self.submit_work(ctx);
+            }
+        }
+    }
 }

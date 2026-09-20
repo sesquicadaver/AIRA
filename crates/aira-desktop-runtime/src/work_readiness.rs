@@ -435,6 +435,109 @@ fn generate_ready(
     )
 }
 
+/// What «Prepare and run» should bind. Empty means use the normal Run button (`#362`).
+///
+/// Only exact `ollama list` names are returned. A display label is not a CLI name.
+pub fn prepare_and_run_cli_names(
+    host_ok: bool,
+    text_blank: bool,
+    busy: bool,
+    preference: &WorkExecutorPreference,
+    entries: &[CatalogEntry],
+    listed_cli_names: &[String],
+) -> Option<Vec<String>> {
+    if !host_ok || text_blank || busy {
+        return None;
+    }
+    let selected = match preference {
+        WorkExecutorPreference::Auto => return None,
+        WorkExecutorPreference::Required(r) => {
+            let r = r.trim();
+            if r.is_empty() {
+                return None;
+            }
+            vec![r.to_string()]
+        }
+        WorkExecutorPreference::Compare { a, b } => {
+            let a = a.trim();
+            let b = b.trim();
+            if a.is_empty() || b.is_empty() || a == b {
+                return None;
+            }
+            vec![a.to_string(), b.to_string()]
+        }
+    };
+    let mut needed = Vec::new();
+    for model_ref in selected {
+        if entries
+            .iter()
+            .any(|e| e.model_ref == model_ref && e.available)
+        {
+            continue;
+        }
+        if !model_ref.starts_with("aira:model:ollama-") {
+            return None;
+        }
+        let cli = listed_cli_names.iter().find_map(|n| {
+            let n = n.trim();
+            if n.is_empty() {
+                return None;
+            }
+            (aira_flow::host_ollama_model_ref(n) == model_ref).then(|| n.to_string())
+        })?;
+        needed.push(cli);
+    }
+    if needed.is_empty() {
+        None
+    } else {
+        Some(needed)
+    }
+}
+
+/// Result of one Prepare-and-run click (`#362`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PrepareAndRunOutcome {
+    Started,
+    IgnoredRepeat,
+    Failed(String),
+}
+
+/// Slot, then one start. A second call while `busy` does not prepare or start again.
+/// A prepare error does not start.
+pub fn execute_prepare_and_run(
+    busy: bool,
+    prepare: impl FnOnce() -> Result<(), String>,
+    start: impl FnOnce() -> Result<(), String>,
+) -> PrepareAndRunOutcome {
+    if busy {
+        return PrepareAndRunOutcome::IgnoredRepeat;
+    }
+    if let Err(e) = prepare() {
+        return PrepareAndRunOutcome::Failed(e);
+    }
+    match start() {
+        Ok(()) => PrepareAndRunOutcome::Started,
+        Err(e) => PrepareAndRunOutcome::Failed(e),
+    }
+}
+
+/// Write host-Ollama slots for `cli_names`. Does not replace `activated.latest`.
+/// On failure the tip bytes are unchanged and the caller must not start a run.
+pub fn prepare_host_slots(root: &Path, cli_names: &[String]) -> Result<(), String> {
+    let tip_path = root.join("models/activated.latest.json");
+    let tip_before = std::fs::read(&tip_path).ok();
+    for name in cli_names {
+        aira_flow::ActivatedPointerGate::install_host_ollama_slot(root, name)?;
+        let tip_after = std::fs::read(&tip_path).ok();
+        if tip_after != tip_before {
+            return Err(
+                "prepare wrote activated.latest; the default tip must stay unchanged".into(),
+            );
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -825,5 +928,132 @@ mod tests {
         );
         assert!(!r.ready, "reasons={:?}", r.reasons);
         assert!(r.reasons.iter().any(|s| s.contains("cannot run")));
+    }
+
+    #[test]
+    fn prepare_and_run_offers_exact_cli_name_only() {
+        let cli = "model-b:latest";
+        let model_ref = aira_flow::host_ollama_model_ref(cli);
+        let pref = WorkExecutorPreference::Required(model_ref.clone());
+        let names = prepare_and_run_cli_names(true, false, false, &pref, &[], &[cli.into()])
+            .expect("exact list name");
+        assert_eq!(names, vec![cli.to_string()]);
+        assert!(prepare_and_run_cli_names(true, false, true, &pref, &[], &[cli.into()]).is_none());
+        assert!(prepare_and_run_cli_names(
+            true,
+            false,
+            false,
+            &pref,
+            &[],
+            &["not-the-cli-name".into()],
+        )
+        .is_none());
+        let slotted = CatalogEntry {
+            model_ref: model_ref.clone(),
+            verified: false,
+            available: true,
+            ready_reason: "slotted".into(),
+        };
+        assert!(
+            prepare_and_run_cli_names(true, false, false, &pref, &[slotted], &[cli.into()])
+                .is_none()
+        );
+        assert!(prepare_and_run_cli_names(
+            true,
+            false,
+            false,
+            &WorkExecutorPreference::Auto,
+            &[],
+            &[cli.into()],
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn prepare_and_run_repeat_does_not_start_twice_and_failure_skips_start() {
+        let mut starts = 0;
+        let first = execute_prepare_and_run(
+            false,
+            || Ok(()),
+            || {
+                starts += 1;
+                Ok(())
+            },
+        );
+        assert_eq!(first, PrepareAndRunOutcome::Started);
+        let second = execute_prepare_and_run(
+            true,
+            || panic!("repeat must not prepare"),
+            || {
+                starts += 1;
+                Ok(())
+            },
+        );
+        assert_eq!(second, PrepareAndRunOutcome::IgnoredRepeat);
+        assert_eq!(starts, 1);
+
+        let mut started = false;
+        let failed = execute_prepare_and_run(
+            false,
+            || Err("slot failed".into()),
+            || {
+                started = true;
+                Ok(())
+            },
+        );
+        assert_eq!(failed, PrepareAndRunOutcome::Failed("slot failed".into()));
+        assert!(!started);
+    }
+
+    #[test]
+    fn prepare_host_slots_keeps_tip_and_refuses_empty_name() {
+        use aira_object::{create_or_ensure_node_identity, NodeIdentityCreatePolicy};
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+
+        let _g = isolated();
+        let dir = tempdir().unwrap();
+        let tip_path = dir.path().join("models/activated.latest.json");
+        fs::create_dir_all(tip_path.parent().unwrap()).unwrap();
+        fs::write(&tip_path, "TIP-A").unwrap();
+        let err = prepare_host_slots(dir.path(), &[String::new()]).unwrap_err();
+        assert!(err.contains("empty"), "{err}");
+        assert_eq!(fs::read_to_string(&tip_path).unwrap(), "TIP-A");
+
+        aira_object::reset_primary_signer();
+        let mut rng = OsRng;
+        let signing = SigningKey::generate(&mut rng);
+        create_or_ensure_node_identity(
+            dir.path(),
+            &format!("aira:identity:prep.{}", uuid::Uuid::now_v7().as_simple()),
+            "prep",
+            signing,
+            NodeIdentityCreatePolicy::CreateExclusive,
+        )
+        .unwrap();
+        let (_gate, ref_a) =
+            ActivatedPointerGate::install_host_ollama_bind(dir.path(), "model-a:latest").unwrap();
+        let tip_bytes = fs::read(&tip_path).unwrap();
+        assert!(std::str::from_utf8(&tip_bytes).unwrap().contains(&ref_a));
+
+        let cli_b = "model-b:latest";
+        let ref_b = aira_flow::host_ollama_model_ref(cli_b);
+        prepare_host_slots(dir.path(), &[cli_b.into()]).unwrap();
+        assert_eq!(fs::read(&tip_path).unwrap(), tip_bytes);
+        let cat = crate::model_catalog::load_model_catalog(dir.path()).unwrap();
+        assert_eq!(cat.tip_model_ref.as_deref(), Some(ref_a.as_str()));
+        assert!(cat
+            .entries
+            .iter()
+            .any(|e| e.model_ref == ref_b && e.available));
+        assert!(prepare_and_run_cli_names(
+            true,
+            false,
+            false,
+            &WorkExecutorPreference::Required(ref_b),
+            &cat.entries,
+            &[cli_b.into()],
+        )
+        .is_none());
     }
 }

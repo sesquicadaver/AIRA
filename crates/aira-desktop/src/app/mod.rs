@@ -132,6 +132,8 @@ pub struct AiraDesktopApp {
     pub(super) work_compare_a: String,
     pub(super) work_compare_b: String,
     pub(super) work_readiness: WorkReadiness,
+    /// Set for the duration of one Prepare-and-run click so a repeat cannot start again (`#362`).
+    pub(super) prepare_and_run_busy: bool,
     pub(super) peer_listen_edit: String,
     pub(super) relay_ttl_edit: String,
     pub(super) invite_msg: Option<String>,
@@ -254,6 +256,7 @@ impl AiraDesktopApp {
             work_compare_a: String::new(),
             work_compare_b: String::new(),
             work_readiness,
+            prepare_and_run_busy: false,
             peer_listen_edit,
             relay_ttl_edit,
             invite_msg: None,
