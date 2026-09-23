@@ -40,8 +40,8 @@ Core що «вирішує задачі» замість CSU contracts
 | V | [`phase-v-plan.md`](phase-v-plan.md) + [`repair-package-1.md`](repair-package-1.md) | `#323`–`#330` | **DONE** @ RFC-0208 (`#323`–`#330`; QUEUE V closed) |
 | W | [`phase-w-plan.md`](phase-w-plan.md) + [`repair-package-1.md`](repair-package-1.md) | `#331`–`#342` | **DONE** @ RFC-0215 (**QUEUE W closed**; handoff Pack 2 → Phase X `#343`–`#358` DONE @ RFC-0226; QUEUE X closed) |
 | X | [`phase-x-plan.md`](phase-x-plan.md) | `#343`–`#358` | **DONE** @ RFC-0226 (**QUEUE X closed**; Pack 2 multi-model GUI; no OPEN X atoms; `aira-current.md` 2026-09-13) |
-| Y | [`phase-y-plan.md`](phase-y-plan.md) | `#359`–`#375` | **OPEN**; `#359`–`#363` DONE; `#364`–`#375` після K |
-| Audit K→A | [`audit-6007442-plan.md`](audit-6007442-plan.md) | `#376`–`#389` | **OPEN**; `#376`–`#381` DONE; перший рядок `#382` (K5); K перед `#364`; D/A після `#375` |
+| Y | [`phase-y-plan.md`](phase-y-plan.md) | `#359`–`#375` | **OPEN**; `#359`–`#363` DONE; K DONE; перший `#364` |
+| Audit K→A | [`audit-6007442-plan.md`](audit-6007442-plan.md) | `#376`–`#389` | **OPEN**; K `#376`–`#382` **DONE**; перший рядок `#364`; D/A після `#375` |
 
 ## Core reference
 

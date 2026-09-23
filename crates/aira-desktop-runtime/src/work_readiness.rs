@@ -437,15 +437,28 @@ fn generate_ready(
 
 /// What «Prepare and run» should bind. Empty means use the normal Run button (`#362`).
 ///
-/// Only exact `ollama list` names are returned. A display label is not a CLI name.
+/// `#382`: uses the same **applied** host-LLM gate as Run. Only models the Process
+/// executor can run are considered; then exact `ollama list` names are collected for
+/// legs that still need a slot. A display label is not a CLI name.
 pub fn prepare_and_run_cli_names(
-    host_ok: bool,
+    settings: &DesktopSettings,
+    applied: Option<&AppliedHostLlm>,
     text_blank: bool,
     busy: bool,
     preference: &WorkExecutorPreference,
     entries: &[CatalogEntry],
     listed_cli_names: &[String],
 ) -> Option<Vec<String>> {
+    let host_ok = match applied {
+        Some(a) if a.backend != LlmBackend::Process => false,
+        Some(a) => {
+            let mut owned = settings.clone();
+            owned.llm_backend = LlmBackend::Process;
+            owned.llm_ollama_model = a.ollama_model.clone();
+            evaluate_host_llm_gate(&owned).ok
+        }
+        None => evaluate_host_llm_gate(settings).ok,
+    };
     if !host_ok || text_blank || busy {
         return None;
     }
@@ -469,14 +482,15 @@ pub fn prepare_and_run_cli_names(
     };
     let mut needed = Vec::new();
     for model_ref in selected {
+        // Same Process rule as `generate_ready`: local files never become prepare targets.
+        if !host_ollama_model_ref(&model_ref) {
+            return None;
+        }
         if entries
             .iter()
             .any(|e| e.model_ref == model_ref && e.available)
         {
             continue;
-        }
-        if !model_ref.starts_with("aira:model:ollama-") {
-            return None;
         }
         let cli = listed_cli_names.iter().find_map(|n| {
             let n = n.trim();
@@ -932,15 +946,21 @@ mod tests {
 
     #[test]
     fn prepare_and_run_offers_exact_cli_name_only() {
+        let _g = isolated();
+        let dir = tempdir().unwrap();
+        let s = write_host_llm(dir.path(), "kept-tip:latest");
         let cli = "model-b:latest";
         let model_ref = aira_flow::host_ollama_model_ref(cli);
         let pref = WorkExecutorPreference::Required(model_ref.clone());
-        let names = prepare_and_run_cli_names(true, false, false, &pref, &[], &[cli.into()])
+        let names = prepare_and_run_cli_names(&s, None, false, false, &pref, &[], &[cli.into()])
             .expect("exact list name");
         assert_eq!(names, vec![cli.to_string()]);
-        assert!(prepare_and_run_cli_names(true, false, true, &pref, &[], &[cli.into()]).is_none());
+        assert!(
+            prepare_and_run_cli_names(&s, None, false, true, &pref, &[], &[cli.into()]).is_none()
+        );
         assert!(prepare_and_run_cli_names(
-            true,
+            &s,
+            None,
             false,
             false,
             &pref,
@@ -954,12 +974,19 @@ mod tests {
             available: true,
             ready_reason: "slotted".into(),
         };
-        assert!(
-            prepare_and_run_cli_names(true, false, false, &pref, &[slotted], &[cli.into()])
-                .is_none()
-        );
         assert!(prepare_and_run_cli_names(
-            true,
+            &s,
+            None,
+            false,
+            false,
+            &pref,
+            &[slotted],
+            &[cli.into()]
+        )
+        .is_none());
+        assert!(prepare_and_run_cli_names(
+            &s,
+            None,
             false,
             false,
             &WorkExecutorPreference::Auto,
@@ -967,6 +994,108 @@ mod tests {
             &[cli.into()],
         )
         .is_none());
+    }
+
+    /// `#382`: running Mock must not offer Prepare just because Settings were saved Process.
+    #[test]
+    fn prepare_and_run_respects_applied_mock_like_run() {
+        let _g = isolated();
+        let dir = tempdir().unwrap();
+        let saved = write_host_llm(dir.path(), "llama3:latest");
+        let cli = "model-b:latest";
+        let model_ref = aira_flow::host_ollama_model_ref(cli);
+        let pref = WorkExecutorPreference::Required(model_ref);
+        let applied = AppliedHostLlm {
+            backend: LlmBackend::Mock,
+            ollama_model: None,
+        };
+        assert!(
+            prepare_and_run_cli_names(
+                &saved,
+                Some(&applied),
+                false,
+                false,
+                &pref,
+                &[],
+                &[cli.into()]
+            )
+            .is_none(),
+            "Prepare must not open when Run would require restart"
+        );
+        let applied_process = AppliedHostLlm {
+            backend: LlmBackend::Process,
+            ollama_model: Some("llama3:latest".into()),
+        };
+        assert_eq!(
+            prepare_and_run_cli_names(
+                &saved,
+                Some(&applied_process),
+                false,
+                false,
+                &pref,
+                &[],
+                &[cli.into()],
+            )
+            .as_deref(),
+            Some([cli.to_string()].as_slice())
+        );
+    }
+
+    /// `#382`: Compare file + Ollama must not prepare B when A cannot run on Process.
+    #[test]
+    fn prepare_and_run_compare_rejects_local_file_leg() {
+        let _g = isolated();
+        let dir = tempdir().unwrap();
+        let s = write_host_llm(dir.path(), "llama3:latest");
+        let cli_b = "model-b:latest";
+        let ref_b = aira_flow::host_ollama_model_ref(cli_b);
+        let file_a = "aira:model:file-weights-a".to_string();
+        let file_entry = CatalogEntry {
+            model_ref: file_a.clone(),
+            verified: true,
+            available: true,
+            ready_reason: "prepared file".into(),
+        };
+        let pref = WorkExecutorPreference::Compare {
+            a: file_a,
+            b: ref_b.clone(),
+        };
+        assert!(
+            prepare_and_run_cli_names(
+                &s,
+                None,
+                false,
+                false,
+                &pref,
+                &[file_entry],
+                &[cli_b.into()],
+            )
+            .is_none(),
+            "available file leg must not unlock Prepare for B"
+        );
+        // Both Ollama legs: A slotted, B needs CLI → only B.
+        let cli_a = "model-a:latest";
+        let ref_a = aira_flow::host_ollama_model_ref(cli_a);
+        let slotted_a = CatalogEntry {
+            model_ref: ref_a.clone(),
+            verified: false,
+            available: true,
+            ready_reason: "slotted".into(),
+        };
+        let pref_ok = WorkExecutorPreference::Compare { a: ref_a, b: ref_b };
+        assert_eq!(
+            prepare_and_run_cli_names(
+                &s,
+                None,
+                false,
+                false,
+                &pref_ok,
+                &[slotted_a],
+                &[cli_a.into(), cli_b.into()],
+            )
+            .as_deref(),
+            Some([cli_b.to_string()].as_slice())
+        );
     }
 
     #[test]
@@ -1047,7 +1176,8 @@ mod tests {
             .iter()
             .any(|e| e.model_ref == ref_b && e.available));
         assert!(prepare_and_run_cli_names(
-            true,
+            &write_host_llm(dir.path(), "model-a:latest"),
+            None,
             false,
             false,
             &WorkExecutorPreference::Required(ref_b),

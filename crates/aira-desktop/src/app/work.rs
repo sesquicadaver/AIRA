@@ -217,13 +217,16 @@ impl AiraDesktopApp {
     }
 
     /// Exact CLI names for «Prepare and run», or `None` when Run is the right control (`#362`).
+    ///
+    /// `#382`: same applied executor gate as Run — Mock≠Process and Compare file legs
+    /// cannot open Prepare when submit would refuse.
     pub(super) fn prepare_and_run_names(&self) -> Option<Vec<String>> {
-        let host_ok = aira_desktop_runtime::evaluate_host_llm_gate(&self.settings).ok;
         let busy = self.async_jobs.work_inflight()
             || self.async_jobs.lifecycle_inflight()
             || self.async_jobs.catalog_mutate_inflight();
         aira_desktop_runtime::prepare_and_run_cli_names(
-            host_ok,
+            &self.settings,
+            self.applied_host_for_readiness().as_ref(),
             self.problem_text.trim().is_empty(),
             busy,
             &self.work_preference(),

@@ -1,9 +1,9 @@
 # Audit gate + post-Y linear plan (`6007442`)
 
-**Статус:** OPEN. `#376`–`#381` DONE. Перший рядок виконання — `#382` (K5).  
+**Статус:** OPEN (Y tail + D/A). Блок K `#376`–`#382` **DONE**. Перший рядок виконання — `#364`.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md).  
 **Джерело:** [`p-only/AIRA-full-audit-6007442-20260923.md`](../../p-only/AIRA-full-audit-6007442-20260923.md) (поза git). Перевірений `main`: `6007442`.  
-**Зв’язок із Phase Y:** `#359`–`#363` **DONE**. `#364`–`#375` лишаються OPEN, але **не стартують**, доки блок K (`#376`–`#382`) не DONE.  
+**Зв’язок із Phase Y:** `#359`–`#363` **DONE**. K **DONE**. `#364`–`#375` OPEN.  
 **Не входить:** marketplace, ratings GUI, новий LLM-провайдер, Research Plane, встановлення Ollama, заміна egui.
 
 Лінійність: один рядок — один PR. Не паралельний план поруч із Y.
@@ -33,7 +33,7 @@
 | 379 | **DONE.** CLI-ім’я лише з перевіреної прив’язки; `host_ollama_model_ref(cli)==model_ref`; pointer = locator | пошкоджений pointer видимий; Make default не створює bind B | `#364` first-row |
 | 380 | **DONE.** Каталог у фоновому snapshot; render = lookup, не O(N×S) I/O на кадр | Work/Settings не читають tip/cache на кожен paint | метадані HTTP |
 | 381 | **DONE.** Prepare-and-run = один async job (slot → admit → submit), один inflight | UI не блокується; повтор не стартує другу роботу | фільтр списку |
-| 382 | Одна оцінка **applied** executor + усі вибрані моделі; потім «кому потрібен slot» | Mock≠Process і Compare file+A/B узгоджені з Run; негативний тест кнопки→submit | повний `#367` E2E |
+| 382 | **DONE.** Одна оцінка **applied** executor + усі вибрані моделі; потім «кому потрібен slot» | Mock≠Process і Compare file+A/B узгоджені з Run; негативний тест кнопки→submit | повний `#367` E2E |
 
 ## Phase Y — хвіст після K (`#364`–`#375`)
 
