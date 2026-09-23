@@ -8,6 +8,9 @@
 //! `#368`: HTTP `GET /api/tags` metadata parse — missing JSON fields stay
 //! [`OllamaJsonField::Unknown`]. Never invent boolean `false` / empty-known
 //! for locality or capabilities when the key is absent.
+//!
+//! `#369`: `POST /api/show` when any fitness field is still Unknown after tags
+//! (capabilities **or** locality) — not only when capabilities are missing.
 
 use std::io::{Read, Write};
 use std::net::TcpStream;
@@ -216,6 +219,13 @@ pub enum OllamaJsonField<T> {
     Known(T),
 }
 
+impl<T> Default for OllamaJsonField<T> {
+    /// Default is Unknown — never invent Known empty / false.
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
+
 impl<T> OllamaJsonField<T> {
     /// True when the API did not supply this field.
     pub fn is_unknown(&self) -> bool {
@@ -285,53 +295,97 @@ pub fn ollama_tags_model_names(models: &[OllamaTagsModel]) -> Vec<String> {
 /// Uses [`effective_ollama_host`]. Only `http://` bases are supported here (no TLS).
 /// Timeout applies to connect and read. Body larger than [`OLLAMA_TAGS_MAX_BYTES`] fails closed.
 pub fn fetch_ollama_tags_at(host: &str, timeout: Duration) -> Result<Vec<OllamaTagsModel>> {
-    let base = effective_ollama_host(Some(host));
-    let (tcp_addr, host_header) = ollama_http_authority(&base)?;
-    let addr = crate::health::resolve_listen(&tcp_addr)
-        .with_context(|| format!("resolve Ollama tags endpoint {tcp_addr}"))?;
-    let mut stream = TcpStream::connect_timeout(&addr, timeout)
-        .with_context(|| format!("connect Ollama /api/tags at {tcp_addr}"))?;
-    stream.set_read_timeout(Some(timeout))?;
-    stream.set_write_timeout(Some(timeout))?;
-    let req = format!(
-        "GET /api/tags HTTP/1.1\r\nHost: {host_header}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
-    );
-    stream.write_all(req.as_bytes())?;
-    let mut buf = Vec::new();
-    let mut chunk = [0u8; 8192];
-    loop {
-        match stream.read(&mut chunk) {
-            Ok(0) => break,
-            Ok(n) => {
-                if buf.len().saturating_add(n) > OLLAMA_TAGS_MAX_BYTES {
-                    bail!(
-                        "Ollama /api/tags body exceeds {OLLAMA_TAGS_MAX_BYTES} bytes (fail-closed)"
-                    );
-                }
-                buf.extend_from_slice(&chunk[..n]);
-            }
-            Err(e)
-                if e.kind() == std::io::ErrorKind::WouldBlock
-                    || e.kind() == std::io::ErrorKind::TimedOut =>
-            {
-                bail!("Ollama /api/tags timed out after {}ms", timeout.as_millis());
-            }
-            Err(e) => return Err(e).context("read Ollama /api/tags"),
-        }
-    }
-    let (status, payload) = parse_ollama_http_response(&buf)?;
-    if !(200..300).contains(&status) {
-        bail!(
-            "Ollama /api/tags HTTP {status}: {}",
-            payload.chars().take(200).collect::<String>()
-        );
-    }
+    let payload = ollama_http_json(host, "GET", "/api/tags", None, timeout)?;
     parse_ollama_tags_json(&payload)
 }
 
 /// Same as [`fetch_ollama_tags_at`] with the default Desktop endpoint.
 pub fn fetch_ollama_tags(timeout: Duration) -> Result<Vec<OllamaTagsModel>> {
     fetch_ollama_tags_at(&effective_ollama_host(None), timeout)
+}
+
+/// Fields from `POST /api/show` used to fill Unknown fitness metadata (`#369`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct OllamaShowFields {
+    pub remote_host: OllamaJsonField<String>,
+    pub remote_model: OllamaJsonField<String>,
+    pub capabilities: OllamaJsonField<Vec<String>>,
+}
+
+/// True when any fitness field is still Unknown after `/api/tags` (`#369`).
+///
+/// Locality (`remote_host` / `remote_model`) and `capabilities` are both
+/// evaluation inputs. Known capabilities with Unknown locality still need show.
+pub fn ollama_model_needs_show(model: &OllamaTagsModel) -> bool {
+    model.capabilities.is_unknown()
+        || model.remote_host.is_unknown()
+        || model.remote_model.is_unknown()
+}
+
+/// Parse `POST /api/show` JSON (`#369`). Missing fields stay Unknown.
+pub fn parse_ollama_show_json(raw: &str) -> Result<OllamaShowFields> {
+    let v: Value = serde_json::from_str(raw).context("parse /api/show JSON")?;
+    let obj = v
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("/api/show root is not an object"))?;
+    Ok(OllamaShowFields {
+        remote_host: optional_string_field(obj.get("remote_host")),
+        remote_model: optional_string_field(obj.get("remote_model")),
+        capabilities: optional_string_list_field(obj.get("capabilities")),
+    })
+}
+
+/// Fill only Unknown tags fields from show; never overwrite Known (`#369`).
+pub fn merge_tags_with_show(tags: &OllamaTagsModel, show: &OllamaShowFields) -> OllamaTagsModel {
+    OllamaTagsModel {
+        name: tags.name.clone(),
+        digest: tags.digest.clone(),
+        size: tags.size.clone(),
+        remote_host: fill_unknown(&tags.remote_host, &show.remote_host),
+        remote_model: fill_unknown(&tags.remote_model, &show.remote_model),
+        capabilities: fill_unknown(&tags.capabilities, &show.capabilities),
+    }
+}
+
+/// `POST {host}/api/show` for one CLI name (`#369`).
+pub fn fetch_ollama_show_at(
+    host: &str,
+    model_name: &str,
+    timeout: Duration,
+) -> Result<OllamaShowFields> {
+    let name = model_name.trim();
+    if name.is_empty() {
+        bail!("/api/show requires a non-empty model name");
+    }
+    let body = serde_json::to_vec(&serde_json::json!({ "name": name }))
+        .context("serialize /api/show body")?;
+    let payload = ollama_http_json(host, "POST", "/api/show", Some(body.as_slice()), timeout)?;
+    parse_ollama_show_json(&payload)
+}
+
+/// If fitness fields are incomplete, call `/api/show` and merge (`#369`).
+///
+/// When [`ollama_model_needs_show`] is false, returns `tags` unchanged (no HTTP).
+pub fn enrich_ollama_model_with_show_at(
+    host: &str,
+    tags: &OllamaTagsModel,
+    timeout: Duration,
+) -> Result<OllamaTagsModel> {
+    if !ollama_model_needs_show(tags) {
+        return Ok(tags.clone());
+    }
+    let show = fetch_ollama_show_at(host, &tags.name, timeout)?;
+    Ok(merge_tags_with_show(tags, &show))
+}
+
+fn fill_unknown<T: Clone>(
+    current: &OllamaJsonField<T>,
+    incoming: &OllamaJsonField<T>,
+) -> OllamaJsonField<T> {
+    match current {
+        OllamaJsonField::Known(_) => current.clone(),
+        OllamaJsonField::Unknown => incoming.clone(),
+    }
 }
 
 fn optional_string_field(v: Option<&Value>) -> OllamaJsonField<String> {
@@ -374,12 +428,12 @@ fn optional_string_list_field(v: Option<&Value>) -> OllamaJsonField<Vec<String>>
     }
 }
 
-/// `http://host:port[/…]` → `(host:port, Host header)`. HTTPS is out of scope for `#368`.
+/// `http://host:port[/…]` → `(host:port, Host header)`. HTTPS is out of scope for `#368`/`#369`.
 fn ollama_http_authority(base: &str) -> Result<(String, String)> {
     let trimmed = base.trim().trim_end_matches('/');
     let rest = trimmed.strip_prefix("http://").ok_or_else(|| {
         anyhow::anyhow!(
-            "Ollama /api/tags requires http:// base (got {base}); TLS endpoints are out of #368"
+            "Ollama HTTP API requires http:// base (got {base}); TLS endpoints are out of #368/#369"
         )
     })?;
     let authority = rest
@@ -389,6 +443,67 @@ fn ollama_http_authority(base: &str) -> Result<(String, String)> {
         .filter(|s| !s.is_empty())
         .ok_or_else(|| anyhow::anyhow!("Ollama base missing host: {base}"))?;
     Ok((authority.to_string(), authority.to_string()))
+}
+
+fn ollama_http_json(
+    host: &str,
+    method: &str,
+    path: &str,
+    body: Option<&[u8]>,
+    timeout: Duration,
+) -> Result<String> {
+    let base = effective_ollama_host(Some(host));
+    let (tcp_addr, host_header) = ollama_http_authority(&base)?;
+    let addr = crate::health::resolve_listen(&tcp_addr)
+        .with_context(|| format!("resolve Ollama {path} endpoint {tcp_addr}"))?;
+    let mut stream = TcpStream::connect_timeout(&addr, timeout)
+        .with_context(|| format!("connect Ollama {path} at {tcp_addr}"))?;
+    stream.set_read_timeout(Some(timeout))?;
+    stream.set_write_timeout(Some(timeout))?;
+    let mut req =
+        format!("{method} {path} HTTP/1.1\r\nHost: {host_header}\r\nAccept: application/json\r\n");
+    match body {
+        Some(bytes) => {
+            req.push_str("Content-Type: application/json\r\n");
+            req.push_str(&format!("Content-Length: {}\r\n", bytes.len()));
+            req.push_str("Connection: close\r\n\r\n");
+            let mut msg = req.into_bytes();
+            msg.extend_from_slice(bytes);
+            stream.write_all(&msg)?;
+        }
+        None => {
+            req.push_str("Connection: close\r\n\r\n");
+            stream.write_all(req.as_bytes())?;
+        }
+    }
+    let mut buf = Vec::new();
+    let mut chunk = [0u8; 8192];
+    loop {
+        match stream.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(n) => {
+                if buf.len().saturating_add(n) > OLLAMA_TAGS_MAX_BYTES {
+                    bail!("Ollama {path} body exceeds {OLLAMA_TAGS_MAX_BYTES} bytes (fail-closed)");
+                }
+                buf.extend_from_slice(&chunk[..n]);
+            }
+            Err(e)
+                if e.kind() == std::io::ErrorKind::WouldBlock
+                    || e.kind() == std::io::ErrorKind::TimedOut =>
+            {
+                bail!("Ollama {path} timed out after {}ms", timeout.as_millis());
+            }
+            Err(e) => return Err(e).context(format!("read Ollama {path}")),
+        }
+    }
+    let (status, payload) = parse_ollama_http_response(&buf)?;
+    if !(200..300).contains(&status) {
+        bail!(
+            "Ollama {path} HTTP {status}: {}",
+            payload.chars().take(200).collect::<String>()
+        );
+    }
+    Ok(payload)
 }
 
 fn parse_ollama_http_response(raw: &[u8]) -> Result<(u16, String)> {
@@ -591,6 +706,108 @@ koill/sentence-transformers:paraphrase-multilingual-minilm-l12-v2    3ee258ffc9f
         assert_eq!(rows[0].name, "phi:latest");
         assert!(rows[0].remote_host.is_unknown());
         assert!(rows[0].capabilities.is_unknown());
+    }
+
+    /// `#369`: capabilities known but locality Unknown still requires /api/show.
+    #[test]
+    fn show_needed_when_capabilities_known_but_locality_unknown() {
+        let with_caps = OllamaTagsModel {
+            name: "phi:latest".into(),
+            digest: OllamaJsonField::Known("d".into()),
+            size: OllamaJsonField::Known(1),
+            remote_host: OllamaJsonField::Unknown,
+            remote_model: OllamaJsonField::Unknown,
+            capabilities: OllamaJsonField::Known(vec!["completion".into()]),
+        };
+        assert!(
+            ollama_model_needs_show(&with_caps),
+            "missing locality must trigger show even when capabilities are known"
+        );
+
+        let complete = OllamaTagsModel {
+            name: "phi:latest".into(),
+            digest: OllamaJsonField::Known("d".into()),
+            size: OllamaJsonField::Known(1),
+            remote_host: OllamaJsonField::Known(String::new()),
+            remote_model: OllamaJsonField::Known(String::new()),
+            capabilities: OllamaJsonField::Known(vec!["completion".into()]),
+        };
+        assert!(!ollama_model_needs_show(&complete));
+    }
+
+    /// `#369`: enrich POSTs /api/show and fills Unknown locality without clobbering caps.
+    #[test]
+    fn enrich_calls_show_when_locality_missing() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::sync::{Arc, Mutex};
+        use std::thread;
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let seen = Arc::new(Mutex::new(Vec::<String>::new()));
+        let seen_bg = Arc::clone(&seen);
+        thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = vec![0u8; 4096];
+            let n = stream.read(&mut buf).unwrap_or(0);
+            let req = String::from_utf8_lossy(&buf[..n]).to_string();
+            seen_bg.lock().unwrap().push(req.clone());
+            assert!(
+                req.starts_with("POST /api/show"),
+                "expected show, got {req}"
+            );
+            let body = r#"{"remote_host":"https://ollama.com","remote_model":"kimi","capabilities":["completion","vision"]}"#;
+            let resp = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let _ = stream.write_all(resp.as_bytes());
+        });
+
+        let tags = OllamaTagsModel {
+            name: "kimi-k2.7-code:cloud".into(),
+            digest: OllamaJsonField::Known("e".into()),
+            size: OllamaJsonField::Known(320),
+            remote_host: OllamaJsonField::Unknown,
+            remote_model: OllamaJsonField::Unknown,
+            capabilities: OllamaJsonField::Known(vec!["completion".into()]),
+        };
+        let host = format!("http://{addr}");
+        let enriched =
+            enrich_ollama_model_with_show_at(&host, &tags, Duration::from_secs(2)).unwrap();
+        assert_eq!(
+            enriched.remote_host,
+            OllamaJsonField::Known("https://ollama.com".into())
+        );
+        assert_eq!(enriched.remote_model, OllamaJsonField::Known("kimi".into()));
+        assert_eq!(
+            enriched.capabilities,
+            OllamaJsonField::Known(vec!["completion".into()]),
+            "Known capabilities must not be overwritten by show"
+        );
+        assert!(!seen.lock().unwrap().is_empty());
+    }
+
+    /// `#369`: complete tags skip HTTP show.
+    #[test]
+    fn enrich_skips_show_when_fitness_fields_known() {
+        let tags = OllamaTagsModel {
+            name: "phi:latest".into(),
+            digest: OllamaJsonField::Unknown,
+            size: OllamaJsonField::Unknown,
+            remote_host: OllamaJsonField::Known(String::new()),
+            remote_model: OllamaJsonField::Known(String::new()),
+            capabilities: OllamaJsonField::Known(vec!["completion".into()]),
+        };
+        // No server — would fail if HTTP were attempted.
+        let out = enrich_ollama_model_with_show_at(
+            "http://127.0.0.1:1",
+            &tags,
+            Duration::from_millis(50),
+        )
+        .unwrap();
+        assert_eq!(out, tags);
     }
 
     /// Pack D / P2: hang script must fail-closed via kill+wait (no orphan sleep).
