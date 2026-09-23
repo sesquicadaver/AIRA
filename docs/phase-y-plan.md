@@ -2,7 +2,7 @@
 
 **Статус:** OPEN. `#359`–`#363` DONE. `#364`–`#375` OPEN, але **після** audit gate K (`#376`–`#382`).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md).  
-**Перший OPEN зараз:** `#376` — [`audit-6007442-plan.md`](audit-6007442-plan.md).  
+**Перший OPEN зараз:** `#377` — [`audit-6007442-plan.md`](audit-6007442-plan.md) (`#376` DONE).  
 **Джерело Y:** підтверджені дефекти на `9f3e642` і уточнення `p-only/aira-current.md` (2026-09-20). Поза git.  
 **Джерело gate K / D / A:** аудит `p-only/AIRA-full-audit-6007442-20260923.md` (2026-09-23). Поза git. Канон у репо — цей файл, audit-план і QUEUE.  
 **Не входить:** новий провайдер, встановлення Ollama, завантаження ваг, заміна egui, зміни `aira-core` (окрім K2b bind у sqlite path), сокети всередині ProcessBackend, Pack 3 (рейтинги).  
