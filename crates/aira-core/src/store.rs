@@ -74,9 +74,17 @@ pub(crate) fn bind_handle_open(
     handle: &Handle,
     descriptor: ObjectDescriptor,
 ) -> Result<ObjectDescriptor, CoreError> {
-    if descriptor.object_id != *handle.object_ref() {
+    bind_object_id(handle.object_ref(), descriptor)
+}
+
+/// Lookup / handle bind: stored descriptor id must equal the requested logical id (#186 / `#378`).
+pub(crate) fn bind_object_id(
+    requested: &AiraRef,
+    descriptor: ObjectDescriptor,
+) -> Result<ObjectDescriptor, CoreError> {
+    if descriptor.object_id != *requested {
         return Err(CoreError::HandleBindMismatch {
-            claimed: handle.object_ref().clone(),
+            claimed: requested.clone(),
             stored: descriptor.object_id,
         });
     }
@@ -116,7 +124,7 @@ impl ObjectStore for MemoryObjectStore {
             .cloned();
         match descriptor {
             None => Ok(None),
-            Some(d) => Ok(Some(verify_stored_descriptor(d)?)),
+            Some(d) => Ok(Some(bind_object_id(object_id, d)?)),
         }
     }
 }

@@ -12,7 +12,7 @@
 | `main` | Phase W `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed** @ [`phase-w-plan.md`](docs/phase-w-plan.md); Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** @ [`phase-x-plan.md`](docs/phase-x-plan.md) (Pack 2 GUI DONE; no OPEN X atoms); Phase V `#323`–`#330` **DONE** @ RFC-0208; **QUEUE V closed**; Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Audit gate K [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md) `#378`–`#382` **OPEN**; перший рядок `#378`. `#376`–`#377` **DONE**. Phase Y `#359`–`#363` **DONE**; `#364`–`#375` **OPEN** але **після K**. Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** |
+| Активна черга | Audit gate K [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md) `#379`–`#382` **OPEN**; перший рядок `#379`. `#376`–`#378` **DONE**. Phase Y `#359`–`#363` **DONE**; `#364`–`#375` **OPEN** але **після K**. Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** |
 
 ## Правила атомарності
 
@@ -987,7 +987,7 @@ W0 wiring + A0 (#331 DONE)
 
 План Y: [`docs/phase-y-plan.md`](docs/phase-y-plan.md).  
 План аудиту / gate: [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md).  
-**Перший OPEN зараз — `#378` (K2b), не `#364`.** `#376`–`#377` **DONE**. `#364`–`#375` стартують лише після `#382` DONE. Не Pack 3.
+**Перший OPEN зараз — `#379` (K3), не `#364`.** `#376`–`#378` **DONE**. `#364`–`#375` стартують лише після `#382` DONE. Не Pack 3.
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
@@ -1005,8 +1005,8 @@ W0 wiring + A0 (#331 DONE)
 |---|--------|---------|-----------------|-----------|------------------|
 | 376 | **DONE** | — | ~~Dependency firewall: ребро через `dep.pkg → id_to_name`; тести дефісів/alias~~ | `edges_from_resolve` бачить `aira-core → aira-node`; self-test ловить пропуск | зміна правил Core/CSU |
 | 377 | **DONE** | — | ~~CAS `resolve`: `descriptor.artifact_id == requested`; тест із іншим валідним підписаним B~~ | `resolve(A)` не повертає B | privacy policy |
-| 378 | **OPEN** | — | SQLite `get_by_object_id`: bind ID як у `open` | lookup(A) з чужим `object_id` → fail | новий store |
-| 379 | OPEN | — | CLI-ім’я лише з перевіреної прив’язки; `host_ollama_model_ref(cli)==model_ref` | пошкоджений pointer видимий; Make default не створює bind B | `#364` first-row |
+| 378 | **DONE** | — | ~~SQLite `get_by_object_id`: bind ID як у `open`~~ | lookup(A) з чужим `object_id` → fail | новий store |
+| 379 | **OPEN** | — | CLI-ім’я лише з перевіреної прив’язки; `host_ollama_model_ref(cli)==model_ref` | пошкоджений pointer видимий; Make default не створює bind B | `#364` first-row |
 | 380 | OPEN | — | Каталог у фоновому snapshot; render без O(N×S) I/O на кадр | Work/Settings не читають tip/cache на кожен paint | метадані HTTP |
 | 381 | OPEN | — | Prepare-and-run = один async job (slot → admit → submit), один inflight | UI не блокується; повтор без другого запуску | фільтр списку |
 | 382 | OPEN | — | Одна оцінка **applied** executor + усі вибрані моделі для Prepare-and-run | Mock≠Process і Compare узгоджені з Run; негативний тест кнопки→submit | повний `#367` E2E |
@@ -1044,13 +1044,13 @@ W0 wiring + A0 (#331 DONE)
 
 ### Наступний цикл
 
-**Перший OPEN: `#378` (K2b).** `#376`–`#377` **DONE**. `#364`–`#375` і `#383`–`#389` не стартують раніше свого місця в дереві.
+**Перший OPEN: `#379` (K3).** `#376`–`#378` **DONE**. `#364`–`#375` і `#383`–`#389` не стартують раніше свого місця в дереві.
 
 ```text
 #359 readiness … #363 CLI name (DONE)
   → #376 K1 firewall
     → #377 K2a CAS id (DONE)
-      → #378 K2b SQLite id
+      → #378 K2b SQLite id (DONE)
         → #379 K3 verified CLI
           → #380 K4a catalog snapshot
             → #381 K4b prepare async
@@ -1168,6 +1168,6 @@ P0 wiring (#266 DONE)
 | Pack 1 residual honesty (post-V audit) | [`docs/phase-w-plan.md`](docs/phase-w-plan.md); `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed** |
 | Pack 2 local multi-model GUI (aira-current 2026-09-13 + M1–M6) | [`docs/phase-x-plan.md`](docs/phase-x-plan.md); `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed**; no OPEN X atoms |
 | Вибір моделі (підтверджений аудит `9f3e642` + `aira-current.md` 2026-09-20) | [`docs/phase-y-plan.md`](docs/phase-y-plan.md); `#359`–`#363` **DONE**; `#364`–`#375` **OPEN після K** |
-| Повний аудит `6007442` (2026-09-23): K1–K5 + D + acceptance | [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md); `#376`–`#377` **DONE**; `#378`–`#382` **OPEN** (перед `#364`); `#383`–`#389` після `#375`; перший `#378` |
+| Повний аудит `6007442` (2026-09-23): K1–K5 + D + acceptance | [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md); `#376`–`#378` **DONE**; `#379`–`#382` **OPEN** (перед `#364`); `#383`–`#389` після `#375`; перший `#379` |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
