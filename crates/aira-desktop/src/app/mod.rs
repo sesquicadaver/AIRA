@@ -136,8 +136,6 @@ pub struct AiraDesktopApp {
     pub(super) work_compare_a: String,
     pub(super) work_compare_b: String,
     pub(super) work_readiness: WorkReadiness,
-    /// Set for the duration of one Prepare-and-run click so a repeat cannot start again (`#362`).
-    pub(super) prepare_and_run_busy: bool,
     pub(super) peer_listen_edit: String,
     pub(super) relay_ttl_edit: String,
     pub(super) invite_msg: Option<String>,
@@ -261,7 +259,6 @@ impl AiraDesktopApp {
             work_compare_a: String::new(),
             work_compare_b: String::new(),
             work_readiness,
-            prepare_and_run_busy: false,
             peer_listen_edit,
             relay_ttl_edit,
             invite_msg: None,
@@ -640,6 +637,10 @@ impl AiraDesktopApp {
                     self.clear_problem();
                 }
                 WorkJobEvent::Done(outcome) => {
+                    let was_prepare = self.async_jobs.take_prepare_and_run_flag();
+                    if was_prepare {
+                        self.refresh_model_catalog();
+                    }
                     match *outcome {
                         Ok(job) => {
                             self.work_result = Some(job.primary);
@@ -663,8 +664,16 @@ impl AiraDesktopApp {
                             self.request_status_refresh(ctx);
                         }
                         Err(e) => {
-                            self.last_problem =
-                                Some(UiProblem::from_submit_err(&e, self.ui_lang()));
+                            if was_prepare {
+                                self.last_problem = Some(UiProblem::new(
+                                    ErrorCode::WorkModelUnready,
+                                    self.ui_lang(),
+                                    Some(e),
+                                ));
+                            } else {
+                                self.last_problem =
+                                    Some(UiProblem::from_submit_err(&e, self.ui_lang()));
+                            }
                         }
                     }
                     // Phase T `#310`: Quit during submit → Stop→Close after submit settles.
