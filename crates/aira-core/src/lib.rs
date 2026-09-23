@@ -283,4 +283,38 @@ mod tests {
             Err(CoreError::HandleBindMismatch { .. })
         ));
     }
+
+    /// `#378`: row key A with a valid signed descriptor for B must not satisfy lookup(A).
+    #[test]
+    fn sqlite_get_by_object_id_rejects_foreign_signed_descriptor() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("objects.db");
+        let mut store = SqliteObjectStore::open(&path).unwrap();
+        let a = signed_problem("aira:problem:01SQLIDBINDA");
+        let b = signed_problem("aira:problem:01SQLIDBINDB");
+        let id_a = a.object_id.clone();
+        let id_b = b.object_id.clone();
+        store.create(a).unwrap();
+        store.create(b.clone()).unwrap();
+
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        let b_json = serde_json::to_string(&b).unwrap();
+        conn.execute(
+            "UPDATE objects SET descriptor_json = ?1 WHERE object_id = ?2",
+            rusqlite::params![b_json, id_a.as_str()],
+        )
+        .unwrap();
+
+        let reopened = SqliteObjectStore::open(&path).unwrap();
+        let err = reopened.get_by_object_id(&id_a).unwrap_err();
+        match err {
+            CoreError::HandleBindMismatch { claimed, stored } => {
+                assert_eq!(claimed, id_a);
+                assert_eq!(stored, id_b);
+            }
+            other => panic!("expected HandleBindMismatch, got {other:?}"),
+        }
+        let honest = reopened.get_by_object_id(&id_b).unwrap().unwrap();
+        assert_eq!(honest.object_id, id_b);
+    }
 }

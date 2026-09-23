@@ -7,7 +7,7 @@ use aira_object::{AiraRef, Handle, ObjectDescriptor};
 use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::error::CoreError;
-use crate::store::{bind_handle_open, verify_stored_descriptor, ObjectStore};
+use crate::store::{bind_handle_open, bind_object_id, ObjectStore};
 
 /// SQLite `objects` table schema token (migration smoke / doc anchor #143).
 pub const OBJECTS_SCHEMA_VERSION: u32 = 1;
@@ -178,7 +178,8 @@ impl ObjectStore for SqliteObjectStore {
             Some(j) => {
                 let descriptor =
                     serde_json::from_str(&j).map_err(|e| CoreError::Storage(e.to_string()))?;
-                Ok(Some(verify_stored_descriptor(descriptor)?))
+                // `#378`: a valid signature on B must not satisfy lookup(A).
+                Ok(Some(bind_object_id(object_id, descriptor)?))
             }
         }
     }
