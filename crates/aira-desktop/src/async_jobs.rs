@@ -849,20 +849,20 @@ impl AsyncDesktopJobs {
         true
     }
 
-    /// Non-blocking poll for a finished catalog job.
-    pub fn poll_catalog(&mut self) -> Option<Result<CatalogJobResult, String>> {
+    /// Non-blocking poll for a finished catalog job (kind captured before clear).
+    pub fn poll_catalog(&mut self) -> Option<(CatalogJobKind, Result<CatalogJobResult, String>)> {
         let rx = self.catalog_rx.as_ref()?;
         match rx.try_recv() {
             Ok(v) => {
+                let kind = self.catalog_kind.take().unwrap_or(CatalogJobKind::Scan);
                 self.catalog_rx = None;
-                self.catalog_kind = None;
-                Some(v)
+                Some((kind, v))
             }
             Err(TryRecvError::Empty) => None,
             Err(TryRecvError::Disconnected) => {
+                let kind = self.catalog_kind.take().unwrap_or(CatalogJobKind::Scan);
                 self.catalog_rx = None;
-                self.catalog_kind = None;
-                Some(Err("catalog worker disconnected".into()))
+                Some((kind, Err("catalog worker disconnected".into())))
             }
         }
     }

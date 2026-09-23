@@ -21,6 +21,53 @@ pub struct OllamaListEntry {
     pub name: String,
 }
 
+/// Freshness of the host `ollama list` after refresh (`#365`).
+///
+/// Distinguishes a successful empty list («відсутня») from a failed refresh that
+/// must keep the prior names («невідомо»).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum OllamaHostListFreshness {
+    /// Last successful list was empty, or no successful list yet.
+    #[default]
+    Absent,
+    /// Last successful list returned one or more names.
+    Present,
+    /// Last refresh failed; [`OllamaHostListSnapshot::names`] may still hold the prior snapshot.
+    Unknown,
+}
+
+/// Host list names plus freshness for Settings / Use Ollama (`#365`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct OllamaHostListSnapshot {
+    pub names: Vec<String>,
+    pub freshness: OllamaHostListFreshness,
+}
+
+/// Apply one refresh outcome without inventing or wiping names on failure.
+///
+/// - `Ok([])` → Absent (names cleared).
+/// - `Ok([…])` → Present.
+/// - `Err(_)` → Unknown, previous names preserved.
+pub fn apply_ollama_list_refresh(
+    previous: &OllamaHostListSnapshot,
+    outcome: Result<Vec<String>, String>,
+) -> OllamaHostListSnapshot {
+    match outcome {
+        Ok(names) if names.is_empty() => OllamaHostListSnapshot {
+            names: Vec::new(),
+            freshness: OllamaHostListFreshness::Absent,
+        },
+        Ok(names) => OllamaHostListSnapshot {
+            names,
+            freshness: OllamaHostListFreshness::Present,
+        },
+        Err(_) => OllamaHostListSnapshot {
+            names: previous.names.clone(),
+            freshness: OllamaHostListFreshness::Unknown,
+        },
+    }
+}
+
 /// Parse tabular `ollama list` stdout (header + whitespace columns).
 ///
 /// First column is the model name (`name:tag` or `org/name:tag`). Empty /
@@ -150,6 +197,34 @@ koill/sentence-transformers:paraphrase-multilingual-minilm-l12-v2    3ee258ffc9f
             resolve_ollama_bin(Some("  /usr/local/bin/ollama ")),
             PathBuf::from("/usr/local/bin/ollama")
         );
+    }
+
+    /// `#365`: failed refresh keeps names and marks Unknown.
+    #[test]
+    fn refresh_error_keeps_snapshot_as_unknown() {
+        let prev = OllamaHostListSnapshot {
+            names: vec!["phi:latest".into(), "llama3:latest".into()],
+            freshness: OllamaHostListFreshness::Present,
+        };
+        let failed = apply_ollama_list_refresh(&prev, Err("spawn failed".into()));
+        assert_eq!(failed.names, prev.names);
+        assert_eq!(failed.freshness, OllamaHostListFreshness::Unknown);
+    }
+
+    /// `#365`: successful empty list is Absent (not Unknown).
+    #[test]
+    fn refresh_empty_ok_is_absent() {
+        let prev = OllamaHostListSnapshot {
+            names: vec!["phi:latest".into()],
+            freshness: OllamaHostListFreshness::Present,
+        };
+        let empty_ok = apply_ollama_list_refresh(&prev, Ok(Vec::new()));
+        assert!(empty_ok.names.is_empty());
+        assert_eq!(empty_ok.freshness, OllamaHostListFreshness::Absent);
+
+        let present = apply_ollama_list_refresh(&empty_ok, Ok(vec!["b:latest".into()]));
+        assert_eq!(present.names, vec!["b:latest".to_string()]);
+        assert_eq!(present.freshness, OllamaHostListFreshness::Present);
     }
 
     /// Pack D / P2: hang script must fail-closed via kill+wait (no orphan sleep).

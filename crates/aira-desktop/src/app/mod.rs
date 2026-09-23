@@ -13,11 +13,12 @@ mod work;
 use std::path::PathBuf;
 
 use aira_desktop_runtime::{
-    evaluate_work_readiness, load_or_create_settings, load_or_create_ui_prefs,
-    load_system_snapshot, project_shared_catalog, sync_autostart_from_settings, write_ui_prefs,
-    CatalogProjectionRow, DesktopPaths, DesktopSettings, LifecycleStatus, LlmBackend,
-    ModelCatalogSnapshot, ModelFact, ModelStorageSnapshot, ModelTripleSnapshot,
-    NetworkMeshSnapshot, SystemSnapshot, UiLang, UiPrefs, WorkExecutorPreference, WorkReadiness,
+    apply_ollama_list_refresh, evaluate_work_readiness, load_or_create_settings,
+    load_or_create_ui_prefs, load_system_snapshot, project_shared_catalog,
+    sync_autostart_from_settings, write_ui_prefs, CatalogProjectionRow, DesktopPaths,
+    DesktopSettings, LifecycleStatus, LlmBackend, ModelCatalogSnapshot, ModelFact,
+    ModelStorageSnapshot, ModelTripleSnapshot, NetworkMeshSnapshot, OllamaHostListFreshness,
+    OllamaHostListSnapshot, SystemSnapshot, UiLang, UiPrefs, WorkExecutorPreference, WorkReadiness,
     DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
@@ -121,6 +122,8 @@ pub struct AiraDesktopApp {
     pub(super) catalog_artifact_edit: String,
     /// Host `ollama list` names for Settings process bind (not AIRA catalog).
     pub(super) ollama_models: Vec<String>,
+    /// `#365`: Absent vs Present vs Unknown (error keeps prior names).
+    pub(super) ollama_list_freshness: OllamaHostListFreshness,
     /// Host name chosen for a request. Does not write the default tip.
     pub(super) ollama_pick: Option<String>,
     /// First “Use Ollama” while the list is still empty: bind after the list returns.
@@ -249,6 +252,7 @@ impl AiraDesktopApp {
             catalog_msg: None,
             catalog_artifact_edit: String::new(),
             ollama_models: Vec::new(),
+            ollama_list_freshness: OllamaHostListFreshness::Absent,
             ollama_pick: None,
             ollama_bind_pending: false,
             ollama_msg: None,
@@ -534,6 +538,18 @@ impl AiraDesktopApp {
         }
     }
 
+    /// Apply one host-list refresh outcome (`#365`): keep names on Err; Absent on empty Ok.
+    pub(super) fn apply_ollama_list_outcome(&mut self, outcome: Result<Vec<String>, String>) {
+        let previous = OllamaHostListSnapshot {
+            names: self.ollama_models.clone(),
+            freshness: self.ollama_list_freshness,
+        };
+        let next = apply_ollama_list_refresh(&previous, outcome);
+        self.ollama_models = next.names;
+        self.ollama_list_freshness = next.freshness;
+        self.rebuild_catalog_projection();
+    }
+
     /// Finish a pending Use Ollama bind once `ollama list` has returned.
     pub(super) fn finish_pending_ollama_bind(&mut self) {
         if !self.ollama_bind_pending {
@@ -546,11 +562,15 @@ impl AiraDesktopApp {
         ) {
             Some(m) => self.bind_ollama_process(Some(m)),
             None => {
-                // `#364`: never invent first-row; ask for an exact name when the list exists.
-                self.ollama_msg = Some(if self.ollama_models.is_empty() {
-                    self.labels().settings_ollama_empty.into()
-                } else {
-                    self.labels().settings_ollama_need_exact_cli.into()
+                // `#364`/`#365`: never invent first-row; Absent ≠ Unknown.
+                self.ollama_msg = Some(match self.ollama_list_freshness {
+                    OllamaHostListFreshness::Absent => self.labels().settings_ollama_empty.into(),
+                    OllamaHostListFreshness::Unknown => {
+                        self.labels().settings_ollama_unknown.into()
+                    }
+                    OllamaHostListFreshness::Present => {
+                        self.labels().settings_ollama_need_exact_cli.into()
+                    }
                 });
             }
         }
@@ -718,15 +738,18 @@ impl AiraDesktopApp {
             }
         }
         // Pack D: catalog / ollama-list workers.
-        if let Some(outcome) = self.async_jobs.poll_catalog() {
-            match outcome {
-                Ok(CatalogJobResult::Scan(snap))
-                | Ok(CatalogJobResult::Prepare(snap))
-                | Ok(CatalogJobResult::Verify(snap))
-                | Ok(CatalogJobResult::Add(snap)) => {
+        if let Some((kind, outcome)) = self.async_jobs.poll_catalog() {
+            match (kind, outcome) {
+                (
+                    _,
+                    Ok(CatalogJobResult::Scan(snap))
+                    | Ok(CatalogJobResult::Prepare(snap))
+                    | Ok(CatalogJobResult::Verify(snap))
+                    | Ok(CatalogJobResult::Add(snap)),
+                ) => {
                     self.apply_catalog_snapshot(snap);
                 }
-                Ok(CatalogJobResult::Select { chosen, snap }) => {
+                (_, Ok(CatalogJobResult::Select { chosen, snap })) => {
                     self.catalog_highlight = Some(chosen.clone());
                     self.catalog_auto = false;
                     self.apply_catalog_snapshot(snap);
@@ -735,11 +758,13 @@ impl AiraDesktopApp {
                         self.catalog_msg = Some(self.labels().catalog_not_prepare.into());
                     }
                 }
-                Ok(CatalogJobResult::OllamaList(names)) => {
-                    self.ollama_models = names;
-                    self.rebuild_catalog_projection();
+                (_, Ok(CatalogJobResult::OllamaList(names))) => {
+                    let empty = names.is_empty();
+                    self.apply_ollama_list_outcome(Ok(names));
                     if self.ollama_bind_pending {
                         self.finish_pending_ollama_bind();
+                    } else if empty {
+                        self.ollama_msg = Some(self.labels().settings_ollama_empty.into());
                     } else {
                         self.ollama_msg = Some(format!(
                             "{} ({})",
@@ -748,15 +773,15 @@ impl AiraDesktopApp {
                         ));
                     }
                 }
-                Err(e) => {
-                    if e.contains("ollama") || e.contains("list") {
-                        self.ollama_models.clear();
-                        self.rebuild_catalog_projection();
-                        self.ollama_bind_pending = false;
-                        self.ollama_msg = Some(e);
-                    } else {
-                        self.catalog_msg = Some(e);
-                    }
+                (CatalogJobKind::OllamaList, Err(e)) => {
+                    // `#365`: keep prior snapshot; mark Unknown — do not clear names.
+                    self.apply_ollama_list_outcome(Err(e.clone()));
+                    self.ollama_bind_pending = false;
+                    self.ollama_msg =
+                        Some(format!("{} ({e})", self.labels().settings_ollama_unknown));
+                }
+                (_, Err(e)) => {
+                    self.catalog_msg = Some(e);
                 }
             }
         }

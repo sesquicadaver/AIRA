@@ -81,8 +81,8 @@ pub use node_http::{
     submit_timeout_for,
 };
 pub use ollama::{
-    list_ollama_models, parse_ollama_list_stdout, resolve_ollama_bin, OllamaListEntry,
-    DEFAULT_OLLAMA_BIN,
+    apply_ollama_list_refresh, list_ollama_models, parse_ollama_list_stdout, resolve_ollama_bin,
+    OllamaHostListFreshness, OllamaHostListSnapshot, OllamaListEntry, DEFAULT_OLLAMA_BIN,
 };
 pub use paths::DesktopPaths;
 pub use peer::PeerPidRecordView;
