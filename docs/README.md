@@ -41,7 +41,7 @@ Core що «вирішує задачі» замість CSU contracts
 | W | [`phase-w-plan.md`](phase-w-plan.md) + [`repair-package-1.md`](repair-package-1.md) | `#331`–`#342` | **DONE** @ RFC-0215 (**QUEUE W closed**; handoff Pack 2 → Phase X `#343`–`#358` DONE @ RFC-0226; QUEUE X closed) |
 | X | [`phase-x-plan.md`](phase-x-plan.md) | `#343`–`#358` | **DONE** @ RFC-0226 (**QUEUE X closed**; Pack 2 multi-model GUI; no OPEN X atoms; `aira-current.md` 2026-09-13) |
 | Y | [`phase-y-plan.md`](phase-y-plan.md) | `#359`–`#375` | **OPEN**; `#359`–`#363` DONE; `#364`–`#375` після K |
-| Audit K→A | [`audit-6007442-plan.md`](audit-6007442-plan.md) | `#376`–`#389` | **OPEN**; `#376` DONE; перший рядок `#377` (K2a); K перед `#364`; D/A після `#375` |
+| Audit K→A | [`audit-6007442-plan.md`](audit-6007442-plan.md) | `#376`–`#389` | **OPEN**; `#376`–`#377` DONE; перший рядок `#378` (K2b); K перед `#364`; D/A після `#375` |
 
 ## Core reference
 

@@ -235,6 +235,55 @@ mod tests {
         assert!(matches!(err, ArtifactError::InvalidSignature(_)));
     }
 
+    /// `#377`: index key A pointing at a valid signed descriptor for B must not resolve as A.
+    #[test]
+    fn resolve_rejects_foreign_signed_descriptor_under_requested_id() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = CasArtifactStore::open(dir.path()).unwrap();
+        let payload = b"shared-cas-bytes";
+        let id_a =
+            "aira:artifact:sha256_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa01";
+        let id_b =
+            "aira:artifact:sha256_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb02";
+        let desc_a = descriptor_for(payload, id_a);
+        let desc_b = descriptor_for(payload, id_b);
+        assert_eq!(desc_a.content_hash, desc_b.content_hash);
+        assert_ne!(desc_a.artifact_id, desc_b.artifact_id);
+        store.publish(desc_a.clone(), payload).unwrap();
+        store.publish(desc_b.clone(), payload).unwrap();
+
+        let index_path = dir.path().join("index.json");
+        let raw = std::fs::read_to_string(&index_path).unwrap();
+        let mut file: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        let artifacts = file.get_mut("artifacts").unwrap().as_object_mut().unwrap();
+        let b_entry = artifacts.get(id_b).unwrap().clone();
+        artifacts.insert(id_a.to_string(), b_entry);
+        std::fs::write(&index_path, serde_json::to_string_pretty(&file).unwrap()).unwrap();
+
+        // Drop per-id sidecar for A so only the tampered index entry is consulted for identity.
+        let a_sidecar = dir
+            .path()
+            .join("descriptors")
+            .join(format!("{}.json", hex::encode(id_a.as_bytes())));
+        if a_sidecar.is_file() {
+            std::fs::remove_file(&a_sidecar).unwrap();
+        }
+
+        let reopened = CasArtifactStore::open(dir.path()).unwrap();
+        let err = reopened.resolve(&desc_a.artifact_id).unwrap_err();
+        match err {
+            ArtifactError::IdMismatch { requested, stored } => {
+                assert_eq!(requested, desc_a.artifact_id);
+                assert_eq!(stored, desc_b.artifact_id);
+            }
+            other => panic!("expected IdMismatch, got {other:?}"),
+        }
+        // Honest B still resolves.
+        let (got_b, bytes) = reopened.resolve(&desc_b.artifact_id).unwrap();
+        assert_eq!(got_b.artifact_id, desc_b.artifact_id);
+        assert_eq!(bytes, payload);
+    }
+
     #[test]
     fn resolve_rejects_tampered_sidecar_and_cas_bytes() {
         let dir = tempfile::tempdir().unwrap();
