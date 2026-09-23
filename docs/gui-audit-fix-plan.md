@@ -23,7 +23,7 @@ Status: **done** in this patch (`projection_file_source_omits_ollama_rows`, `use
 
 - Settings and Work share one projection: name, source, availability. `model_ref` and hash stay in details.
 - Choosing a model for a request does not change the default tip. Make-default is a separate action.
-- Ollama list has an explicit loading state. The first “Use Ollama” finishes the bind after the list returns.
+- Ollama list has an explicit loading state. “Use Ollama” binds only an exact pick or exact saved name — never the first list row (`#364`).
 - The local-file source does not list Ollama rows or offer a Prepare that is designed to fail.
 - The verification document path sits in the add-file step, not inside closed technical details.
 

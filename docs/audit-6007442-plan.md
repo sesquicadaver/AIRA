@@ -1,9 +1,9 @@
 # Audit gate + post-Y linear plan (`6007442`)
 
-**Статус:** OPEN (Y tail + D/A). Блок K `#376`–`#382` **DONE**. Перший рядок виконання — `#364`.  
+**Статус:** OPEN (Y tail + D/A). Блок K `#376`–`#382` **DONE**. Перший рядок виконання — `#365`.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md).  
 **Джерело:** [`p-only/AIRA-full-audit-6007442-20260923.md`](../../p-only/AIRA-full-audit-6007442-20260923.md) (поза git). Перевірений `main`: `6007442`.  
-**Зв’язок із Phase Y:** `#359`–`#363` **DONE**. K **DONE**. `#364`–`#375` OPEN.  
+**Зв’язок із Phase Y:** `#359`–`#364` **DONE**. K **DONE**. `#365`–`#375` OPEN.  
 **Не входить:** marketplace, ratings GUI, новий LLM-провайдер, Research Plane, встановлення Ollama, заміна egui.
 
 Лінійність: один рядок — один PR. Не паралельний план поруч із Y.

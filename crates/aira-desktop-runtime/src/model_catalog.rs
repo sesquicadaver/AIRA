@@ -405,8 +405,9 @@ pub fn exact_cli_name_for_bind(
 
 /// Bind target for “Use Ollama” when a name is already known.
 ///
-/// `None` means the host list has not returned yet — do not treat that as “no models”.
-/// A pick that is only a display label is never returned as a CLI name (`#363`).
+/// `None` means wait for the host list, or refuse — never invent a CLI name from
+/// the first `ollama list` row (`#364`). A pick that is only a display label is
+/// never returned as a CLI name (`#363`).
 pub fn resolve_use_ollama_bind(
     pick: Option<&str>,
     bound: Option<&str>,
@@ -445,8 +446,8 @@ pub fn resolve_use_ollama_bind(
             return Some(exact);
         }
     }
-    // First-row fallback stays until `#364`.
-    listed.iter().find_map(|n| nonempty(n))
+    // `#364`: no first-row fallback — require an exact pick or exact saved bind.
+    None
 }
 
 /// True when `s` is a catalog display label (or full model_ref), not an `ollama list` token.
@@ -469,7 +470,7 @@ pub fn is_display_label_not_cli_name(s: &str) -> bool {
 /// After a successful `ollama list`, finish a pending Use Ollama bind.
 ///
 /// Pick binds only when it is an exact list token. Display labels are refused (`#363`).
-/// First-row fallback when pick is absent stays until `#364`.
+/// Absent pick does **not** bind the first list row (`#364`).
 pub fn resolve_bind_after_ollama_list(pick: Option<&str>, listed: &[String]) -> Option<String> {
     let pick = pick.map(str::trim).filter(|s| !s.is_empty());
     if let Some(p) = pick {
@@ -482,10 +483,8 @@ pub fn resolve_bind_after_ollama_list(pick: Option<&str>, listed: &[String]) -> 
         // Pick present but not exact — do not invent a CLI name from the first row.
         return None;
     }
-    listed
-        .iter()
-        .find(|n| !n.trim().is_empty())
-        .map(|n| n.trim().to_string())
+    // `#364`: empty pick after list — wait for an explicit row, never first-row.
+    None
 }
 
 /// Select Auto or Required; when the resolved model is available, activate tip.
@@ -800,9 +799,9 @@ mod tests {
         );
 
         assert!(resolve_use_ollama_bind(Some(&label), None, &[]).is_none());
-        // Label pick must not become the CLI name even when a list exists (#364 still owns first-row).
+        // Label pick must not become the CLI name — and must not fall through to first row (#364).
         let with_list = resolve_use_ollama_bind(Some(&label), None, &["phi:latest".into()]);
-        assert_ne!(with_list.as_deref(), Some(label.as_str()));
+        assert!(with_list.is_none());
         assert!(resolve_bind_after_ollama_list(Some(&label), &["phi:latest".into()]).is_none());
     }
 
@@ -903,13 +902,41 @@ mod tests {
     fn use_ollama_waits_for_empty_list() {
         assert!(resolve_use_ollama_bind(None, None, &[]).is_none());
         assert_eq!(
-            resolve_bind_after_ollama_list(None, &["phi:latest".into()]).as_deref(),
-            Some("phi:latest")
-        );
-        assert_eq!(
             resolve_use_ollama_bind(Some("b:latest"), Some("a:latest"), &[]).as_deref(),
             Some("b:latest"),
             "a request pick is not the saved default"
+        );
+    }
+
+    /// `#364`: Use Ollama never invents a CLI name from the first `ollama list` row.
+    #[test]
+    fn use_ollama_does_not_bind_first_list_row() {
+        let listed = vec!["phi:latest".into(), "llama3:latest".into()];
+        assert!(
+            resolve_use_ollama_bind(None, None, &listed).is_none(),
+            "no pick and no saved bind must not take listed[0]"
+        );
+        assert!(
+            resolve_bind_after_ollama_list(None, &listed).is_none(),
+            "pending finish without pick must not take listed[0]"
+        );
+        assert_eq!(
+            resolve_use_ollama_bind(Some("llama3:latest"), None, &listed).as_deref(),
+            Some("llama3:latest"),
+            "exact pick still binds"
+        );
+        assert_eq!(
+            resolve_bind_after_ollama_list(Some("llama3:latest"), &listed).as_deref(),
+            Some("llama3:latest")
+        );
+        assert_eq!(
+            resolve_use_ollama_bind(None, Some("llama3:latest"), &listed).as_deref(),
+            Some("llama3:latest"),
+            "exact saved bind still works"
+        );
+        assert!(
+            resolve_use_ollama_bind(None, Some("gone:latest"), &listed).is_none(),
+            "stale saved bind must not fall through to first row"
         );
     }
 }
