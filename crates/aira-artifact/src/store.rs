@@ -27,6 +27,9 @@ pub enum ArtifactError {
     ContentRefMismatch(AiraRef),
     #[error("private artifact access denied: {0}")]
     AccessDenied(AiraRef),
+    /// Index/key claimed id A but stored descriptor names a different artifact (`#377`).
+    #[error("artifact id mismatch: requested {requested}, stored {stored}")]
+    IdMismatch { requested: AiraRef, stored: AiraRef },
     #[error("storage error: {0}")]
     Storage(String),
 }
@@ -335,6 +338,13 @@ impl CasArtifactStore {
             .cloned()
             .ok_or_else(|| ArtifactError::NotFound(artifact_id.clone()))?;
         let desc = verify_stored_artifact(desc)?;
+        // `#377`: a valid signature on B must not satisfy resolve(A).
+        if desc.artifact_id != *artifact_id {
+            return Err(ArtifactError::IdMismatch {
+                requested: artifact_id.clone(),
+                stored: desc.artifact_id,
+            });
+        }
         if is_private_artifact(&desc) && !allow_private {
             return Err(ArtifactError::AccessDenied(artifact_id.clone()));
         }
@@ -355,9 +365,10 @@ impl CasArtifactStore {
                 serde_json::from_str(&raw).map_err(|e| ArtifactError::Storage(e.to_string()))?;
             let sidecar = verify_stored_artifact(sidecar)?;
             if sidecar.artifact_id != *artifact_id {
-                return Err(ArtifactError::Storage(format!(
-                    "descriptor id mismatch for {artifact_id}"
-                )));
+                return Err(ArtifactError::IdMismatch {
+                    requested: artifact_id.clone(),
+                    stored: sidecar.artifact_id,
+                });
             }
             if sidecar.content_hash != desc.content_hash {
                 return Err(ArtifactError::HashMismatch {
