@@ -729,6 +729,47 @@ impl ActivatedPointerGate {
             )),
         }
     }
+
+    /// Locate a Phase D pointer whose `model_ref` matches (`#379`: pointer as locator only).
+    fn locate_activated_pointer(&self, model_ref: &str) -> Option<ActivatedPointer> {
+        let read = |path: &Path| -> Option<ActivatedPointer> {
+            let raw = fs::read_to_string(path).ok()?;
+            let p: ActivatedPointer = serde_json::from_str(&raw).ok()?;
+            (p.model_ref == model_ref).then_some(p)
+        };
+        if let Some(p) = read(&self.pointer_path) {
+            return Some(p);
+        }
+        let cache = self.aira_root.join("models/cache");
+        let entries = fs::read_dir(cache).ok()?;
+        for ent in entries.flatten() {
+            let path = ent.path().join(ACTIVATED_SLOT_POINTER_NAME);
+            if let Some(p) = read(&path) {
+                return Some(p);
+            }
+        }
+        None
+    }
+
+    /// Host CLI token for a catalog row only when it matches signed evidence/binder
+    /// and `host_ollama_model_ref(cli) == model_ref` (`#379`).
+    ///
+    /// Unsigned pointer `host_ollama_model` is never the sole authority. A tampered
+    /// pointer keeps the row locatable but yields `None` so Make default cannot
+    /// mint a new bind from the forged label.
+    pub fn verified_host_cli_for_model_ref(&self, model_ref: &str) -> Option<String> {
+        let model_ref = model_ref.trim();
+        if model_ref.is_empty() || !model_ref.starts_with("aira:model:ollama-") {
+            return None;
+        }
+        let pointer = self.locate_activated_pointer(model_ref)?;
+        let cli = self.resolve_trusted_host_cli(&pointer).ok().flatten()?;
+        let cli = cli.trim();
+        if cli.is_empty() || host_ollama_model_ref(cli) != model_ref {
+            return None;
+        }
+        Some(cli.to_string())
+    }
 }
 
 /// Replace `path` via a same-directory temp file so a crash cannot leave a partial slot (`#362`).
@@ -1757,6 +1798,76 @@ mod tests {
         assert!(
             err.contains("mismatches signed evidence") || err.contains("host_ollama_model"),
             "tampered pointer must deny, got {err}"
+        );
+    }
+
+    /// `#379`: forged pointer host label must not surface as a verified CLI name.
+    #[test]
+    fn verified_host_cli_ignores_tampered_pointer_label() {
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let mut rng = OsRng;
+        let signing = SigningKey::generate(&mut rng);
+        let verifying = signing.verifying_key();
+        let secret_hex = hex::encode(signing.to_bytes());
+        let public_hex = hex::encode(verifying.to_bytes());
+        let identity_id = format!("aira:identity:desktop.{}", uuid::Uuid::now_v7().as_simple());
+        let id_ref = AiraRef::parse(&identity_id).unwrap();
+        let id_dir = dir.path().join("identity");
+        fs::create_dir_all(&id_dir).unwrap();
+        fs::write(id_dir.join("local.ed25519"), format!("{secret_hex}\n")).unwrap();
+        let id_sig = aira_object::sign_with_key(id_ref, &signing, identity_id.as_bytes());
+        let desc = json!({
+            "identity_id": identity_id,
+            "identity_type": "local",
+            "display_name": "desktop",
+            "public_key": { "algorithm": "ed25519", "key_hex": public_hex },
+            "created_at": "2026-09-08T00:00:00Z",
+            "key_path": "identity/local.ed25519",
+            "signature": id_sig,
+        });
+        fs::write(
+            id_dir.join("local.identity.json"),
+            serde_json::to_string_pretty(&desc).unwrap(),
+        )
+        .unwrap();
+
+        let (gate, model_ref) =
+            ActivatedPointerGate::install_host_ollama_bind(dir.path(), "trusted:latest").unwrap();
+        assert_eq!(
+            gate.verified_host_cli_for_model_ref(&model_ref).as_deref(),
+            Some("trusted:latest")
+        );
+
+        let tip_path = dir.path().join("models/activated.latest.json");
+        let mut tip: Value = serde_json::from_str(&fs::read_to_string(&tip_path).unwrap()).unwrap();
+        tip["host_ollama_model"] = json!("evil-injected:latest");
+        fs::write(&tip_path, serde_json::to_string_pretty(&tip).unwrap()).unwrap();
+        let slot = sanitize_model_slot(&model_ref);
+        let slot_path = dir
+            .path()
+            .join("models/cache")
+            .join(&slot)
+            .join(ACTIVATED_SLOT_POINTER_NAME);
+        if slot_path.is_file() {
+            let mut slot_tip: Value =
+                serde_json::from_str(&fs::read_to_string(&slot_path).unwrap()).unwrap();
+            slot_tip["host_ollama_model"] = json!("evil-injected:latest");
+            fs::write(&slot_path, serde_json::to_string_pretty(&slot_tip).unwrap()).unwrap();
+        }
+
+        let gate = ActivatedPointerGate::from_aira_root(dir.path());
+        assert!(
+            gate.verified_host_cli_for_model_ref(&model_ref).is_none(),
+            "tampered pointer must not yield a CLI bind token"
+        );
+        assert_ne!(
+            host_ollama_model_ref("evil-injected:latest"),
+            model_ref,
+            "forged label must not hash to the located model_ref"
         );
     }
 
