@@ -546,22 +546,19 @@ impl AiraDesktopApp {
         ) {
             Some(m) => self.bind_ollama_process(Some(m)),
             None => {
-                self.ollama_msg = Some(
-                    if self
-                        .ollama_pick
-                        .as_deref()
-                        .is_some_and(aira_desktop_runtime::is_display_label_not_cli_name)
-                    {
-                        self.labels().settings_ollama_need_exact_cli.into()
-                    } else {
-                        self.labels().settings_ollama_empty.into()
-                    },
-                );
+                // `#364`: never invent first-row; ask for an exact name when the list exists.
+                self.ollama_msg = Some(if self.ollama_models.is_empty() {
+                    self.labels().settings_ollama_empty.into()
+                } else {
+                    self.labels().settings_ollama_need_exact_cli.into()
+                });
             }
         }
     }
 
     /// Use Ollama process. If no name is known yet, wait for the host list.
+    ///
+    /// `#364`: a loaded list without an exact pick/bind does not take the first row.
     pub(super) fn request_use_ollama_process(&mut self, ctx: &egui::Context) {
         if let Some(m) = aira_desktop_runtime::resolve_use_ollama_bind(
             self.ollama_pick.as_deref(),
@@ -570,6 +567,11 @@ impl AiraDesktopApp {
         ) {
             self.ollama_bind_pending = false;
             self.bind_ollama_process(Some(m));
+            return;
+        }
+        if !self.ollama_models.is_empty() {
+            self.ollama_bind_pending = false;
+            self.ollama_msg = Some(self.labels().settings_ollama_need_exact_cli.into());
             return;
         }
         self.ollama_bind_pending = true;
