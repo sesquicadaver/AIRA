@@ -14,10 +14,11 @@ use std::path::PathBuf;
 
 use aira_desktop_runtime::{
     evaluate_work_readiness, load_or_create_settings, load_or_create_ui_prefs,
-    load_system_snapshot, sync_autostart_from_settings, write_ui_prefs, DesktopPaths,
-    DesktopSettings, LifecycleStatus, LlmBackend, ModelCatalogSnapshot, ModelFact,
-    ModelStorageSnapshot, ModelTripleSnapshot, NetworkMeshSnapshot, SystemSnapshot, UiLang,
-    UiPrefs, WorkExecutorPreference, WorkReadiness, DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
+    load_system_snapshot, project_shared_catalog, sync_autostart_from_settings, write_ui_prefs,
+    CatalogProjectionRow, DesktopPaths, DesktopSettings, LifecycleStatus, LlmBackend,
+    ModelCatalogSnapshot, ModelFact, ModelStorageSnapshot, ModelTripleSnapshot,
+    NetworkMeshSnapshot, SystemSnapshot, UiLang, UiPrefs, WorkExecutorPreference, WorkReadiness,
+    DEFAULT_PEER_LISTEN, DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
@@ -107,6 +108,9 @@ pub struct AiraDesktopApp {
     pub(super) model_triple: ModelTripleSnapshot,
     /// Settings → Models catalog (`#348` / RFC-0231).
     pub(super) model_catalog: ModelCatalogSnapshot,
+    /// Paint-safe shared catalog rows (`#380`). Rebuilt when tip/list/catalog changes —
+    /// never via tip/cache I/O inside `update`.
+    pub(super) catalog_projection: Vec<CatalogProjectionRow>,
     /// Settings → Models storage paths + space (`#355` / RFC-0238).
     pub(super) model_storage: ModelStorageSnapshot,
     pub(super) catalog_highlight: Option<String>,
@@ -239,6 +243,7 @@ impl AiraDesktopApp {
             system_snapshot: SystemSnapshot::unavailable(),
             model_triple: ModelTripleSnapshot::undefined(),
             model_catalog: ModelCatalogSnapshot::default(),
+            catalog_projection: Vec::new(),
             model_storage: ModelStorageSnapshot::default(),
             catalog_highlight: None,
             catalog_auto: true,
@@ -423,12 +428,24 @@ impl AiraDesktopApp {
                     self.catalog_highlight = snap.tip_model_ref.clone();
                 }
                 self.model_catalog = snap;
+                self.rebuild_catalog_projection();
                 self.refresh_work_readiness();
             }
             Err(e) => {
                 self.catalog_msg = Some(format!("{e:#}"));
             }
         }
+    }
+
+    /// Rebuild paint-safe projection from in-memory catalog + list (`#380`).
+    ///
+    /// Disk/evidence work happens here (and in async catalog jobs), not per frame.
+    pub(super) fn rebuild_catalog_projection(&mut self) {
+        self.catalog_projection = project_shared_catalog(
+            &self.model_catalog,
+            &self.ollama_models,
+            &self.paths.data_root,
+        );
     }
 
     pub(super) fn apply_catalog_snapshot(&mut self, snap: ModelCatalogSnapshot) {
@@ -438,6 +455,7 @@ impl AiraDesktopApp {
         }
         self.model_catalog = snap;
         self.model_storage = actions::models_storage_load(&self.paths);
+        self.rebuild_catalog_projection();
         self.refresh_model_triple();
         self.refresh_work_readiness();
     }
@@ -708,6 +726,7 @@ impl AiraDesktopApp {
                 }
                 Ok(CatalogJobResult::OllamaList(names)) => {
                     self.ollama_models = names;
+                    self.rebuild_catalog_projection();
                     if self.ollama_bind_pending {
                         self.finish_pending_ollama_bind();
                     } else {
@@ -721,6 +740,7 @@ impl AiraDesktopApp {
                 Err(e) => {
                     if e.contains("ollama") || e.contains("list") {
                         self.ollama_models.clear();
+                        self.rebuild_catalog_projection();
                         self.ollama_bind_pending = false;
                         self.ollama_msg = Some(e);
                     } else {

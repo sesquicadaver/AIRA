@@ -770,6 +770,43 @@ impl ActivatedPointerGate {
         }
         Some(cli.to_string())
     }
+
+    /// One tip + cache walk → `model_ref → verified CLI` (`#380`).
+    ///
+    /// Prefer tip when both tip and slot name the same ref. Callers merge catalogs
+    /// with O(N+M) lookups instead of re-scanning disk per saved row.
+    pub fn verified_host_cli_index(&self) -> std::collections::HashMap<String, String> {
+        use std::collections::HashMap;
+        let mut out = HashMap::new();
+        let mut consider = |pointer: ActivatedPointer| {
+            let model_ref = pointer.model_ref.clone();
+            if !model_ref.starts_with("aira:model:ollama-") || out.contains_key(&model_ref) {
+                return;
+            }
+            if let Ok(Some(cli)) = self.resolve_trusted_host_cli(&pointer) {
+                let cli = cli.trim();
+                if !cli.is_empty() && host_ollama_model_ref(cli) == model_ref {
+                    out.insert(model_ref, cli.to_string());
+                }
+            }
+        };
+        if let Ok(tip) = self.read_latest_pointer() {
+            consider(tip);
+        }
+        if let Ok(entries) = fs::read_dir(self.aira_root.join("models/cache")) {
+            for ent in entries.flatten() {
+                let path = ent.path().join(ACTIVATED_SLOT_POINTER_NAME);
+                let Ok(raw) = fs::read_to_string(&path) else {
+                    continue;
+                };
+                let Ok(pointer) = serde_json::from_str::<ActivatedPointer>(&raw) else {
+                    continue;
+                };
+                consider(pointer);
+            }
+        }
+        out
+    }
 }
 
 /// Replace `path` via a same-directory temp file so a crash cannot leave a partial slot (`#362`).
@@ -1869,6 +1906,59 @@ mod tests {
             model_ref,
             "forged label must not hash to the located model_ref"
         );
+    }
+
+    /// `#380`: one tip/cache walk indexes every verified CLI (no per-row rescan).
+    #[test]
+    fn verified_host_cli_index_covers_tip_and_slot_once() {
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+
+        let dir = tempfile::tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let mut rng = OsRng;
+        let signing = SigningKey::generate(&mut rng);
+        let verifying = signing.verifying_key();
+        let secret_hex = hex::encode(signing.to_bytes());
+        let public_hex = hex::encode(verifying.to_bytes());
+        let identity_id = format!("aira:identity:desktop.{}", uuid::Uuid::now_v7().as_simple());
+        let id_ref = AiraRef::parse(&identity_id).unwrap();
+        let id_dir = dir.path().join("identity");
+        fs::create_dir_all(&id_dir).unwrap();
+        fs::write(id_dir.join("local.ed25519"), format!("{secret_hex}\n")).unwrap();
+        let id_sig = aira_object::sign_with_key(id_ref, &signing, identity_id.as_bytes());
+        let desc = json!({
+            "identity_id": identity_id,
+            "identity_type": "local",
+            "display_name": "desktop",
+            "public_key": { "algorithm": "ed25519", "key_hex": public_hex },
+            "created_at": "2026-09-08T00:00:00Z",
+            "key_path": "identity/local.ed25519",
+            "signature": id_sig,
+        });
+        fs::write(
+            id_dir.join("local.identity.json"),
+            serde_json::to_string_pretty(&desc).unwrap(),
+        )
+        .unwrap();
+
+        let ref_a =
+            ActivatedPointerGate::install_host_ollama_slot(dir.path(), "model-a:latest").unwrap();
+        let (_gate, ref_b) =
+            ActivatedPointerGate::install_host_ollama_bind(dir.path(), "model-b:latest").unwrap();
+        assert_ne!(ref_a, ref_b);
+
+        let gate = ActivatedPointerGate::from_aira_root(dir.path());
+        let index = gate.verified_host_cli_index();
+        assert_eq!(
+            index.get(&ref_a).map(String::as_str),
+            Some("model-a:latest")
+        );
+        assert_eq!(
+            index.get(&ref_b).map(String::as_str),
+            Some("model-b:latest")
+        );
+        assert_eq!(index.len(), 2);
     }
 
     /// Re-audit R5: oversized non-marker file is never fully read as binder.
