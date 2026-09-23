@@ -111,8 +111,17 @@ pub const ENV_EXPECTED_MODEL_REF: &str = "AIRA_LLM_EXPECTED_MODEL_REF";
 /// Child wait timeout in milliseconds (default 30000).
 pub const ENV_PROCESS_TIMEOUT_MS: &str = "AIRA_LLM_PROCESS_TIMEOUT_MS";
 
+/// Explicit Ollama HTTP endpoint for the generate child (`#366`). Not ambient `OLLAMA_HOST`.
+pub const ENV_OLLAMA_HOST_CFG: &str = "AIRA_LLM_OLLAMA_HOST";
+
+/// Default must match desktop-runtime `DEFAULT_OLLAMA_HOST`.
+pub const DEFAULT_OLLAMA_HOST: &str = "http://127.0.0.1:11434";
+
+/// Env key the ollama CLI reads.
+pub const OLLAMA_HOST_ENV: &str = "OLLAMA_HOST";
+
 /// Keys copied into the child after [`Command::env_clear`]. Nothing else.
-pub const CHILD_ENV_ALLOWLIST: &[&str] = &["PATH", "HOME", "LANG"];
+pub const CHILD_ENV_ALLOWLIST: &[&str] = &["PATH", "HOME", "LANG", "OLLAMA_HOST"];
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 const STDERR_SNIPPET: usize = 512;
@@ -143,6 +152,8 @@ pub struct ProcessBackend {
     sandbox_required: bool,
     /// When set, must equal [`ExecutorFacts::model_ref`] or generate fail-closes (`#339`).
     expected_model_ref: Option<String>,
+    /// Explicit Ollama endpoint for the child (`#366`). Never taken from ambient `OLLAMA_HOST`.
+    ollama_host: String,
     #[cfg(test)]
     kernel_unavailable_for_test: bool,
 }
@@ -160,6 +171,7 @@ impl ProcessBackend {
             host_loopback: false,
             sandbox_required: false,
             expected_model_ref: None,
+            ollama_host: DEFAULT_OLLAMA_HOST.into(),
             #[cfg(test)]
             kernel_unavailable_for_test: false,
         }
@@ -203,6 +215,18 @@ impl ProcessBackend {
     /// while A is activated) so mismatch fail-closes instead of stamping A's identity.
     pub fn with_expected_model_ref(mut self, model_ref: impl Into<String>) -> Self {
         self.expected_model_ref = Some(model_ref.into());
+        self
+    }
+
+    /// Explicit Ollama server for the child (`#366`). Ambient `OLLAMA_HOST` is ignored.
+    pub fn with_ollama_host(mut self, host: impl Into<String>) -> Self {
+        let h = host.into();
+        let t = h.trim();
+        self.ollama_host = if t.is_empty() {
+            DEFAULT_OLLAMA_HOST.into()
+        } else {
+            t.to_string()
+        };
         self
     }
 
@@ -259,6 +283,10 @@ impl ProcessBackend {
         let mut backend = Self::new(program);
         if looks_like_ollama(&backend.program) {
             backend.host_loopback = true;
+        }
+        // `#366`: AIRA_LLM_OLLAMA_HOST only — never ambient OLLAMA_HOST.
+        if let Ok(host) = env::var(ENV_OLLAMA_HOST_CFG) {
+            backend = backend.with_ollama_host(host);
         }
         if let Ok(raw) = env::var(ENV_PROCESS_ARGS) {
             backend = backend.with_args(raw.split_whitespace().map(str::to_string));
@@ -369,7 +397,7 @@ impl GenerateBackend for ProcessBackend {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        apply_child_env(&mut cmd);
+        apply_child_env(&mut cmd, ollama_style.then_some(self.ollama_host.as_str()));
         if landlock {
             #[cfg(not(target_os = "linux"))]
             {
@@ -517,10 +545,14 @@ fn default_path() -> OsString {
     }
 }
 
-fn apply_child_env(cmd: &mut Command) {
+fn apply_child_env(cmd: &mut Command, ollama_host: Option<&str>) {
     cmd.env_clear();
     for (key, value) in child_env_pairs() {
         cmd.env(key, value);
+    }
+    // `#366`: inject explicit host only — never copy ambient parent OLLAMA_HOST.
+    if let Some(host) = ollama_host.map(str::trim).filter(|s| !s.is_empty()) {
+        cmd.env(OLLAMA_HOST_ENV, host);
     }
 }
 
@@ -881,6 +913,72 @@ mod tests {
         }
         assert!(pairs.iter().any(|(k, _)| k == "PATH"));
         assert!(pairs.iter().any(|(k, _)| k == "LANG"));
+    }
+
+    /// `#366`: ollama child gets configured host, not ambient `OLLAMA_HOST`.
+    #[cfg(unix)]
+    #[test]
+    fn ollama_child_uses_explicit_host_not_ambient() {
+        let _g = env_lock();
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("dump-ollama-host");
+        std::fs::write(&script, "#!/bin/sh\necho \"HOST=${OLLAMA_HOST:-ABSENT}\"\n").unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        let mut perm = std::fs::metadata(&script).unwrap().permissions();
+        perm.set_mode(0o755);
+        std::fs::set_permissions(&script, perm).unwrap();
+
+        let prev_ambient = env::var(OLLAMA_HOST_ENV).ok();
+        let prev_cfg = env::var(ENV_OLLAMA_HOST_CFG).ok();
+        env::set_var(OLLAMA_HOST_ENV, "http://ambient-split.example:9999");
+        env::remove_var(ENV_OLLAMA_HOST_CFG);
+
+        let out = ProcessBackend::ollama(&script, "phi:latest")
+            .generate(
+                &dummy_payload("p"),
+                &crate::ExecutorFacts {
+                    model_ref: "aira:model:ollama-test-deadbeef".into(),
+                    content_hash: crate::AlwaysActivated::content_hash(),
+                    cache_path: String::new(),
+                    host_cli_model: Some("phi:latest".into()),
+                },
+            )
+            .expect("dump script");
+        match prev_ambient {
+            Some(v) => env::set_var(OLLAMA_HOST_ENV, v),
+            None => env::remove_var(OLLAMA_HOST_ENV),
+        }
+        match prev_cfg {
+            Some(v) => env::set_var(ENV_OLLAMA_HOST_CFG, v),
+            None => env::remove_var(ENV_OLLAMA_HOST_CFG),
+        }
+        let text = out["result"].as_str().expect("result");
+        assert!(
+            text.contains(&format!("HOST={DEFAULT_OLLAMA_HOST}")),
+            "child must use default explicit host, got {text}"
+        );
+        assert!(
+            !text.contains("ambient-split"),
+            "ambient OLLAMA_HOST must not reach child, got {text}"
+        );
+
+        let out2 = ProcessBackend::ollama(&script, "phi:latest")
+            .with_ollama_host("http://configured.example:11434")
+            .generate(
+                &dummy_payload("p"),
+                &crate::ExecutorFacts {
+                    model_ref: "aira:model:ollama-test-deadbeef".into(),
+                    content_hash: crate::AlwaysActivated::content_hash(),
+                    cache_path: String::new(),
+                    host_cli_model: Some("phi:latest".into()),
+                },
+            )
+            .expect("dump script configured");
+        let text2 = out2["result"].as_str().expect("result");
+        assert!(
+            text2.contains("HOST=http://configured.example:11434"),
+            "configured host must reach child, got {text2}"
+        );
     }
 
     #[cfg(unix)]

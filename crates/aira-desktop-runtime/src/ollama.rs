@@ -15,6 +15,26 @@ use anyhow::{bail, Context, Result};
 /// Default program when Settings leave `llm_process_bin` empty.
 pub const DEFAULT_OLLAMA_BIN: &str = "ollama";
 
+/// Default Ollama HTTP endpoint for discovery and `ollama run` (`#366`).
+///
+/// Must match `execution-llm` ProcessBackend default. Ambient `OLLAMA_HOST` is
+/// never the source of truth for Desktop list or node generate.
+pub const DEFAULT_OLLAMA_HOST: &str = "http://127.0.0.1:11434";
+
+/// Child / probe env key Ollama reads for its server address.
+pub const OLLAMA_HOST_ENV: &str = "OLLAMA_HOST";
+
+/// Effective endpoint for both `ollama list` and process `ollama run` (`#366`).
+///
+/// `configured` comes from Settings when present. Ambient process `OLLAMA_HOST`
+/// is **ignored** so discovery cannot silently target a different server than run.
+pub fn effective_ollama_host(configured: Option<&str>) -> String {
+    configured
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or(DEFAULT_OLLAMA_HOST)
+        .to_string()
+}
 /// One row from `ollama list` (name column only).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OllamaListEntry {
@@ -103,21 +123,27 @@ pub fn resolve_ollama_bin(explicit: Option<&str>) -> PathBuf {
 
 /// Run `ollama list` on the Desktop host and return model names.
 ///
+/// `#366`: always sets `OLLAMA_HOST` to [`effective_ollama_host`] (Settings or
+/// default). Ambient parent `OLLAMA_HOST` does not redirect discovery alone.
+///
 /// Fail-closed when the binary is missing, exits non-zero, or exceeds timeout
 /// (Pack D / audit #3 — no unbounded UI hang). On timeout the child is killed
 /// and waited so hang probes do not accumulate orphans.
 pub fn list_ollama_models(bin: impl AsRef<Path>) -> Result<Vec<OllamaListEntry>> {
-    list_ollama_models_with_timeout(bin, Duration::from_secs(15))
+    list_ollama_models_at(bin, &effective_ollama_host(None), Duration::from_secs(15))
 }
 
-/// Same as [`list_ollama_models`] with an explicit wait bound.
-pub fn list_ollama_models_with_timeout(
+/// Same as [`list_ollama_models`] with an explicit endpoint and wait bound.
+pub fn list_ollama_models_at(
     bin: impl AsRef<Path>,
+    host: &str,
     timeout: Duration,
 ) -> Result<Vec<OllamaListEntry>> {
     let bin = bin.as_ref();
+    let host = effective_ollama_host(Some(host));
     let mut child = Command::new(bin)
         .arg("list")
+        .env(OLLAMA_HOST_ENV, &host)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -162,6 +188,14 @@ pub fn list_ollama_models_with_timeout(
             }
         }
     }
+}
+
+/// Same as [`list_ollama_models`] with an explicit wait bound (default host).
+pub fn list_ollama_models_with_timeout(
+    bin: impl AsRef<Path>,
+    timeout: Duration,
+) -> Result<Vec<OllamaListEntry>> {
+    list_ollama_models_at(bin, &effective_ollama_host(None), timeout)
 }
 
 #[cfg(test)]
@@ -225,6 +259,25 @@ koill/sentence-transformers:paraphrase-multilingual-minilm-l12-v2    3ee258ffc9f
         let present = apply_ollama_list_refresh(&empty_ok, Ok(vec!["b:latest".into()]));
         assert_eq!(present.names, vec!["b:latest".to_string()]);
         assert_eq!(present.freshness, OllamaHostListFreshness::Present);
+    }
+
+    /// `#366`: ambient `OLLAMA_HOST` must not become the discovery/run endpoint.
+    #[test]
+    fn ambient_ollama_host_does_not_split_discovery_and_run() {
+        let prev = std::env::var_os(OLLAMA_HOST_ENV);
+        std::env::set_var(OLLAMA_HOST_ENV, "http://ambient-split.example:9999");
+        let discovery = effective_ollama_host(None);
+        let run = effective_ollama_host(None);
+        match prev {
+            Some(v) => std::env::set_var(OLLAMA_HOST_ENV, v),
+            None => std::env::remove_var(OLLAMA_HOST_ENV),
+        }
+        assert_eq!(discovery, DEFAULT_OLLAMA_HOST);
+        assert_eq!(run, discovery);
+        assert_eq!(
+            effective_ollama_host(Some("  http://configured.example:11434  ")),
+            "http://configured.example:11434"
+        );
     }
 
     /// Pack D / P2: hang script must fail-closed via kill+wait (no orphan sleep).

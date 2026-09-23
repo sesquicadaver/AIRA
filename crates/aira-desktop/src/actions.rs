@@ -362,6 +362,7 @@ mod tests {
             llm_process_bin: None,
             llm_ollama_model: None,
             llm_process_timeout_ms: None,
+            llm_ollama_host: None,
         };
         apply_network_profile(&mut s, NetworkProfile::P0, DEFAULT_PEER_LISTEN, None).unwrap();
         assert_eq!(s.network_profile, NetworkProfile::P0);

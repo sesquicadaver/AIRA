@@ -16,7 +16,7 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::ollama::DEFAULT_OLLAMA_BIN;
+use crate::ollama::{effective_ollama_host, DEFAULT_OLLAMA_BIN};
 use crate::paths::DesktopPaths;
 
 pub const SETTINGS_SCHEMA_ID: &str = "aira:schema:desktop:settings:0.1";
@@ -117,6 +117,10 @@ pub struct DesktopSettings {
     /// Optional process generate timeout (ms) → `AIRA_LLM_PROCESS_TIMEOUT_MS` (RFC-0243).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub llm_process_timeout_ms: Option<u64>,
+    /// Explicit Ollama HTTP endpoint for list + run (`#366`). Empty → default loopback.
+    /// Ambient process `OLLAMA_HOST` is never used as the source of truth.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub llm_ollama_host: Option<String>,
 }
 
 impl DesktopSettings {
@@ -138,6 +142,7 @@ impl DesktopSettings {
             llm_process_bin: None,
             llm_ollama_model: None,
             llm_process_timeout_ms: None,
+            llm_ollama_host: None,
         }
     }
 
@@ -148,6 +153,11 @@ impl DesktopSettings {
             .map(str::trim)
             .filter(|s| !s.is_empty())
             .unwrap_or(DEFAULT_OLLAMA_BIN)
+    }
+
+    /// Effective Ollama endpoint shared by discovery and process run (`#366`).
+    pub fn effective_ollama_host(&self) -> String {
+        effective_ollama_host(self.llm_ollama_host.as_deref())
     }
 
     /// Process argv token string for `AIRA_LLM_PROCESS_ARGS` (`run <model>`).
@@ -167,6 +177,8 @@ const ENV_PROCESS_BIN: &str = "AIRA_LLM_PROCESS_BIN";
 const ENV_PROCESS_ARGS: &str = "AIRA_LLM_PROCESS_ARGS";
 const ENV_EXPECTED_MODEL_REF: &str = "AIRA_LLM_EXPECTED_MODEL_REF";
 const ENV_PROCESS_TIMEOUT_MS: &str = "AIRA_LLM_PROCESS_TIMEOUT_MS";
+/// Node → ProcessBackend: explicit Ollama endpoint (never ambient `OLLAMA_HOST`).
+const ENV_OLLAMA_HOST_CFG: &str = "AIRA_LLM_OLLAMA_HOST";
 
 /// Apply LLM env for a spawned `aira-node` so staff submit follows Settings.
 ///
@@ -179,6 +191,9 @@ pub fn apply_node_llm_env(cmd: &mut Command, settings: &DesktopSettings) -> Resu
     cmd.env_remove(ENV_PROCESS_ARGS);
     cmd.env_remove(ENV_EXPECTED_MODEL_REF);
     cmd.env_remove(ENV_PROCESS_TIMEOUT_MS);
+    cmd.env_remove(ENV_OLLAMA_HOST_CFG);
+    // Node must not inherit a shell `OLLAMA_HOST` that would bypass Settings.
+    cmd.env_remove("OLLAMA_HOST");
 
     match settings.llm_backend {
         LlmBackend::Mock => {
@@ -196,6 +211,8 @@ pub fn apply_node_llm_env(cmd: &mut Command, settings: &DesktopSettings) -> Resu
             }
             // Clear any inherited expected-ref; admission binding is authoritative.
             cmd.env_remove(ENV_EXPECTED_MODEL_REF);
+            // `#366`: same explicit endpoint discovery uses.
+            cmd.env(ENV_OLLAMA_HOST_CFG, settings.effective_ollama_host());
             if let Some(ms) = settings.llm_process_timeout_ms {
                 if ms == 0 {
                     bail!("llm_process_timeout_ms must be greater than 0 or unset");
@@ -313,6 +330,14 @@ fn normalize_llm_settings(settings: &mut DesktopSettings) -> Result<()> {
             settings.llm_ollama_model = None;
         } else {
             *model = t;
+        }
+    }
+    if let Some(host) = settings.llm_ollama_host.as_mut() {
+        let t = host.trim().to_string();
+        if t.is_empty() {
+            settings.llm_ollama_host = None;
+        } else {
+            *host = t;
         }
     }
     if settings.llm_process_timeout_ms == Some(0) {
@@ -463,6 +488,7 @@ mod unit {
             llm_process_bin: None,
             llm_ollama_model: None,
             llm_process_timeout_ms: None,
+            llm_ollama_host: None,
         }
     }
 
@@ -538,6 +564,10 @@ mod unit {
         assert_eq!(s.llm_ollama_model.as_deref(), Some("llama3:latest"));
         assert_eq!(s.llm_process_args().as_deref(), Some("run llama3:latest"));
         assert_eq!(s.effective_llm_process_bin(), DEFAULT_OLLAMA_BIN);
+        assert_eq!(
+            s.effective_ollama_host(),
+            crate::ollama::DEFAULT_OLLAMA_HOST
+        );
     }
 
     #[test]
@@ -554,6 +584,29 @@ mod unit {
             dbg.contains("AIRA_LLM_BACKEND") || dbg.contains("process"),
             "{dbg}"
         );
+        assert!(
+            dbg.contains("AIRA_LLM_OLLAMA_HOST")
+                || dbg.contains(crate::ollama::DEFAULT_OLLAMA_HOST),
+            "process node must carry explicit ollama host, got {dbg}"
+        );
+    }
+
+    /// `#366`: configured host wins over ambient `OLLAMA_HOST`.
+    #[test]
+    fn effective_host_ignores_ambient_ollama_host() {
+        let prev = std::env::var_os("OLLAMA_HOST");
+        std::env::set_var("OLLAMA_HOST", "http://ambient-only.example:1");
+        let mut s = base(NetworkProfile::P0);
+        assert_eq!(
+            s.effective_ollama_host(),
+            crate::ollama::DEFAULT_OLLAMA_HOST
+        );
+        s.llm_ollama_host = Some("http://settings.example:11434".into());
+        assert_eq!(s.effective_ollama_host(), "http://settings.example:11434");
+        match prev {
+            Some(v) => std::env::set_var("OLLAMA_HOST", v),
+            None => std::env::remove_var("OLLAMA_HOST"),
+        }
     }
 
     #[test]
