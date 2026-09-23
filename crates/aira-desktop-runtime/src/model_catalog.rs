@@ -309,6 +309,9 @@ pub struct CatalogProjectionRow {
 /// Host names come from `ollama list`. Local-file rows never include
 /// `aira:model:ollama-` refs, so Prepare is not offered for a bind that cannot activate.
 /// Lifecycle-only host rows stay visible; without an exact CLI token they are not bindable.
+///
+/// `#380`: verified CLI names are indexed in one tip/cache pass (O(slots)), then
+/// each saved host row is a map lookup — not a fresh disk walk per entry.
 pub fn project_shared_catalog(
     snap: &ModelCatalogSnapshot,
     ollama_names: &[String],
@@ -317,6 +320,7 @@ pub fn project_shared_catalog(
     let root = root.as_ref();
     let mut rows = Vec::new();
     let mut seen_refs = std::collections::HashSet::new();
+    let cli_by_ref = ActivatedPointerGate::from_aira_root(root).verified_host_cli_index();
     for name in ollama_names {
         let name = name.trim();
         if name.is_empty() {
@@ -345,7 +349,7 @@ pub fn project_shared_catalog(
         {
             continue;
         }
-        let cli = host_cli_name_for_ollama_ref(root, &entry.model_ref);
+        let cli = cli_by_ref.get(&entry.model_ref).cloned();
         let name = cli
             .clone()
             .unwrap_or_else(|| catalog_display_name(&entry.model_ref));

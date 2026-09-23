@@ -1,6 +1,6 @@
 use aira_desktop_runtime::{
-    project_shared_catalog, CatalogProjectionRow, CatalogSelection, CatalogSource, NetworkProfile,
-    UiLang, DEFAULT_RELAY_TTL_DAYS,
+    CatalogProjectionRow, CatalogSelection, CatalogSource, NetworkProfile, UiLang,
+    DEFAULT_RELAY_TTL_DAYS,
 };
 
 use crate::actions;
@@ -162,12 +162,9 @@ impl eframe::App for AiraDesktopApp {
 }
 
 impl AiraDesktopApp {
-    fn catalog_rows(&self) -> Vec<CatalogProjectionRow> {
-        project_shared_catalog(
-            &self.model_catalog,
-            &self.ollama_models,
-            &self.paths.data_root,
-        )
+    /// Paint-safe catalog rows (`#380`): memory lookup only — no tip/cache I/O.
+    fn catalog_rows(&self) -> &[CatalogProjectionRow] {
+        &self.catalog_projection
     }
 
     fn projection_label(l: &crate::app::i18n::Labels, row: &CatalogProjectionRow) -> String {
@@ -192,9 +189,9 @@ impl AiraDesktopApp {
 
     fn row_name_for_ref(&self, model_ref: &str) -> String {
         self.catalog_rows()
-            .into_iter()
+            .iter()
             .find(|r| r.model_ref == model_ref)
-            .map(|r| r.name)
+            .map(|r| r.name.clone())
             .unwrap_or_else(|| aira_desktop_runtime::catalog_display_name(model_ref))
     }
 
@@ -212,7 +209,8 @@ impl AiraDesktopApp {
     /// One model selector. Compare adds a second combo, not a second catalog.
     fn ui_model_combo(&mut self, ui: &mut egui::Ui, pick: WorkPick) {
         let l = self.labels();
-        let rows = self.catalog_rows();
+        // Clone the paint snapshot — no tip/cache I/O (`#380`).
+        let rows = self.catalog_projection.clone();
         let current = match pick {
             WorkPick::Required if self.work_executor_mode == work::WorkExecutorUiMode::Auto => None,
             WorkPick::Required => Some(self.work_required_ref.clone()).filter(|s| !s.is_empty()),
@@ -251,10 +249,10 @@ impl AiraDesktopApp {
                         self.refresh_work_readiness();
                     }
                 }
-                for row in rows {
+                for row in &rows {
                     let on = current.as_deref() == Some(row.model_ref.as_str());
                     if ui
-                        .selectable_label(on, Self::projection_label(l, &row))
+                        .selectable_label(on, Self::projection_label(l, row))
                         .clicked()
                     {
                         let model_ref = row.model_ref.clone();
@@ -1688,8 +1686,9 @@ impl AiraDesktopApp {
         } else {
             let rows: Vec<_> = self
                 .catalog_rows()
-                .into_iter()
+                .iter()
                 .filter(|r| r.source == CatalogSource::HostOllama)
+                .cloned()
                 .collect();
             egui::ScrollArea::vertical()
                 .max_height(140.0)
@@ -1715,12 +1714,12 @@ impl AiraDesktopApp {
         }
 
         if ui.button(l.settings_models_make_default).clicked() {
-            let rows = self.catalog_rows();
-            match aira_desktop_runtime::exact_cli_name_for_bind(
+            let cli = aira_desktop_runtime::exact_cli_name_for_bind(
                 self.ollama_pick.as_deref(),
                 &self.ollama_models,
-                &rows,
-            ) {
+                &self.catalog_projection,
+            );
+            match cli {
                 Some(m) => self.bind_ollama_process(Some(m)),
                 None if self.ollama_pick.is_some() => {
                     self.ollama_msg = Some(l.settings_ollama_need_exact_cli.into());
@@ -1946,8 +1945,9 @@ impl AiraDesktopApp {
 
         let file_rows: Vec<_> = self
             .catalog_rows()
-            .into_iter()
+            .iter()
             .filter(|r| r.source == CatalogSource::LocalFile)
+            .cloned()
             .collect();
         if file_rows.is_empty() {
             ui.small(l.settings_models_empty);
