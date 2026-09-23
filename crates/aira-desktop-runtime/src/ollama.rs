@@ -11,6 +11,9 @@
 //!
 //! `#369`: `POST /api/show` when any fitness field is still Unknown after tags
 //! (capabilities **or** locality) — not only when capabilities are missing.
+//!
+//! `#370`: in-memory cache keyed by endpoint/name/digest lives in
+//! [`crate::ollama_meta_cache`] (generation + 2–4 parallel show).
 
 use std::io::{Read, Write};
 use std::net::TcpStream;

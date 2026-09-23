@@ -19,6 +19,7 @@ mod model_storage;
 mod network_mesh;
 mod node_http;
 mod ollama;
+mod ollama_meta_cache;
 mod paths;
 mod peer;
 mod peer_dial;
@@ -88,6 +89,9 @@ pub use ollama::{
     parse_ollama_show_json, parse_ollama_tags_json, resolve_ollama_bin, OllamaHostListFreshness,
     OllamaHostListSnapshot, OllamaJsonField, OllamaListEntry, OllamaShowFields, OllamaTagsModel,
     DEFAULT_OLLAMA_BIN, DEFAULT_OLLAMA_HOST, OLLAMA_HOST_ENV,
+};
+pub use ollama_meta_cache::{
+    clamp_ollama_meta_parallelism, OllamaMetaCache, OLLAMA_META_CACHE_DEFAULT_TIMEOUT,
 };
 pub use paths::DesktopPaths;
 pub use peer::PeerPidRecordView;
