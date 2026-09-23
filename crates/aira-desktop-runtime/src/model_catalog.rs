@@ -255,38 +255,14 @@ pub fn prepare_model(
 
 /// Resolve host CLI name (`ollama list` token) for an `aira:model:ollama-*` row.
 ///
-/// Reads `host_ollama_model` from matching activated pointers under the data root.
+/// `#379`: only from verified bind data (`host_ollama_model_ref(cli) == model_ref`).
+/// Pointer files locate the bind; a tampered `host_ollama_model` does not become a
+/// CLI name for Make default.
 pub fn host_cli_name_for_ollama_ref(root: impl AsRef<Path>, model_ref: &str) -> Option<String> {
     if !model_ref.starts_with("aira:model:ollama-") {
         return None;
     }
-    let root = root.as_ref();
-    let read_host = |path: &Path| -> Option<String> {
-        let raw = fs::read_to_string(path).ok()?;
-        let v: serde_json::Value = serde_json::from_str(&raw).ok()?;
-        if v.get("model_ref").and_then(|x| x.as_str()) != Some(model_ref) {
-            return None;
-        }
-        v.get("host_ollama_model")
-            .and_then(|x| x.as_str())
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .map(str::to_string)
-    };
-    if let Some(m) = read_host(&root.join("models/activated.latest.json")) {
-        return Some(m);
-    }
-    let cache = root.join("models/cache");
-    let Ok(entries) = fs::read_dir(&cache) else {
-        return None;
-    };
-    for ent in entries.flatten() {
-        let path = ent.path().join("activated.json");
-        if let Some(m) = read_host(&path) {
-            return Some(m);
-        }
-    }
-    None
+    ActivatedPointerGate::from_aira_root(root.as_ref()).verified_host_cli_for_model_ref(model_ref)
 }
 
 /// Display name for a catalog row. `model_ref` and hashes stay out of this string.
@@ -684,48 +660,47 @@ mod tests {
 
     /// Pack C: host-ollama Select never calls activate_verified / NoVerified path.
     #[test]
+    #[serial]
     fn select_host_ollama_skips_activate_verified() {
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+        use serde_json::json;
+
         let _g = isolated();
         let dir = tempdir().unwrap();
         let root = dir.path();
-        fs::create_dir_all(root.join("models/cache/ollama-slot")).unwrap();
-        let model_ref = "aira:model:ollama-sel_test-deadbeefcafe";
-        let cache = root.join("models/cache/ollama-slot/host-ollama.bind");
-        fs::write(&cache, b"aira-host-ollama-bind\nmodel=sel-test:latest\n").unwrap();
-        let pointer = serde_json::json!({
-            "updated_at": "2026-09-17T00:00:00Z",
-            "model_ref": model_ref,
-            "cache_path": cache.display().to_string(),
-            "verified_path": "",
-            "content_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "evidence_artifact_id": "aira:artifact:test",
-            "host_ollama_model": "sel-test:latest",
+        aira_object::reset_primary_signer();
+        let mut rng = OsRng;
+        let signing = SigningKey::generate(&mut rng);
+        let verifying = signing.verifying_key();
+        let secret_hex = hex::encode(signing.to_bytes());
+        let public_hex = hex::encode(verifying.to_bytes());
+        let identity_id = format!("aira:identity:desktop.{}", uuid::Uuid::now_v7().as_simple());
+        let id_ref = aira_object::AiraRef::parse(&identity_id).unwrap();
+        let id_dir = root.join("identity");
+        fs::create_dir_all(&id_dir).unwrap();
+        fs::write(id_dir.join("local.ed25519"), format!("{secret_hex}\n")).unwrap();
+        let id_sig = aira_object::sign_with_key(id_ref, &signing, identity_id.as_bytes());
+        let desc = json!({
+            "identity_id": identity_id,
+            "identity_type": "local",
+            "display_name": "desktop",
+            "public_key": { "algorithm": "ed25519", "key_hex": public_hex },
+            "created_at": "2026-09-08T00:00:00Z",
+            "key_path": "identity/local.ed25519",
+            "signature": id_sig,
         });
-        let slot = root.join("models/cache/ollama-slot").join("activated.json");
-        fs::write(&slot, serde_json::to_string_pretty(&pointer).unwrap()).unwrap();
-        // Slot dir name must match sanitize(model_ref) for select_model/lifecycle.
-        let slot_name = model_ref
-            .chars()
-            .map(|c| {
-                if c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.' {
-                    c
-                } else {
-                    '_'
-                }
-            })
-            .collect::<String>();
-        let slot_dir = root.join("models/cache").join(&slot_name);
-        fs::create_dir_all(&slot_dir).unwrap();
-        let slot_ptr = slot_dir.join("activated.json");
-        fs::write(&slot_ptr, serde_json::to_string_pretty(&pointer).unwrap()).unwrap();
         fs::write(
-            root.join("models/activated.latest.json"),
-            serde_json::to_string_pretty(&pointer).unwrap(),
+            id_dir.join("local.identity.json"),
+            serde_json::to_string_pretty(&desc).unwrap(),
         )
         .unwrap();
 
+        let (_gate, model_ref) =
+            ActivatedPointerGate::install_host_ollama_bind(root, "sel-test:latest").unwrap();
+
         let (chosen, snap) =
-            select_catalog_model(root, CatalogSelection::Required(model_ref.into())).unwrap();
+            select_catalog_model(root, CatalogSelection::Required(model_ref.clone())).unwrap();
         assert_eq!(chosen, model_ref);
         let msg = snap.last_message.as_deref().unwrap_or("");
         assert!(
@@ -737,7 +712,7 @@ mod tests {
             "must not activate_verified: {msg}"
         );
         assert_eq!(
-            host_cli_name_for_ollama_ref(root, model_ref).as_deref(),
+            host_cli_name_for_ollama_ref(root, &model_ref).as_deref(),
             Some("sel-test:latest")
         );
     }
@@ -825,6 +800,99 @@ mod tests {
         let with_list = resolve_use_ollama_bind(Some(&label), None, &["phi:latest".into()]);
         assert_ne!(with_list.as_deref(), Some(label.as_str()));
         assert!(resolve_bind_after_ollama_list(Some(&label), &["phi:latest".into()]).is_none());
+    }
+
+    /// `#379`: tampered pointer host must not become a Make-default CLI bind.
+    #[test]
+    #[serial]
+    fn tampered_pointer_host_is_not_make_default_cli() {
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+        use serde_json::json;
+
+        let _g = isolated();
+        let dir = tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let mut rng = OsRng;
+        let signing = SigningKey::generate(&mut rng);
+        let verifying = signing.verifying_key();
+        let secret_hex = hex::encode(signing.to_bytes());
+        let public_hex = hex::encode(verifying.to_bytes());
+        let identity_id = format!("aira:identity:desktop.{}", uuid::Uuid::now_v7().as_simple());
+        let id_ref = aira_object::AiraRef::parse(&identity_id).unwrap();
+        let id_dir = dir.path().join("identity");
+        fs::create_dir_all(&id_dir).unwrap();
+        fs::write(id_dir.join("local.ed25519"), format!("{secret_hex}\n")).unwrap();
+        let id_sig = aira_object::sign_with_key(id_ref, &signing, identity_id.as_bytes());
+        let desc = json!({
+            "identity_id": identity_id,
+            "identity_type": "local",
+            "display_name": "desktop",
+            "public_key": { "algorithm": "ed25519", "key_hex": public_hex },
+            "created_at": "2026-09-08T00:00:00Z",
+            "key_path": "identity/local.ed25519",
+            "signature": id_sig,
+        });
+        fs::write(
+            id_dir.join("local.identity.json"),
+            serde_json::to_string_pretty(&desc).unwrap(),
+        )
+        .unwrap();
+
+        let (_gate, model_ref) =
+            ActivatedPointerGate::install_host_ollama_bind(dir.path(), "trusted:latest").unwrap();
+        assert_eq!(
+            host_cli_name_for_ollama_ref(dir.path(), &model_ref).as_deref(),
+            Some("trusted:latest")
+        );
+
+        let tip_path = dir.path().join("models/activated.latest.json");
+        let mut tip: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&tip_path).unwrap()).unwrap();
+        tip["host_ollama_model"] = json!("evil-injected:latest");
+        fs::write(&tip_path, serde_json::to_string_pretty(&tip).unwrap()).unwrap();
+        // Slot pointer is also a locator source for lifecycle rows.
+        let cache = dir.path().join("models/cache");
+        if let Ok(entries) = fs::read_dir(&cache) {
+            for ent in entries.flatten() {
+                let slot = ent.path().join("activated.json");
+                if slot.is_file() {
+                    let mut slot_tip: serde_json::Value =
+                        serde_json::from_str(&fs::read_to_string(&slot).unwrap()).unwrap();
+                    if slot_tip.get("model_ref").and_then(|x| x.as_str())
+                        == Some(model_ref.as_str())
+                    {
+                        slot_tip["host_ollama_model"] = json!("evil-injected:latest");
+                        fs::write(&slot, serde_json::to_string_pretty(&slot_tip).unwrap()).unwrap();
+                    }
+                }
+            }
+        }
+
+        assert!(
+            host_cli_name_for_ollama_ref(dir.path(), &model_ref).is_none(),
+            "forged pointer host must not become CLI"
+        );
+
+        let snap = ModelCatalogSnapshot {
+            entries: vec![CatalogEntry {
+                model_ref: model_ref.clone(),
+                verified: false,
+                available: true,
+                ready_reason: "available".into(),
+            }],
+            tip_model_ref: Some(model_ref.clone()),
+            ..ModelCatalogSnapshot::default()
+        };
+        let rows = project_shared_catalog(&snap, &[], dir.path());
+        let host = rows
+            .iter()
+            .find(|r| r.model_ref == model_ref)
+            .expect("corrupted bind stays visible");
+        assert!(host.cli_name.is_none());
+        assert_eq!(host.name, catalog_display_name(&model_ref));
+        assert!(exact_cli_name_for_bind(Some(&host.name), &[], &rows).is_none());
+        assert!(exact_cli_name_for_bind(Some("evil-injected:latest"), &[], &rows).is_none());
     }
 
     #[test]
