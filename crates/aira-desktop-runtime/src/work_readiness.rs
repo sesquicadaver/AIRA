@@ -1186,4 +1186,177 @@ mod tests {
         )
         .is_none());
     }
+
+    /// `#367`: M0 through-test — A tip, B only in discovery, Prepare-and-run slots B,
+    /// admit B, tip stays A; plus K3/K4b/K5 negatives (label, fail, repeat, applied Mock).
+    #[test]
+    #[serial]
+    fn m0_through_prepare_and_run_with_k3_k5_negatives() {
+        use aira_object::{create_or_ensure_node_identity, NodeIdentityCreatePolicy};
+        use ed25519_dalek::SigningKey;
+        use rand::rngs::OsRng;
+
+        let _g = isolated();
+        let dir = tempdir().unwrap();
+        aira_object::reset_primary_signer();
+        let mut rng = OsRng;
+        let signing = SigningKey::generate(&mut rng);
+        create_or_ensure_node_identity(
+            dir.path(),
+            &format!("aira:identity:m0.{}", uuid::Uuid::now_v7().as_simple()),
+            "m0",
+            signing,
+            NodeIdentityCreatePolicy::CreateExclusive,
+        )
+        .unwrap();
+
+        let cli_a = "model-a:latest";
+        let cli_b = "model-b:latest";
+        let (_gate, ref_a) =
+            ActivatedPointerGate::install_host_ollama_bind(dir.path(), cli_a).unwrap();
+        let ref_b = aira_flow::host_ollama_model_ref(cli_b);
+        let tip_path = dir.path().join("models/activated.latest.json");
+        let tip_before = fs::read(&tip_path).unwrap();
+        let settings = write_host_llm(dir.path(), cli_a);
+        let listed = vec![cli_a.into(), cli_b.into()];
+
+        // B is only in discovery — not yet available in the catalog.
+        let cat0 = crate::model_catalog::load_model_catalog(dir.path()).unwrap();
+        assert_eq!(cat0.tip_model_ref.as_deref(), Some(ref_a.as_str()));
+        assert!(!cat0.entries.iter().any(|e| e.model_ref == ref_b && e.available));
+        let pref_b = WorkExecutorPreference::Required(ref_b.clone());
+        assert_eq!(
+            prepare_and_run_cli_names(
+                &settings,
+                None,
+                false,
+                false,
+                &pref_b,
+                &cat0.entries,
+                &listed,
+            )
+            .as_deref(),
+            Some([cli_b.to_string()].as_slice()),
+            "Prepare must offer exact B CLI when B is listed but not slotted"
+        );
+
+        // K3: display label is not a CLI name — Prepare must not invent a bind.
+        let label = crate::model_catalog::catalog_display_name(&ref_b);
+        assert!(crate::model_catalog::is_display_label_not_cli_name(&label));
+        assert!(
+            prepare_and_run_cli_names(
+                &settings,
+                None,
+                false,
+                false,
+                &WorkExecutorPreference::Required(label.clone()),
+                &cat0.entries,
+                &listed,
+            )
+            .is_none(),
+            "Required(display label) must not open Prepare"
+        );
+
+        // K5: applied Mock blocks Prepare even when Settings are Process.
+        let applied_mock = AppliedHostLlm {
+            backend: LlmBackend::Mock,
+            ollama_model: None,
+        };
+        assert!(
+            prepare_and_run_cli_names(
+                &settings,
+                Some(&applied_mock),
+                false,
+                false,
+                &pref_b,
+                &cat0.entries,
+                &listed,
+            )
+            .is_none(),
+            "applied Mock must match Run and refuse Prepare"
+        );
+
+        // K4b / prepare-fail: error skips start; tip unchanged.
+        let mut started = false;
+        let failed = execute_prepare_and_run(
+            false,
+            || Err("slot failed".into()),
+            || {
+                started = true;
+                Ok(())
+            },
+        );
+        assert_eq!(failed, PrepareAndRunOutcome::Failed("slot failed".into()));
+        assert!(!started);
+        assert_eq!(fs::read(&tip_path).unwrap(), tip_before);
+
+        // Happy path: prepare slots B, then start once; tip stays A.
+        let mut starts = 0;
+        let outcome = execute_prepare_and_run(
+            false,
+            || prepare_host_slots(dir.path(), &[cli_b.into()]),
+            || {
+                starts += 1;
+                Ok(())
+            },
+        );
+        assert_eq!(outcome, PrepareAndRunOutcome::Started);
+        assert_eq!(starts, 1);
+        assert_eq!(fs::read(&tip_path).unwrap(), tip_before);
+
+        // K4b: repeat while busy does not prepare/start again.
+        let repeat = execute_prepare_and_run(
+            true,
+            || panic!("repeat must not prepare"),
+            || {
+                starts += 1;
+                Ok(())
+            },
+        );
+        assert_eq!(repeat, PrepareAndRunOutcome::IgnoredRepeat);
+        assert_eq!(starts, 1);
+
+        let cat1 = crate::model_catalog::load_model_catalog(dir.path()).unwrap();
+        assert_eq!(cat1.tip_model_ref.as_deref(), Some(ref_a.as_str()));
+        assert!(cat1
+            .entries
+            .iter()
+            .any(|e| e.model_ref == ref_b && e.available));
+        assert!(
+            prepare_and_run_cli_names(
+                &settings,
+                None,
+                false,
+                false,
+                &pref_b,
+                &cat1.entries,
+                &listed,
+            )
+            .is_none(),
+            "after slot, Run is the right control — Prepare closes"
+        );
+
+        // Admit B for generate; Auto tip remains A.
+        let ready_b = evaluate_work_readiness(
+            dir.path(),
+            &settings,
+            "Summarize using B",
+            pref_b,
+        );
+        assert!(ready_b.ready, "reasons={:?}", ready_b.reasons);
+        assert_eq!(ready_b.resolved_model_ref.as_deref(), Some(ref_b.as_str()));
+
+        let ready_auto = evaluate_work_readiness(
+            dir.path(),
+            &settings,
+            "Summarize using tip A",
+            WorkExecutorPreference::Auto,
+        );
+        assert!(ready_auto.ready, "reasons={:?}", ready_auto.reasons);
+        assert_eq!(
+            ready_auto.resolved_model_ref.as_deref(),
+            Some(ref_a.as_str()),
+            "tip A must remain the Auto default after preparing B"
+        );
+    }
 }

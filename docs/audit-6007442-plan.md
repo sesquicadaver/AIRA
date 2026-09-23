@@ -1,9 +1,9 @@
 # Audit gate + post-Y linear plan (`6007442`)
 
-**Статус:** OPEN (Y tail + D/A). Блок K `#376`–`#382` **DONE**. Перший рядок виконання — `#367`.  
+**Статус:** OPEN (Y tail + D/A). Блок K `#376`–`#382` **DONE**. Перший рядок виконання — `#368`.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md).  
 **Джерело:** [`p-only/AIRA-full-audit-6007442-20260923.md`](../../p-only/AIRA-full-audit-6007442-20260923.md) (поза git). Перевірений `main`: `6007442`.  
-**Зв’язок із Phase Y:** `#359`–`#366` **DONE**. K **DONE**. `#367`–`#375` OPEN.  
+**Зв’язок із Phase Y:** `#359`–`#367` **DONE**. K **DONE**. `#368`–`#375` OPEN.  
 **Не входить:** marketplace, ratings GUI, новий LLM-провайдер, Research Plane, встановлення Ollama, заміна egui.
 
 Лінійність: один рядок — один PR. Не паралельний план поруч із Y.
@@ -38,7 +38,7 @@
 ## Phase Y — хвіст після K (`#364`–`#375`)
 
 Канон scope без змін: [`phase-y-plan.md`](phase-y-plan.md).  
-`#367` має включити негативи K3–K5 (prepare fail, double-click, applied mismatch), окрім базового M0.
+`#367` **DONE** — M0 through-test + негативи K3–K5 (prepare fail, double-click, applied mismatch).
 
 ## Блок D — документація (`#383`–`#387`)
 
@@ -60,6 +60,6 @@
 ## Правила
 
 - Зберігати чинні fail-closed перевірки admission.
-- Не оголошувати Phase Y DONE, доки `#367` і негативи K3–K5 не закриті.
+- Не оголошувати Phase Y DONE, доки `#368`–`#375` не закриті (`#367` + K3–K5 negatives DONE).
 - Не додавати file-executor лише заради D1 / `#383`.
 - Зелений CI не замінює installed-product acceptance (`#388`).
