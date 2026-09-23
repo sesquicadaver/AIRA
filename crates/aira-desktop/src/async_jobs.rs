@@ -17,11 +17,10 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use aira_desktop_runtime::{
-    evaluate_work_readiness_applied, list_ollama_models, load_model_catalog, load_system_snapshot,
-    prepare_host_slots, resolve_ollama_bin, start, status, stop, AppliedHostLlm, CatalogSelection,
-    DesktopPaths, DesktopSettings, DialOutcome, LifecycleStatus, ModelCatalogSnapshot,
-    ModelTripleSnapshot, NetworkMeshSnapshot, PidRecordView, StartOutcome, SystemSnapshot,
-    WorkExecutorPreference,
+    evaluate_work_readiness_applied, load_model_catalog, load_system_snapshot, prepare_host_slots,
+    resolve_ollama_bin, start, status, stop, AppliedHostLlm, CatalogSelection, DesktopPaths,
+    DesktopSettings, DialOutcome, LifecycleStatus, ModelCatalogSnapshot, ModelTripleSnapshot,
+    NetworkMeshSnapshot, PidRecordView, StartOutcome, SystemSnapshot, WorkExecutorPreference,
 };
 
 use crate::actions;
@@ -788,6 +787,7 @@ impl AsyncDesktopJobs {
         selection: Option<CatalogSelection>,
         artifact_path: Option<PathBuf>,
         llm_process_bin: Option<String>,
+        llm_ollama_host: Option<String>,
         on_done: impl FnOnce() + Send + 'static,
     ) -> bool {
         if self.catalog_rx.is_some() {
@@ -836,7 +836,14 @@ impl AsyncDesktopJobs {
                     }
                     CatalogJobKind::OllamaList => {
                         let bin = resolve_ollama_bin(llm_process_bin.as_deref());
-                        let rows = list_ollama_models(&bin).map_err(|e| format!("{e:#}"))?;
+                        let host =
+                            aira_desktop_runtime::effective_ollama_host(llm_ollama_host.as_deref());
+                        let rows = aira_desktop_runtime::list_ollama_models_at(
+                            &bin,
+                            &host,
+                            std::time::Duration::from_secs(15),
+                        )
+                        .map_err(|e| format!("{e:#}"))?;
                         Ok(CatalogJobResult::OllamaList(
                             rows.into_iter().map(|e| e.name).collect(),
                         ))
@@ -1111,6 +1118,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             || {}
         ));
         assert!(!jobs.try_spawn_catalog(
@@ -1120,6 +1128,7 @@ mod tests {
             Some("aira:model:x".into()),
             None,
             Some(std::path::PathBuf::from("/tmp/x.bin")),
+            None,
             None,
             || {}
         ));

@@ -1797,6 +1797,7 @@ impl AiraDesktopApp {
                     None,
                     None,
                     None,
+                    None,
                     move || ctx.request_repaint(),
                 ) {
                     self.catalog_msg = Some(l.catalog_job_busy.into());
@@ -1838,6 +1839,7 @@ impl AiraDesktopApp {
                             Some(selection),
                             None,
                             None,
+                            None,
                             move || ctx.request_repaint(),
                         ) {
                             self.catalog_msg = Some(l.catalog_job_busy.into());
@@ -1869,6 +1871,7 @@ impl AiraDesktopApp {
                             None,
                             None,
                             None,
+                            None,
                             move || ctx.request_repaint(),
                         ) {
                             self.catalog_msg = Some(l.catalog_job_busy.into());
@@ -1896,6 +1899,7 @@ impl AiraDesktopApp {
                         None,
                         None,
                         Some(std::path::PathBuf::from(art)),
+                        None,
                         None,
                         move || ctx.request_repaint(),
                     ) {
@@ -1940,6 +1944,7 @@ impl AiraDesktopApp {
                             Some(self.catalog_add_ref.clone()),
                             None,
                             Some(path),
+                            None,
                             None,
                             move || ctx.request_repaint(),
                         ) {

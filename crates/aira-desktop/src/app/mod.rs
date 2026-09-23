@@ -475,6 +475,7 @@ impl AiraDesktopApp {
             None,
             None,
             self.settings.llm_process_bin.clone(),
+            self.settings.llm_ollama_host.clone(),
             on_done,
         ) {
             self.ollama_msg = Some(if self.async_jobs.catalog_inflight() {
