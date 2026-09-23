@@ -1223,7 +1223,10 @@ mod tests {
         // B is only in discovery — not yet available in the catalog.
         let cat0 = crate::model_catalog::load_model_catalog(dir.path()).unwrap();
         assert_eq!(cat0.tip_model_ref.as_deref(), Some(ref_a.as_str()));
-        assert!(!cat0.entries.iter().any(|e| e.model_ref == ref_b && e.available));
+        assert!(!cat0
+            .entries
+            .iter()
+            .any(|e| e.model_ref == ref_b && e.available));
         let pref_b = WorkExecutorPreference::Required(ref_b.clone());
         assert_eq!(
             prepare_and_run_cli_names(
@@ -1337,12 +1340,7 @@ mod tests {
         );
 
         // Admit B for generate; Auto tip remains A.
-        let ready_b = evaluate_work_readiness(
-            dir.path(),
-            &settings,
-            "Summarize using B",
-            pref_b,
-        );
+        let ready_b = evaluate_work_readiness(dir.path(), &settings, "Summarize using B", pref_b);
         assert!(ready_b.ready, "reasons={:?}", ready_b.reasons);
         assert_eq!(ready_b.resolved_model_ref.as_deref(), Some(ref_b.as_str()));
 
