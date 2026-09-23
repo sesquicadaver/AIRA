@@ -1681,9 +1681,21 @@ impl AiraDesktopApp {
             || self.ollama_bind_pending;
         if loading && self.ollama_models.is_empty() {
             ui.small(l.settings_ollama_loading);
-        } else if self.ollama_models.is_empty() {
+        } else if self.ollama_list_freshness
+            == aira_desktop_runtime::OllamaHostListFreshness::Unknown
+            && self.ollama_models.is_empty()
+        {
+            ui.small(l.settings_ollama_unknown);
+        } else if self.ollama_list_freshness
+            == aira_desktop_runtime::OllamaHostListFreshness::Absent
+            || self.ollama_models.is_empty()
+        {
             ui.small(l.settings_ollama_empty);
         } else {
+            if self.ollama_list_freshness == aira_desktop_runtime::OllamaHostListFreshness::Unknown
+            {
+                ui.small(l.settings_ollama_unknown);
+            }
             let rows: Vec<_> = self
                 .catalog_rows()
                 .iter()
