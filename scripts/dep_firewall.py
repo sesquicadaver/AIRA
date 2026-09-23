@@ -76,7 +76,11 @@ def _dep_kinds(edge: dict) -> List[Optional[str]]:
 def edges_from_resolve(
     metadata: dict, names: Set[str]
 ) -> Tuple[Dict[str, Set[str]], Dict[str, Set[str]]]:
-    """Return (prod_edges, all_kind_edges) as name → successor names."""
+    """Return (prod_edges, all_kind_edges) as name → successor names.
+
+    Cargo puts the library/crate target (often with `_`) in `deps[].name`.
+    The workspace package name (with `-`) is on `deps[].pkg` via package id (`#376`).
+    """
     id_to_name = {}
     for pkg in metadata["packages"]:
         id_to_name[pkg["id"]] = pkg["name"]
@@ -88,15 +92,21 @@ def edges_from_resolve(
         src = id_to_name.get(node["id"])
         if src not in names:
             continue
-        for dep in node.get("deps") or []:
-            dst = dep.get("name")
-            if dst not in names:
-                continue
-            kinds = _dep_kinds(dep)
-            all_kinds[src].add(dst)
-            if any(k in (None, "build") for k in kinds):
-                prod[src].add(dst)
-        if not node.get("deps") and node.get("dependencies"):
+        deps = node.get("deps") or []
+        if deps:
+            for dep in deps:
+                pkg_id = dep.get("pkg")
+                dst = id_to_name.get(pkg_id) if pkg_id else None
+                if dst is None:
+                    # Legacy / incomplete fixtures: never treat crate target as package.
+                    continue
+                if dst not in names:
+                    continue
+                kinds = _dep_kinds(dep)
+                all_kinds[src].add(dst)
+                if any(k in (None, "build") for k in kinds):
+                    prod[src].add(dst)
+        elif node.get("dependencies"):
             for dep_id in node["dependencies"]:
                 dst = id_to_name.get(dep_id)
                 if dst in names:
@@ -106,6 +116,76 @@ def edges_from_resolve(
         prod.setdefault(n, set())
         all_kinds.setdefault(n, set())
     return prod, all_kinds
+
+
+def _metadata_fragment_hyphen_alias() -> Tuple[dict, Set[str]]:
+    """Minimal resolve graph: aira-core → aira-node via crate name `aira_node`."""
+    core_id = "path+file:///tmp/aira#aira-core@0.1.0"
+    node_id = "path+file:///tmp/aira#aira-node@0.1.0"
+    object_id = "path+file:///tmp/aira#aira-object@0.1.0"
+    metadata = {
+        "packages": [
+            {"id": core_id, "name": "aira-core", "manifest_path": "/tmp/aira/crates/aira-core/Cargo.toml"},
+            {"id": node_id, "name": "aira-node", "manifest_path": "/tmp/aira/crates/aira-node/Cargo.toml"},
+            {
+                "id": object_id,
+                "name": "aira-object",
+                "manifest_path": "/tmp/aira/crates/aira-object/Cargo.toml",
+            },
+        ],
+        "resolve": {
+            "nodes": [
+                {
+                    "id": core_id,
+                    "deps": [
+                        {
+                            "name": "aira_node",
+                            "pkg": node_id,
+                            "dep_kinds": [{"kind": None, "target": None}],
+                        },
+                        {
+                            "name": "aira_object",
+                            "pkg": object_id,
+                            "dep_kinds": [{"kind": None, "target": None}],
+                        },
+                    ],
+                    "dependencies": [node_id, object_id],
+                },
+                {"id": node_id, "deps": [], "dependencies": []},
+                {"id": object_id, "deps": [], "dependencies": []},
+            ]
+        },
+    }
+    return metadata, {"aira-core", "aira-node", "aira-object"}
+
+
+def _metadata_fragment_dev_only_edge() -> Tuple[dict, Set[str]]:
+    """Normal graph plus a dev-only edge that must appear in all_kinds, not prod."""
+    core_id = "path+file:///tmp/aira#aira-core@0.1.0"
+    peer_id = "path+file:///tmp/aira#aira-peer@0.1.0"
+    metadata = {
+        "packages": [
+            {"id": core_id, "name": "aira-core", "manifest_path": "/tmp/aira/crates/aira-core/Cargo.toml"},
+            {"id": peer_id, "name": "aira-peer", "manifest_path": "/tmp/aira/crates/aira-peer/Cargo.toml"},
+        ],
+        "resolve": {
+            "nodes": [
+                {
+                    "id": core_id,
+                    "deps": [
+                        {
+                            "name": "aira_peer",
+                            "pkg": peer_id,
+                            "dep_kinds": [{"kind": "dev", "target": None}],
+                        }
+                    ],
+                    "dependencies": [peer_id],
+                },
+                {"id": peer_id, "deps": [], "dependencies": []},
+            ]
+        },
+    }
+    return metadata, {"aira-core", "aira-peer"}
 
 
 def find_cycle(graph: Dict[str, Set[str]]) -> Optional[List[str]]:
@@ -303,6 +383,45 @@ def self_test() -> int:
     _assert(
         any("import cycle" in e for e in errs),
         f"cycle must fail, got {errs}",
+        failures,
+    )
+
+    # `#376`: crate target `aira_node` must resolve to package `aira-node`.
+    meta, names = _metadata_fragment_hyphen_alias()
+    prod_m, all_m = edges_from_resolve(meta, names)
+    _assert(
+        "aira-node" in all_m.get(CORE, ()),
+        f"hyphen alias must yield core→aira-node, got {dict(all_m)}",
+        failures,
+    )
+    _assert(
+        "aira_node" not in all_m.get(CORE, ()),
+        f"crate target must not be treated as package name, got {dict(all_m)}",
+        failures,
+    )
+    errs = check_graph(prod_m, all_m, set())
+    _assert(
+        any("aira-node" in e for e in errs),
+        f"core→node via alias must fail check_graph, got {errs}",
+        failures,
+    )
+
+    meta_dev, names_dev = _metadata_fragment_dev_only_edge()
+    prod_d, all_d = edges_from_resolve(meta_dev, names_dev)
+    _assert(
+        "aira-peer" in all_d.get(CORE, ()),
+        f"dev edge must appear in all_kinds, got {dict(all_d)}",
+        failures,
+    )
+    _assert(
+        "aira-peer" not in prod_d.get(CORE, ()),
+        f"dev edge must not enter prod, got {dict(prod_d)}",
+        failures,
+    )
+    errs = check_graph(prod_d, all_d, set())
+    _assert(
+        any("aira-peer" in e for e in errs),
+        f"core→peer (dev) must still fail all-kind reachability, got {errs}",
         failures,
     )
 

@@ -1,6 +1,6 @@
 # Audit gate + post-Y linear plan (`6007442`)
 
-**Статус:** OPEN. Перший рядок виконання — `#376` (K1).  
+**Статус:** OPEN. `#376` DONE. Перший рядок виконання — `#377` (K2a).  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md).  
 **Джерело:** [`p-only/AIRA-full-audit-6007442-20260923.md`](../../p-only/AIRA-full-audit-6007442-20260923.md) (поза git). Перевірений `main`: `6007442`.  
 **Зв’язок із Phase Y:** `#359`–`#363` **DONE**. `#364`–`#375` лишаються OPEN, але **не стартують**, доки блок K (`#376`–`#382`) не DONE.  
@@ -27,7 +27,7 @@
 
 | # | Scope | Done when | Не в рядку |
 |---|--------|-----------|------------|
-| 376 | Dependency firewall: ребро через `dep.pkg → id_to_name`; тести дефісів/alias | `edges_from_resolve` бачить `aira-core → aira-node`; self-test ловить пропуск | зміна правил Core/CSU |
+| 376 | **DONE.** Dependency firewall: ребро через `dep.pkg → id_to_name`; тести дефісів/alias | `edges_from_resolve` бачить `aira-core → aira-node`; self-test ловить пропуск | зміна правил Core/CSU |
 | 377 | CAS `resolve`: `descriptor.artifact_id == requested`; тест із **іншим валідним** підписаним B | `resolve(A)` не повертає B | зміна privacy policy |
 | 378 | SQLite `get_by_object_id`: bind ID як у `open` | lookup(A) з чужим `object_id` у JSON → fail | новий store |
 | 379 | CLI-ім’я лише з перевіреної прив’язки; `host_ollama_model_ref(cli)==model_ref`; pointer = locator | пошкоджений pointer видимий; Make default не створює bind B | `#364` first-row |
