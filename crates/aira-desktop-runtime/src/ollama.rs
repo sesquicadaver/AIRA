@@ -4,13 +4,19 @@
 //! Phase D weights, does not grant VERIFIED, and does not imply the running
 //! `aira-node` already has `AIRA_LLM_BACKEND=process` until restart applies
 //! settings.
+//!
+//! `#368`: HTTP `GET /api/tags` metadata parse — missing JSON fields stay
+//! [`OllamaJsonField::Unknown`]. Never invent boolean `false` / empty-known
+//! for locality or capabilities when the key is absent.
 
-use std::io::Read;
+use std::io::{Read, Write};
+use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context, Result};
+use serde_json::Value;
 
 /// Default program when Settings leave `llm_process_bin` empty.
 pub const DEFAULT_OLLAMA_BIN: &str = "ollama";
@@ -198,6 +204,208 @@ pub fn list_ollama_models_with_timeout(
     list_ollama_models_at(bin, &effective_ollama_host(None), timeout)
 }
 
+/// Optional field from Ollama JSON (`#368`).
+///
+/// Absent or JSON `null` → [`Unknown`](Self::Unknown). Never collapse that into
+/// a known empty string, empty list, or boolean `false`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OllamaJsonField<T> {
+    /// Key missing or explicitly null — not the same as a known empty value.
+    Unknown,
+    /// Key present with a typed value (may be empty string / empty vec when API said so).
+    Known(T),
+}
+
+impl<T> OllamaJsonField<T> {
+    /// True when the API did not supply this field.
+    pub fn is_unknown(&self) -> bool {
+        matches!(self, Self::Unknown)
+    }
+}
+
+/// One model object from `GET /api/tags` (`#368`).
+///
+/// Locality (`remote_host` / `remote_model`) and `capabilities` are optional.
+/// Missing keys stay [`OllamaJsonField::Unknown`] — not invented local/`false`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OllamaTagsModel {
+    pub name: String,
+    pub digest: OllamaJsonField<String>,
+    pub size: OllamaJsonField<u64>,
+    pub remote_host: OllamaJsonField<String>,
+    pub remote_model: OllamaJsonField<String>,
+    /// Classic `/api/tags` omits capabilities; untreated absence stays Unknown.
+    pub capabilities: OllamaJsonField<Vec<String>>,
+}
+
+/// Soft cap so a runaway tags body cannot pin Desktop memory (`#368`; cache/generation is `#370`).
+const OLLAMA_TAGS_MAX_BYTES: usize = 16 * 1024 * 1024;
+
+/// Parse `GET /api/tags` JSON body into model rows (`#368`).
+///
+/// Requires a top-level `models` array. Each element needs a string `name`.
+/// Optional fields use [`OllamaJsonField`]: absent/`null` → Unknown (no invented `false`).
+pub fn parse_ollama_tags_json(raw: &str) -> Result<Vec<OllamaTagsModel>> {
+    let v: Value = serde_json::from_str(raw).context("parse /api/tags JSON")?;
+    let models = v
+        .get("models")
+        .and_then(|m| m.as_array())
+        .ok_or_else(|| anyhow::anyhow!("/api/tags missing models array"))?;
+    let mut out = Vec::with_capacity(models.len());
+    for (i, item) in models.iter().enumerate() {
+        let obj = item
+            .as_object()
+            .ok_or_else(|| anyhow::anyhow!("/api/tags models[{i}] is not an object"))?;
+        let name = obj
+            .get("name")
+            .and_then(|n| n.as_str())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| anyhow::anyhow!("/api/tags models[{i}] missing name"))?
+            .to_string();
+        out.push(OllamaTagsModel {
+            name,
+            digest: optional_string_field(obj.get("digest")),
+            size: optional_u64_field(obj.get("size")),
+            remote_host: optional_string_field(obj.get("remote_host")),
+            remote_model: optional_string_field(obj.get("remote_model")),
+            capabilities: optional_string_list_field(obj.get("capabilities")),
+        });
+    }
+    Ok(out)
+}
+
+/// CLI names from a tags snapshot (order preserved).
+pub fn ollama_tags_model_names(models: &[OllamaTagsModel]) -> Vec<String> {
+    models.iter().map(|m| m.name.clone()).collect()
+}
+
+/// `GET {host}/api/tags` and parse (`#368`).
+///
+/// Uses [`effective_ollama_host`]. Only `http://` bases are supported here (no TLS).
+/// Timeout applies to connect and read. Body larger than [`OLLAMA_TAGS_MAX_BYTES`] fails closed.
+pub fn fetch_ollama_tags_at(host: &str, timeout: Duration) -> Result<Vec<OllamaTagsModel>> {
+    let base = effective_ollama_host(Some(host));
+    let (tcp_addr, host_header) = ollama_http_authority(&base)?;
+    let addr = crate::health::resolve_listen(&tcp_addr)
+        .with_context(|| format!("resolve Ollama tags endpoint {tcp_addr}"))?;
+    let mut stream = TcpStream::connect_timeout(&addr, timeout)
+        .with_context(|| format!("connect Ollama /api/tags at {tcp_addr}"))?;
+    stream.set_read_timeout(Some(timeout))?;
+    stream.set_write_timeout(Some(timeout))?;
+    let req = format!(
+        "GET /api/tags HTTP/1.1\r\nHost: {host_header}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
+    );
+    stream.write_all(req.as_bytes())?;
+    let mut buf = Vec::new();
+    let mut chunk = [0u8; 8192];
+    loop {
+        match stream.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(n) => {
+                if buf.len().saturating_add(n) > OLLAMA_TAGS_MAX_BYTES {
+                    bail!(
+                        "Ollama /api/tags body exceeds {OLLAMA_TAGS_MAX_BYTES} bytes (fail-closed)"
+                    );
+                }
+                buf.extend_from_slice(&chunk[..n]);
+            }
+            Err(e)
+                if e.kind() == std::io::ErrorKind::WouldBlock
+                    || e.kind() == std::io::ErrorKind::TimedOut =>
+            {
+                bail!("Ollama /api/tags timed out after {}ms", timeout.as_millis());
+            }
+            Err(e) => return Err(e).context("read Ollama /api/tags"),
+        }
+    }
+    let (status, payload) = parse_ollama_http_response(&buf)?;
+    if !(200..300).contains(&status) {
+        bail!(
+            "Ollama /api/tags HTTP {status}: {}",
+            payload.chars().take(200).collect::<String>()
+        );
+    }
+    parse_ollama_tags_json(&payload)
+}
+
+/// Same as [`fetch_ollama_tags_at`] with the default Desktop endpoint.
+pub fn fetch_ollama_tags(timeout: Duration) -> Result<Vec<OllamaTagsModel>> {
+    fetch_ollama_tags_at(&effective_ollama_host(None), timeout)
+}
+
+fn optional_string_field(v: Option<&Value>) -> OllamaJsonField<String> {
+    match v {
+        None | Some(Value::Null) => OllamaJsonField::Unknown,
+        Some(Value::String(s)) => OllamaJsonField::Known(s.clone()),
+        Some(other) => {
+            // Non-string present value: keep Unknown rather than inventing "" / false.
+            let _ = other;
+            OllamaJsonField::Unknown
+        }
+    }
+}
+
+fn optional_u64_field(v: Option<&Value>) -> OllamaJsonField<u64> {
+    match v {
+        None | Some(Value::Null) => OllamaJsonField::Unknown,
+        Some(Value::Number(n)) => n
+            .as_u64()
+            .map(OllamaJsonField::Known)
+            .unwrap_or(OllamaJsonField::Unknown),
+        Some(_) => OllamaJsonField::Unknown,
+    }
+}
+
+fn optional_string_list_field(v: Option<&Value>) -> OllamaJsonField<Vec<String>> {
+    match v {
+        None | Some(Value::Null) => OllamaJsonField::Unknown,
+        Some(Value::Array(items)) => {
+            let mut out = Vec::with_capacity(items.len());
+            for item in items {
+                match item.as_str() {
+                    Some(s) => out.push(s.to_string()),
+                    None => return OllamaJsonField::Unknown,
+                }
+            }
+            OllamaJsonField::Known(out)
+        }
+        Some(_) => OllamaJsonField::Unknown,
+    }
+}
+
+/// `http://host:port[/…]` → `(host:port, Host header)`. HTTPS is out of scope for `#368`.
+fn ollama_http_authority(base: &str) -> Result<(String, String)> {
+    let trimmed = base.trim().trim_end_matches('/');
+    let rest = trimmed.strip_prefix("http://").ok_or_else(|| {
+        anyhow::anyhow!(
+            "Ollama /api/tags requires http:// base (got {base}); TLS endpoints are out of #368"
+        )
+    })?;
+    let authority = rest
+        .split('/')
+        .next()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("Ollama base missing host: {base}"))?;
+    Ok((authority.to_string(), authority.to_string()))
+}
+
+fn parse_ollama_http_response(raw: &[u8]) -> Result<(u16, String)> {
+    let text = std::str::from_utf8(raw).context("Ollama HTTP response not UTF-8")?;
+    let (head, body) = text
+        .split_once("\r\n\r\n")
+        .or_else(|| text.split_once("\n\n"))
+        .ok_or_else(|| anyhow::anyhow!("malformed Ollama HTTP response"))?;
+    let status_line = head.lines().next().unwrap_or("");
+    let status: u16 = status_line
+        .split_whitespace()
+        .nth(1)
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| anyhow::anyhow!("no HTTP status: {status_line}"))?;
+    Ok((status, body.to_string()))
+}
+
 #[cfg(test)]
 mod unit {
     use super::*;
@@ -278,6 +486,111 @@ koill/sentence-transformers:paraphrase-multilingual-minilm-l12-v2    3ee258ffc9f
             effective_ollama_host(Some("  http://configured.example:11434  ")),
             "http://configured.example:11434"
         );
+    }
+
+    /// `#368`: missing `remote_host` / capabilities stay Unknown — never invented `false`/local.
+    #[test]
+    fn tags_parser_missing_fields_are_unknown_not_false() {
+        let raw = r#"{
+  "models": [
+    {
+      "name": "llama3:latest",
+      "digest": "abc",
+      "size": 100
+    },
+    {
+      "name": "kimi-k2.7-code:cloud",
+      "remote_host": "https://ollama.com",
+      "remote_model": "kimi-k2.7-code",
+      "digest": "def",
+      "size": 320,
+      "capabilities": ["completion"]
+    }
+  ]
+}"#;
+        let rows = parse_ollama_tags_json(raw).unwrap();
+        assert_eq!(rows.len(), 2);
+
+        let local = &rows[0];
+        assert_eq!(local.name, "llama3:latest");
+        assert!(
+            local.remote_host.is_unknown(),
+            "absent remote_host must be Unknown"
+        );
+        assert!(local.remote_model.is_unknown());
+        assert!(
+            local.capabilities.is_unknown(),
+            "absent capabilities must be Unknown, not Known([]) / false"
+        );
+        assert_eq!(local.digest, OllamaJsonField::Known("abc".into()));
+        assert_eq!(local.size, OllamaJsonField::Known(100));
+        // No invented boolean: callers must not treat Unknown as is_remote=false.
+        let invented_remote = matches!(local.remote_host, OllamaJsonField::Known(_));
+        assert!(!invented_remote);
+
+        let cloud = &rows[1];
+        assert_eq!(
+            cloud.remote_host,
+            OllamaJsonField::Known("https://ollama.com".into())
+        );
+        assert_eq!(
+            cloud.remote_model,
+            OllamaJsonField::Known("kimi-k2.7-code".into())
+        );
+        assert_eq!(
+            cloud.capabilities,
+            OllamaJsonField::Known(vec!["completion".into()])
+        );
+
+        assert_eq!(
+            ollama_tags_model_names(&rows),
+            vec![
+                "llama3:latest".to_string(),
+                "kimi-k2.7-code:cloud".to_string()
+            ]
+        );
+    }
+
+    /// `#368`: JSON null and empty-string presence are distinct from invented false.
+    #[test]
+    fn tags_parser_null_is_unknown_empty_string_is_known() {
+        let raw = r#"{
+  "models": [
+    { "name": "a:latest", "remote_host": null },
+    { "name": "b:latest", "remote_host": "" }
+  ]
+}"#;
+        let rows = parse_ollama_tags_json(raw).unwrap();
+        assert!(rows[0].remote_host.is_unknown());
+        assert_eq!(rows[1].remote_host, OllamaJsonField::Known(String::new()));
+    }
+
+    /// `#368`: HTTP GET /api/tags against a local stub.
+    #[test]
+    fn fetch_ollama_tags_reads_http_json() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let body = r#"{"models":[{"name":"phi:latest"}]}"#;
+        thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 1024];
+            let _ = stream.read(&mut buf);
+            let resp = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let _ = stream.write_all(resp.as_bytes());
+        });
+        let host = format!("http://{addr}");
+        let rows = fetch_ollama_tags_at(&host, Duration::from_secs(2)).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].name, "phi:latest");
+        assert!(rows[0].remote_host.is_unknown());
+        assert!(rows[0].capabilities.is_unknown());
     }
 
     /// Pack D / P2: hang script must fail-closed via kill+wait (no orphan sleep).

@@ -81,10 +81,11 @@ pub use node_http::{
     submit_timeout_for,
 };
 pub use ollama::{
-    apply_ollama_list_refresh, effective_ollama_host, list_ollama_models, list_ollama_models_at,
-    list_ollama_models_with_timeout, parse_ollama_list_stdout, resolve_ollama_bin,
-    OllamaHostListFreshness, OllamaHostListSnapshot, OllamaListEntry, DEFAULT_OLLAMA_BIN,
-    DEFAULT_OLLAMA_HOST, OLLAMA_HOST_ENV,
+    apply_ollama_list_refresh, effective_ollama_host, fetch_ollama_tags, fetch_ollama_tags_at,
+    list_ollama_models, list_ollama_models_at, list_ollama_models_with_timeout,
+    ollama_tags_model_names, parse_ollama_list_stdout, parse_ollama_tags_json, resolve_ollama_bin,
+    OllamaHostListFreshness, OllamaHostListSnapshot, OllamaJsonField, OllamaListEntry,
+    OllamaTagsModel, DEFAULT_OLLAMA_BIN, DEFAULT_OLLAMA_HOST, OLLAMA_HOST_ENV,
 };
 pub use paths::DesktopPaths;
 pub use peer::PeerPidRecordView;
