@@ -17,10 +17,11 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use aira_desktop_runtime::{
-    list_ollama_models, load_system_snapshot, resolve_ollama_bin, start, status, stop,
-    CatalogSelection, DesktopPaths, DesktopSettings, DialOutcome, LifecycleStatus,
-    ModelCatalogSnapshot, ModelTripleSnapshot, NetworkMeshSnapshot, PidRecordView, StartOutcome,
-    SystemSnapshot,
+    evaluate_work_readiness_applied, list_ollama_models, load_model_catalog, load_system_snapshot,
+    prepare_host_slots, resolve_ollama_bin, start, status, stop, AppliedHostLlm, CatalogSelection,
+    DesktopPaths, DesktopSettings, DialOutcome, LifecycleStatus, ModelCatalogSnapshot,
+    ModelTripleSnapshot, NetworkMeshSnapshot, PidRecordView, StartOutcome, SystemSnapshot,
+    WorkExecutorPreference,
 };
 
 use crate::actions;
@@ -263,10 +264,98 @@ pub fn run_compare_submit_job(
     Ok(WorkJobResult::compare(a, b))
 }
 
+/// Slot install then admit+submit off the UI thread (`#381`).
+#[allow(clippy::too_many_arguments)]
+fn run_prepare_and_run_job(
+    paths: &DesktopPaths,
+    settings: &DesktopSettings,
+    node_bin: Option<PathBuf>,
+    text: &str,
+    ensure_started: bool,
+    cli_names: &[String],
+    preference: WorkExecutorPreference,
+    applied: Option<&AppliedHostLlm>,
+    on_primary: impl FnOnce(WorkResultView),
+) -> Result<WorkJobResult, String> {
+    prepare_host_slots(&paths.data_root, cli_names)?;
+    let readiness = evaluate_work_readiness_applied(
+        &paths.data_root,
+        settings,
+        text,
+        preference.clone(),
+        applied,
+    );
+    if !readiness.ready {
+        let detail = readiness.reasons.join("; ");
+        return Err(if detail.is_empty() {
+            "model not ready after prepare".into()
+        } else {
+            detail
+        });
+    }
+    let tip = load_model_catalog(&paths.data_root)
+        .ok()
+        .and_then(|s| s.tip_model_ref);
+    match preference {
+        WorkExecutorPreference::Compare { .. } => {
+            let admission_b = readiness.admission_b.clone().ok_or_else(|| {
+                "Compare admission B missing after prepare — no silent substitute".to_string()
+            })?;
+            let a_ref = readiness.resolved_model_ref.clone().unwrap_or_default();
+            let b_ref = readiness.resolved_model_ref_b.clone().unwrap_or_default();
+            let model_ctx_a = WorkSubmitModelContext {
+                requested: Some(a_ref.clone()),
+                applied: Some(a_ref),
+                prompt: Some(text.to_string()),
+            };
+            let model_ctx_b = WorkSubmitModelContext {
+                requested: Some(b_ref.clone()),
+                applied: Some(b_ref),
+                prompt: Some(text.to_string()),
+            };
+            run_compare_submit_job(
+                paths,
+                settings,
+                node_bin,
+                text,
+                ensure_started,
+                &readiness.admission,
+                &model_ctx_a,
+                &admission_b,
+                &model_ctx_b,
+                on_primary,
+            )
+            .map_err(|e| format!("{e:#}"))
+        }
+        WorkExecutorPreference::Auto | WorkExecutorPreference::Required(_) => {
+            let requested = readiness.admission.model_ref.clone();
+            let applied_tip = tip.or_else(|| requested.clone());
+            let model_ctx = WorkSubmitModelContext {
+                requested,
+                applied: applied_tip,
+                prompt: Some(text.to_string()),
+            };
+            run_submit_job(
+                paths,
+                settings,
+                node_bin,
+                text,
+                ensure_started,
+                &readiness.admission,
+                &model_ctx,
+            )
+            .map(WorkJobResult::single)
+            .map_err(|e| format!("{e:#}"))
+        }
+    }
+}
+
 /// In-flight submit / refresh / dial slots (at most one of each).
 #[derive(Debug, Default)]
 pub struct AsyncDesktopJobs {
     work_rx: Option<Receiver<WorkJobEvent>>,
+    /// True while the in-flight work job is Prepare-and-run (`#381`).
+    prepare_and_run: bool,
     refresh_rx: Option<Receiver<(u64, Result<StatusSnapshot, String>)>>,
     lifecycle_rx: Option<Receiver<(LifecycleJobKind, Result<LifecycleJobResult, String>)>>,
     /// Phase T `#308`: at most one opt-in peer dial worker.
@@ -291,6 +380,11 @@ impl AsyncDesktopJobs {
 
     pub fn work_inflight(&self) -> bool {
         self.work_rx.is_some()
+    }
+
+    /// Clear and return whether the completed work job was Prepare-and-run (`#381`).
+    pub fn take_prepare_and_run_flag(&mut self) -> bool {
+        std::mem::take(&mut self.prepare_and_run)
     }
 
     pub fn refresh_inflight(&self) -> bool {
@@ -402,6 +496,62 @@ impl AsyncDesktopJobs {
         true
     }
 
+    /// One background job: host slots → re-admit → submit (`#381`).
+    ///
+    /// Uses the same exclusive work slot as submit. A second click while this is
+    /// in flight returns false (UI stays responsive; no second prepare/run).
+    #[allow(clippy::too_many_arguments)]
+    pub fn try_spawn_prepare_and_run(
+        &mut self,
+        paths: DesktopPaths,
+        settings: DesktopSettings,
+        node_bin: Option<PathBuf>,
+        text: String,
+        ensure_started: bool,
+        cli_names: Vec<String>,
+        preference: WorkExecutorPreference,
+        applied: Option<AppliedHostLlm>,
+        on_done: impl Fn() + Send + Sync + 'static,
+    ) -> bool {
+        if !work_allowed_during_catalog(self.catalog_mutate_inflight()) {
+            return false;
+        }
+        if !admit_submit_lifecycle(
+            ExclusiveJobKind::Submit,
+            self.work_rx.is_some(),
+            self.lifecycle_inflight(),
+        ) {
+            return false;
+        }
+        let (tx, rx) = mpsc::channel();
+        self.work_rx = Some(rx);
+        self.prepare_and_run = true;
+        let on_done = std::sync::Arc::new(on_done);
+        thread::spawn(move || {
+            let outcome = run_prepare_and_run_job(
+                &paths,
+                &settings,
+                node_bin,
+                &text,
+                ensure_started,
+                &cli_names,
+                preference,
+                applied.as_ref(),
+                {
+                    let on_done = on_done.clone();
+                    let tx = tx.clone();
+                    move |primary| {
+                        let _ = tx.send(WorkJobEvent::ComparePrimary(Box::new(primary)));
+                        on_done();
+                    }
+                },
+            );
+            let _ = tx.send(WorkJobEvent::Done(Box::new(outcome)));
+            on_done();
+        });
+        true
+    }
+
     /// Start at most one status refresh. Returns false if already in flight
     /// or a lifecycle op is running (`#282`).
     pub fn try_spawn_refresh(
@@ -461,6 +611,7 @@ impl AsyncDesktopJobs {
             Err(TryRecvError::Empty) => None,
             Err(TryRecvError::Disconnected) => {
                 self.work_rx = None;
+                self.prepare_and_run = false;
                 Some(WorkJobEvent::Done(Box::new(Err(
                     "submit worker disconnected".into(),
                 ))))
@@ -972,6 +1123,31 @@ mod tests {
             None,
             || {}
         ));
+    }
+
+    /// `#381`: Prepare-and-run uses the work slot; a second spawn is rejected.
+    #[test]
+    fn prepare_and_run_is_single_inflight_work_job() {
+        let mut jobs = AsyncDesktopJobs::new();
+        let paths =
+            DesktopPaths::for_data_root(std::env::temp_dir().join("aira-async-prepare-run"));
+        let settings = DesktopSettings::default_p0(&paths);
+        let (_hold_tx, hold_rx) = mpsc::channel();
+        jobs.work_rx = Some(hold_rx);
+        jobs.prepare_and_run = true;
+        assert!(!jobs.try_spawn_prepare_and_run(
+            paths,
+            settings,
+            None,
+            "hello".into(),
+            false,
+            vec!["model-a:latest".into()],
+            WorkExecutorPreference::Required("aira:model:ollama-x".into()),
+            None,
+            || {}
+        ));
+        assert!(jobs.take_prepare_and_run_flag());
+        assert!(!jobs.take_prepare_and_run_flag());
     }
 
     /// P2: Work submit blocked while catalog mutate is in flight.

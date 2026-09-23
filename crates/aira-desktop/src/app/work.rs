@@ -219,8 +219,7 @@ impl AiraDesktopApp {
     /// Exact CLI names for «Prepare and run», or `None` when Run is the right control (`#362`).
     pub(super) fn prepare_and_run_names(&self) -> Option<Vec<String>> {
         let host_ok = aira_desktop_runtime::evaluate_host_llm_gate(&self.settings).ok;
-        let busy = self.prepare_and_run_busy
-            || self.async_jobs.work_inflight()
+        let busy = self.async_jobs.work_inflight()
             || self.async_jobs.lifecycle_inflight()
             || self.async_jobs.catalog_mutate_inflight();
         aira_desktop_runtime::prepare_and_run_cli_names(
@@ -233,39 +232,48 @@ impl AiraDesktopApp {
         )
     }
 
-    /// Slot the selected host model, then the existing admit-and-run path.
+    /// Queue one background job: host slots → admit → submit (`#381`).
     ///
-    /// A repeat while this click or a run is in flight does not start a second run.
-    /// A slot error does not change the tip and does not submit.
+    /// Does not block the egui thread. A repeat while the work slot is busy is ignored.
     pub(super) fn prepare_and_run(&mut self, ctx: &egui::Context) {
-        if self.prepare_and_run_busy || self.async_jobs.work_inflight() {
+        if self.async_jobs.work_inflight() {
             return;
         }
         let Some(names) = self.prepare_and_run_names() else {
             return;
         };
-        self.prepare_and_run_busy = true;
-        let root = self.paths.data_root.clone();
-        let prepared = aira_desktop_runtime::execute_prepare_and_run(
-            false,
-            || aira_desktop_runtime::prepare_host_slots(&root, &names),
-            || Ok(()),
-        );
-        self.prepare_and_run_busy = false;
-        match prepared {
-            aira_desktop_runtime::PrepareAndRunOutcome::Failed(e) => {
-                self.refresh_model_catalog();
-                self.last_problem = Some(UiProblem::new(
-                    ErrorCode::WorkModelUnready,
-                    self.ui_lang(),
-                    Some(e),
-                ));
-            }
-            aira_desktop_runtime::PrepareAndRunOutcome::IgnoredRepeat => {}
-            aira_desktop_runtime::PrepareAndRunOutcome::Started => {
-                self.refresh_model_catalog();
-                self.submit_work(ctx);
-            }
+        let text = self.problem_text.clone();
+        if text.trim().is_empty() {
+            return;
         }
+        let ensure_started = !self.node_running;
+        let ctx = ctx.clone();
+        let on_done = move || ctx.request_repaint();
+        self.work_result = None;
+        self.work_result_b = None;
+        self.work_compare_b_error = None;
+        let started = self.async_jobs.try_spawn_prepare_and_run(
+            self.paths.clone(),
+            self.settings.clone(),
+            self.node_bin.clone(),
+            text,
+            ensure_started,
+            names,
+            self.work_preference(),
+            self.applied_host_for_readiness(),
+            on_done,
+        );
+        if !started {
+            let code = if self.async_jobs.lifecycle_inflight() {
+                ErrorCode::LifecycleBusy
+            } else if self.async_jobs.catalog_mutate_inflight() {
+                ErrorCode::CatalogBusy
+            } else {
+                ErrorCode::WorkSubmitInFlight
+            };
+            self.last_problem = Some(UiProblem::new(code, self.ui_lang(), None));
+            return;
+        }
+        self.clear_problem();
     }
 }
