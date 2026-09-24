@@ -1,9 +1,9 @@
 # Audit gate + post-Y linear plan (`6007442`)
 
-**Статус:** OPEN (Y tail + D/A). Блок K `#376`–`#382` **DONE**. Перший рядок виконання — `#371`.  
+**Статус:** OPEN (Y tail + D/A). Блок K `#376`–`#382` **DONE**. Перший рядок виконання — `#372`.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md).  
 **Джерело:** [`p-only/AIRA-full-audit-6007442-20260923.md`](../../p-only/AIRA-full-audit-6007442-20260923.md) (поза git). Перевірений `main`: `6007442`.  
-**Зв’язок із Phase Y:** `#359`–`#370` **DONE**. K **DONE**. `#371`–`#375` OPEN.  
+**Зв’язок із Phase Y:** `#359`–`#371` **DONE**. K **DONE**. `#372`–`#375` OPEN.  
 **Не входить:** marketplace, ratings GUI, новий LLM-провайдер, Research Plane, встановлення Ollama, заміна egui.
 
 Лінійність: один рядок — один PR. Не паралельний план поруч із Y.
@@ -42,6 +42,7 @@
 `#368` **DONE** — `/api/tags` parse/fetch; відсутнє поле = Unknown (без вигаданих `false`).
 `#369` **DONE** — `/api/show` коли бракує будь-якого поля оцінки (caps відомі + місце Unknown → show).
 `#370` **DONE** — in-memory cache (endpoint/name/digest), generation reject, parallel 2–4.
+`#371` **DONE** — locality predicate (server-local vs this computer; empty/unknown/localhost/:cloud honesty).
 
 ## Блок D — документація (`#383`–`#387`)
 
@@ -63,6 +64,6 @@
 ## Правила
 
 - Зберігати чинні fail-closed перевірки admission.
-- Не оголошувати Phase Y DONE, доки `#371`–`#375` не закриті (`#367`–`#370` DONE).
+- Не оголошувати Phase Y DONE, доки `#372`–`#375` не закриті (`#367`–`#371` DONE).
 - Не додавати file-executor лише заради D1 / `#383`.
 - Зелений CI не замінює installed-product acceptance (`#388`).
