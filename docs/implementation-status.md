@@ -25,7 +25,7 @@ HTTP, peer/DHT/relay/gossip, and federation join exist in-tree and are labelled 
 
 Living per-cycle matrices remain under `analysis/Analyze-N/LIVING_SPEC_MATRIX.md`. This page is the repo-level rollup.
 
-Operator entry: [README](../README.md) → [specs/](../specs/) → this file → [demo.md](demo.md). Plane role: [operational-plane.md](operational-plane.md). Conformance index: [conformance.md](conformance.md) (C0–C5). **`#386`:** [`specs/README.md`](../specs/README.md) maps immutable baseline (`Manifesto etc/`, `schemas/`) + RFC amendments + priority; working copies under `specs/` are **not** a second Manifesto.
+Operator entry: [README](../README.md) → [specs/](../specs/) → this file → [demo.md](demo.md). Plane role: [operational-plane.md](operational-plane.md). Conformance index: [conformance.md](conformance.md) (C0–C5). **`#386`:** [`specs/README.md`](../specs/README.md) maps immutable baseline (`Manifesto etc/`, `schemas/`) + RFC amendments + priority; working copies under `specs/` are **not** a second Manifesto. **`#387`:** entry-points (`demo`, `crypto`, this file, `NEXT_PROBLEM`) share one tip — **перший OPEN `#388`** ([`QUEUE.md`](../QUEUE.md)); historical “first OPEN `#N`” lines below are provenance, not the tip.
 
 **v0.3 protocol-depth posture (`#182`–`#183`):** durable event/object paths (H1); local C3 + optional CI job (H2); in-process CRP PARTIAL (H3); settlement audit receipts PARTIAL (H4); RFC-P + non-operational gate + `run_c5` (H5). Not a production distributed plane. Consolidating RFC: [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md).
 
@@ -486,7 +486,7 @@ Plan: [`phase-n-plan.md`](phase-n-plan.md). Consolidating RFC: `AIRA-RFC-0123` (
 **Phase S `#295`–`#305` DONE** @ RFC-0182 [`phase-s-plan.md`](phase-s-plan.md) — `#295` DONE (wiring / `phase_s_doc.rs` / Analyze-331); `#296` DONE @ RFC-0183; `#297` DONE @ RFC-0184; `#298` DONE @ RFC-0185; `#299` DONE @ RFC-0186; `#300` DONE @ RFC-0187; `#301` DONE @ RFC-0188; `#302` DONE @ RFC-0189 (submit∥lifecycle / Analyze-338); `#303` DONE @ RFC-0190 (observe miss off-UI / Analyze-339); `#304` DONE @ RFC-0191 (durability honesty / Analyze-340); **QUEUE S closed**; consolidating RFC-0182 **DONE**.
 
 
-**Phase W `#331`–`#342` DONE** @ [`phase-w-plan.md`](phase-w-plan.md) / RFC-0215 — Pack 1 residual honesty (audit D1–D6); **QUEUE W closed**; living smoke `phase_w_doc.rs`; handoff Pack 2 → [`phase-x-plan.md`](phase-x-plan.md) `#343` DONE; first OPEN `#344`.
+**Phase W `#331`–`#342` DONE** @ [`phase-w-plan.md`](phase-w-plan.md) / RFC-0215 — Pack 1 residual honesty (audit D1–D6); **QUEUE W closed**; living smoke `phase_w_doc.rs`; handoff Pack 2 → [`phase-x-plan.md`](phase-x-plan.md) `#343` DONE (historical tip was `#344`; current tip is **перший OPEN `#388`** — `#387`).
 
 **Phase X `#343`–`#358` DONE** @ [`phase-x-plan.md`](phase-x-plan.md) / RFC-0226 — Pack 2 local multi-model GUI (`aira-current.md` 2026-09-13 + M1–M6); `#343`–`#357` DONE @ Analyze-380…394 / RFC-0227…0240; `#358` DONE @ Analyze-395 / consolidating RFC-0226; **QUEUE X closed**; no OPEN X atoms.
 

@@ -240,3 +240,62 @@ fn audit_d_386_specs_readme_baseline_amendments_priority() {
         "rfc-process §15 must declare class and status enums"
     );
 }
+
+/// `#387`: entry-points share one current tip; stale Phase G/N tips and calculator GUI claims are gone.
+#[test]
+fn audit_d_387_entry_points_one_first_open() {
+    let root = repo_root();
+    let tip = "перший OPEN `#388`";
+    let paths = [
+        "docs/demo.md",
+        "docs/crypto.md",
+        "docs/implementation-status.md",
+        "NEXT_PROBLEM.md",
+    ];
+    for rel in paths {
+        let text = std::fs::read_to_string(root.join(rel)).unwrap();
+        assert!(
+            text.contains("#387") && text.contains(tip),
+            "{rel} must cite #387 and the shared tip {tip}"
+        );
+        assert!(
+            !text.contains("Phase G OPEN"),
+            "{rel} must not claim Phase G OPEN"
+        );
+        assert!(
+            !text.contains("перший OPEN `#232`"),
+            "{rel} must not keep stale Phase N tip #232"
+        );
+    }
+
+    let demo = std::fs::read_to_string(root.join("docs/demo.md")).unwrap();
+    assert!(
+        demo.contains("legacy non-normative") || demo.contains("OP-001"),
+        "demo must mark Calculate 2+2 / OP-001 as legacy"
+    );
+    assert!(
+        demo.contains("does **not** promise a calculator")
+            || demo.contains("does not promise a calculator"),
+        "demo must not claim Desktop calculator 4.0 VERIFIED"
+    );
+    assert!(
+        !demo.contains("shows **4.0** + **VERIFIED**"),
+        "demo must not promise GUI 4.0 VERIFIED"
+    );
+
+    let next = std::fs::read_to_string(root.join("NEXT_PROBLEM.md")).unwrap();
+    assert!(
+        next.contains("QUEUE W closed") && next.contains("QUEUE L closed"),
+        "NEXT_PROBLEM must retain closed-phase provenance markers"
+    );
+
+    let status = std::fs::read_to_string(root.join("docs/implementation-status.md")).unwrap();
+    assert!(
+        status.contains("historical tip was `#344`") || status.contains("not the tip"),
+        "implementation-status must not present #344 as the live tip"
+    );
+    assert!(
+        !status.contains("; first OPEN `#344`."),
+        "implementation-status must not end a live tip sentence with first OPEN #344"
+    );
+}

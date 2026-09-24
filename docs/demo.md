@@ -2,7 +2,7 @@
 
 Local **C1 reference/demo** flow (`aira-flow` / CLI). [`OperationalPlane`](operational-plane.md) is not a production event runtime, scheduler, or federation runtime.
 
-**Queue:** Phase G OPEN `#120`–`#146` — [`phase-g-plan.md`](phase-g-plan.md).
+**Queue (`#387`):** перший OPEN `#388` — [`QUEUE.md`](../QUEUE.md) / [`audit-6007442-plan.md`](audit-6007442-plan.md). Do not treat closed Phase G/X tips as current.
 
 ## Prerequisites
 
@@ -13,13 +13,17 @@ cargo run -p aira-cli -- --root "$ROOT" init
 cargo run -p aira-cli -- --root "$ROOT" identity create
 ```
 
-## Calculate 2 + 2 → Verified Result Artifact
+## Calculate 2 + 2 → Verified Result Artifact (legacy OP-001)
+
+**Honesty (`#384` / `#387`):** `Calculate 2 + 2` / OP-001 is **legacy non-normative**. Normative C1 merge smoke is process Executed + VRA schema fixtures — not a Desktop calculator. Product Work is `text.generate.local` (executed, not VERIFIED); see [`desktop-gui.md`](desktop-gui.md).
+
+Historical CLI / library path (still useful for local C1 reference):
 
 ```bash
 cargo run -p aira-cli -- --root "$ROOT" problem submit --text "Calculate 2 + 2"
 ```
 
-Expected:
+Expected on that path:
 
 - `status completed`
 - JSON `result: 4.0`, `verification_status: "VERIFIED"`
@@ -27,7 +31,7 @@ Expected:
 
 Library equivalent: `OperationalPlane::submit_problem("Calculate 2 + 2")` (C1 reference plane; [operational-plane.md](operational-plane.md)).
 
-Desktop GUI: tab **Work** / **Робота** in `aira-desktop` posts the same `POST /v1/problems` to the supervised local node and shows **4.0** + **VERIFIED** first; hashes and signatures stay under Details ([`desktop-gui.md`](desktop-gui.md)).
+Desktop GUI Work tab does **not** promise a calculator returning `4.0` + **VERIFIED**; it posts generate-local work to the supervised node ([`desktop-gui.md`](desktop-gui.md)).
 
 ## Ready Solution reuse
 
