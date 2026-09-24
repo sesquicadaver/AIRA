@@ -1,9 +1,9 @@
 # Audit gate + post-Y linear plan (`6007442`)
 
-**Статус:** OPEN (Y tail + D/A). Блок K `#376`–`#382` **DONE**. Перший рядок виконання — `#375`.  
+**Статус:** OPEN (D/A). Блок K `#376`–`#382` **DONE**. Phase Y `#359`–`#375` **DONE**. Перший рядок виконання — `#383`.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md).  
 **Джерело:** [`p-only/AIRA-full-audit-6007442-20260923.md`](../../p-only/AIRA-full-audit-6007442-20260923.md) (поза git). Перевірений `main`: `6007442`.  
-**Зв’язок із Phase Y:** `#359`–`#374` **DONE**. K **DONE**. `#375` OPEN.  
+**Зв’язок із Phase Y:** `#359`–`#375` **DONE**. K **DONE**. D `#383`–`#387` OPEN.  
 **Не входить:** marketplace, ratings GUI, новий LLM-провайдер, Research Plane, встановлення Ollama, заміна egui.
 
 Лінійність: один рядок — один PR. Не паралельний план поруч із Y.
@@ -46,6 +46,7 @@
 `#372` **DONE** — unified fitness five states; completion+vision ready when local.
 `#373` **DONE** — model selector search/Compatible/Show all; N of M; selection survives filter.
 `#374` **DONE** — Compare enter clears B; exit restores solo pick; distinct full CLI names stay distinct.
+`#375` **DONE** — EN/UK fitness labels + F1 Prepare-and-run; `:cloud` suffix is not locality proof; local-node row.
 
 ## Блок D — документація (`#383`–`#387`)
 
@@ -67,6 +68,6 @@
 ## Правила
 
 - Зберігати чинні fail-closed перевірки admission.
-- Не оголошувати Phase Y DONE, доки `#375` не закритий (`#367`–`#374` DONE).
+- Phase Y `#359`–`#375` **DONE**. Не оголошувати audit A DONE, доки `#388`–`#389` не закриті.
 - Не додавати file-executor лише заради D1 / `#383`.
 - Зелений CI не замінює installed-product acceptance (`#388`).

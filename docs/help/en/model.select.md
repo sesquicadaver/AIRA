@@ -6,6 +6,8 @@ Local models belong to the model / execution layer — **not** `aira-core`, not 
 
 **Settings ≠ System:** change the catalog only under **Settings → Models**. **System → Model** shows **selected**, **ready**, and **used in last result** as observed facts — it is not a second catalog editor. There is one catalog with two sources: **Host Ollama** and **Local file**. Each source shows only the actions it allows.
 
+Fitness for a host row is one of five shared states: **Ready**, **Prepare and run**, **Checking…**, **Needs action**, or **Incompatible**. A name suffix such as `:cloud` is only a hint — it does **not** prove the model runs on this computer. Locality comes from API fields for a supported Ollama version, not from the label alone.
+
 ## What to do?
 
 Canonical Desktop path (no CLI required):
@@ -13,7 +15,7 @@ Canonical Desktop path (no CLI required):
 1. Open **Settings → Models** and pick a **source**.
 2. **Host Ollama:** refresh the host list, pick a model (that choice does not change the default), then **Make default** or **Use Ollama process**. Make default writes the default tip (signed bind marker; not weight-verified) and sets process for the **next** node start. Until you **Stop** then **Start**, the running executor may still be mock. If the host list is still loading, Use Ollama finishes the bind after the list returns.
 3. **Local file:** note **Model storage** (observe-only). **Scan**, or **Enable local add** → **Add file…**. The **artifact path** for **Verify** is on this add-file step, not under Technical details. **Select** a row (not verified). **Prepare** when the row is a local file and not ready. Host Ollama rows are not listed here and have no Prepare.
-4. On **Work**, the selector shows **Default: name**. **Compare** opens a second selector, not a second catalog. A local model is required. If B fails, A stays.
+4. On **Work**, the selector shows **Default: name**, with search and a **Compatible** filter (use **Show all** to see incompatible rows with their reason). **Compare** opens a second selector, not a second catalog. If a listed host model is fit but has no slot yet, use **Prepare and run** — that prepares the slot, admits, and starts once; it does not change the default tip. A local model is required. If B fails, A stays.
 5. If Work is blocked for missing host LLM, bind Ollama under Settings → Models and restart. Mock is not product Work.
 
 Optional tooling (not required for the GUI path): `aira models scan|list|activate`; env `AIRA_LLM_BACKEND=process` for Dev.
@@ -22,8 +24,9 @@ Optional tooling (not required for the GUI path): `aira models scan|list|activat
 
 - Missing a model blocks Work. There is no path that succeeds without a local model.
 - Desktop keeps **selected ≠ ready ≠ used** honest — never invent a model name or copy selected into used.
-- Choice / Prepare / Select never silently mean VERIFIED free-form text.
+- Choice / Prepare / Select / **Prepare and run** never silently mean VERIFIED free-form text.
 - Compare never silently swaps an unready model for the tip or another catalog row.
+- Cloud or unknown locality stays in the catalog with **Needs action** / **Checking…** and is not treated as local-ready just because the name ends in `:cloud`.
 
 ## If it failed?
 

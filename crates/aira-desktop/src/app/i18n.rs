@@ -317,6 +317,16 @@ pub struct Labels {
     pub work_model_shown_of: &'static str,
     /// `#373`: metadata loading while Compatible is empty.
     pub work_model_checking: &'static str,
+    /// `#375`: fitness state — runnable now.
+    pub model_fitness_runnable: &'static str,
+    /// `#375`: fitness state — Prepare and run.
+    pub model_fitness_prepare_and_run: &'static str,
+    /// `#375`: fitness state — checking metadata.
+    pub model_fitness_checking: &'static str,
+    /// `#375`: fitness state — needs operator action (remote / absent).
+    pub model_fitness_needs_action: &'static str,
+    /// `#375`: fitness state — incompatible (no completion).
+    pub model_fitness_incompatible: &'static str,
     /// Closed Compare B when nothing is picked. Not the tip label (`#360`).
     pub work_compare_b_empty: &'static str,
     pub work_ran_model: &'static str,
@@ -365,6 +375,21 @@ impl Labels {
         match lang {
             UiLang::Uk => &UK,
             UiLang::En => &EN,
+        }
+    }
+
+    /// Localized label for a unified fitness state (`#375`).
+    pub fn model_fitness_label(
+        &self,
+        state: aira_desktop_runtime::ModelFitnessState,
+    ) -> &'static str {
+        use aira_desktop_runtime::ModelFitnessState::*;
+        match state {
+            Runnable => self.model_fitness_runnable,
+            PrepareAndRun => self.model_fitness_prepare_and_run,
+            Checking => self.model_fitness_checking,
+            NeedsAction => self.model_fitness_needs_action,
+            Incompatible => self.model_fitness_incompatible,
         }
     }
 }
@@ -631,6 +656,11 @@ static EN: Labels = Labels {
     work_model_filter_show_all: "Show all",
     work_model_shown_of: "Shown",
     work_model_checking: "Checking compatibility…",
+    model_fitness_runnable: "Ready",
+    model_fitness_prepare_and_run: "Prepare and run",
+    model_fitness_checking: "Checking…",
+    model_fitness_needs_action: "Needs action",
+    model_fitness_incompatible: "Incompatible",
     work_compare_b_empty: "Choose model B",
     work_ran_model: "Model that ran",
     work_model_mismatch: "The model that ran is not the one you selected.",
@@ -936,6 +966,11 @@ static UK: Labels = Labels {
     work_model_filter_show_all: "Показати всі",
     work_model_shown_of: "Показано",
     work_model_checking: "Перевіряємо сумісність…",
+    model_fitness_runnable: "Готова",
+    model_fitness_prepare_and_run: "Підготувати й виконати",
+    model_fitness_checking: "Перевіряємо…",
+    model_fitness_needs_action: "Потрібна дія",
+    model_fitness_incompatible: "Несумісна",
     work_compare_b_empty: "Оберіть модель B",
     work_ran_model: "Модель, що виконала",
     work_model_mismatch: "Виконала не та модель, яку ви обрали.",
