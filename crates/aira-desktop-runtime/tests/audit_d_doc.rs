@@ -67,3 +67,57 @@ fn audit_d_383_installed_file_visible_not_ollama_work_ready() {
             .unwrap();
     assert!(wr.contains("cannot run it"));
 }
+
+/// `#384`: C1 Executed, VRA fixture, and OP-001 are three separate Living Spec statuses.
+#[test]
+fn audit_d_384_c1_executed_vra_op001_are_three_statuses() {
+    let root = repo_root();
+    let conf = std::fs::read_to_string(root.join("docs/conformance.md")).unwrap();
+    assert!(
+        conf.contains("## C1 three statuses (`#384`)"),
+        "docs/conformance.md must define the three-status table"
+    );
+    for needle in [
+        "**C1 Executed**",
+        "**VRA fixture**",
+        "**OP-001**",
+        "c1.pipeline.process_executor_executed",
+        "c1.result.verified_completeness",
+        "calculator returned to GUI",
+    ] {
+        assert!(
+            conf.contains(needle),
+            "docs/conformance.md missing: {needle}"
+        );
+    }
+
+    let status = std::fs::read_to_string(root.join("docs/implementation-status.md")).unwrap();
+    assert!(
+        status.contains("**C1 Executed** (process smoke)")
+            && status.contains("**VRA schema fixture**")
+            && status.contains("**OP-001** (legacy math)"),
+        "implementation-status Living Spec must list three separate rows"
+    );
+    assert!(
+        status.contains("Do not collapse Executed / VRA fixture / OP-001"),
+        "matrix must forbid collapsing the three statuses"
+    );
+
+    let specs = std::fs::read_to_string(root.join("specs/conformance.md")).unwrap();
+    assert!(
+        specs.contains("#384") && specs.contains("legacy non-normative"),
+        "specs OP-001 must carry #384 legacy banner"
+    );
+
+    let gov = std::fs::read_to_string(root.join("docs/ci-governance.md")).unwrap();
+    assert!(
+        gov.contains("#384") && gov.contains("calculator"),
+        "ci-governance must separate smoke/VRA from OP-001 and GUI calculator"
+    );
+
+    let i18n = std::fs::read_to_string(root.join("crates/aira-desktop/src/app/i18n.rs")).unwrap();
+    assert!(
+        i18n.contains("assert!(!Labels::get(UiLang::En).work_tech_details.contains(\"OP-001\"))"),
+        "desktop i18n must keep OP-001 out of Work tech details"
+    );
+}
