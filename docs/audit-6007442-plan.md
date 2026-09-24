@@ -1,9 +1,9 @@
 # Audit gate + post-Y linear plan (`6007442`)
 
-**Статус:** OPEN (D/A). Блок K `#376`–`#382` **DONE**. Phase Y `#359`–`#375` **DONE**. `#383`–`#385` **DONE**. Перший рядок виконання — `#386`.  
+**Статус:** OPEN (D/A). Блок K `#376`–`#382` **DONE**. Phase Y `#359`–`#375` **DONE**. `#383`–`#386` **DONE**. Перший рядок виконання — `#387`.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md).  
 **Джерело:** [`p-only/AIRA-full-audit-6007442-20260923.md`](../../p-only/AIRA-full-audit-6007442-20260923.md) (поза git). Перевірений `main`: `6007442`.  
-**Зв’язок із Phase Y:** `#359`–`#375` **DONE**. K **DONE**. D `#383`–`#385` **DONE**; `#386`–`#387` OPEN.  
+**Зв’язок із Phase Y:** `#359`–`#375` **DONE**. K **DONE**. D `#383`–`#386` **DONE**; `#387` OPEN.  
 **Не входить:** marketplace, ratings GUI, новий LLM-провайдер, Research Plane, встановлення Ollama, заміна egui.
 
 Лінійність: один рядок — один PR. Не паралельний план поруч із Y.
@@ -22,8 +22,9 @@
                 → #383 installed-file ≠ Work ready (DONE)
                   → #384 C1/VRA/OP-001 three statuses (DONE)
                     → #385 settlement receipt $id↔schema (DONE)
-                      → #386 … #387 (D docs)
-                        → #388 … #389 (installed acceptance)
+                      → #386 specs README baseline/amendments (DONE)
+                        → #387 entry-points / broken links (D)
+                          → #388 … #389 (installed acceptance)
 ```
 
 ## Блок K — інженерні дефекти аудиту (`#376`–`#382`)
@@ -58,7 +59,7 @@
 | 383 | **DONE.** Installed-file / RFC-0240: файл видно, не executable через Ollama | критерій ≠ «Work ready» як generate | новий file-executor |
 | 384 | **DONE.** C1 Executed vs VRA / OP-001 / matrix: три окремі статуси | без змішування smoke і verified pipeline | повернення калькулятора в GUI |
 | 385 | **DONE.** Settlement receipt: один `$id` ↔ одна schema | JSON і schema-pack збігаються | federation runtime |
-| 386 | `specs/README`: immutable baseline + amendments + пріоритет; RFC metadata | без другого канону | перепис Manifesto |
+| 386 | **DONE.** `specs/README`: immutable baseline + amendments + пріоритет; RFC metadata | без другого канону | перепис Manifesto |
 | 387 | Entry-points і зламані links (`demo`, `crypto`, implementation-status, `NEXT_PROBLEM`) | одне актуальне «перше OPEN» | масове DONE без E2E |
 
 ## Блок A — installed acceptance (`#388`–`#389`)

@@ -181,3 +181,62 @@ fn audit_d_385_settlement_receipt_id_matches_schema_pack() {
         "implementation-status must cite the single $id and #385 pack sync"
     );
 }
+
+/// `#386`: specs/README is authority map (baseline + amendments + priority), not a second Manifesto.
+#[test]
+fn audit_d_386_specs_readme_baseline_amendments_priority() {
+    let root = repo_root();
+    let readme = std::fs::read_to_string(root.join("specs/README.md")).unwrap();
+    assert!(readme.contains("#386"), "specs/README.md must cite #386");
+    assert!(
+        readme.contains("## Immutable baseline"),
+        "specs/README must name immutable baseline"
+    );
+    assert!(
+        readme.contains("Manifesto etc/"),
+        "baseline must point at Manifesto etc/"
+    );
+    assert!(
+        readme.contains("## Amendments (RFCs)"),
+        "specs/README must name amendments (RFCs)"
+    );
+    assert!(
+        readme.contains("specs/rfc/") && readme.contains("rfc-process.md"),
+        "amendments must point at specs/rfc/ and rfc-process"
+    );
+    assert!(
+        readme.contains("## Priority (conflict resolution)"),
+        "specs/README must define conflict priority"
+    );
+    for needle in [
+        "**`Manifesto etc/`**",
+        "**`schemas/**/*.json`**",
+        "**Accepted RFCs**",
+        "**Working copies**",
+        "second Manifesto",
+        "Do not rewrite `Manifesto etc/`",
+    ] {
+        assert!(
+            readme.contains(needle),
+            "priority / non-second-canon missing: {needle}"
+        );
+    }
+    assert!(
+        readme.contains("## RFC metadata (`class` / `status`)")
+            && readme.contains("`class`")
+            && readme.contains("`status`")
+            && readme.contains("draft")
+            && readme.contains("accepted"),
+        "RFC metadata class/status must be documented"
+    );
+
+    let process = std::fs::read_to_string(root.join("specs/rfc-process.md")).unwrap();
+    assert!(
+        process.contains("# 15. RFC Metadata Template"),
+        "rfc-process §15 metadata template must remain the class/status authority"
+    );
+    assert!(
+        process.contains("class: enum") && process.contains("status: enum"),
+        "rfc-process §15 must declare class and status enums"
+    );
+}

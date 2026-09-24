@@ -25,7 +25,7 @@ HTTP, peer/DHT/relay/gossip, and federation join exist in-tree and are labelled 
 
 Living per-cycle matrices remain under `analysis/Analyze-N/LIVING_SPEC_MATRIX.md`. This page is the repo-level rollup.
 
-Operator entry: [README](../README.md) → [specs/](../specs/) → this file → [demo.md](demo.md). Plane role: [operational-plane.md](operational-plane.md). Conformance index: [conformance.md](conformance.md) (C0–C5).
+Operator entry: [README](../README.md) → [specs/](../specs/) → this file → [demo.md](demo.md). Plane role: [operational-plane.md](operational-plane.md). Conformance index: [conformance.md](conformance.md) (C0–C5). **`#386`:** [`specs/README.md`](../specs/README.md) maps immutable baseline (`Manifesto etc/`, `schemas/`) + RFC amendments + priority; working copies under `specs/` are **not** a second Manifesto.
 
 **v0.3 protocol-depth posture (`#182`–`#183`):** durable event/object paths (H1); local C3 + optional CI job (H2); in-process CRP PARTIAL (H3); settlement audit receipts PARTIAL (H4); RFC-P + non-operational gate + `run_c5` (H5). Not a production distributed plane. Consolidating RFC: [`AIRA-RFC-0077`](../specs/rfc/AIRA-RFC-0077-phase-h-protocol-depth-v0.3.md).
 
