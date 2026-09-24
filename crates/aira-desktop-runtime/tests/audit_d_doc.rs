@@ -14,10 +14,7 @@ fn audit_d_383_installed_file_visible_not_ollama_work_ready() {
         root.join("specs/rfc/AIRA-RFC-0240-two-model-installed-acceptance.md"),
     )
     .expect("RFC-0240");
-    assert!(
-        rfc.contains("#383"),
-        "RFC-0240 §8b must cite #383 honesty"
-    );
+    assert!(rfc.contains("#383"), "RFC-0240 §8b must cite #383 honesty");
     assert!(
         rfc.contains("not** Work-ready for generate")
             || rfc.contains("**not** Work-ready for generate"),
@@ -65,9 +62,8 @@ fn audit_d_383_installed_file_visible_not_ollama_work_ready() {
     // Runtime still fail-closes file weights on ollama (no new executor).
     let proc = std::fs::read_to_string(root.join("csu/execution-llm/src/process.rs")).unwrap();
     assert!(proc.contains("file_weight_binding_on_ollama_backend_is_fail_closed"));
-    let wr = std::fs::read_to_string(
-        root.join("crates/aira-desktop-runtime/src/work_readiness.rs"),
-    )
-    .unwrap();
+    let wr =
+        std::fs::read_to_string(root.join("crates/aira-desktop-runtime/src/work_readiness.rs"))
+            .unwrap();
     assert!(wr.contains("cannot run it"));
 }
