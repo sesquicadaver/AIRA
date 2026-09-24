@@ -1,0 +1,40 @@
+{
+  "executed": {
+    "backend": "process",
+    "file_weight_fail_closed": true,
+    "required_a_then_b_without_restart": true,
+    "result_a_prefix": "OK",
+    "result_b_prefix": "OK",
+    "timeout_fail_closed": true,
+    "verification_status": null,
+    "m6_fixture_cli_http": true,
+    "m6_fixture_gui": true
+  },
+  "gate": "installed-product-llm",
+  "git_sha": "3dbcd84f92e7d2036c951540b38fbd842d0c01c0",
+  "models": {
+    "a": "llama3.2:latest",
+    "b": "llama3:latest"
+  },
+  "not_analyze_396_head_proof": true,
+  "not_executed": [
+    "gui_settings_clickthrough_real_ollama",
+    "compare_mid_kill",
+    "file_verify_prepare_gui",
+    "failed_stop_window",
+    "widths_560_900_1600"
+  ],
+  "not_installed_product_complete": true,
+  "ollama_digests": {
+    "a": "a80c4f17acd5",
+    "b": "365c0bd3c000"
+  },
+  "queue_atom": "#388",
+  "recorded_at": "2026-09-24T18:48:25Z",
+  "surfaces": {
+    "process_real_ollama": true,
+    "cli_http_fixture_m6": true,
+    "gui_fixture_m6": true,
+    "gui_real_ollama_clickthrough": false
+  }
+}

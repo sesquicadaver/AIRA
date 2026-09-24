@@ -1,9 +1,9 @@
 # Audit gate + post-Y linear plan (`6007442`)
 
-**Статус:** OPEN (A). Блок K `#376`–`#382` **DONE**. Phase Y `#359`–`#375` **DONE**. `#383`–`#387` **DONE**. Перший рядок виконання — `#388`.  
+**Статус:** OPEN (A). Блок K `#376`–`#382` **DONE**. Phase Y `#359`–`#375` **DONE**. `#383`–`#388` **DONE**. Перший рядок виконання — `#389`.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md).  
 **Джерело:** [`p-only/AIRA-full-audit-6007442-20260923.md`](../../p-only/AIRA-full-audit-6007442-20260923.md) (поза git). Перевірений `main`: `6007442`.  
-**Зв’язок із Phase Y:** `#359`–`#375` **DONE**. K **DONE**. D `#383`–`#387` **DONE**; `#388`–`#389` OPEN.  
+**Зв’язок із Phase Y:** `#359`–`#375` **DONE**. K **DONE**. D `#383`–`#387` **DONE**; `#388` **DONE**; `#389` OPEN.  
 **Не входить:** marketplace, ratings GUI, новий LLM-провайдер, Research Plane, встановлення Ollama, заміна egui.
 
 Лінійність: один рядок — один PR. Не паралельний план поруч із Y.
@@ -24,7 +24,8 @@
                     → #385 settlement receipt $id↔schema (DONE)
                       → #386 specs README baseline/amendments (DONE)
                         → #387 entry-points one tip (DONE)
-                          → #388 … #389 (installed acceptance)
+                          → #388 installed acceptance @ SHA (DONE)
+                            → #389 Analyze-396 historicize
 ```
 
 ## Блок K — інженерні дефекти аудиту (`#376`–`#382`)
@@ -66,7 +67,7 @@
 
 | # | Scope | Done when | Не в рядку |
 |---|--------|-----------|------------|
-| 388 | Acceptance на **конкретному SHA** після `#367` + K | GUI+CLI+HTTP дві моделі; негативи; SHA/Ollama/digest у evidence | перенос Analyze-396 як proof HEAD |
+| 388 | **DONE.** Acceptance на **конкретному SHA** після `#367` + K (Analyze-397 @ `3dbcd84`) | GUI+CLI+HTTP дві моделі; негативи; SHA/Ollama/digest у evidence | перенос Analyze-396 як proof HEAD |
 | 389 | Старі process-smoke / Analyze-396 — історичні snapshots | явна дата/SHA в шапці evidence | нові продуктові можливості |
 
 ## Правила

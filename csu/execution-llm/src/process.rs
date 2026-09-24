@@ -1619,9 +1619,15 @@ mod tests {
                     .take(180)
                     .collect::<String>()
             };
-            let doc = json!({
+            let git_sha = std::env::var("AIRA_GIT_SHA").ok();
+            let digest_a = std::env::var("AIRA_OLLAMA_DIGEST_A").ok();
+            let digest_b = std::env::var("AIRA_OLLAMA_DIGEST_B").ok();
+            let recorded_at = std::env::var("AIRA_RECORDED_AT").ok();
+            let mut doc = json!({
                 "gate": "installed-product-llm",
+                "queue_atom": "#388",
                 "not_installed_product_complete": true,
+                "not_analyze_396_head_proof": true,
                 "models": {"a": model_a, "b": model_b},
                 "executed": {
                     "required_a_then_b_without_restart": true,
@@ -1633,13 +1639,32 @@ mod tests {
                     "timeout_fail_closed": true
                 },
                 "not_executed": [
-                    "gui_settings_clickthrough",
+                    "gui_settings_clickthrough_real_ollama",
                     "compare_mid_kill",
                     "file_verify_prepare_gui",
                     "failed_stop_window",
                     "widths_560_900_1600"
                 ]
             });
+            if let Some(sha) = git_sha {
+                doc.as_object_mut()
+                    .unwrap()
+                    .insert("git_sha".into(), json!(sha));
+            }
+            if let Some(at) = recorded_at {
+                doc.as_object_mut()
+                    .unwrap()
+                    .insert("recorded_at".into(), json!(at));
+            }
+            if digest_a.is_some() || digest_b.is_some() {
+                doc.as_object_mut().unwrap().insert(
+                    "ollama_digests".into(),
+                    json!({
+                        "a": digest_a,
+                        "b": digest_b
+                    }),
+                );
+            }
             if let Some(parent) = Path::new(&path).parent() {
                 std::fs::create_dir_all(parent).expect("evidence dir");
             }

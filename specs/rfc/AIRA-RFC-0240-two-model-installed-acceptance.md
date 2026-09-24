@@ -55,6 +55,8 @@ M6 §8 is fixture weights. This section is the real-host gate. Default CI does n
 
 **`#383` honesty:** a local installed file may appear in the catalog after Prepare; that is **not** the same criterion as Work ready for generate on the Ollama executor. File weights must fail-closed on ollama-style ProcessBackend (R3). No new file-executor is introduced by this gate.
 
+**`#388`:** SHA-pinned evidence lives under [`analysis/Analyze-397/`](../../analysis/Analyze-397/) (`git_sha` + Ollama digests + process real models + M6 fixture GUI/CLI/HTTP). Analyze-396 is **not** proof of HEAD.
+
 Reproducible manual/nightly gate (document evidence in Analyze notes):
 
 1. Two real models from `ollama list` bound via Settings; Required A then B **without** node restart (RFC-0243).

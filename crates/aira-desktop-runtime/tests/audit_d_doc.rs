@@ -245,7 +245,7 @@ fn audit_d_386_specs_readme_baseline_amendments_priority() {
 #[test]
 fn audit_d_387_entry_points_one_first_open() {
     let root = repo_root();
-    let tip = "перший OPEN `#388`";
+    let tip = "перший OPEN `#389`";
     let paths = [
         "docs/demo.md",
         "docs/crypto.md",
@@ -297,5 +297,85 @@ fn audit_d_387_entry_points_one_first_open() {
     assert!(
         !status.contains("; first OPEN `#344`."),
         "implementation-status must not end a live tip sentence with first OPEN #344"
+    );
+}
+
+/// `#388`: installed acceptance evidence pinned to a concrete SHA (not Analyze-396 as HEAD).
+#[test]
+fn audit_d_388_installed_acceptance_sha_evidence() {
+    let root = repo_root();
+    let run = std::fs::read_to_string(root.join("analysis/Analyze-397/run.json")).unwrap();
+    let doc: serde_json::Value = serde_json::from_str(&run).unwrap();
+    let sha = doc
+        .get("git_sha")
+        .and_then(|v| v.as_str())
+        .expect("Analyze-397 run.json must carry git_sha");
+    assert!(
+        sha.len() >= 7 && sha.chars().all(|c| c.is_ascii_hexdigit()),
+        "git_sha must look like a hex commit: {sha}"
+    );
+    assert_eq!(doc.get("queue_atom").and_then(|v| v.as_str()), Some("#388"));
+    assert_eq!(
+        doc.get("not_analyze_396_head_proof")
+            .and_then(|v| v.as_bool()),
+        Some(true),
+        "must refuse Analyze-396 as HEAD proof"
+    );
+    let digests = doc.get("ollama_digests").expect("ollama_digests");
+    assert!(
+        digests
+            .get("a")
+            .and_then(|v| v.as_str())
+            .is_some_and(|s| !s.is_empty())
+            && digests
+                .get("b")
+                .and_then(|v| v.as_str())
+                .is_some_and(|s| !s.is_empty()),
+        "both ollama digests required"
+    );
+    let executed = doc.get("executed").expect("executed");
+    for needle in [
+        "required_a_then_b_without_restart",
+        "file_weight_fail_closed",
+        "timeout_fail_closed",
+        "m6_fixture_cli_http",
+        "m6_fixture_gui",
+    ] {
+        assert_eq!(
+            executed.get(needle).and_then(|v| v.as_bool()),
+            Some(true),
+            "executed.{needle} must be true"
+        );
+    }
+
+    let brief = std::fs::read_to_string(root.join("analysis/Analyze-397/BRIEF.md")).unwrap();
+    assert!(
+        brief.contains("#388") && brief.contains(sha) && brief.contains("Analyze-396"),
+        "BRIEF must cite #388, the SHA, and not-Analyze-396-as-HEAD"
+    );
+
+    let gate =
+        std::fs::read_to_string(root.join("docs/installed-product-llm-acceptance.md")).unwrap();
+    assert!(
+        gate.contains("#388")
+            && gate.contains("Analyze-397")
+            && gate.contains(sha)
+            && gate.contains("not Analyze-396 as HEAD proof"),
+        "installed-product gate must point at Analyze-397 SHA evidence"
+    );
+
+    let script =
+        std::fs::read_to_string(root.join("scripts/installed-product-llm-acceptance.sh")).unwrap();
+    assert!(
+        script.contains("AIRA_GIT_SHA")
+            && script.contains("Analyze-397")
+            && script.contains("phase_x_m6_acceptance"),
+        "acceptance script must pin SHA and run M6 staff path"
+    );
+
+    let proc = std::fs::read_to_string(root.join("csu/execution-llm/src/process.rs")).unwrap();
+    assert!(
+        proc.contains("not_analyze_396_head_proof") && proc.contains("AIRA_GIT_SHA"),
+        "process evidence writer must emit SHA / not-396 markers"
     );
 }
