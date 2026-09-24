@@ -2,7 +2,7 @@
 
 Local **C1 reference/demo** flow (`aira-flow` / CLI). [`OperationalPlane`](operational-plane.md) is not a production event runtime, scheduler, or federation runtime.
 
-**Queue (`#387`):** перший OPEN `#388` — [`QUEUE.md`](../QUEUE.md) / [`audit-6007442-plan.md`](audit-6007442-plan.md). Do not treat closed Phase G/X tips as current.
+**Queue (`#387`):** перший OPEN `#389` — [`QUEUE.md`](../QUEUE.md) / [`audit-6007442-plan.md`](audit-6007442-plan.md). Do not treat closed Phase G/X tips as current.
 
 ## Prerequisites
 
