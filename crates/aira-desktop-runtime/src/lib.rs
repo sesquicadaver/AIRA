@@ -14,6 +14,7 @@ mod invite;
 mod invite_qr;
 mod launcher;
 mod model_catalog;
+mod model_selector;
 mod model_status;
 mod model_storage;
 mod network_mesh;
@@ -71,6 +72,10 @@ pub use model_catalog::{
     resolve_use_ollama_bind, scan_model_catalog, select_catalog_model, verify_catalog_quarantine,
     CatalogEntry, CatalogProjectionRow, CatalogSelection, CatalogSource, ModelCatalogError,
     ModelCatalogSnapshot,
+};
+pub use model_selector::{
+    fitness_from_projection_row, model_selector_counter_label, project_model_selector,
+    ModelSelectorFilterMode, ModelSelectorRow, ModelSelectorView,
 };
 pub use model_status::{load_model_triple, ModelFact, ModelTripleConclusion, ModelTripleSnapshot};
 pub use model_storage::{format_bytes, load_model_storage, ModelStorageSnapshot};

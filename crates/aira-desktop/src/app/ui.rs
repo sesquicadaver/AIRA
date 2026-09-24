@@ -207,16 +207,31 @@ impl AiraDesktopApp {
     }
 
     /// One model selector. Compare adds a second combo, not a second catalog.
+    /// `#373`: search + Compatible/Show-all + N/M; selection by id survives filter.
     fn ui_model_combo(&mut self, ui: &mut egui::Ui, pick: WorkPick) {
         let l = self.labels();
-        // Clone the paint snapshot — no tip/cache I/O (`#380`).
         let rows = self.catalog_projection.clone();
+        let selector_rows: Vec<aira_desktop_runtime::ModelSelectorRow> = rows
+            .iter()
+            .map(|r| aira_desktop_runtime::ModelSelectorRow {
+                id: r.model_ref.clone(),
+                search_text: r.cli_name.clone().unwrap_or_else(|| r.name.clone()),
+                fitness: aira_desktop_runtime::fitness_from_projection_row(r),
+            })
+            .collect();
         let current = match pick {
             WorkPick::Required if self.work_executor_mode == work::WorkExecutorUiMode::Auto => None,
             WorkPick::Required => Some(self.work_required_ref.clone()).filter(|s| !s.is_empty()),
             WorkPick::CompareA => Some(self.work_compare_a.clone()).filter(|s| !s.is_empty()),
             WorkPick::CompareB => Some(self.work_compare_b.clone()).filter(|s| !s.is_empty()),
         };
+        let view = aira_desktop_runtime::project_model_selector(
+            &selector_rows,
+            &self.work_model_search,
+            self.work_model_filter,
+            current.as_deref(),
+            self.async_jobs.catalog_inflight(),
+        );
         let selected_name = current.as_deref().map(|r| self.row_name_for_ref(r));
         let selected_text = work_selector_closed_label(
             pick,
@@ -235,6 +250,45 @@ impl AiraDesktopApp {
             .width(ui.available_width().clamp(160.0, 520.0))
             .wrap()
             .show_ui(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.work_model_search)
+                            .hint_text(l.work_model_search_hint)
+                            .desired_width(180.0),
+                    );
+                });
+                ui.horizontal(|ui| {
+                    if ui
+                        .selectable_label(
+                            self.work_model_filter
+                                == aira_desktop_runtime::ModelSelectorFilterMode::Compatible,
+                            l.work_model_filter_compatible,
+                        )
+                        .clicked()
+                    {
+                        self.work_model_filter =
+                            aira_desktop_runtime::ModelSelectorFilterMode::Compatible;
+                    }
+                    if ui
+                        .selectable_label(
+                            self.work_model_filter
+                                == aira_desktop_runtime::ModelSelectorFilterMode::ShowAll,
+                            l.work_model_filter_show_all,
+                        )
+                        .clicked()
+                    {
+                        self.work_model_filter =
+                            aira_desktop_runtime::ModelSelectorFilterMode::ShowAll;
+                    }
+                    ui.small(format!(
+                        "{} {}",
+                        l.work_model_shown_of,
+                        aira_desktop_runtime::model_selector_counter_label(view.shown, view.total)
+                    ));
+                });
+                if view.checking_compatibility {
+                    ui.small(l.work_model_checking);
+                }
                 if matches!(pick, WorkPick::Required) {
                     let default_label = format!(
                         "{}: {}",
@@ -250,6 +304,9 @@ impl AiraDesktopApp {
                     }
                 }
                 for row in &rows {
+                    if !view.visible_ids.iter().any(|id| id == &row.model_ref) {
+                        continue;
+                    }
                     let on = current.as_deref() == Some(row.model_ref.as_str());
                     if ui
                         .selectable_label(on, Self::projection_label(l, row))

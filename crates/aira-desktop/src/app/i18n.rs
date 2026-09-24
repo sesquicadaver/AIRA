@@ -307,6 +307,16 @@ pub struct Labels {
     pub timeout_saved: &'static str,
     pub timeout_cleared: &'static str,
     pub work_selector_default: &'static str,
+    /// `#373`: Work model search hint.
+    pub work_model_search_hint: &'static str,
+    /// `#373`: Compatible-with-task filter.
+    pub work_model_filter_compatible: &'static str,
+    /// `#373`: Show-all filter.
+    pub work_model_filter_show_all: &'static str,
+    /// `#373`: «Shown» prefix for N/M counter.
+    pub work_model_shown_of: &'static str,
+    /// `#373`: metadata loading while Compatible is empty.
+    pub work_model_checking: &'static str,
     /// Closed Compare B when nothing is picked. Not the tip label (`#360`).
     pub work_compare_b_empty: &'static str,
     pub work_ran_model: &'static str,
@@ -616,6 +626,11 @@ static EN: Labels = Labels {
     timeout_saved: "Timeout saved — restart the node to apply.",
     timeout_cleared: "Timeout cleared — restart the node to apply.",
     work_selector_default: "Default",
+    work_model_search_hint: "Search models",
+    work_model_filter_compatible: "Compatible",
+    work_model_filter_show_all: "Show all",
+    work_model_shown_of: "Shown",
+    work_model_checking: "Checking compatibility…",
     work_compare_b_empty: "Choose model B",
     work_ran_model: "Model that ran",
     work_model_mismatch: "The model that ran is not the one you selected.",
@@ -916,6 +931,11 @@ static UK: Labels = Labels {
     timeout_saved: "Таймаут збережено — перезапустіть вузол, щоб застосувати.",
     timeout_cleared: "Таймаут очищено — перезапустіть вузол, щоб застосувати.",
     work_selector_default: "Типова",
+    work_model_search_hint: "Пошук моделей",
+    work_model_filter_compatible: "Сумісні",
+    work_model_filter_show_all: "Показати всі",
+    work_model_shown_of: "Показано",
+    work_model_checking: "Перевіряємо сумісність…",
     work_compare_b_empty: "Оберіть модель B",
     work_ran_model: "Модель, що виконала",
     work_model_mismatch: "Виконала не та модель, яку ви обрали.",
