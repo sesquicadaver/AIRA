@@ -316,13 +316,17 @@ fn audit_d_388_installed_acceptance_sha_evidence() {
     );
     assert_eq!(doc.get("queue_atom").and_then(|v| v.as_str()), Some("#388"));
     assert_eq!(
-        doc.get("not_analyze_396_head_proof").and_then(|v| v.as_bool()),
+        doc.get("not_analyze_396_head_proof")
+            .and_then(|v| v.as_bool()),
         Some(true),
         "must refuse Analyze-396 as HEAD proof"
     );
     let digests = doc.get("ollama_digests").expect("ollama_digests");
     assert!(
-        digests.get("a").and_then(|v| v.as_str()).is_some_and(|s| !s.is_empty())
+        digests
+            .get("a")
+            .and_then(|v| v.as_str())
+            .is_some_and(|s| !s.is_empty())
             && digests
                 .get("b")
                 .and_then(|v| v.as_str())
@@ -350,7 +354,8 @@ fn audit_d_388_installed_acceptance_sha_evidence() {
         "BRIEF must cite #388, the SHA, and not-Analyze-396-as-HEAD"
     );
 
-    let gate = std::fs::read_to_string(root.join("docs/installed-product-llm-acceptance.md")).unwrap();
+    let gate =
+        std::fs::read_to_string(root.join("docs/installed-product-llm-acceptance.md")).unwrap();
     assert!(
         gate.contains("#388")
             && gate.contains("Analyze-397")
@@ -359,7 +364,8 @@ fn audit_d_388_installed_acceptance_sha_evidence() {
         "installed-product gate must point at Analyze-397 SHA evidence"
     );
 
-    let script = std::fs::read_to_string(root.join("scripts/installed-product-llm-acceptance.sh")).unwrap();
+    let script =
+        std::fs::read_to_string(root.join("scripts/installed-product-llm-acceptance.sh")).unwrap();
     assert!(
         script.contains("AIRA_GIT_SHA")
             && script.contains("Analyze-397")
