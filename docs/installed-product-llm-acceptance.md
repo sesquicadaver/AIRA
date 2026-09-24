@@ -19,7 +19,7 @@ Pinned host run (not Analyze-396 as HEAD proof):
 
 JSON: [`analysis/Analyze-397/run.json`](../analysis/Analyze-397/run.json). Brief: [`BRIEF.md`](../analysis/Analyze-397/BRIEF.md).
 
-Analyze-396 remains a **prior** process snapshot only — do not cite it as proof of current HEAD (`#388` / `#389`).
+Analyze-396 is a **historical snapshot** (`#389`: explicit date/SHA in evidence headers @ `7bb6716` / `2026-09-19`) — **not** Analyze-396 as HEAD proof. Living SHA-pinned gate: Analyze-397 (`#388`).
 
 ## Gate (manual / nightly)
 

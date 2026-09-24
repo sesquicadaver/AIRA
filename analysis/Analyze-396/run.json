@@ -1,4 +1,15 @@
 {
+  "gate": "installed-product-llm",
+  "status": "historical_snapshot",
+  "queue_atom_historicize": "#389",
+  "not_head_proof": true,
+  "git_sha": "7bb6716914b069b672a364b9a3990a7a9aed023a",
+  "recorded_at": "2026-09-19T07:02:09Z",
+  "superseded_by": "analysis/Analyze-397",
+  "models": {
+    "a": "phi:latest",
+    "b": "llama3.2:latest"
+  },
   "executed": {
     "backend": "process",
     "file_weight_fail_closed": true,
@@ -7,11 +18,6 @@
     "result_b_prefix": "OK",
     "timeout_fail_closed": true,
     "verification_status": null
-  },
-  "gate": "installed-product-llm",
-  "models": {
-    "a": "phi:latest",
-    "b": "llama3.2:latest"
   },
   "not_executed": [
     "gui_settings_clickthrough",
