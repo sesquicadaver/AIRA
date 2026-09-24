@@ -12,7 +12,7 @@
 | `main` | Phase W `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed** @ [`phase-w-plan.md`](docs/phase-w-plan.md); Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** @ [`phase-x-plan.md`](docs/phase-x-plan.md) (Pack 2 GUI DONE; no OPEN X atoms); Phase V `#323`–`#330` **DONE** @ RFC-0208; **QUEUE V closed**; Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Audit D [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md) `#386` **OPEN**; перший рядок `#386`. Phase Y `#359`–`#375` **DONE**; K `#376`–`#382` **DONE**; `#383`–`#385` **DONE**. Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** |
+| Активна черга | Audit D [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md) `#387` **OPEN**; перший рядок `#387`. Phase Y `#359`–`#375` **DONE**; K `#376`–`#382` **DONE**; `#383`–`#386` **DONE**. Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** |
 
 ## Правила атомарності
 
@@ -987,7 +987,7 @@ W0 wiring + A0 (#331 DONE)
 
 План Y: [`docs/phase-y-plan.md`](docs/phase-y-plan.md).  
 План аудиту / gate: [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md).  
-**Перший OPEN зараз — `#386`.** Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. `#383`–`#385` **DONE**. Не Pack 3.
+**Перший OPEN зараз — `#387`.** Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. `#383`–`#386` **DONE**. Не Pack 3.
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
@@ -1037,14 +1037,14 @@ W0 wiring + A0 (#331 DONE)
 | 383 | **DONE** | — | ~~Installed-file / RFC-0240: файл видно, не executable через Ollama~~ | критерій ≠ Work ready як generate | новий file-executor |
 | 384 | **DONE** | — | ~~C1 Executed vs VRA / OP-001 / matrix: три окремі статуси~~ | без змішування smoke і verified pipeline | калькулятор у GUI |
 | 385 | **DONE** | — | ~~Settlement receipt: один `$id` ↔ одна schema~~ | JSON і schema-pack збігаються | federation runtime |
-| 386 | OPEN | — | `specs/README`: baseline + amendments + пріоритет; RFC metadata | без другого канону | перепис Manifesto |
+| 386 | **DONE** | — | ~~`specs/README`: baseline + amendments + пріоритет; RFC metadata~~ | без другого канону | перепис Manifesto |
 | 387 | OPEN | — | Entry-points і зламані links | одне актуальне «перше OPEN» | масове DONE без E2E |
 | 388 | OPEN | — | Installed acceptance на конкретному SHA після `#367`+K | GUI+CLI+HTTP; негативи; SHA/Ollama/digest | Analyze-396 як proof HEAD |
 | 389 | OPEN | — | Старі smoke/Analyze-396 — історичні snapshots | явна дата/SHA в шапці evidence | нові продуктові можливості |
 
 ### Наступний цикл
 
-**Перший OPEN: `#386`.** Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. `#383`–`#385` **DONE**. `#387`–`#389` не стартують раніше свого місця в дереві.
+**Перший OPEN: `#387`.** Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. `#383`–`#386` **DONE**. `#388`–`#389` не стартують раніше свого місця в дереві.
 
 ```text
 #359 readiness … #363 CLI name (DONE)
@@ -1070,13 +1070,14 @@ W0 wiring + A0 (#331 DONE)
                                         → #383 installed-file ≠ Work ready on Ollama (DONE)
                                           → #384 C1/VRA/OP-001 three statuses (DONE)
                                             → #385 settlement receipt $id↔schema (DONE)
-                                              → #386 … #387 (D)
-                                                → #388 … #389 (A)
+                                              → #386 specs README baseline/amendments (DONE)
+                                                → #387 entry-points / broken links (D)
+                                                  → #388 … #389 (A)
 ```
 ### Наступний цикл (Phase X)
 
 **Phase X COMPLETE** (`#343`–`#358` **DONE** @ RFC-0226). **QUEUE X closed.** no OPEN X atoms.  
-Tip: `#358` DONE @ Analyze-395 / RFC-0226; Pack 2 DONE. Pack 3 лишається окремо і не є `#359`. Phase Y `#359`–`#375` DONE; K `#376`–`#382` **DONE**; `#383`–`#385` DONE; перший OPEN `#386` (D).
+Tip: `#358` DONE @ Analyze-395 / RFC-0226; Pack 2 DONE. Pack 3 лишається окремо і не є `#359`. Phase Y `#359`–`#375` DONE; K `#376`–`#382` **DONE**; `#383`–`#386` DONE; перший OPEN `#387` (D).
 
 ```text
 X0 wiring (#343 DONE)
@@ -1178,6 +1179,6 @@ P0 wiring (#266 DONE)
 | Pack 1 residual honesty (post-V audit) | [`docs/phase-w-plan.md`](docs/phase-w-plan.md); `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed** |
 | Pack 2 local multi-model GUI (aira-current 2026-09-13 + M1–M6) | [`docs/phase-x-plan.md`](docs/phase-x-plan.md); `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed**; no OPEN X atoms |
 | Вибір моделі (підтверджений аудит `9f3e642` + `aira-current.md` 2026-09-20) | [`docs/phase-y-plan.md`](docs/phase-y-plan.md); `#359`–`#375` **DONE**; **QUEUE Y closed** |
-| Повний аудит `6007442` (2026-09-23): K1–K5 + D + acceptance | [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md); K `#376`–`#382` **DONE**; Y `#359`–`#375` **DONE**; `#383`–`#385` **DONE**; перший `#386` (D); `#388`–`#389` (A) після D |
+| Повний аудит `6007442` (2026-09-23): K1–K5 + D + acceptance | [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md); K `#376`–`#382` **DONE**; Y `#359`–`#375` **DONE**; `#383`–`#386` **DONE**; перший `#387` (D); `#388`–`#389` (A) після D |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
