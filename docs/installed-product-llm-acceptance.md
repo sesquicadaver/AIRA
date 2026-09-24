@@ -13,7 +13,7 @@ Prerequisites: `ollama` on PATH, two pulled models (e.g. `llama3:latest` and ano
 2. Work → Required → model A → submit once (Executed ≠ VERIFIED).
 3. Without restart: Required → model B → submit; executed/applied must track B (RFC-0243). Tampering only tip JSON `host_ollama_model` must fail-closed (R2).
 4. Compare A|B; optionally stop/kill one model mid-run and confirm A result retained.
-5. File path: Enable local add → Add weights → Verify (artifact path) → Prepare → Work ready. File weights must **not** silently run Settings tip via ollama argv (R3).
+5. File path: Enable local add → Add weights → Verify (artifact path) → Prepare. The file is **visible** under Local file; on the host Ollama executor it is **not** Work ready for generate (prepared ≠ executable via Ollama / R3 / `#383`). Do not expect a silent tip-argv run and do not add a file-executor only for this check.
 6. Set `llm_process_timeout_ms` low; confirm timeout error (not malformed HTTP).
 7. Quit while Stop fails → window stays; no silent pidfile wipe.
 8. Resize to ~560 / 900 / 1600 and confirm Work/Settings usable.

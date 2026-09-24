@@ -1,9 +1,9 @@
 # Audit gate + post-Y linear plan (`6007442`)
 
-**Статус:** OPEN (D/A). Блок K `#376`–`#382` **DONE**. Phase Y `#359`–`#375` **DONE**. Перший рядок виконання — `#383`.  
+**Статус:** OPEN (D/A). Блок K `#376`–`#382` **DONE**. Phase Y `#359`–`#375` **DONE**. `#383` **DONE**. Перший рядок виконання — `#384`.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md).  
 **Джерело:** [`p-only/AIRA-full-audit-6007442-20260923.md`](../../p-only/AIRA-full-audit-6007442-20260923.md) (поза git). Перевірений `main`: `6007442`.  
-**Зв’язок із Phase Y:** `#359`–`#375` **DONE**. K **DONE**. D `#383`–`#387` OPEN.  
+**Зв’язок із Phase Y:** `#359`–`#375` **DONE**. K **DONE**. D `#383` **DONE**; `#384`–`#387` OPEN.  
 **Не входить:** marketplace, ratings GUI, новий LLM-провайдер, Research Plane, встановлення Ollama, заміна egui.
 
 Лінійність: один рядок — один PR. Не паралельний план поруч із Y.
@@ -19,8 +19,9 @@
           → #381 K4b prepare-and-run async job
             → #382 K5 applied gate for Prepare-and-run
               → #364 … #375 (Phase Y tail)
-                → #383 … #387 (D docs)
-                  → #388 … #389 (installed acceptance)
+                → #383 installed-file ≠ Work ready (DONE)
+                  → #384 … #387 (D docs)
+                    → #388 … #389 (installed acceptance)
 ```
 
 ## Блок K — інженерні дефекти аудиту (`#376`–`#382`)
@@ -52,7 +53,7 @@
 
 | # | Scope | Done when | Не в рядку |
 |---|--------|-----------|------------|
-| 383 | Installed-file / RFC-0240: файл видно, не executable через Ollama | критерій ≠ «Work ready» як generate | новий file-executor |
+| 383 | **DONE.** Installed-file / RFC-0240: файл видно, не executable через Ollama | критерій ≠ «Work ready» як generate | новий file-executor |
 | 384 | C1 Executed vs VRA / OP-001 / matrix: три окремі статуси | без змішування smoke і verified pipeline | повернення калькулятора в GUI |
 | 385 | Settlement receipt: один `$id` ↔ одна schema | JSON і schema-pack збігаються | federation runtime |
 | 386 | `specs/README`: immutable baseline + amendments + пріоритет; RFC metadata | без другого канону | перепис Manifesto |

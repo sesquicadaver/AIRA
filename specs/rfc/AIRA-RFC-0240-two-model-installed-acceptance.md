@@ -53,11 +53,13 @@ Tip → first OPEN #358; RFC-0240.
 
 M6 §8 is fixture weights. This section is the real-host gate. Default CI does not run it. Opt-in process evidence: `installed_product_two_real_ollama_models` (`#[ignore]`) via [`scripts/installed-product-llm-acceptance.sh`](../../scripts/installed-product-llm-acceptance.sh). A green fixture harness is not installed-product complete. GUI widths 560/900/1600 stay manual.
 
+**`#383` honesty:** a local installed file may appear in the catalog after Prepare; that is **not** the same criterion as Work ready for generate on the Ollama executor. File weights must fail-closed on ollama-style ProcessBackend (R3). No new file-executor is introduced by this gate.
+
 Reproducible manual/nightly gate (document evidence in Analyze notes):
 
 1. Two real models from `ollama list` bound via Settings; Required A then B **without** node restart (RFC-0243).
 2. Compare A|B with distinct models; fail one leg → A retained.
-3. File path: Add → Verify (artifact) → Prepare → Work ready.
+3. File path: Add → Verify (artifact) → Prepare. The file stays **visible** in the Local file catalog source. On the host Ollama ProcessBackend it is **not** Work-ready for generate (`#383` / R3) — prepared ≠ executable via `ollama run`. Do not add a file-executor only to make this row green.
 4. Timeout / cancel honesty; failed Stop leaves window + pidfile.
 5. Layout smoke at widths 560 / 900 / 1600.
 
