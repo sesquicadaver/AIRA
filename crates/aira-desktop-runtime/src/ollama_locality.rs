@@ -63,12 +63,7 @@ pub fn classify_model_locality(
     endpoint: &str,
     contract: OllamaApiLocalityContract,
 ) -> ModelLocality {
-    classify_remote_fields(
-        &model.remote_host,
-        &model.remote_model,
-        endpoint,
-        contract,
-    )
+    classify_remote_fields(&model.remote_host, &model.remote_model, endpoint, contract)
 }
 
 /// Same as [`classify_model_locality`] with explicit remote fields.
@@ -87,7 +82,11 @@ pub fn classify_remote_fields(
         {
             ModelLocality::RemoteFromServer
         }
-        (OllamaJsonField::Known(_), OllamaJsonField::Known(_), OllamaApiLocalityContract::Unknown) => {
+        (
+            OllamaJsonField::Known(_),
+            OllamaJsonField::Known(_),
+            OllamaApiLocalityContract::Unknown,
+        ) => {
             // Both present and empty, but empty≠local for unknown API versions.
             ModelLocality::Unknown
         }
@@ -115,11 +114,7 @@ pub fn endpoint_is_this_machine(endpoint: &str) -> bool {
         .trim()
         .trim_end_matches('/')
         .strip_prefix("http://")
-        .or_else(|| {
-            base.trim()
-                .trim_end_matches('/')
-                .strip_prefix("https://")
-        })
+        .or_else(|| base.trim().trim_end_matches('/').strip_prefix("https://"))
     else {
         return false;
     };
@@ -131,7 +126,10 @@ pub fn endpoint_is_this_machine(endpoint: &str) -> bool {
         .map(|(_, h)| h)
         .unwrap_or(rest.split('/').next().unwrap_or(""));
     // Strip IPv6 brackets and port.
-    let host = host.strip_prefix('[').and_then(|h| h.split(']').next()).unwrap_or(host);
+    let host = host
+        .strip_prefix('[')
+        .and_then(|h| h.split(']').next())
+        .unwrap_or(host);
     let host = host.split(':').next().unwrap_or(host);
     let host = host.trim().to_ascii_lowercase();
     matches!(host.as_str(), "127.0.0.1" | "localhost" | "::1")
