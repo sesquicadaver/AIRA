@@ -1,6 +1,6 @@
 # AIRA — лінійна черга задач
 
-**Оновлено:** 2026-09-23  
+**Оновлено:** 2026-09-24  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
 **План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **DONE** (2026-08-28, RFC-0069). Phase H Protocol depth v0.3 [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — `#152`–`#183` **DONE** (2026-08-30, RFC-0077). Phase I Semantic contract stabilization [`docs/phase-i-plan.md`](docs/phase-i-plan.md) — `#184`–`#198` **DONE** (2026-08-30, RFC-0078). Phase J Book-gap local remainder [`docs/phase-j-plan.md`](docs/phase-j-plan.md) — `#199`–`#208` **DONE** @ RFC-0096. QUEUE J closed. Phase K Local LLM Execution CSU [`docs/phase-k-plan.md`](docs/phase-k-plan.md) — `#209`–`#216` **DONE** @ RFC-0104. QUEUE K closed. Phase L Execution-boundary hardening [`docs/phase-l-plan.md`](docs/phase-l-plan.md) — `#217`–`#223` **DONE** @ RFC-0111. QUEUE L closed. Phase M OS child sandbox [`docs/phase-m-plan.md`](docs/phase-m-plan.md) — `#224`–`#230` **DONE** @ RFC-0117. QUEUE M closed. Phase N Global Node Rendezvous [`docs/phase-n-plan.md`](docs/phase-n-plan.md) — `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed. Phase N-fix [`docs/phase-n-fix-plan.md`](docs/phase-n-fix-plan.md) — `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed. Phase O Desktop UX + F1 [`docs/phase-o-plan.md`](docs/phase-o-plan.md) — `#255`–`#265` **DONE** @ RFC-0146; **QUEUE O closed**. Phase P [`docs/phase-p-plan.md`](docs/phase-p-plan.md) — `#266`–`#274` **DONE** @ RFC-0156; **QUEUE P closed**. Phase Q [`docs/phase-q-plan.md`](docs/phase-q-plan.md) — `#275`–`#285` **DONE** @ RFC-0164; **QUEUE Q closed**. Phase R [`docs/phase-r-plan.md`](docs/phase-r-plan.md) — `#286`–`#294` **DONE** @ RFC-0174; **QUEUE R closed**. Phase S [`docs/phase-s-plan.md`](docs/phase-s-plan.md) — `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**. Phase T [`docs/phase-t-plan.md`](docs/phase-t-plan.md) — `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**. Phase U [`docs/phase-u-plan.md`](docs/phase-u-plan.md) — `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**. Phase V Repair Pack 1 [`docs/phase-v-plan.md`](docs/phase-v-plan.md) — `#323`–`#330` **DONE** @ RFC-0208; **QUEUE V closed**. Phase W Pack 1 residual honesty [`docs/phase-w-plan.md`](docs/phase-w-plan.md) — `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed**. Phase X Pack 2 multi-model GUI [`docs/phase-x-plan.md`](docs/phase-x-plan.md) — `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed**; no OPEN X atoms.
@@ -12,7 +12,7 @@
 | `main` | Phase W `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed** @ [`phase-w-plan.md`](docs/phase-w-plan.md); Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** @ [`phase-x-plan.md`](docs/phase-x-plan.md) (Pack 2 GUI DONE; no OPEN X atoms); Phase V `#323`–`#330` **DONE** @ RFC-0208; **QUEUE V closed**; Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase Y [`docs/phase-y-plan.md`](docs/phase-y-plan.md) `#373` **OPEN**; перший рядок `#373`. `#359`–`#372` **DONE**; Audit gate K `#376`–`#382` **DONE**. `#374`–`#375` **OPEN**. Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** |
+| Активна черга | Phase Y [`docs/phase-y-plan.md`](docs/phase-y-plan.md) `#374` **OPEN**; перший рядок `#374`. `#359`–`#373` **DONE**; Audit gate K `#376`–`#382` **DONE**. `#375` **OPEN**. Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** |
 
 ## Правила атомарності
 
@@ -987,7 +987,7 @@ W0 wiring + A0 (#331 DONE)
 
 План Y: [`docs/phase-y-plan.md`](docs/phase-y-plan.md).  
 План аудиту / gate: [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md).  
-**Перший OPEN зараз — `#373`.** `#359`–`#372` **DONE**. Audit gate K `#376`–`#382` **DONE**. Не Pack 3.
+**Перший OPEN зараз — `#374`.** `#359`–`#373` **DONE**. Audit gate K `#376`–`#382` **DONE**. Не Pack 3.
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
@@ -1024,7 +1024,7 @@ W0 wiring + A0 (#331 DONE)
 | 370 | **DONE** | — | ~~Кеш (endpoint, ім’я, digest); тайм-аут; паралельність 2–4; старе покоління відкидається~~ | тести покоління і скидання endpoint | оцінка придатності |
 | 371 | **DONE** | — | ~~Місце: локально щодо сервера vs цей комп’ютер~~ | тест: порожнє поле невідомої версії, `localhost` і `:cloud` не підтверджують локальність | селектор |
 | 372 | **DONE** | — | ~~Одна оцінка для рядка, фільтра, кнопки, скорочення і перевірки перед запуском~~ | тест п’яти станів; `completion+vision` готова за решти умов | верстка пошуку |
-| 373 | OPEN | — | Пошук, «Сумісні», «Показати всі», лічильник N із M; вибір за ID переживає фільтр | тест лічильника і стійкого вибору | Compare-вхід |
+| 373 | **DONE** | — | ~~Пошук, «Сумісні», «Показати всі», лічильник N із M; вибір за ID переживає фільтр~~ | тест лічильника і стійкого вибору | Compare-вхід |
 | 374 | OPEN | — | Compare: B спочатку порожня; вихід повертає попередній вибір; різні повні імена не зливаються | тест входу і виходу | F1 |
 | 375 | OPEN | — | EN/UK і F1 для нових станів; рядок у `docs/local-node.md` | допомога згадує «Підготувати й виконати» і не обіцяє локальність за суфіксом | нові правила оцінки |
 
@@ -1044,7 +1044,7 @@ W0 wiring + A0 (#331 DONE)
 
 ### Наступний цикл
 
-**Перший OPEN: `#373`.** `#359`–`#372` **DONE**. Audit gate K `#376`–`#382` **DONE**. `#374`–`#375` і `#383`–`#389` не стартують раніше свого місця в дереві.
+**Перший OPEN: `#374`.** `#359`–`#373` **DONE**. Audit gate K `#376`–`#382` **DONE**. `#375` і `#383`–`#389` не стартують раніше свого місця в дереві.
 
 ```text
 #359 readiness … #363 CLI name (DONE)
@@ -1064,14 +1064,15 @@ W0 wiring + A0 (#331 DONE)
                             → #370 meta cache generation/parallel (DONE)
                               → #371 locality predicate (DONE)
                                 → #372 unified fitness five states (DONE)
-                                  → #373 … #375
+                                  → #373 model selector search/filter (DONE)
+                                    → #374 … #375
                           → #383 … #387 (D)
                             → #388 … #389 (A)
 ```
 ### Наступний цикл (Phase X)
 
 **Phase X COMPLETE** (`#343`–`#358` **DONE** @ RFC-0226). **QUEUE X closed.** no OPEN X atoms.  
-Tip: `#358` DONE @ Analyze-395 / RFC-0226; Pack 2 DONE. Pack 3 лишається окремо і не є `#359`. Phase Y `#359`–`#372` DONE; audit gate K `#376`–`#382` **DONE**; перший OPEN `#373`.
+Tip: `#358` DONE @ Analyze-395 / RFC-0226; Pack 2 DONE. Pack 3 лишається окремо і не є `#359`. Phase Y `#359`–`#373` DONE; audit gate K `#376`–`#382` **DONE**; перший OPEN `#374`.
 
 ```text
 X0 wiring (#343 DONE)
@@ -1172,7 +1173,7 @@ P0 wiring (#266 DONE)
 | Runtime-honest Desktop (post-O audit) | [`docs/phase-p-plan.md`](docs/phase-p-plan.md); `aira-current.md` @ `700ffd5`; `#266`–`#274` (**DONE** @ RFC-0156; QUEUE P closed) |
 | Pack 1 residual honesty (post-V audit) | [`docs/phase-w-plan.md`](docs/phase-w-plan.md); `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed** |
 | Pack 2 local multi-model GUI (aira-current 2026-09-13 + M1–M6) | [`docs/phase-x-plan.md`](docs/phase-x-plan.md); `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed**; no OPEN X atoms |
-| Вибір моделі (підтверджений аудит `9f3e642` + `aira-current.md` 2026-09-20) | [`docs/phase-y-plan.md`](docs/phase-y-plan.md); `#359`–`#372` **DONE**; `#373`–`#375` **OPEN** |
-| Повний аудит `6007442` (2026-09-23): K1–K5 + D + acceptance | [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md); K `#376`–`#382` **DONE**; `#367`–`#372` **DONE**; `#383`–`#389` після `#375`; перший `#373` |
+| Вибір моделі (підтверджений аудит `9f3e642` + `aira-current.md` 2026-09-20) | [`docs/phase-y-plan.md`](docs/phase-y-plan.md); `#359`–`#373` **DONE**; `#374`–`#375` **OPEN** |
+| Повний аудит `6007442` (2026-09-23): K1–K5 + D + acceptance | [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md); K `#376`–`#382` **DONE**; `#367`–`#373` **DONE**; `#383`–`#389` після `#375`; перший `#374` |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

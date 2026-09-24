@@ -138,6 +138,10 @@ pub struct AiraDesktopApp {
     pub(super) work_required_ref: String,
     pub(super) work_compare_a: String,
     pub(super) work_compare_b: String,
+    /// `#373`: Work model search query (does not change selection by itself).
+    pub(super) work_model_search: String,
+    /// `#373`: Compatible (default) vs Show all.
+    pub(super) work_model_filter: aira_desktop_runtime::ModelSelectorFilterMode,
     pub(super) work_readiness: WorkReadiness,
     pub(super) peer_listen_edit: String,
     pub(super) relay_ttl_edit: String,
@@ -262,6 +266,8 @@ impl AiraDesktopApp {
             work_required_ref: String::new(),
             work_compare_a: String::new(),
             work_compare_b: String::new(),
+            work_model_search: String::new(),
+            work_model_filter: aira_desktop_runtime::ModelSelectorFilterMode::Compatible,
             work_readiness,
             peer_listen_edit,
             relay_ttl_edit,
