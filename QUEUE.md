@@ -1068,8 +1068,7 @@ W0 wiring + A0 (#331 DONE)
                                     → #374 Compare enter/exit (DONE)
                                       → #375 EN/UK F1 + local-node (DONE)
                                         → #383 … #387 (D)
-                          → #383 … #387 (D)
-                            → #388 … #389 (A)
+                                          → #388 … #389 (A)
 ```
 ### Наступний цикл (Phase X)
 
