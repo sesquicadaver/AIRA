@@ -19,13 +19,25 @@ C4/C5 are local scaffolds only. Research remains **RESEARCH**. Consolidating Pha
 | Profile | Runner | Focus | CI on `main` |
 |---------|--------|-------|----------------|
 | C0 | `run_c0` | ontology, object/artifact immutability, event causality, policy gate, CSU dispatch, acquisition fail-closed | **yes** (job `check`) |
-| C1 | `run_c1` | normative smoke `c1.pipeline.process_executor_executed` (host process → **Executed**, not VERIFIED); CSU manifests; external partner fixture; VRA **schema fixtures** (`c1.result.verified_completeness`) — not a runtime VRA pipeline and not OP-001 math; failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) | **yes** |
+| C1 | `run_c1` | three **separate** statuses (`#384`): (1) process smoke `c1.pipeline.process_executor_executed` → **Executed ≠ VERIFIED**; (2) VRA **schema fixtures** `c1.result.verified_completeness` — not a runtime VRA pipeline; (3) OP-001 / Calculate 2+2 — **legacy non-normative** (RFC-0242), not in product GUI; failure-to-evidence (**reference** `OperationalPlane`, [operational-plane.md](operational-plane.md)) | **yes** |
 | C2 | `run_c2` | partial **local** protocols (M13): envelope/response/identity schemas, discovery Capability≠Node, UNSUPPORTED_VERSION without side effects | **yes** (job `conformance-c2`, QUEUE #117) |
 | C3 | `run_c3` | **8 named local cases**: federation×4 + CAP + export_deny (#163) + `c3.crp.reject_node_route` (#167) + `c3.crp.route_candidate` (#170) | **optional job** `conformance-c3` (#164) — **not** a merge gate ([governance](ci-governance.md#job-conformance-c3-queue-164)) |
 | C4 | `run_c4` (Phase H `#175`) | **3 named local cases**: receipt emit/verify + privacy reject + link prior CRP route (RFC-0081) | no |
 | C5 | `run_c5` (Phase H `#180`) | **3 named local cases**: research separation + promotion gate reject + candidate schema (RFC-0083); process [`rfc-p-promotion.md`](rfc-p-promotion.md) | no |
 
 Reports validate against `aira:schema:conformance:report:0.1` and are published as immutable `ConformanceArtifact`.
+
+## C1 three statuses (`#384`)
+
+Do **not** treat these as one pipeline. Living Spec / CI map them separately:
+
+| Status | Meaning | Locus | Must not mean |
+|--------|---------|-------|----------------|
+| **C1 Executed** | Host process smoke completed | `c1.pipeline.process_executor_executed` | VERIFIED, runtime VRA, OP-001 math |
+| **VRA fixture** | Schema completeness of Verified Result Artifact | `c1.result.verified_completeness` (+ extended fields) | Runtime VRA on generate-local; process smoke “verified” |
+| **OP-001** | Legacy `Calculate 2 + 2` example (RFC-0242) | Specs OP-001; historical `c1.pipeline.calculate_2_plus_2` / `execution-basic` | Normative C1; Desktop Work product path; calculator returned to GUI |
+
+Green CI on process smoke + VRA fixtures ≠ runtime verified generate. Returning a calculator to the GUI is **out of scope** for `#384`.
 
 Phase G `#122`–`#124` adds named local C2 cases (idempotency, hash mismatch, unsigned envelope). SEC-2 (`#135`) adds `c2.protocol.envelope_canonical_mutations` and `c2.protocol.response_canonical_mutations`. See [phase-g-plan.md](phase-g-plan.md).
 
@@ -105,7 +117,7 @@ let alpha = run_alpha_acceptance("/tmp/alpha")?;
 
 ## Alpha acceptance (#80)
 
-`run_alpha_acceptance` checks init layout, Calculate 2+2, failure evidence, and C0/C1 pass.
+`run_alpha_acceptance` checks init layout, failure evidence, and C0/C1 pass. Normative smoke is process **Executed** (`c1.pipeline.process_executor_executed`), not OP-001 Calculate 2+2 VERIFIED (RFC-0242 / `#384`).
 
 ## Partial C2 (Analyze-46 / Roadmap M13)
 

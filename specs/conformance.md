@@ -676,6 +676,8 @@ MUST preserve user decision provenance.
 
 ## OP-001 — Minimal Successful Flow
 
+> **`#384` / RFC-0242:** OP-001 is a **legacy non-normative** example. Normative C1 CI smoke is `c1.pipeline.process_executor_executed` (**Executed ≠ VERIFIED**). VRA completeness in CI is schema fixtures (`c1.result.verified_completeness`), **not** this math path and **not** a runtime VRA pipeline on generate-local. Do not return a calculator to the Desktop GUI as product acceptance.
+
 Input:
 
 ```text
