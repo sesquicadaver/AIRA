@@ -121,3 +121,63 @@ fn audit_d_384_c1_executed_vra_op001_are_three_statuses() {
         "desktop i18n must keep OP-001 out of Work tech details"
     );
 }
+
+/// `#385`: settlement receipt `$id` body in schema-pack matches the canonical schema file.
+#[test]
+fn audit_d_385_settlement_receipt_id_matches_schema_pack() {
+    use serde_json::Value;
+    let root = repo_root();
+    let schema_path = root.join("schemas/settlement/receipt.schema.json");
+    let file: Value =
+        serde_json::from_str(&std::fs::read_to_string(&schema_path).unwrap()).unwrap();
+    let id = file
+        .get("$id")
+        .and_then(|v| v.as_str())
+        .expect("schema $id");
+    assert_eq!(id, "aira:schema:settlement:receipt:0.1");
+    assert!(
+        file.pointer("/properties/privacy_class").is_some(),
+        "canonical schema must require privacy_class (PRIV-001)"
+    );
+    assert!(
+        file.get("required")
+            .and_then(|v| v.as_array())
+            .is_some_and(|a| a.iter().any(|x| x.as_str() == Some("privacy_class"))),
+        "privacy_class must be in required[]"
+    );
+
+    let pack = std::fs::read_to_string(root.join("specs/schema-pack.md")).unwrap();
+    assert!(
+        pack.contains("One `$id` ↔ one schema body (`#385`)"),
+        "schema-pack must document one-id/one-body rule for settlement receipt"
+    );
+    // Extract the fenced JSON whose $id is the settlement receipt.
+    let marker = "\"$id\": \"aira:schema:settlement:receipt:0.1\"";
+    let start = pack
+        .find(marker)
+        .expect("schema-pack must embed settlement receipt $id");
+    let before = pack[..start].rfind('{').expect("json object start");
+    let after = pack[start..]
+        .find("\n```")
+        .expect("closing fence after settlement receipt JSON");
+    let block = &pack[before..start + after];
+    let pack_obj: Value = serde_json::from_str(block).unwrap_or_else(|e| {
+        panic!(
+            "schema-pack settlement JSON parse: {e}; block={}",
+            &block[..block.len().min(120)]
+        );
+    });
+    assert_eq!(
+        pack_obj, file,
+        "schema-pack settlement receipt JSON must equal schemas/settlement/receipt.schema.json"
+    );
+
+    // Fixtures and registry stay on the same $id (not a second schema identity).
+    let manifest = std::fs::read_to_string(root.join("fixtures/manifest.json")).unwrap();
+    assert!(manifest.contains("\"schema\": \"aira:schema:settlement:receipt:0.1\""));
+    let status = std::fs::read_to_string(root.join("docs/implementation-status.md")).unwrap();
+    assert!(
+        status.contains("`aira:schema:settlement:receipt:0.1`") && status.contains("#385"),
+        "implementation-status must cite the single $id and #385 pack sync"
+    );
+}

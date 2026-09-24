@@ -1467,6 +1467,8 @@ Failure не є порожнім результатом. Failure створює 
 
 # 25. Settlement Receipt Schema
 
+One `$id` ↔ one schema body (`#385`). Canonical file: `schemas/settlement/receipt.schema.json`. This pack excerpt MUST match that file (including `privacy_class` / PRIV-001). Not a federation settlement runtime.
+
 ```json
 {
   "$id": "aira:schema:settlement:receipt:0.1",
@@ -1482,39 +1484,74 @@ Failure не є порожнім результатом. Failure створює 
     "cost_descriptor_ref",
     "verification_refs",
     "policy_refs",
+    "privacy_class",
     "created_at",
     "signature"
   ],
   "properties": {
-    "receipt_id": { "$ref": "aira:schema:common:ref:0.1" },
-    "execution_or_artifact_ref": { "$ref": "aira:schema:common:ref:0.1" },
-    "provider_identity": { "$ref": "aira:schema:common:ref:0.1" },
-    "consumer_identity": { "$ref": "aira:schema:common:ref:0.1" },
+    "receipt_id": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "execution_or_artifact_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "provider_identity": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
+    "consumer_identity": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
     "capability_refs": {
       "type": "array",
-      "items": { "$ref": "aira:schema:common:ref:0.1" }
+      "minItems": 1,
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
     },
     "contribution_descriptor": {
       "type": "object",
       "additionalProperties": false,
       "required": ["amount", "unit", "method"],
       "properties": {
-        "amount": { "type": ["number", "null"] },
-        "unit": { "type": ["string", "null"] },
-        "method": { "type": "string" }
+        "amount": {
+          "type": ["number", "null"]
+        },
+        "unit": {
+          "type": ["string", "null"]
+        },
+        "method": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
-    "cost_descriptor_ref": { "$ref": "aira:schema:common:ref:0.1" },
+    "cost_descriptor_ref": {
+      "$ref": "aira:schema:common:ref:0.1"
+    },
     "verification_refs": {
       "type": "array",
-      "items": { "$ref": "aira:schema:common:ref:0.1" }
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
     },
     "policy_refs": {
       "type": "array",
-      "items": { "$ref": "aira:schema:common:ref:0.1" }
+      "minItems": 1,
+      "items": {
+        "$ref": "aira:schema:common:ref:0.1"
+      }
     },
-    "created_at": { "$ref": "aira:schema:common:timestamp:0.1" },
-    "signature": { "$ref": "aira:schema:common:signature:0.1" }
+    "privacy_class": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Policy-safe privacy class (PRIV-001 / Book II §15.3); receipt MUST NOT carry raw prompt or private payload"
+    },
+    "created_at": {
+      "$ref": "aira:schema:common:timestamp:0.1"
+    },
+    "signature": {
+      "$ref": "aira:schema:common:signature:0.1"
+    }
   }
 }
 ```

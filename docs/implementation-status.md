@@ -161,7 +161,7 @@ CI: `cargo run -p aira-cli -- schema validate --fixtures fixtures` (QUEUE #38).
 | `aira:schema:protocol:response:0.1` | `protocol/response.schema.json` | valid | **DONE** |
 | `aira:schema:protocol:crp-route-request:0.1` | `protocol/crp-route-request.schema.json` | valid + unsigned invalid | **DONE** (#165) |
 | `aira:schema:protocol:crp-route-candidate:0.1` | `protocol/crp-route-candidate.schema.json` | valid + empty-chain invalid | **DONE** (#165) |
-| `aira:schema:settlement:receipt:0.1` | `settlement/receipt.schema.json` | valid + unsigned + raw_prompt invalid | **DONE** (#172) |
+| `aira:schema:settlement:receipt:0.1` | `settlement/receipt.schema.json` | valid + unsigned + raw_prompt invalid; pack `$id` body match (`#385`) | **DONE** (#172; `#385` pack sync) |
 | `aira:schema:research:promotion-candidate:0.1` | `research/promotion-candidate.schema.json` | valid + unsigned + missing-source invalid | **DONE** (#178) |
 | `aira:schema:identity:identity-descriptor:0.1` | `identity/identity-descriptor.schema.json` | valid | **DONE** |
 | `aira:schema:desktop:settings:0.1` | `desktop/settings.schema.json` | valid + ollama-process + missing-instance-id invalid | **DONE** (RFC-0241 LLM optional) |
