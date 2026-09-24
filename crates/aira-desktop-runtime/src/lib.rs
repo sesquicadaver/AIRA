@@ -19,6 +19,7 @@ mod model_storage;
 mod network_mesh;
 mod node_http;
 mod ollama;
+mod ollama_fitness;
 mod ollama_locality;
 mod ollama_meta_cache;
 mod paths;
@@ -90,6 +91,10 @@ pub use ollama::{
     parse_ollama_show_json, parse_ollama_tags_json, resolve_ollama_bin, OllamaHostListFreshness,
     OllamaHostListSnapshot, OllamaJsonField, OllamaListEntry, OllamaShowFields, OllamaTagsModel,
     DEFAULT_OLLAMA_BIN, DEFAULT_OLLAMA_HOST, OLLAMA_HOST_ENV,
+};
+pub use ollama_fitness::{
+    capability_has_completion, evaluate_model_fitness, fitness_surfaces_agree, ModelFitness,
+    ModelFitnessInput, ModelFitnessState,
 };
 pub use ollama_locality::{
     classify_model_locality, classify_remote_fields, endpoint_is_this_machine,
