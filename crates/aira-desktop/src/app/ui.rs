@@ -616,17 +616,43 @@ impl AiraDesktopApp {
                 .clicked()
             {
                 if comparing {
-                    self.work_executor_mode = work::WorkExecutorUiMode::Auto;
-                } else {
-                    self.work_executor_mode = work::WorkExecutorUiMode::Compare;
-                    if self.work_compare_a.is_empty() {
-                        let picked = self.work_required_ref.trim();
-                        self.work_compare_a = if picked.is_empty() {
-                            self.model_catalog.tip_model_ref.clone().unwrap_or_default()
-                        } else {
-                            picked.to_string()
-                        };
+                    // `#374`: exit restores the solo pick saved at enter.
+                    let restored = aira_desktop_runtime::exit_compare(
+                        self.work_compare_saved_solo
+                            .take()
+                            .unwrap_or(aira_desktop_runtime::SoloWorkPick::Auto),
+                    );
+                    match restored {
+                        aira_desktop_runtime::SoloWorkPick::Auto => {
+                            self.work_executor_mode = work::WorkExecutorUiMode::Auto;
+                        }
+                        aira_desktop_runtime::SoloWorkPick::Specific { model_ref } => {
+                            self.work_required_ref = model_ref;
+                            self.work_executor_mode = work::WorkExecutorUiMode::Specific;
+                        }
                     }
+                    self.work_compare_a.clear();
+                    self.work_compare_b.clear();
+                } else {
+                    // `#374`: A from current solo; B always empty on enter.
+                    let solo = match self.work_executor_mode {
+                        work::WorkExecutorUiMode::Specific
+                            if !self.work_required_ref.trim().is_empty() =>
+                        {
+                            aira_desktop_runtime::SoloWorkPick::Specific {
+                                model_ref: self.work_required_ref.clone(),
+                            }
+                        }
+                        _ => aira_desktop_runtime::SoloWorkPick::Auto,
+                    };
+                    let (legs, saved) = aira_desktop_runtime::enter_compare(
+                        &solo,
+                        self.model_catalog.tip_model_ref.as_deref(),
+                    );
+                    self.work_compare_saved_solo = Some(saved);
+                    self.work_compare_a = legs.a;
+                    self.work_compare_b = legs.b;
+                    self.work_executor_mode = work::WorkExecutorUiMode::Compare;
                 }
                 self.refresh_work_readiness();
             }

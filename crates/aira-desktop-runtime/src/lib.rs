@@ -7,6 +7,7 @@
 
 mod autostart;
 mod bootstrap;
+mod compare_mode;
 mod discovery;
 mod federation;
 mod health;
@@ -43,6 +44,9 @@ pub use autostart::{
 };
 pub use bootstrap::{
     ensure_bootstrap, new_desktop_identity_id, read_local_identity_id, LEGACY_DESKTOP_IDENTITY_ID,
+};
+pub use compare_mode::{
+    distinct_host_cli_names_stay_distinct, enter_compare, exit_compare, CompareLegs, SoloWorkPick,
 };
 pub use discovery::{run_discv_announce, run_discv_find, run_stun_query, DiscoveryStunOutcome};
 pub use federation::{

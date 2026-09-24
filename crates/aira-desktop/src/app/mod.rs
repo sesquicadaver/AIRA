@@ -138,6 +138,8 @@ pub struct AiraDesktopApp {
     pub(super) work_required_ref: String,
     pub(super) work_compare_a: String,
     pub(super) work_compare_b: String,
+    /// `#374`: solo pick saved when entering Compare; restored on exit.
+    pub(super) work_compare_saved_solo: Option<aira_desktop_runtime::SoloWorkPick>,
     /// `#373`: Work model search query (does not change selection by itself).
     pub(super) work_model_search: String,
     /// `#373`: Compatible (default) vs Show all.
@@ -266,6 +268,7 @@ impl AiraDesktopApp {
             work_required_ref: String::new(),
             work_compare_a: String::new(),
             work_compare_b: String::new(),
+            work_compare_saved_solo: None,
             work_model_search: String::new(),
             work_model_filter: aira_desktop_runtime::ModelSelectorFilterMode::Compatible,
             work_readiness,
