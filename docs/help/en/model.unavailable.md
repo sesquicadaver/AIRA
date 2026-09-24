@@ -10,12 +10,13 @@ Help for this topic is **offline** (embedded; no network / no LLM to read it).
 
 1. Open **Settings → Models** (not System → Model — System only observes):
    - Refresh the host list, pick a model, then **Make default**
+   - On **Work**, if the row is fit but unbound, use **Prepare and run** (does not rewrite the default tip)
    - **Scan**, or add a local file and **Prepare** when that file can run
 2. On **Work**, leave the selector on **Default: name**, or pick another model. **Compare** opens a second selector. Then **Run** again.
 3. If Compare is blocked, fix the unready leg — the UI will not silently use another model.
 4. If you only changed settings that need a restart, see help:settings.apply / help:node.lifecycle.
 
-Optional CLI tooling exists (`aira models …`) but is **not** required when the Settings catalog buttons are available.
+Optional CLI tooling exists (`aira models …`) but is **not** required when the Settings catalog buttons are available. A `:cloud` name suffix is not proof of local execution.
 
 ## What should happen?
 

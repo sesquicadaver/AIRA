@@ -177,13 +177,14 @@ impl AiraDesktopApp {
         } else {
             l.settings_models_unavailable
         };
+        let fitness = l.model_fitness_label(aira_desktop_runtime::fitness_from_projection_row(row));
         if row.verified {
             format!(
-                "{} · {} · {} · {}",
-                row.name, source, l.settings_models_verified, avail
+                "{} · {} · {} · {} · {}",
+                row.name, source, l.settings_models_verified, avail, fitness
             )
         } else {
-            format!("{} · {} · {}", row.name, source, avail)
+            format!("{} · {} · {} · {}", row.name, source, avail, fitness)
         }
     }
 
@@ -2133,6 +2134,63 @@ mod tests {
         assert_ne!(uk.work_prepare_and_run, uk.work_submit);
         assert_ne!(en.work_prepare_and_run, en.work_submit);
         assert!(!uk.work_prepare_and_run.contains("Типова"));
+    }
+
+    /// `#375`: five fitness states have EN/UK labels; Prepare-and-run matches the button.
+    #[test]
+    fn fitness_state_labels_en_uk_cover_five_states() {
+        use aira_desktop_runtime::ModelFitnessState::*;
+        let en = Labels::get(UiLang::En);
+        let uk = Labels::get(UiLang::Uk);
+        for state in [Runnable, PrepareAndRun, Checking, NeedsAction, Incompatible] {
+            assert!(!en.model_fitness_label(state).is_empty());
+            assert!(!uk.model_fitness_label(state).is_empty());
+        }
+        assert_eq!(en.model_fitness_prepare_and_run, en.work_prepare_and_run);
+        assert_eq!(uk.model_fitness_prepare_and_run, uk.work_prepare_and_run);
+        assert_eq!(en.model_fitness_runnable, "Ready");
+        assert_eq!(uk.model_fitness_runnable, "Готова");
+    }
+
+    /// `#375`: F1 Help + local-node mention Prepare and run; `:cloud` is not locality proof.
+    #[test]
+    fn help_and_local_node_mention_prepare_not_suffix_locality() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let files = [
+            "docs/help/en/model.select.md",
+            "docs/help/uk/model.select.md",
+            "docs/help/en/work.submit.md",
+            "docs/help/uk/work.submit.md",
+            "docs/help/en/model.unavailable.md",
+            "docs/help/uk/model.unavailable.md",
+            "docs/local-node.md",
+        ];
+        for rel in files {
+            let text = std::fs::read_to_string(root.join(rel)).unwrap_or_else(|e| {
+                panic!("read {rel}: {e}");
+            });
+            let mentions_prepare =
+                text.contains("Prepare and run") || text.contains("Підготувати й виконати");
+            assert!(
+                mentions_prepare,
+                "{rel} must mention Prepare and run / Підготувати й виконати"
+            );
+            let lower = text.to_ascii_lowercase();
+            // Must not claim the suffix alone proves local execution.
+            assert!(
+                !lower.contains(":cloud means local")
+                    && !lower.contains(":cloud означає локаль")
+                    && !lower.contains("suffix proves")
+                    && !text.contains("суфікс доводить локаль"),
+                "{rel} must not treat :cloud suffix as locality proof"
+            );
+            if rel.contains("model.select") || rel == "docs/local-node.md" {
+                assert!(
+                    text.contains(":cloud"),
+                    "{rel} should mention :cloud as non-proof"
+                );
+            }
+        }
     }
 
     #[test]
