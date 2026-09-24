@@ -245,7 +245,7 @@ fn audit_d_386_specs_readme_baseline_amendments_priority() {
 #[test]
 fn audit_d_387_entry_points_one_first_open() {
     let root = repo_root();
-    let tip = "перший OPEN `#389`";
+    let tip = "немає OPEN (audit `#376`–`#389` **DONE**)";
     let paths = [
         "docs/demo.md",
         "docs/crypto.md",
@@ -377,5 +377,83 @@ fn audit_d_388_installed_acceptance_sha_evidence() {
     assert!(
         proc.contains("not_analyze_396_head_proof") && proc.contains("AIRA_GIT_SHA"),
         "process evidence writer must emit SHA / not-396 markers"
+    );
+}
+
+/// `#389`: Analyze-396 (and similar old smoke evidence) carries explicit date/SHA as historical snapshot.
+#[test]
+fn audit_d_389_analyze_396_historical_snapshot_headers() {
+    let root = repo_root();
+    let sha = "7bb6716914b069b672a364b9a3990a7a9aed023a";
+    let recorded = "2026-09-19T07:02:09Z";
+
+    let run = std::fs::read_to_string(root.join("analysis/Analyze-396/run.json")).unwrap();
+    let doc: serde_json::Value = serde_json::from_str(&run).unwrap();
+    assert_eq!(
+        doc.get("status").and_then(|v| v.as_str()),
+        Some("historical_snapshot")
+    );
+    assert_eq!(doc.get("git_sha").and_then(|v| v.as_str()), Some(sha));
+    assert_eq!(
+        doc.get("recorded_at").and_then(|v| v.as_str()),
+        Some(recorded)
+    );
+    assert_eq!(
+        doc.get("not_head_proof").and_then(|v| v.as_bool()),
+        Some(true)
+    );
+    assert_eq!(
+        doc.get("queue_atom_historicize").and_then(|v| v.as_str()),
+        Some("#389")
+    );
+    assert!(
+        doc.get("superseded_by")
+            .and_then(|v| v.as_str())
+            .is_some_and(|s| s.contains("Analyze-397")),
+        "historical 396 must point at Analyze-397 as living gate"
+    );
+
+    for rel in [
+        "analysis/Analyze-396/BRIEF.md",
+        "analysis/Analyze-396/EVIDENCE.md",
+    ] {
+        let text = std::fs::read_to_string(root.join(rel)).unwrap();
+        assert!(
+            text.contains("#389")
+                && text.contains("HISTORICAL SNAPSHOT")
+                && text.contains(sha)
+                && text.contains(recorded),
+            "{rel} must carry #389 historic header with date/SHA"
+        );
+        assert!(
+            text.contains("not proof of current HEAD") || text.contains("not HEAD proof"),
+            "{rel} must deny HEAD proof"
+        );
+    }
+
+    let gate =
+        std::fs::read_to_string(root.join("docs/installed-product-llm-acceptance.md")).unwrap();
+    assert!(
+        gate.contains("#389")
+            && gate.contains("historical snapshot")
+            && gate.contains("7bb6716")
+            && gate.contains("Analyze-397"),
+        "installed-product gate must label Analyze-396 historical under #389"
+    );
+
+    let queue = std::fs::read_to_string(root.join("QUEUE.md")).unwrap();
+    assert!(
+        queue.contains("| 389 | **DONE**"),
+        "QUEUE #389 must be DONE after historicize"
+    );
+    assert!(
+        !queue.contains("| 389 | OPEN"),
+        "QUEUE must not keep #389 OPEN"
+    );
+    assert!(
+        queue.contains("немає OPEN")
+            || queue.contains("no OPEN")
+            || queue.contains("audit A") && queue.contains("**DONE**"),
+        "QUEUE tip must show audit A closed / no OPEN after #389"
     );
 }
