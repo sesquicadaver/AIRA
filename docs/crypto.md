@@ -207,7 +207,7 @@ Empty and `TESTSIG` are rejected on admission.
 
 ## Out of scope (later)
 
-**Канон (`#387`):** [`QUEUE.md`](../QUEUE.md) — **немає OPEN (audit `#376`–`#389` **DONE**)**. Phase C [`phase-c-plan.md`](phase-c-plan.md) і рядки нижче — закритий provenance / deferred notes, не competing tip.
+**Канон (`#387` shared-tip rule):** [`QUEUE.md`](../QUEUE.md) — **перший OPEN `#391`** ([`phase-z-plan.md`](phase-z-plan.md); `#390` DONE). Audit `#376`–`#389` **DONE** (closed provenance). Phase C [`phase-c-plan.md`](phase-c-plan.md) і рядки нижче — закритий provenance / deferred notes, не competing tip.
 
 | Було Out | Рядок |
 |----------|-------|
