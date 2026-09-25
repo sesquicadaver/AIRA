@@ -107,7 +107,8 @@ fn phase_z_desktop_ux_density_contract() {
 
 #[test]
 fn phase_z_wiring_does_not_change_work_layout_yet() {
-    let ui = std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/ui.rs")).unwrap();
+    let ui =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/ui.rs")).unwrap();
     assert!(
         ui.contains("desired_rows(4)"),
         "#390 must not implement Work layout (#391)"
