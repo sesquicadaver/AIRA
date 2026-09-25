@@ -5,4 +5,4 @@
 - [x] `phase_z_doc` living smoke
 - [x] density contract in `desktop-ux.md`
 - [x] RFC-0244 reserved file-free
-- [ ] Next OPEN `#391` Work layout budget
+- [x] Next OPEN `#391` → DONE @ Analyze-399

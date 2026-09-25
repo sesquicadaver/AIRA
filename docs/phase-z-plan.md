@@ -1,7 +1,7 @@
 # Phase Z — Desktop chrome density (post-audit A)
 
 **Статус:** **IN PROGRESS** (активовано `#390` wiring; consolidating **AIRA-RFC-0244** reserved, **confirmed free** 2026-09-25 until `#397` close).  
-**Перший OPEN:** `#391` (first OPEN `#391`).  
+**Перший OPEN:** `#392` (first OPEN `#392`).  
 **Джерела:** UX-скарги 2026-09-25 (Work chat / «Як це працює» / Connection spam); план [`.omx/plans/2026-09-25-desktop-gui-refinement.md`](../.omx/plans/2026-09-25-desktop-gui-refinement.md); канон [`desktop-ux.md`](desktop-ux.md); Phase R [`phase-r-plan.md`](phase-r-plan.md) **DONE** @ RFC-0174; Phase S [`phase-s-plan.md`](phase-s-plan.md) **DONE** @ RFC-0182; Audit A `#376`–`#389` **DONE**.  
 **Канон backlog:** [`QUEUE.md`](../QUEUE.md) секція Phase Z `#390`–`#397`.  
 **Closure:** consolidating **RFC-0244** @ `#397` (file-free until close).  
@@ -80,7 +80,7 @@ Z0 Wiring (#390)
 | ID | Підфаза | Атом | Done when | Не в цьому атомі |
 |----|---------|------|-----------|------------------|
 | `#390` | Z0 | Phase Z wiring | **DONE**: plan IN PROGRESS; QUEUE tip `#391`; `phase_z_doc`; density contract у `desktop-ux`; RFC-0244 reserved file-free | layout/copy UI |
-| `#391` | Z1 | Work layout budget | editor `desired_rows` ≥ 8 або пропорційний split; тест/константа | remove how-it-works |
+| `#391` | Z1 | Work layout budget | **DONE** @ Analyze-399: `WORK_EDITOR_DESIRED_ROWS` ≥ 8; `WORK_ANSWER_MIN_HEIGHT`; tip → `#392` | remove how-it-works |
 | `#392` | Z2 | Remove «Як це працює» | немає `work_how_it_works` CollapsingHeader; F1 covers | Connection copy |
 | `#393` | Z3 | Short `sys_conn_unknown` | короткий EN/UK label; тест довжини/змісту | boundary/cold remove |
 | `#394` | Z4 | Boundary/cold off primary | не always-on повні guidance абзаци; Help лишає межу | CTA matrix change |

@@ -676,7 +676,7 @@ impl AiraDesktopApp {
 
         let editor = ui.add(
             egui::TextEdit::multiline(&mut self.problem_text)
-                .desired_rows(4)
+                .desired_rows(work::WORK_EDITOR_DESIRED_ROWS)
                 .desired_width(f32::INFINITY),
         );
         if editor.gained_focus() || editor.changed() {
@@ -838,7 +838,7 @@ impl AiraDesktopApp {
         } else {
             view.answer.as_str()
         };
-        let room = (ui.available_height() - 72.0).max(160.0);
+        let room = (ui.available_height() - 72.0).max(work::WORK_ANSWER_MIN_HEIGHT);
         egui::ScrollArea::vertical()
             .id_source(format!("work-answer-{id_suffix}"))
             .max_height(room)

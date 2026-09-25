@@ -6,6 +6,12 @@ use super::AiraDesktopApp;
 use crate::lexicon::{work_run_available, work_submit_gate, ErrorCode, UiProblem};
 use crate::work_view::WorkSubmitModelContext;
 
+/// Phase Z `#391`: Work problem editor vertical budget (`TextEdit::desired_rows`).
+pub(crate) const WORK_EDITOR_DESIRED_ROWS: usize = 8;
+
+/// Minimum answer `ScrollArea` height so a taller editor does not crush results (#391).
+pub(crate) const WORK_ANSWER_MIN_HEIGHT: f32 = 160.0;
+
 /// Work-screen executor radio (`#349` / `#354`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum WorkExecutorUiMode {
