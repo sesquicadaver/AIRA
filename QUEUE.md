@@ -12,7 +12,7 @@
 | `main` | Phase W `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed** @ [`phase-w-plan.md`](docs/phase-w-plan.md); Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** @ [`phase-x-plan.md`](docs/phase-x-plan.md) (Pack 2 GUI DONE; no OPEN X atoms); Phase V `#323`–`#330` **DONE** @ RFC-0208; **QUEUE V closed**; Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase Z [`docs/phase-z-plan.md`](docs/phase-z-plan.md) `#390`–`#397` **IN PROGRESS**; **Перший OPEN:** `#391`. `#390` **DONE** @ Analyze-398 / `phase_z_doc`. Audit A `#376`–`#389` **DONE**. Phase Y `#359`–`#375` **DONE**. Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** |
+| Активна черга | Phase Z [`docs/phase-z-plan.md`](docs/phase-z-plan.md) `#390`–`#397` **IN PROGRESS**; **Перший OPEN:** `#392`. `#390`–`#391` **DONE**. Audit A `#376`–`#389` **DONE**. Phase Y `#359`–`#375` **DONE**. Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** |
 
 ## Правила атомарності
 
@@ -987,7 +987,7 @@ W0 wiring + A0 (#331 DONE)
 
 План Y: [`docs/phase-y-plan.md`](docs/phase-y-plan.md).  
 План аудиту / gate: [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md).  
-Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. D+A `#383`–`#389` **DONE**. Live tip → Phase Z **перший OPEN `#391`** ([`phase-z-plan.md`](docs/phase-z-plan.md)). Не Pack 3.
+Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. D+A `#383`–`#389` **DONE**. Live tip → Phase Z **перший OPEN `#392`** ([`phase-z-plan.md`](docs/phase-z-plan.md)). Не Pack 3.
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
@@ -1045,12 +1045,12 @@ Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. D+A `#3
 ## Phase Z — Desktop chrome density (OPEN)
 
 План: [`docs/phase-z-plan.md`](docs/phase-z-plan.md). Living smoke: `phase_z_doc`. Consolidating **RFC-0244** reserved (file-free until `#397`).  
-**Перший OPEN:** `#391`. `#390` **DONE** @ Analyze-398. Audit A `#376`–`#389` **DONE** (closed provenance).
+**Перший OPEN:** `#392`. `#390`–`#391` **DONE**. Audit A `#376`–`#389` **DONE** (closed provenance).
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
 | 390 | **DONE** | ~~Analyze-398 — Phase Z wiring~~ | plan IN PROGRESS + QUEUE tip + `phase_z_doc` + density contract; RFC-0244 reserved | `#390` DONE; first OPEN `#391` | layout/copy UI (#391+) |
-| 391 | **OPEN** | — | Work layout budget: editor `desired_rows` ≥ 8 або пропорційний split | тест/константа; answer не нижче мінімуму | remove how-it-works (#392) |
+| 391 | **DONE** | ~~Analyze-399 — Work layout budget~~ | editor `WORK_EDITOR_DESIRED_ROWS` ≥ 8; answer min height; RFC-0244 reserved | `#391` DONE; first OPEN `#392` | remove how-it-works (#392) |
 | 392 | **OPEN** | — | Прибрати «Як це працює» CollapsingHeader; навчання через F1 | немає `work_how_it_works` primary dump | Connection copy |
 | 393 | **OPEN** | — | Скоротити `sys_conn_unknown` EN/UK | короткий статус; UNKNOWN≠OFFLINE у Help | boundary/cold remove |
 | 394 | **OPEN** | — | Boundary/cold guidance не always-on у primary Connection | Help лишає межу; ≤1 short secondary або F1 link | CTA matrix change |
@@ -1060,13 +1060,13 @@ Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. D+A `#3
 
 ### Наступний цикл
 
-**Перший OPEN:** `#391` (Work layout budget). Phase Z `#390` **DONE** @ Analyze-398 / `phase_z_doc`. `#392`–`#397` **OPEN**. Audit A `#376`–`#389` **DONE**.
+**Перший OPEN:** `#392` (Remove how-it-works). Phase Z `#390`–`#391` **DONE**. `#393`–`#397` **OPEN**. Audit A `#376`–`#389` **DONE**.
 
 ```text
 #359 readiness … #389 Analyze-396 historicize (DONE; audit A closed)
   → #390 Phase Z wiring (DONE @ Analyze-398)
-    → #391 Work layout budget (OPEN)
-      → #392 Remove how-it-works
+    → #391 Work layout budget (DONE @ Analyze-399)
+      → #392 Remove how-it-works (OPEN)
         → #393 Short sys_conn_unknown
           → #394 Boundary/cold off primary
             → #395 Secondary copy pass
@@ -1077,7 +1077,7 @@ Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. D+A `#3
 ### Наступний цикл (Phase X)
 
 **Phase X COMPLETE** (`#343`–`#358` **DONE** @ RFC-0226). **QUEUE X closed.** no OPEN X atoms.  
-Tip (historical Pack 2): `#358` DONE @ Analyze-395 / RFC-0226. Live tip → Phase Z **перший OPEN `#391`**. Pack 3 лишається окремо.
+Tip (historical Pack 2): `#358` DONE @ Analyze-395 / RFC-0226. Live tip → Phase Z **перший OPEN `#392`**. Pack 3 лишається окремо.
 
 ```text
 X0 wiring (#343 DONE)
@@ -1179,7 +1179,7 @@ P0 wiring (#266 DONE)
 | Pack 1 residual honesty (post-V audit) | [`docs/phase-w-plan.md`](docs/phase-w-plan.md); `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed** |
 | Pack 2 local multi-model GUI (aira-current 2026-09-13 + M1–M6) | [`docs/phase-x-plan.md`](docs/phase-x-plan.md); `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed**; no OPEN X atoms |
 | Вибір моделі (підтверджений аудит `9f3e642` + `aira-current.md` 2026-09-20) | [`docs/phase-y-plan.md`](docs/phase-y-plan.md); `#359`–`#375` **DONE**; **QUEUE Y closed** |
-| Повний аудит `6007442` (2026-09-23): K1–K5 + D + acceptance | [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md); K `#376`–`#382` **DONE**; Y `#359`–`#375` **DONE**; `#383`–`#389` **DONE** (closed); live tip → Phase Z `#391` |
-| Desktop chrome density (post-audit A) | [`docs/phase-z-plan.md`](docs/phase-z-plan.md); `#390`–`#397`; `#390` **DONE**; **перший OPEN `#391`**; RFC-0244 reserved |
+| Повний аудит `6007442` (2026-09-23): K1–K5 + D + acceptance | [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md); K `#376`–`#382` **DONE**; Y `#359`–`#375` **DONE**; `#383`–`#389` **DONE** (closed); live tip → Phase Z `#392` |
+| Desktop chrome density (post-audit A) | [`docs/phase-z-plan.md`](docs/phase-z-plan.md); `#390`–`#397`; `#390`–`#391` **DONE**; **перший OPEN `#392`**; RFC-0244 reserved |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.

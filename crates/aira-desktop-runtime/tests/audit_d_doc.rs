@@ -245,8 +245,8 @@ fn audit_d_386_specs_readme_baseline_amendments_priority() {
 #[test]
 fn audit_d_387_entry_points_one_first_open() {
     let root = repo_root();
-    // Live tip after Phase Z `#390` wiring (shared-tip rule from `#387` still applies).
-    let tip = "перший OPEN `#391`";
+    // Live tip after Phase Z `#391` Work layout (shared-tip rule from `#387` still applies).
+    let tip = "перший OPEN `#392`";
     let paths = [
         "docs/demo.md",
         "docs/crypto.md",
@@ -452,8 +452,8 @@ fn audit_d_389_analyze_396_historical_snapshot_headers() {
         "QUEUE must not keep #389 OPEN"
     );
     assert!(
-        queue.contains("| 390 | **DONE**")
-            && (queue.contains("**Перший OPEN:** `#391`") || queue.contains("first OPEN `#391`")),
-        "QUEUE tip must advance to Phase Z first OPEN #391 after audit A closed"
+        queue.contains("| 391 | **DONE**")
+            && (queue.contains("**Перший OPEN:** `#392`") || queue.contains("first OPEN `#392`")),
+        "QUEUE tip must advance to Phase Z first OPEN #392 after #391"
     );
 }

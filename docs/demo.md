@@ -2,7 +2,7 @@
 
 Local **C1 reference/demo** flow (`aira-flow` / CLI). [`OperationalPlane`](operational-plane.md) is not a production event runtime, scheduler, or federation runtime.
 
-**Queue (`#387` shared-tip rule):** **перший OPEN `#391`** — [`QUEUE.md`](../QUEUE.md) / [`phase-z-plan.md`](phase-z-plan.md) (`#390` DONE). Audit `#376`–`#389` **DONE** (closed). Do not treat closed Phase G/X tips as current.
+**Queue (`#387` shared-tip rule):** **перший OPEN `#392`** — [`QUEUE.md`](../QUEUE.md) / [`phase-z-plan.md`](phase-z-plan.md) (`#390`–`#391` DONE). Audit `#376`–`#389` **DONE** (closed). Do not treat closed Phase G/X tips as current.
 
 ## Prerequisites
 

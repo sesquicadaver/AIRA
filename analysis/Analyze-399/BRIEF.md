@@ -1,0 +1,1 @@
+QUEUE `#391`: Work layout budget. Raise editor `desired_rows` via `WORK_EDITOR_DESIRED_ROWS` (≥ 8) and keep answer min height. Do not remove «Як це працює» (`#392`) or Connection copy (`#393`–`#394`).
