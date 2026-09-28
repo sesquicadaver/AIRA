@@ -604,6 +604,9 @@ impl AiraDesktopApp {
 
         let comparing = self.work_executor_mode == work::WorkExecutorUiMode::Compare;
         ui.horizontal(|ui| {
+            if comparing {
+                ui.label(l.work_compare_a);
+            }
             self.ui_model_combo(
                 ui,
                 if comparing {
@@ -737,58 +740,17 @@ impl AiraDesktopApp {
         }
         if submitting {
             ui.label(l.work_submitting);
+            ui.small(l.work_cancel_honesty);
+            let process_dead = self
+                .last_problem
+                .as_ref()
+                .and_then(|p| p.detail.as_deref())
+                .is_some_and(crate::lexicon::process_death_confirmed);
+            if crate::lexicon::cancel_affordance_visible(process_dead) {
+                ui.small(l.work_cancelled);
+            }
         }
-        egui::CollapsingHeader::new(l.work_how_it_works)
-            .id_source("work-tech-note")
-            .default_open(false)
-            .show(ui, |ui| {
-                ui.label(l.work_tech_details);
-                ui.small(l.work_hint);
-                ui.small(l.work_shortcut_hint);
-                ui.small(l.work_executor);
-                ui.small(l.work_executor_auto);
-                ui.small(l.work_executor_specific);
-                ui.small(l.work_executor_hint);
-                ui.small(l.work_compare_pick_a);
-                ui.small(l.work_compare_pick_b);
-                ui.small(l.work_capability_math);
-                ui.small(l.work_capability_generate);
-                ui.small(l.work_readiness_ready);
-                ui.small(l.work_user_note);
-                if submitting {
-                    ui.small(l.work_cancel_honesty);
-                }
-                let process_dead = self
-                    .last_problem
-                    .as_ref()
-                    .and_then(|p| p.detail.as_deref())
-                    .is_some_and(crate::lexicon::process_death_confirmed);
-                if crate::lexicon::cancel_affordance_visible(process_dead) {
-                    ui.small(l.work_cancelled);
-                }
-                ui.small(l.settings_models_model_ref);
-                if self.work_executor_mode == work::WorkExecutorUiMode::Specific
-                    && ui
-                        .text_edit_singleline(&mut self.work_required_ref)
-                        .changed()
-                {
-                    self.refresh_work_readiness();
-                }
-                if self.work_executor_mode == work::WorkExecutorUiMode::Compare {
-                    ui.horizontal(|ui| {
-                        ui.label(l.work_compare_a);
-                        if ui.text_edit_singleline(&mut self.work_compare_a).changed() {
-                            self.refresh_work_readiness();
-                        }
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label(l.work_compare_b);
-                        if ui.text_edit_singleline(&mut self.work_compare_b).changed() {
-                            self.refresh_work_readiness();
-                        }
-                    });
-                }
-            });
+        // Phase Z `#392`: no in-pane «Як це працює» dump — learning is Довідка · F1 (`HelpId::WorkSubmit`).
         if self.work_result.is_some()
             || self.work_result_b.is_some()
             || self.work_compare_b_error.is_some()

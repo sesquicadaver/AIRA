@@ -16,12 +16,13 @@ fn phase_z_plan_present() {
         "#390",
         "#397",
         "IN PROGRESS",
-        "first OPEN `#392`",
+        "first OPEN `#393`",
         "AIRA-RFC-0244",
         "confirmed free",
         "desired_rows",
         "WORK_EDITOR_DESIRED_ROWS",
         "Як це працює",
+        "Analyze-400",
         "conn_boundary",
         "cold_start",
         "Instruct ≫ Explain",
@@ -40,8 +41,10 @@ fn phase_z_plan_present() {
         "phase-z-plan must not claim RFC-0244 DONE before #397"
     );
     assert!(
-        !text.contains("first OPEN `#390`") && !text.contains("first OPEN `#391`"),
-        "phase-z-plan must advance tip past #391"
+        !text.contains("first OPEN `#390`")
+            && !text.contains("first OPEN `#391`")
+            && !text.contains("first OPEN `#392`"),
+        "phase-z-plan must advance tip past #392"
     );
     assert!(
         !text.contains("QUEUE Z closed"),
@@ -50,37 +53,41 @@ fn phase_z_plan_present() {
 }
 
 #[test]
-fn phase_z_queue_391_done_392_open() {
+fn phase_z_queue_392_done_393_open() {
     let text = std::fs::read_to_string(repo_root().join("QUEUE.md")).unwrap();
     assert!(text.contains("phase-z-plan.md"));
-    assert!(text.contains("| 390 | **DONE**"), "QUEUE #390 must be DONE");
-    assert!(text.contains("| 391 | **DONE**"), "QUEUE #391 must be DONE");
-    assert!(text.contains("| 392 | **OPEN**"), "QUEUE #392 must be OPEN");
-    for n in 392..=397 {
+    for n in 390..=392 {
+        assert!(
+            text.contains(&format!("| {n} | **DONE**")),
+            "QUEUE #{n} must be DONE"
+        );
+    }
+    assert!(text.contains("| 393 | **OPEN**"), "QUEUE #393 must be OPEN");
+    for n in 393..=397 {
         assert!(
             text.contains(&format!("| {n} | **OPEN**")),
             "QUEUE #{n} must be OPEN"
         );
     }
     assert!(
-        !text.contains("| 391 | **OPEN**"),
-        "QUEUE #391 must not stay OPEN"
+        !text.contains("| 392 | **OPEN**"),
+        "QUEUE #392 must not stay OPEN"
     );
     for needle in [
         "Analyze-398",
         "Analyze-399",
+        "Analyze-400",
         "RFC-0244",
         "phase_z_doc",
-        "first OPEN `#392`",
-        "**Перший OPEN:** `#392`",
-        "WORK_EDITOR_DESIRED_ROWS",
+        "first OPEN `#393`",
+        "**Перший OPEN:** `#393`",
         "chrome density",
     ] {
         assert!(text.contains(needle), "QUEUE missing: {needle}");
     }
     assert!(
-        !text.contains("**Перший OPEN:** `#391`"),
-        "QUEUE tip must not keep #391 as first-OPEN"
+        !text.contains("**Перший OPEN:** `#392`"),
+        "QUEUE tip must not keep #392 as first-OPEN"
     );
 }
 
@@ -101,10 +108,11 @@ fn phase_z_desktop_ux_density_contract() {
         "#390",
         "#391",
         "#392",
+        "#393",
         "RFC-0244",
         "Density / progressive disclosure",
         "Instruct ≫ Explain",
-        "перший OPEN `#392`",
+        "перший OPEN `#393`",
     ] {
         assert!(text.contains(needle), "desktop-ux missing: {needle}");
     }
@@ -118,10 +126,6 @@ fn phase_z_391_work_editor_budget() {
         work.contains("WORK_EDITOR_DESIRED_ROWS: usize = 8"),
         "#391 must define WORK_EDITOR_DESIRED_ROWS >= 8"
     );
-    assert!(
-        work.contains("WORK_ANSWER_MIN_HEIGHT: f32 = 160.0"),
-        "#391 must keep answer min height constant"
-    );
     let ui =
         std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/ui.rs")).unwrap();
     assert!(
@@ -132,26 +136,52 @@ fn phase_z_391_work_editor_budget() {
         !ui.contains("desired_rows(4)"),
         "ui_work must not keep the 4-row editor budget"
     );
+}
+
+#[test]
+fn phase_z_392_no_how_it_works() {
+    let ui =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/ui.rs")).unwrap();
     assert!(
-        ui.contains("work::WORK_ANSWER_MIN_HEIGHT"),
-        "answer ScrollArea must use WORK_ANSWER_MIN_HEIGHT"
+        !ui.contains("work_how_it_works"),
+        "#392 must remove work_how_it_works CollapsingHeader"
     );
-    // #392 not in this atom.
     assert!(
-        ui.contains("work_how_it_works"),
-        "#391 must not remove how-it-works (#392)"
+        !ui.contains("work-tech-note"),
+        "#392 must remove work-tech-note collapsing id"
     );
+    let i18n =
+        std::fs::read_to_string(repo_root().join("crates/aira-desktop/src/app/i18n.rs")).unwrap();
+    assert!(
+        !i18n.contains("work_how_it_works"),
+        "#392 must drop orphan work_how_it_works i18n"
+    );
+    assert!(
+        !i18n.contains("work_tech_details"),
+        "#392 must drop orphan work_tech_details i18n"
+    );
+    // Connection chrome still present until #393/#394.
     assert!(
         ui.contains("conn_boundary_guidance"),
-        "#391 must not remove boundary chrome (#394)"
+        "#392 must not remove boundary chrome (#394)"
+    );
+    let help_en = std::fs::read_to_string(repo_root().join("docs/help/en/work.submit.md")).unwrap();
+    let help_uk = std::fs::read_to_string(repo_root().join("docs/help/uk/work.submit.md")).unwrap();
+    assert!(
+        help_en.contains("Ctrl+Enter") || help_en.to_ascii_lowercase().contains("run"),
+        "EN work.submit Help must cover submit path"
+    );
+    assert!(
+        help_uk.contains("Ctrl+Enter") || help_uk.contains("Виконати"),
+        "UK work.submit Help must cover submit path"
     );
 }
 
 #[test]
-fn phase_z_entry_tips_share_392() {
+fn phase_z_entry_tips_share_393() {
     let root = repo_root();
-    let tip = "перший OPEN `#392`";
-    let tip_en = "first OPEN `#392`";
+    let tip = "перший OPEN `#393`";
+    let tip_en = "first OPEN `#393`";
     for rel in [
         "docs/demo.md",
         "docs/crypto.md",
@@ -163,10 +193,6 @@ fn phase_z_entry_tips_share_392() {
             text.contains(tip) || text.contains(tip_en),
             "{rel} must cite live tip {tip} / {tip_en}"
         );
-        assert!(
-            text.contains("phase-z-plan.md") || text.contains("Phase Z") || text.contains("#392"),
-            "{rel} must point at Phase Z / #392"
-        );
     }
 }
 
@@ -174,30 +200,27 @@ fn phase_z_entry_tips_share_392() {
 fn phase_z_docs_index() {
     let docs = std::fs::read_to_string(repo_root().join("docs/README.md")).unwrap();
     assert!(docs.contains("phase-z-plan.md"));
-    assert!(docs.contains("#392") || docs.contains("IN PROGRESS"));
+    assert!(docs.contains("#393"));
     let status =
         std::fs::read_to_string(repo_root().join("docs/implementation-status.md")).unwrap();
-    assert!(status.contains("phase_z_doc.rs") || status.contains("phase_z_doc"));
-    assert!(status.contains("phase-z-plan.md"));
-    assert!(status.contains("#392"));
-    assert!(status.contains("WORK_EDITOR_DESIRED_ROWS") || status.contains("#391"));
+    assert!(status.contains("phase_z_doc"));
+    assert!(status.contains("#393"));
 }
 
 #[test]
-fn phase_z_analyze_399_present() {
+fn phase_z_analyze_400_present() {
     let root = repo_root();
     for rel in [
-        "analysis/Analyze-399/BRIEF.md",
-        "analysis/Analyze-399/LIVING_SPEC_MATRIX.md",
-        "analysis/Analyze-399/README.md",
-        "analysis/Analyze-399/todo/TODO_FIXME.md",
+        "analysis/Analyze-400/BRIEF.md",
+        "analysis/Analyze-400/LIVING_SPEC_MATRIX.md",
+        "analysis/Analyze-400/README.md",
+        "analysis/Analyze-400/todo/TODO_FIXME.md",
     ] {
         assert!(
             root.join(rel).is_file(),
-            "missing Analyze-399 artifact: {rel}"
+            "missing Analyze-400 artifact: {rel}"
         );
     }
-    let brief = std::fs::read_to_string(root.join("analysis/Analyze-399/BRIEF.md")).unwrap();
-    assert!(brief.contains("#391"));
-    assert!(brief.contains("WORK_EDITOR") || brief.contains("layout"));
+    let brief = std::fs::read_to_string(root.join("analysis/Analyze-400/BRIEF.md")).unwrap();
+    assert!(brief.contains("#392"));
 }

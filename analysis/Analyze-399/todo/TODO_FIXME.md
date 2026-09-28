@@ -4,4 +4,4 @@
 - [x] `WORK_ANSWER_MIN_HEIGHT` wired in answer ScrollArea
 - [x] tip → first OPEN `#392`
 - [x] `phase_z_doc` / Analyze-399
-- [ ] Next OPEN `#392` Remove how-it-works
+- [x] Next OPEN `#392` → DONE @ Analyze-400
