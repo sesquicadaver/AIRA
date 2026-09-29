@@ -115,10 +115,15 @@ fn audit_d_384_c1_executed_vra_op001_are_three_statuses() {
         "ci-governance must separate smoke/VRA from OP-001 and GUI calculator"
     );
 
+    let help_en = std::fs::read_to_string(root.join("docs/help/en/work.submit.md")).unwrap();
+    assert!(
+        !help_en.contains("OP-001") || help_en.to_ascii_lowercase().contains("legacy"),
+        "work.submit Help must not present OP-001 as product Work path without legacy framing"
+    );
     let i18n = std::fs::read_to_string(root.join("crates/aira-desktop/src/app/i18n.rs")).unwrap();
     assert!(
-        i18n.contains("assert!(!Labels::get(UiLang::En).work_tech_details.contains(\"OP-001\"))"),
-        "desktop i18n must keep OP-001 out of Work tech details"
+        !i18n.contains("OP-001"),
+        "desktop i18n must keep OP-001 out of Work user-facing labels"
     );
 }
 
@@ -246,7 +251,7 @@ fn audit_d_386_specs_readme_baseline_amendments_priority() {
 fn audit_d_387_entry_points_one_first_open() {
     let root = repo_root();
     // Live tip after Phase Z `#391` Work layout (shared-tip rule from `#387` still applies).
-    let tip = "перший OPEN `#392`";
+    let tip = "перший OPEN `#393`";
     let paths = [
         "docs/demo.md",
         "docs/crypto.md",
@@ -452,8 +457,8 @@ fn audit_d_389_analyze_396_historical_snapshot_headers() {
         "QUEUE must not keep #389 OPEN"
     );
     assert!(
-        queue.contains("| 391 | **DONE**")
-            && (queue.contains("**Перший OPEN:** `#392`") || queue.contains("first OPEN `#392`")),
-        "QUEUE tip must advance to Phase Z first OPEN #392 after #391"
+        queue.contains("| 392 | **DONE**")
+            && (queue.contains("**Перший OPEN:** `#393`") || queue.contains("first OPEN `#393`")),
+        "QUEUE tip must advance to Phase Z first OPEN #393 after #392"
     );
 }

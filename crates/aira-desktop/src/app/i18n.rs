@@ -127,30 +127,20 @@ pub struct Labels {
     pub settings_connection_edit_hint: &'static str,
     pub sys_connection_observe_hint: &'static str,
     pub work_heading: &'static str,
-    pub work_hint: &'static str,
     pub work_submit: &'static str,
     /// Shown instead of Run when the selected host model still needs its own slot (`#362`).
     pub work_prepare_and_run: &'static str,
     pub work_submitting: &'static str,
     pub work_cancel_honesty: &'static str,
     pub work_cancelled: &'static str,
-    pub work_executor: &'static str,
-    pub work_executor_auto: &'static str,
-    pub work_executor_specific: &'static str,
     pub work_executor_compare: &'static str,
-    pub work_executor_hint: &'static str,
     pub work_compare_a: &'static str,
     pub work_compare_b: &'static str,
-    pub work_compare_pick_a: &'static str,
-    pub work_compare_pick_b: &'static str,
     pub work_compare_leg_a: &'static str,
     pub work_compare_leg_b: &'static str,
     pub work_compare_b_failed: &'static str,
     pub work_compare_no_substitute: &'static str,
-    pub work_readiness_ready: &'static str,
     pub work_readiness_blocked: &'static str,
-    pub work_capability_math: &'static str,
-    pub work_capability_generate: &'static str,
     pub work_mock_banner: &'static str,
     pub work_mock_banner_cta: &'static str,
     pub work_triple_requested: &'static str,
@@ -158,10 +148,6 @@ pub struct Labels {
     pub work_triple_executed: &'static str,
     pub work_triple_none: &'static str,
     pub work_triple_executed_mock: &'static str,
-    pub work_shortcut_hint: &'static str,
-    pub work_user_note: &'static str,
-    pub work_how_it_works: &'static str,
-    pub work_tech_details: &'static str,
     pub work_answer: &'static str,
     pub work_run_status: &'static str,
     pub work_verification: &'static str,
@@ -478,29 +464,19 @@ static EN: Labels = Labels {
     settings_connection_edit_hint: "Edit network profile and peer listen here. System → Connection shows observed status only.",
     sys_connection_observe_hint: "Observed status and invites. Change profile or listen in Settings → Connection.",
     work_heading: "What do you need done?",
-    work_hint: "Describe the task for local text generation. Host Ollama (Settings → Models) is required. Enter starts a new line.",
     work_submit: "Run",
     work_prepare_and_run: "Prepare and run",
     work_submitting: "Running…",
     work_cancel_honesty: "Stop node does not cancel this task. There is no cancel control while the process is still running.",
     work_cancelled: "Cancelled — the generate process has stopped.",
-    work_executor: "Executor:",
-    work_executor_auto: "Auto",
-    work_executor_specific: "Specific model",
     work_executor_compare: "Compare",
-    work_executor_hint: "Auto uses the Settings default when available. Specific needs one available model. Compare runs two different models in sequence — no silent substitute. Choice ≠ verified. Work needs a host process LLM (Settings → Models).",
     work_compare_a: "Model A:",
     work_compare_b: "Model B:",
-    work_compare_pick_a: "Pick model A (catalog):",
-    work_compare_pick_b: "Pick model B (catalog):",
     work_compare_leg_a: "Compare — model A",
     work_compare_leg_b: "Compare — model B",
     work_compare_b_failed: "Model B failed",
     work_compare_no_substitute: "No silent substitute — model A result is kept; fix B or pick another available model.",
-    work_readiness_ready: "Ready to run",
     work_readiness_blocked: "Not ready",
-    work_capability_math: "Capability: calculation (legacy path; not product Work)",
-    work_capability_generate: "Capability: local text generation",
     work_mock_banner: "No host LLM bound — Settings → Models: Process + model from `ollama list`. Reference mock is not product Work. Choice ≠ VERIFIED.",
     work_mock_banner_cta: "Open Settings → Models",
     work_triple_requested: "Requested:",
@@ -508,10 +484,6 @@ static EN: Labels = Labels {
     work_triple_executed: "Executed:",
     work_triple_none: "none",
     work_triple_executed_mock: "mock (no model run)",
-    work_shortcut_hint: "Ctrl+Enter (⌘+Enter on Mac) runs when available. Your draft stays if you switch section, open Help, or a run fails.",
-    work_user_note: "Work requires a host LLM (Settings → Models). Text generation never pretends a result was verified.",
-    work_how_it_works: "How this works",
-    work_tech_details: "Work runs the local model you chose. A result is not verified unless the check says so. The reference demo is not a real model.",
     work_answer: "Answer",
     work_run_status: "Run status:",
     work_verification: "Check:",
@@ -787,29 +759,19 @@ static UK: Labels = Labels {
     settings_connection_edit_hint: "Редагуйте мережевий профіль і peer listen тут. Стан системи → З’єднання показує лише спостережуваний стан.",
     sys_connection_observe_hint: "Спостережуваний стан і запрошення. Профіль або listen змінюйте в Параметри → З’єднання.",
     work_heading: "Що потрібно зробити?",
-    work_hint: "Опишіть задачу для локальної генерації тексту. Потрібен хостовий Ollama (Параметри → Моделі). Enter — новий рядок.",
     work_submit: "Виконати",
     work_prepare_and_run: "Підготувати й виконати",
     work_submitting: "Виконуємо…",
     work_cancel_honesty: "Зупинка вузла не скасовує це завдання. Кнопки скасування немає, поки процес ще працює.",
     work_cancelled: "Скасовано — процес генерації зупинився.",
-    work_executor: "Виконавець:",
-    work_executor_auto: "Авто",
-    work_executor_specific: "Конкретна модель",
     work_executor_compare: "Порівняти",
-    work_executor_hint: "Авто бере типову модель з Параметри→Моделі, якщо вона доступна. Конкретна — одна доступна модель. Порівняти — дві різні моделі послідовно, без тихої підміни. Вибір ≠ перевірено. Work потребує host LLM.",
     work_compare_a: "Модель A:",
     work_compare_b: "Модель B:",
-    work_compare_pick_a: "Обрати модель A (каталог):",
-    work_compare_pick_b: "Обрати модель B (каталог):",
     work_compare_leg_a: "Порівняння — модель A",
     work_compare_leg_b: "Порівняння — модель B",
     work_compare_b_failed: "Модель B не виконалась",
     work_compare_no_substitute: "Без тихої підміни — результат A збережено; виправте B або оберіть іншу доступну модель.",
-    work_readiness_ready: "Готово до виконання",
     work_readiness_blocked: "Не готово",
-    work_capability_math: "Можливість: розрахунок (legacy; не продуктовий Work)",
-    work_capability_generate: "Можливість: локальна генерація тексту",
     work_mock_banner: "Немає host LLM — Параметри → Моделі: Process + модель з `ollama list`. Reference mock не є продуктовим Work. Вибір ≠ VERIFIED.",
     work_mock_banner_cta: "Відкрити Параметри → Моделі",
     work_triple_requested: "Запитано:",
@@ -817,10 +779,6 @@ static UK: Labels = Labels {
     work_triple_executed: "Виконано:",
     work_triple_none: "немає",
     work_triple_executed_mock: "mock (модель не запускалась)",
-    work_shortcut_hint: "Ctrl+Enter (⌘+Enter на Mac) запускає, коли дія доступна. Чернетка лишається при зміні розділу, F1 чи невдалому запуску.",
-    work_user_note: "Work потребує host LLM (Параметри → Моделі). Генерація тексту ніколи не вдає перевірений результат.",
-    work_how_it_works: "Як це працює",
-    work_tech_details: "Робота виконує локальну модель, яку ви обрали. Результат не перевірено, доки перевірка цього не каже. Демонстраційний режим — не справжня модель.",
     work_answer: "Відповідь",
     work_run_status: "Статус виконання:",
     work_verification: "Перевірка:",
@@ -1032,21 +990,10 @@ mod tests {
         assert_eq!(Labels::get(UiLang::Uk).work_heading, "Що потрібно зробити?");
         assert_eq!(Labels::get(UiLang::En).work_submit, "Run");
         assert_eq!(Labels::get(UiLang::Uk).work_submit, "Виконати");
-        assert!(Labels::get(UiLang::En)
-            .work_shortcut_hint
-            .contains("Ctrl+Enter"));
-        assert!(Labels::get(UiLang::Uk)
-            .work_shortcut_hint
-            .contains("Ctrl+Enter"));
         assert!(Labels::get(UiLang::Uk)
             .open_window_hint
             .contains("не блокує"));
-        assert!(!Labels::get(UiLang::En).work_tech_details.contains("OP-001"));
-        assert!(!Labels::get(UiLang::En).work_tech_details.contains("RFC"));
-        assert!(!Labels::get(UiLang::Uk).work_tech_details.contains("legacy"));
-        assert!(Labels::get(UiLang::En)
-            .work_tech_details
-            .contains("not verified"));
+        // `#392`: Work how-it-works / tech dump removed; shortcut honesty lives in Help.
         assert!(Labels::get(UiLang::Uk).not_llm.contains("не заборона"));
         assert_eq!(Labels::get(UiLang::Uk).work_answer, "Відповідь");
         assert_eq!(Labels::get(UiLang::En).work_details, "Details");
@@ -1056,10 +1003,6 @@ mod tests {
             Labels::get(UiLang::En).work_execution_id,
             "Execution artifact:"
         );
-        assert!(!Labels::get(UiLang::En)
-            .work_user_note
-            .to_ascii_lowercase()
-            .contains("forbidden"));
         assert!(!Labels::get(UiLang::En)
             .not_llm
             .contains("AIRA is not an LLM runtime"));
