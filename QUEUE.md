@@ -1,6 +1,6 @@
 # AIRA — лінійна черга задач
 
-**Оновлено:** 2026-09-25  
+**Оновлено:** 2026-10-01  
 **Правило виконання:** завжди береться **перший OPEN** рядок; один рядок = один Analyze-цикл = одна атомарна зміна; не пропускати; не зливати два рядки в один PR; не чіпати `Manifesto etc/**`, `Meditation_About/**`.  
 **Канон:** цей файл. Старі `analysis/Analyze-*/todo/TODO_FIXME.md` — лише provenance.  
 **План етапу:** Phase C [`docs/phase-c-plan.md`](docs/phase-c-plan.md) **DONE**. Phase D [`docs/phase-d-plan.md`](docs/phase-d-plan.md) — D0–D7 (`#53`–`#74`) **DONE**. Phase E [`docs/phase-e-plan.md`](docs/phase-e-plan.md) + UX [`docs/desktop-ux.md`](docs/desktop-ux.md) — `#75`–`#106` **DONE** (2026-08-22). Phase F Post-E stabilization [`docs/phase-f-plan.md`](docs/phase-f-plan.md) — `#107`–`#119` **DONE** (2026-08-24). Phase G Reference v0.2 [`docs/phase-g-plan.md`](docs/phase-g-plan.md) — `#120`–`#151` **DONE** (2026-08-28, RFC-0069). Phase H Protocol depth v0.3 [`docs/phase-h-plan.md`](docs/phase-h-plan.md) — `#152`–`#183` **DONE** (2026-08-30, RFC-0077). Phase I Semantic contract stabilization [`docs/phase-i-plan.md`](docs/phase-i-plan.md) — `#184`–`#198` **DONE** (2026-08-30, RFC-0078). Phase J Book-gap local remainder [`docs/phase-j-plan.md`](docs/phase-j-plan.md) — `#199`–`#208` **DONE** @ RFC-0096. QUEUE J closed. Phase K Local LLM Execution CSU [`docs/phase-k-plan.md`](docs/phase-k-plan.md) — `#209`–`#216` **DONE** @ RFC-0104. QUEUE K closed. Phase L Execution-boundary hardening [`docs/phase-l-plan.md`](docs/phase-l-plan.md) — `#217`–`#223` **DONE** @ RFC-0111. QUEUE L closed. Phase M OS child sandbox [`docs/phase-m-plan.md`](docs/phase-m-plan.md) — `#224`–`#230` **DONE** @ RFC-0117. QUEUE M closed. Phase N Global Node Rendezvous [`docs/phase-n-plan.md`](docs/phase-n-plan.md) — `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed. Phase N-fix [`docs/phase-n-fix-plan.md`](docs/phase-n-fix-plan.md) — `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed. Phase O Desktop UX + F1 [`docs/phase-o-plan.md`](docs/phase-o-plan.md) — `#255`–`#265` **DONE** @ RFC-0146; **QUEUE O closed**. Phase P [`docs/phase-p-plan.md`](docs/phase-p-plan.md) — `#266`–`#274` **DONE** @ RFC-0156; **QUEUE P closed**. Phase Q [`docs/phase-q-plan.md`](docs/phase-q-plan.md) — `#275`–`#285` **DONE** @ RFC-0164; **QUEUE Q closed**. Phase R [`docs/phase-r-plan.md`](docs/phase-r-plan.md) — `#286`–`#294` **DONE** @ RFC-0174; **QUEUE R closed**. Phase S [`docs/phase-s-plan.md`](docs/phase-s-plan.md) — `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**. Phase T [`docs/phase-t-plan.md`](docs/phase-t-plan.md) — `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**. Phase U [`docs/phase-u-plan.md`](docs/phase-u-plan.md) — `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**. Phase V Repair Pack 1 [`docs/phase-v-plan.md`](docs/phase-v-plan.md) — `#323`–`#330` **DONE** @ RFC-0208; **QUEUE V closed**. Phase W Pack 1 residual honesty [`docs/phase-w-plan.md`](docs/phase-w-plan.md) — `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed**. Phase X Pack 2 multi-model GUI [`docs/phase-x-plan.md`](docs/phase-x-plan.md) — `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed**; no OPEN X atoms.
@@ -12,7 +12,7 @@
 | `main` | Phase W `#331`–`#342` **DONE** @ RFC-0215; **QUEUE W closed** @ [`phase-w-plan.md`](docs/phase-w-plan.md); Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** @ [`phase-x-plan.md`](docs/phase-x-plan.md) (Pack 2 GUI DONE; no OPEN X atoms); Phase V `#323`–`#330` **DONE** @ RFC-0208; **QUEUE V closed**; Phase U `#313`–`#322` **DONE** @ RFC-0198; **QUEUE U closed**; Phase T `#306`–`#312` **DONE** @ RFC-0192; **QUEUE T closed**; Phase S `#295`–`#305` **DONE** @ RFC-0182; **QUEUE S closed**; Phase R `#286`–`#294` **DONE** @ RFC-0174; QUEUE R closed; Phase Q `#275`–`#285` **DONE** @ RFC-0164; QUEUE Q closed; Phase P `#266`–`#274` **DONE** @ RFC-0156; QUEUE P closed; Phase O `#255`–`#265` **DONE** @ RFC-0146; QUEUE O closed; N-fix `#248`–`#254` **DONE** @ RFC-0139; QUEUE N-fix closed; N `#231`–`#247` **DONE** @ RFC-0123; QUEUE N closed; M `#224`–`#230` **DONE** @ RFC-0117; QUEUE M closed |
 | MVP / Peer P0–P2 micros #1–17 | **архів (DONE)** |
 | Phase B #18–#37 | **архів (DONE)** |
-| Активна черга | Phase Z [`docs/phase-z-plan.md`](docs/phase-z-plan.md) `#390`–`#397` **IN PROGRESS**; **Перший OPEN:** `#393`. `#390`–`#392` **DONE**. Audit A `#376`–`#389` **DONE**. Phase Y `#359`–`#375` **DONE**. Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** |
+| Активна черга | Phase Z [`docs/phase-z-plan.md`](docs/phase-z-plan.md) `#390`–`#397` **IN PROGRESS**; **Перший OPEN:** `#394`. `#390`–`#393` **DONE**. Audit A `#376`–`#389` **DONE**. Phase Y `#359`–`#375` **DONE**. Phase X `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed** |
 
 ## Правила атомарності
 
@@ -987,7 +987,7 @@ W0 wiring + A0 (#331 DONE)
 
 План Y: [`docs/phase-y-plan.md`](docs/phase-y-plan.md).  
 План аудиту / gate: [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md).  
-Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. D+A `#383`–`#389` **DONE**. Live tip → Phase Z **перший OPEN `#393`** ([`phase-z-plan.md`](docs/phase-z-plan.md)). Не Pack 3.
+Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. D+A `#383`–`#389` **DONE**. Live tip → Phase Z **перший OPEN `#394`** ([`phase-z-plan.md`](docs/phase-z-plan.md)). Не Pack 3.
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
@@ -1045,14 +1045,14 @@ Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. D+A `#3
 ## Phase Z — Desktop chrome density (OPEN)
 
 План: [`docs/phase-z-plan.md`](docs/phase-z-plan.md). Living smoke: `phase_z_doc`. Consolidating **RFC-0244** reserved (file-free until `#397`).  
-**Перший OPEN:** `#393`. `#390`–`#392` **DONE**. Audit A `#376`–`#389` **DONE** (closed provenance).
+**Перший OPEN:** `#394`. `#390`–`#393` **DONE**. Audit A `#376`–`#389` **DONE** (closed provenance).
 
 | # | Status | Analyze | Атомарний scope | Done when | Не в цьому рядку |
 |---|--------|---------|-----------------|-----------|------------------|
 | 390 | **DONE** | ~~Analyze-398 — Phase Z wiring~~ | plan IN PROGRESS + QUEUE tip + `phase_z_doc` + density contract; RFC-0244 reserved | `#390` DONE; first OPEN `#391` | layout/copy UI (#391+) |
 | 391 | **DONE** | ~~Analyze-399 — Work layout budget~~ | editor `WORK_EDITOR_DESIRED_ROWS` ≥ 8; answer min height; RFC-0244 reserved | `#391` DONE; first OPEN `#392` | remove how-it-works (#392) |
 | 392 | **DONE** | ~~Analyze-400 — Remove how-it-works~~ | немає `work_how_it_works` CollapsingHeader; F1 covers; orphan i18n cleaned | `#392` DONE; first OPEN `#393` | Connection copy |
-| 393 | **OPEN** | — | Скоротити `sys_conn_unknown` EN/UK | короткий статус; UNKNOWN≠OFFLINE у Help | boundary/cold remove |
+| 393 | **DONE** | ~~Analyze-401 — Short sys_conn_unknown~~ | EN/UK ≤ 40 chars; не «offline»; UNKNOWN≠OFFLINE у Help `network.connect` | `#393` DONE; first OPEN `#394` | boundary/cold remove |
 | 394 | **OPEN** | — | Boundary/cold guidance не always-on у primary Connection | Help лишає межу; ≤1 short secondary або F1 link | CTA matrix change |
 | 395 | **OPEN** | — | Secondary copy pass: Work readiness / System extras | ≤1 weak line / секція | Settings deep forms |
 | 396 | **OPEN** | — | Honesty + Help regression (cold_start, connection_cta, help links) | тести зелені; матриця chrome→Help | new Help topic unless gap |
@@ -1060,15 +1060,15 @@ Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. D+A `#3
 
 ### Наступний цикл
 
-**Перший OPEN:** `#393` (Short sys_conn_unknown). Phase Z `#390`–`#392` **DONE**. `#394`–`#397` **OPEN**. Audit A `#376`–`#389` **DONE**.
+**Перший OPEN:** `#394` (Boundary/cold off primary). Phase Z `#390`–`#393` **DONE**. `#395`–`#397` **OPEN**. Audit A `#376`–`#389` **DONE**.
 
 ```text
 #359 readiness … #389 Analyze-396 historicize (DONE; audit A closed)
   → #390 Phase Z wiring (DONE @ Analyze-398)
     → #391 Work layout budget (DONE @ Analyze-399)
       → #392 Remove how-it-works (DONE @ Analyze-400)
-        → #393 Short sys_conn_unknown (OPEN)
-          → #394 Boundary/cold off primary
+        → #393 Short sys_conn_unknown (DONE @ Analyze-401)
+          → #394 Boundary/cold off primary (OPEN)
             → #395 Secondary copy pass
               → #396 Honesty/Help regression
                 → #397 RFC-0244 + phase complete
@@ -1077,7 +1077,7 @@ Phase Y `#359`–`#375` **DONE**. Audit gate K `#376`–`#382` **DONE**. D+A `#3
 ### Наступний цикл (Phase X)
 
 **Phase X COMPLETE** (`#343`–`#358` **DONE** @ RFC-0226). **QUEUE X closed.** no OPEN X atoms.  
-Tip (historical Pack 2): `#358` DONE @ Analyze-395 / RFC-0226. Live tip → Phase Z **перший OPEN `#393`**. Pack 3 лишається окремо.
+Tip (historical Pack 2): `#358` DONE @ Analyze-395 / RFC-0226. Live tip → Phase Z **перший OPEN `#394`**. Pack 3 лишається окремо.
 
 ```text
 X0 wiring (#343 DONE)
@@ -1180,6 +1180,6 @@ P0 wiring (#266 DONE)
 | Pack 2 local multi-model GUI (aira-current 2026-09-13 + M1–M6) | [`docs/phase-x-plan.md`](docs/phase-x-plan.md); `#343`–`#358` **DONE** @ RFC-0226; **QUEUE X closed**; no OPEN X atoms |
 | Вибір моделі (підтверджений аудит `9f3e642` + `aira-current.md` 2026-09-20) | [`docs/phase-y-plan.md`](docs/phase-y-plan.md); `#359`–`#375` **DONE**; **QUEUE Y closed** |
 | Повний аудит `6007442` (2026-09-23): K1–K5 + D + acceptance | [`docs/audit-6007442-plan.md`](docs/audit-6007442-plan.md); K `#376`–`#382` **DONE**; Y `#359`–`#375` **DONE**; `#383`–`#389` **DONE** (closed); live tip → Phase Z `#393` |
-| Desktop chrome density (post-audit A) | [`docs/phase-z-plan.md`](docs/phase-z-plan.md); `#390`–`#397`; `#390`–`#392` **DONE**; **перший OPEN `#393`**; RFC-0244 reserved |
+| Desktop chrome density (post-audit A) | [`docs/phase-z-plan.md`](docs/phase-z-plan.md); `#390`–`#397`; `#390`–`#393` **DONE**; **перший OPEN `#394`**; RFC-0244 reserved |
 
 Після DONE рядка: позначити `~~…~~ **DONE**`, оновити «Наступний цикл», закрити відповідний `analysis/Analyze-N/`.
