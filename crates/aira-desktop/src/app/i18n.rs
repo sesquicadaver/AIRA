@@ -422,7 +422,7 @@ static EN: Labels = Labels {
     sys_conn_relayed: "Reachable through a relay — not the same as direct.",
     sys_conn_outbound: "Outbound paths only — inbound reachability not confirmed.",
     sys_conn_local: "Only local networking is known — not a global connection.",
-    sys_conn_unknown: "Connection has not been verified yet (not the same as offline).",
+    sys_conn_unknown: "Not checked yet.",
     sys_conn_offline: "No mesh path is available.",
     cta_enable_private_network: "Enable private network",
     cta_import_invite: "Import invite…",
@@ -717,7 +717,7 @@ static UK: Labels = Labels {
     sys_conn_relayed: "Доступ через relay — це не те саме, що пряме з’єднання.",
     sys_conn_outbound: "Лише вихідні шляхи — вхідну доступність не підтверджено.",
     sys_conn_local: "Відома лише локальна мережа — це не глобальне з’єднання.",
-    sys_conn_unknown: "З’єднання ще не перевірено (це не те саме, що офлайн).",
+    sys_conn_unknown: "Ще не перевірено.",
     sys_conn_offline: "Немає доступного шляху mesh.",
     cta_enable_private_network: "Увімкнути приватну мережу",
     cta_import_invite: "Імпортувати запрошення…",
@@ -1014,12 +1014,17 @@ mod tests {
             .contains("локальним обчислювачем"));
         assert_eq!(Labels::get(UiLang::En).sys_program, "Program");
         assert_eq!(Labels::get(UiLang::Uk).sys_connection, "З’єднання");
-        assert!(Labels::get(UiLang::En)
-            .sys_conn_unknown
-            .contains("not the same as offline"));
-        assert!(Labels::get(UiLang::Uk)
-            .sys_conn_unknown
-            .contains("не те саме, що офлайн"));
+        // `#393`: short Unknown status. UNKNOWN ≠ OFFLINE stays in Help (`network.connect`).
+        let en_unknown = Labels::get(UiLang::En).sys_conn_unknown;
+        let uk_unknown = Labels::get(UiLang::Uk).sys_conn_unknown;
+        assert!(en_unknown.chars().count() <= 40);
+        assert!(uk_unknown.chars().count() <= 40);
+        assert!(en_unknown.to_ascii_lowercase().contains("not checked"));
+        assert!(uk_unknown.contains("не перевірено"));
+        assert!(!en_unknown.to_ascii_lowercase().contains("offline"));
+        assert!(!uk_unknown.contains("офлайн"));
+        assert_ne!(en_unknown, Labels::get(UiLang::En).sys_conn_offline);
+        assert_ne!(uk_unknown, Labels::get(UiLang::Uk).sys_conn_offline);
         assert_eq!(
             Labels::get(UiLang::En).cta_enable_private_network,
             "Enable private network"
